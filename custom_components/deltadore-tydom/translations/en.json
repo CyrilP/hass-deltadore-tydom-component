@@ -11,6 +11,7 @@
         "step": {
             "user": {
                 "title": "Delta Dore Tydom",
+                "description": "test",
                 "data": {
                     "host": "Host",
                     "password": "Password",

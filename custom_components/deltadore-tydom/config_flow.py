@@ -1,7 +1,6 @@
 """Config flow for Tydom integration."""
 from __future__ import annotations
 import traceback
-import logging
 from typing import Any
 
 import voluptuous as vol
@@ -12,10 +11,8 @@ from homeassistant.const import CONF_HOST, CONF_MAC, CONF_PASSWORD, CONF_PIN
 from homeassistant.core import HomeAssistant
 from homeassistant.components import dhcp
 
-from .const import DOMAIN  # pylint:disable=unused-import
+from .const import DOMAIN, LOGGER
 from .hub import Hub
-
-_LOGGER = logging.getLogger(__name__)
 
 # This is the schema that used to display the UI to the user. This simple
 # schema has a single required host field, but it could include a number of fields
@@ -106,7 +103,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._discovered_host = None
         self._discovered_mac = None
 
-    async def async_step_user(self, user_input=None):
+    async def async_step_user(self, user_input=None) -> config_entries.FlowResult:
         """Handle the initial step."""
         # This goes through the steps to take the user through the setup process.
         # Using this it is possible to update the UI and prompt for additional
@@ -114,7 +111,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # and when that has some validated input, it calls `async_create_entry` to
         # actually create the HA config entry. Note the "title" value is returned by
         # `validate_input` above.
-        errors = {}
+        _errors = {}
         if user_input is not None:
             try:
                 info = await validate_input(self.hass, user_input)
@@ -122,21 +119,21 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(title=info["title"], data=user_input)
             except CannotConnect:
-                errors["base"] = "cannot_connect"
+                _errors["base"] = "cannot_connect"
             except InvalidHost:
                 # The error string is set here, and should be translated.
                 # This example does not currently cover translations, see the
                 # comments on `DATA_SCHEMA` for further details.
                 # Set the error on the `host` field, not the entire form.
-                errors[CONF_HOST] = "cannot_connect"
+                _errors[CONF_HOST] = "cannot_connect"
             except InvalidMacAddress:
-                errors[CONF_MAC] = "cannot_connect"
+                _errors[CONF_MAC] = "cannot_connect"
             except InvalidPassword:
-                errors[CONF_PASSWORD] = "cannot_connect"
+                _errors[CONF_PASSWORD] = "cannot_connect"
             except Exception:  # pylint: disable=broad-except
                 traceback.print_exc()
-                _LOGGER.exception("Unexpected exception")
-                errors["base"] = "unknown"
+                LOGGER.exception("Unexpected exception")
+                _errors["base"] = "unknown"
 
         user_input = user_input or {}
         # If there is no user input or there were errors, show the form again, including any errors that were found with the input.
@@ -152,7 +149,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Optional(CONF_PIN, default=user_input.get(CONF_PIN, "")): str,
                 }
             ),
-            errors=errors,
+            errors=_errors,
         )
 
     async def async_step_dhcp(self, discovery_info: dhcp.DhcpServiceInfo):
