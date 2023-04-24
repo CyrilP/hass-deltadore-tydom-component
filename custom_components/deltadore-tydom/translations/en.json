@@ -1,0 +1,23 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Device is already configured"
+        },
+        "error": {
+            "cannot_connect": "Failed to connect",
+            "invalid_auth": "Invalid authentication",
+            "unknown": "Unexpected error"
+        },
+        "step": {
+            "user": {
+                "title": "Delta Dore Tydom",
+                "data": {
+                    "host": "Host",
+                    "password": "Password",
+                    "mac": "Mac Address",
+                    "pin": "Alarm PIN"
+                }
+            }
+        }
+    }
+}
