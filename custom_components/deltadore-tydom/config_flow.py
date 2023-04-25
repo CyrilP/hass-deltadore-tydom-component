@@ -160,7 +160,20 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         user_input = user_input or {}
         # If there is no user input or there were errors, show the form again, including any errors that were found with the input.
         return self.async_show_form(
-            step_id="user", data_schema=DATA_SCHEMA, errors=_errors
+            step_id="user",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_HOST, default=user_input.get(CONF_HOST)
+                    ): cv.string,
+                    vol.Required(CONF_MAC, default=user_input.get(CONF_MAC)): cv.string,
+                    vol.Required(
+                        CONF_PASSWORD, default=user_input.get(CONF_PASSWORD)
+                    ): cv.string,
+                    vol.Optional(CONF_PIN): str,
+                }
+            ),
+            errors=_errors,
         )
 
     async def async_step_dhcp(self, discovery_info: dhcp.DhcpServiceInfo):

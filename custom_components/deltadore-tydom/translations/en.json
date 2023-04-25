@@ -7,17 +7,17 @@
                 "data": {
                     "name": "Custom Name of the inverter (used for sensors' prefix)",
                     "host": "IP or hostname",
-                    "port": "TCP port",
-                    "password": "pass",
-                    "pin": "pin",
-                    "slave_id": "Modbus Slave address of the inverter",
-                    "base_addr": "Modbus Register Map Base Address",
-                    "scan_interval": "Polling Period (min: 5s max: 600s)"
+                    "mac": "MAC address",
+                    "password": "Password",
+                    "pin": "Alarm PIN"
                 }
             }
         },
         "error": {
-            "already_configured": "Device is already configured"
+            "already_configured": "Device is already configured",
+            "invalid_host": "Hostname or IP is invalid",
+            "invalid_macaddress": "MAC address is invalid",
+            "invalid_password": "Password is invalid"
         },
         "abort": {
             "already_configured": "Device is already configured"
