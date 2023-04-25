@@ -7,6 +7,7 @@ from typing import Any
 
 import voluptuous as vol
 
+from homeassistant.helpers.aiohttp_client import async_create_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries, exceptions
 from homeassistant.const import CONF_HOST, CONF_MAC, CONF_PASSWORD, CONF_PIN
@@ -15,6 +16,12 @@ from homeassistant.components import dhcp
 
 from .const import DOMAIN, LOGGER
 from .hub import Hub
+from .tydom.tydom_client import (
+    TydomClient,
+    TydomClientApiClientCommunicationError,
+    TydomClientApiClientAuthenticationError,
+    TydomClientApiClientError,
+)
 
 # This is the schema that used to display the UI to the user. This simple
 # schema has a single required host field, but it could include a number of fields
@@ -73,30 +80,6 @@ async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
     if CONF_PIN in data:
         pin = data[CONF_PIN]
 
-    hub = Hub(hass, data[CONF_HOST], data[CONF_MAC], data[CONF_PASSWORD], pin)
-    # The dummy hub provides a `test_connection` method to ensure it's working
-    # as expected
-    result = hub.test_connection()
-    if not result:
-        # If there is an error, raise an exception to notify HA that there was a
-        # problem. The UI will also show there was a problem
-        raise CannotConnect
-
-    # If your PyPI package is not built with async, pass your methods
-    # to the executor:
-    # await hass.async_add_executor_job(
-    #     your_validate_func, data["username"], data["password"]
-    # )
-
-    # If you cannot connect:
-    # throw CannotConnect
-    # If the authentication is wrong:
-    # InvalidAuth
-
-    # Return info that you want to store in the config entry.
-    # "Title" is what is displayed to the user for this hub device
-    # It is stored internally in HA as part of the device config.
-    # See `async_step_user` below for how this is used
     return {
         CONF_HOST: data[CONF_HOST],
         CONF_MAC: data[CONF_MAC],
@@ -135,7 +118,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         _errors = {}
         if user_input is not None:
             try:
-                info = await validate_input(self.hass, user_input)
+                await validate_input(self.hass, user_input)
+                # Ensure it's working as expected
+                await self._test_credentials(
+                    mac=user_input[CONF_MAC],
+                    password=user_input[CONF_PASSWORD],
+                    pin=None,
+                    host=user_input[CONF_HOST],
+                )
                 await self.async_set_unique_id(user_input[CONF_MAC])
                 self._abort_if_unique_id_configured()
             except CannotConnect:
@@ -150,12 +140,24 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _errors[CONF_MAC] = "invalid_macaddress"
             except InvalidPassword:
                 _errors[CONF_PASSWORD] = "invalid_password"
+            except TydomClientApiClientCommunicationError:
+                traceback.print_exc()
+                _errors["base"] = "communication_error"
+            except TydomClientApiClientAuthenticationError:
+                traceback.print_exc()
+                _errors["base"] = "authentication_error"
+            except TydomClientApiClientError:
+                traceback.print_exc()
+                _errors["base"] = "unknown"
+
             except Exception:  # pylint: disable=broad-except
                 traceback.print_exc()
                 LOGGER.exception("Unexpected exception")
                 _errors["base"] = "unknown"
             else:
-                return self.async_create_entry(title=info[CONF_MAC], data=user_input)
+                return self.async_create_entry(
+                    title=user_input[CONF_MAC], data=user_input
+                )
 
         user_input = user_input or {}
         # If there is no user input or there were errors, show the form again, including any errors that were found with the input.
@@ -202,6 +204,19 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
             ),
         )
+
+    async def _test_credentials(
+        self, mac: str, password: str, pin: str, host: str
+    ) -> None:
+        """Validate credentials."""
+        client = TydomClient(
+            session=async_create_clientsession(self.hass, False),
+            mac=mac,
+            password=password,
+            alarm_pin=pin,
+            host=host,
+        )
+        await client.async_connect()
 
 
 class CannotConnect(exceptions.HomeAssistantError):
