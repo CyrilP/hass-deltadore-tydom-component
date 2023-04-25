@@ -354,22 +354,22 @@ class TydomClient:
         await self.get_data()
 
     # Listen to tydom events.
-    async def listen_tydom(self):
+    def listen_tydom(self):
         try:
-            await self.connect()
-            await self.setup()
+            self.connect()
+            self.setup()
             while True:
                 try:
-                    incoming_bytes_str = await self.connection.recv()
+                    incoming_bytes_str = self.connection.recv()
                     message_handler = MessageHandler(
                         incoming_bytes=incoming_bytes_str,
                         tydom_client=self,
                     )
-                    await message_handler.incoming_triage()
+                    message_handler.incoming_triage()
                 except websockets.exceptions.ConnectionClosed:
                     # try to reconnect
-                    await self.connect()
-                    await self.setup()
+                    self.connect()
+                    self.setup()
                 except Exception as e:
                     logger.warning("Unable to handle message: %s", e)
 

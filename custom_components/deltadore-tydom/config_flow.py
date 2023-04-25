@@ -1,6 +1,8 @@
 """Config flow for Tydom integration."""
 from __future__ import annotations
 import traceback
+import ipaddress
+import re
 from typing import Any
 
 import voluptuous as vol
@@ -28,12 +30,22 @@ from .hub import Hub
 
 DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_HOST): str,
-        vol.Required(CONF_MAC): str,
-        vol.Required(CONF_PASSWORD): str,
+        vol.Required(CONF_HOST): cv.string,
+        vol.Required(CONF_MAC): cv.string,
+        vol.Required(CONF_PASSWORD): cv.string,
         vol.Optional(CONF_PIN): str,
     }
 )
+
+
+def host_valid(host):
+    """Return True if hostname or IP address is valid"""
+    try:
+        if ipaddress.ip_address(host).version == (4 or 6):
+            return True
+    except ValueError:
+        disallowed = re.compile(r"[^a-zA-Z\d\-]")
+        return all(x and not disallowed.search(x) for x in host.split("."))
 
 
 async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
@@ -51,7 +63,7 @@ async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
     if len(data[CONF_HOST]) < 3:
         raise InvalidHost
 
-    if len(data[CONF_MAC]) < 3:
+    if len(data[CONF_MAC]) != 12:
         raise InvalidMacAddress
 
     if len(data[CONF_PASSWORD]) < 3:
@@ -85,11 +97,16 @@ async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
     # "Title" is what is displayed to the user for this hub device
     # It is stored internally in HA as part of the device config.
     # See `async_step_user` below for how this is used
-    return {"title": data[CONF_MAC]}
+    return {
+        CONF_HOST: data[CONF_HOST],
+        CONF_MAC: data[CONF_MAC],
+        CONF_PASSWORD: data[CONF_PASSWORD],
+        CONF_PIN: pin,
+    }
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Hello World."""
+    """Handle a config flow for Tydom."""
 
     VERSION = 1
 
@@ -102,6 +119,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self):
         self._discovered_host = None
         self._discovered_mac = None
+
+    async def async_step_import(self, import_config):
+        """Import a config entry from configuration.yaml."""
+        return await self.async_step_user(import_config)
 
     async def async_step_user(self, user_input=None) -> config_entries.FlowResult:
         """Handle the initial step."""
@@ -117,7 +138,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 info = await validate_input(self.hass, user_input)
                 await self.async_set_unique_id(user_input[CONF_MAC])
                 self._abort_if_unique_id_configured()
-                return self.async_create_entry(title=info["title"], data=user_input)
             except CannotConnect:
                 _errors["base"] = "cannot_connect"
             except InvalidHost:
@@ -125,31 +145,22 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # This example does not currently cover translations, see the
                 # comments on `DATA_SCHEMA` for further details.
                 # Set the error on the `host` field, not the entire form.
-                _errors[CONF_HOST] = "cannot_connect"
+                _errors[CONF_HOST] = "invalid_host"
             except InvalidMacAddress:
-                _errors[CONF_MAC] = "cannot_connect"
+                _errors[CONF_MAC] = "invalid_macaddress"
             except InvalidPassword:
-                _errors[CONF_PASSWORD] = "cannot_connect"
+                _errors[CONF_PASSWORD] = "invalid_password"
             except Exception:  # pylint: disable=broad-except
                 traceback.print_exc()
                 LOGGER.exception("Unexpected exception")
                 _errors["base"] = "unknown"
+            else:
+                return self.async_create_entry(title=info[CONF_MAC], data=user_input)
 
         user_input = user_input or {}
         # If there is no user input or there were errors, show the form again, including any errors that were found with the input.
         return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_HOST, default=user_input.get(CONF_HOST, "")): str,
-                    vol.Required(CONF_MAC, default=user_input.get(CONF_MAC, "")): str,
-                    vol.Required(
-                        CONF_PASSWORD, default=user_input.get(CONF_PASSWORD, "")
-                    ): str,
-                    vol.Optional(CONF_PIN, default=user_input.get(CONF_PIN, "")): str,
-                }
-            ),
-            errors=_errors,
+            step_id="user", data_schema=DATA_SCHEMA, errors=_errors
         )
 
     async def async_step_dhcp(self, discovery_info: dhcp.DhcpServiceInfo):

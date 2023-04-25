@@ -1,18 +1,23 @@
 {
   "domain": "tydom",
   "name": "Delta Dore TYDOM",
-  "codeowners": ["@CyrilP"],
+  "codeowners": [
+    "@CyrilP"
+  ],
   "config_flow": true,
-  "dependencies": [],
   "documentation": "https://www.home-assistant.io/integrations/tydom",
   "iot_class": "local_push",
-  "requirements": ["websockets>=9.1"],
+  "requirements": [
+    "websockets>=9.1"
+  ],
   "dhcp": [
     {
-    "hostname": "TYDOM-*",
-    "macaddress": "001A25*"
+      "hostname": "TYDOM-*",
+      "macaddress": "001A25*"
     }
   ],
-  "loggers": ["tydom"],
+  "loggers": [
+    "tydom"
+  ],
   "version": "0.0.1"
 }

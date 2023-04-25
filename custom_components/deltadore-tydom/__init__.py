@@ -1,6 +1,7 @@
 """The Detailed Hello World Push integration."""
 from __future__ import annotations
 
+from homeassistant.const import CONF_HOST, CONF_MAC, CONF_PASSWORD, CONF_PIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
@@ -17,15 +18,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Store an instance of the "connecting" class that does the work of speaking
     # with your actual devices.
     pin = None
-    if "alarmpin" in entry.data:
-        pin = entry.data["alarmpin"]
+    if CONF_PIN in entry.data:
+        pin = entry.data[CONF_PIN]
 
-    tydomHub = hub.Hub(
-        hass, entry.data["host"], entry.data["macaddress"], entry.data["password"], pin
+    tydom_hub = hub.Hub(
+        hass,
+        entry.data[CONF_HOST],
+        entry.data[CONF_MAC],
+        entry.data[CONF_PASSWORD],
+        pin,
     )
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = tydomHub
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = tydom_hub
 
-    await tydomHub.setup()
+    await tydom_hub.setup()
 
     # This creates each HA object for each platform your device requires.
     # It's done by calling the `async_setup_entry` function in each platform module.
