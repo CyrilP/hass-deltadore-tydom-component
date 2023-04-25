@@ -6,3 +6,4 @@ logger:
   default: info
   logs:
     custom_components.integration_blueprint: debug
+    custom_components.deltadore-tydom: debug
