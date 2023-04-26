@@ -6,6 +6,7 @@ import socket
 import base64
 import async_timeout
 import aiohttp
+import re
 
 from requests.auth import HTTPDigestAuth
 
@@ -86,6 +87,52 @@ class TydomClient:
                     headers=headers,
                     json=data,
                 )
+                logger.info("response status : %s", response.status)
+                logger.info("response content : %s", await response.text())
+                logger.info("response headers : %s", response.headers)
+
+                m = re.match(
+                    '.*nonce="([a-zA-Z0-9+=]+)".*',
+                    response.headers.get("WWW-Authenticate"),
+                )
+                if m:
+                    logger.info("nonce : %s", m.group(1))
+                else:
+                    raise TydomClientApiClientError("Could't find auth nonce")
+
+                headers["Authorization"] = self.build_digest_headers(m.group(1))
+
+                logger.info("new request headers : %s", headers)
+                # {'Authorization': '
+                #   Digest username="############",
+                #   realm="protected area",
+                #   nonce="e0317d0d0d4d2afe6c54ec928dfd7614",
+                #   uri="/mediation/client?mac=############&appli=1",
+                #   response="98a019dca77980a230eafed5e0acdf18",
+                #   qop="auth",
+                #   nc=00000001,
+                #   cnonce="77e7fea3ef6ecc1d"'}
+
+                # 'Authorization': '
+                #   Digest username="############",
+                #   realm="protected area",
+                #   nonce="31a7d8554d11c367dda81159b485c408",
+                #   uri="/mediation/client?mac=############&appli=1",
+                #   response="45fd17aecff639f29532091162ad64a1",
+                #   qop="auth",
+                #   nc=00000002,
+                #   cnonce="e92ddde26cac2ad5"
+
+                response = await self._session.ws_connect(
+                    method=method,
+                    url=url,
+                    headers=headers,
+                )
+
+                logger.info("response status : %s", response.status)
+                logger.info("response content : %s", await response.text())
+                logger.info("response headers : %s", response.headers)
+
                 if response.status in (401, 403):
                     raise TydomClientApiClientAuthenticationError(
                         "Invalid credentials",
@@ -110,7 +157,7 @@ class TydomClient:
         """Build the headers of Digest Authentication."""
         digest_auth = HTTPDigestAuth(self._mac, self._password)
         chal = {}
-        chal["nonce"] = nonce[2].split("=", 1)[1].split('"')[1]
+        chal["nonce"] = nonce
         chal["realm"] = (
             "ServiceMedia" if self._remote_mode is True else "protected area"
         )
@@ -118,12 +165,13 @@ class TydomClient:
         digest_auth._thread_local.chal = chal
         digest_auth._thread_local.last_nonce = nonce
         digest_auth._thread_local.nonce_count = 1
-        return digest_auth.build_digest_header(
+        digest = digest_auth.build_digest_header(
             "GET",
             "https://{host}:443/mediation/client?mac={mac}&appli=1".format(
                 host=self._host, mac=self._mac
             ),
         )
+        return digest
 
     @staticmethod
     def generate_random_key():
