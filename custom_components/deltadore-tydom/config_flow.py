@@ -7,6 +7,7 @@ from typing import Any
 
 import voluptuous as vol
 
+
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries, exceptions
@@ -15,9 +16,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.components import dhcp
 
 from .const import DOMAIN, LOGGER
-from .hub import Hub
+from . import hub
 from .tydom.tydom_client import (
-    TydomClient,
     TydomClientApiClientCommunicationError,
     TydomClientApiClientAuthenticationError,
     TydomClientApiClientError,
@@ -70,6 +70,9 @@ async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
     if len(data[CONF_HOST]) < 3:
         raise InvalidHost
 
+    if not host_valid(data[CONF_HOST]):
+        raise InvalidHost
+
     if len(data[CONF_MAC]) != 12:
         raise InvalidMacAddress
 
@@ -120,12 +123,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 await validate_input(self.hass, user_input)
                 # Ensure it's working as expected
-                await self._test_credentials(
-                    mac=user_input[CONF_MAC],
-                    password=user_input[CONF_PASSWORD],
-                    pin=None,
-                    host=user_input[CONF_HOST],
+                tydom_hub = hub.Hub(
+                    self.hass,
+                    user_input[CONF_HOST],
+                    user_input[CONF_MAC],
+                    user_input[CONF_PASSWORD],
+                    None,
                 )
+                await tydom_hub.test_credentials()
                 await self.async_set_unique_id(user_input[CONF_MAC])
                 self._abort_if_unique_id_configured()
             except CannotConnect:
@@ -204,19 +209,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
             ),
         )
-
-    async def _test_credentials(
-        self, mac: str, password: str, pin: str, host: str
-    ) -> None:
-        """Validate credentials."""
-        client = TydomClient(
-            session=async_create_clientsession(self.hass, False),
-            mac=mac,
-            password=password,
-            alarm_pin=pin,
-            host=host,
-        )
-        await client.async_connect()
 
 
 class CannotConnect(exceptions.HomeAssistantError):

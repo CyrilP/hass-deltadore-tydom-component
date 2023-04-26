@@ -9,9 +9,12 @@ from __future__ import annotations
 import asyncio
 import random
 import logging
+import time
+from aiohttp import ClientWebSocketResponse
 
 from homeassistant.core import HomeAssistant
-from .tydom.TydomClient import TydomClient
+from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from .tydom.tydom_client import TydomClient
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +42,7 @@ class Hub:
         self._id = mac.lower()
 
         self._tydom_client = TydomClient(
+            session=async_create_clientsession(self._hass, False),
             mac=self._mac,
             host=self._host,
             password=self._pass,
@@ -57,16 +61,26 @@ class Hub:
         """ID for dummy hub."""
         return self._id
 
-    async def test_connection(self) -> bool:
-        """Test connectivity to the Tydom is OK."""
-        try:
-            return await self._tydom_client.connect() is not None
-        except:
-            return False
+    async def connect(self) -> ClientWebSocketResponse:
+        """Connect to Tydom"""
+        return await self._tydom_client.async_connect()
 
-    async def setup(self) -> None:
-        # Listen to tydom events.
-        await self._hass.async_add_executor_job(self._tydom_client.listen_tydom())
+    async def test_credentials(self) -> None:
+        """Validate credentials."""
+        connection = await self.connect()
+        await connection.close()
+
+    async def setup(self, connection: ClientWebSocketResponse) -> None:
+        """Listen to tydom events."""
+        logger.info("Listen to tydom events")
+        await self._tydom_client.listen_tydom(connection)
+
+    async def ping(self, connection: ClientWebSocketResponse) -> None:
+        """Periodically send pings"""
+        logger.info("Sending ping")
+        while True:
+            await self._tydom_client.ping()
+            await asyncio.sleep(10)
 
 
 class Roller:

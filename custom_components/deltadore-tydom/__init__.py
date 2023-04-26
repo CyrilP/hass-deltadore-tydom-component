@@ -4,6 +4,7 @@ from __future__ import annotations
 from homeassistant.const import CONF_HOST, CONF_MAC, CONF_PASSWORD, CONF_PIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
 
 from . import hub
 from .const import DOMAIN
@@ -30,7 +31,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = tydom_hub
 
-    await tydom_hub.setup()
+    try:
+        connection = await tydom_hub.connect()
+        entry.async_create_background_task(
+            target=tydom_hub.setup(connection), hass=hass, name="Tydom"
+        )
+        # entry.async_create_background_task(
+        #    target=tydom_hub.ping(connection), hass=hass, name="Tydom ping"
+        # )
+    except Exception as err:
+        raise ConfigEntryNotReady from err
 
     # This creates each HA object for each platform your device requires.
     # It's done by calling the `async_setup_entry` function in each platform module.
