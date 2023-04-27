@@ -1,11 +1,8 @@
 # Delta Dore Tydom
 
 [![GitHub Release][releases-shield]][releases]
-[![GitHub Activity][commits-shield]][commits]
 [![License][license-shield]](LICENSE)
 
-[![hacs][hacsbadge]][hacs]
-![Project Maintenance][maintenance-shield]
 [![BuyMeCoffee][buymecoffeebadge]][buymecoffee]
 
 [![Community Forum][forum-shield]][forum]
@@ -55,10 +52,6 @@ If you want to contribute to this please read the [Contribution guidelines](CONT
 [integration_blueprint]: https://github.com/CyrilP/hass-deltadore-tydom-component
 [buymecoffee]: https://www.buymeacoffee.com/cyrilp
 [buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg?style=for-the-badge
-[commits-shield]: https://img.shields.io/github/commit-activity/y/CyrilP/hass-deltadore-tydom-component.svg?style=for-the-badge
-[commits]: https://github.com/CyrilP/hass-deltadore-tydom-component/commits/main
-[hacs]: https://github.com/hacs/integration
-[hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
 [exampleimg]: example.png
 [forum]: https://community.home-assistant.io/
 [license-shield]: https://img.shields.io/github/license/CyrilP/hass-deltadore-tydom-component.svg?style=for-the-badge
