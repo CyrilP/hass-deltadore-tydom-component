@@ -84,13 +84,6 @@ class Hub:
         logger.info("Listen to tydom events")
         await self._tydom_client.listen_tydom(connection)
 
-    async def ping(self, connection: ClientWebSocketResponse) -> None:
-        """Periodically send pings"""
-        logger.info("Sending ping")
-        while True:
-            await self._tydom_client.ping()
-            await asyncio.sleep(10)
-
 
 class Roller:
     """Dummy roller (device for HA) for Hello World example."""
