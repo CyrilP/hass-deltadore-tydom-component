@@ -161,7 +161,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except InvalidMacAddress:
                 _errors[CONF_MAC] = "invalid_macaddress"
             except InvalidEmail:
-                _errors[CONF_MAC] = "invalid_email"
+                _errors[CONF_EMAIL] = "invalid_email"
             except InvalidPassword:
                 _errors[CONF_PASSWORD] = "invalid_password"
             except TydomClientApiClientCommunicationError:
