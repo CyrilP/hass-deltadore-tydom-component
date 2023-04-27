@@ -1,6 +1,5 @@
 # Delta Dore Tydom
 
-[![GitHub Release][releases-shield]][releases]
 [![License][license-shield]](LICENSE)
 
 [![BuyMeCoffee][buymecoffeebadge]][buymecoffee]
@@ -54,5 +53,3 @@ If you want to contribute to this please read the [Contribution guidelines](CONT
 [exampleimg]: example.png
 [forum]: https://community.home-assistant.io/
 [license-shield]: https://img.shields.io/github/license/CyrilP/hass-deltadore-tydom-component.svg?style=for-the-badge
-[releases-shield]: https://img.shields.io/github/release/CyrilP/hass-deltadore-tydom-component.svg?style=for-the-badge
-[releases]: https://github.com/CyrilP/hass-deltadore-tydom-component/releases
