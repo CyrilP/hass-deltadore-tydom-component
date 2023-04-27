@@ -10,7 +10,7 @@ import asyncio
 import random
 import logging
 import time
-from aiohttp import ClientWebSocketResponse
+from aiohttp import ClientWebSocketResponse, ClientSession
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
@@ -64,6 +64,15 @@ class Hub:
     async def connect(self) -> ClientWebSocketResponse:
         """Connect to Tydom"""
         return await self._tydom_client.async_connect()
+
+    @staticmethod
+    async def get_tydom_credentials(
+        session: ClientSession, email: str, password: str, macaddress: str
+    ):
+        """Get Tydom credentials"""
+        return await TydomClient.async_get_credentials(
+            session, email, password, macaddress
+        )
 
     async def test_credentials(self) -> None:
         """Validate credentials."""

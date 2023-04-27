@@ -8,7 +8,8 @@ import re
 import async_timeout
 import aiohttp
 
-from aiohttp import ClientWebSocketResponse
+from urllib3 import encode_multipart_formdata
+from aiohttp import ClientWebSocketResponse, ClientSession
 from .MessageHandler import MessageHandler
 
 from requests.auth import HTTPDigestAuth
@@ -61,6 +62,87 @@ class TydomClient:
             logger.info("Configure local mode (%s)", self._host)
             self._cmd_prefix = ""
             self._ping_timeout = None
+
+    @staticmethod
+    async def async_get_credentials(
+        session: ClientSession, email: str, password: str, macaddress: str
+    ):
+        """get tydom credentials from Delta Dore"""
+        try:
+            async with async_timeout.timeout(10):
+                response = await session.request(
+                    method="GET",
+                    url="https://deltadoreadb2ciot.b2clogin.com/deltadoreadb2ciot.onmicrosoft.com/v2.0/.well-known/openid-configuration?p=B2C_1_AccountProviderROPC_SignIn",
+                )
+                logger.info("response status : %s", response.status)
+                logger.info("response content : %s", await response.text())
+                logger.info("response headers : %s", response.headers)
+
+                json_response = await response.json()
+                signin_url = json_response["token_endpoint"]
+                logger.info("signin_url : %s", signin_url)
+
+                body, ct_header = encode_multipart_formdata(
+                    {
+                        "username": f"{email}",
+                        "password": f"{password}",
+                        "grant_type": "password",
+                        "client_id": "8782839f-3264-472a-ab87-4d4e23524da4",
+                        "scope": "openid profile offline_access https://deltadoreadb2ciot.onmicrosoft.com/iotapi/video_config https://deltadoreadb2ciot.onmicrosoft.com/iotapi/video_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/sites_management_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/sites_management_gateway_credentials https://deltadoreadb2ciot.onmicrosoft.com/iotapi/sites_management_camera_credentials https://deltadoreadb2ciot.onmicrosoft.com/iotapi/comptage_europe_collect_reader https://deltadoreadb2ciot.onmicrosoft.com/iotapi/comptage_europe_site_config_contributor https://deltadoreadb2ciot.onmicrosoft.com/iotapi/pilotage_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/consent_mgt_contributor https://deltadoreadb2ciot.onmicrosoft.com/iotapi/b2caccountprovider_manage_account https://deltadoreadb2ciot.onmicrosoft.com/iotapi/b2caccountprovider_allow_view_account https://deltadoreadb2ciot.onmicrosoft.com/iotapi/tydom_backend_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/websocket_remote_access https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_device https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_view https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_space https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_connector https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_endpoint https://deltadoreadb2ciot.onmicrosoft.com/iotapi/rule_management_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/collect_read_datas",
+                    }
+                )
+                logger.info("body : %s", body)
+                logger.info("header : %s", ct_header)
+
+                response = await session.post(
+                    url=signin_url,
+                    headers={"Content-Type": ct_header},
+                    data=body,
+                )
+
+                logger.info("response status : %s", response.status)
+                logger.info("response content : %s", await response.text())
+                logger.info("response headers : %s", response.headers)
+
+                json_response = await response.json()
+                access_token = json_response["access_token"]
+
+                logger.info("access_token : %s", access_token)
+
+                response = await session.request(
+                    method="GET",
+                    url=f"https://prod.iotdeltadore.com/sitesmanagement/api/v1/sites?gateway_mac={macaddress}",
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+
+                logger.info("response status : %s", response.status)
+                logger.info("response content : %s", await response.text())
+                logger.info("response headers : %s", response.headers)
+
+                json_response = await response.json()
+
+                if (
+                    "sites" in json_response
+                    and len(json_response["sites"]) == 1
+                    and "gateway" in json_response["sites"][0]
+                    and "password" in json_response["sites"][0]["gateway"]
+                ):
+                    password = json_response["sites"][0]["gateway"]["password"]
+                    return password
+                else:
+                    raise TydomClientApiClientError("Tydom credentials not found")
+        except asyncio.TimeoutError as exception:
+            raise TydomClientApiClientCommunicationError(
+                "Timeout error fetching information",
+            ) from exception
+        except (aiohttp.ClientError, socket.gaierror) as exception:
+            raise TydomClientApiClientCommunicationError(
+                "Error fetching information",
+            ) from exception
+        except Exception as exception:  # pylint: disable=broad-except
+            raise TydomClientApiClientError(
+                "Something really wrong happened!"
+            ) from exception
 
     async def async_connect(self) -> ClientWebSocketResponse:
         """Connect to the Tydom API."""

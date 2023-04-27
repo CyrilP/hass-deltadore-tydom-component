@@ -8,6 +8,7 @@
                     "name": "Custom Name of the inverter (used for sensors' prefix)",
                     "host": "IP or hostname",
                     "mac": "MAC address",
+                    "email": "Email",
                     "password": "Password",
                     "pin": "Alarm PIN"
                 }
@@ -17,6 +18,7 @@
             "already_configured": "Device is already configured",
             "invalid_host": "Hostname or IP is invalid",
             "invalid_macaddress": "MAC address is invalid",
+            "invalid_email": "Email is invalid",
             "invalid_password": "Password is invalid"
         },
         "abort": {
