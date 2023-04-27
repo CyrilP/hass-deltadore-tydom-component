@@ -1,4 +1,4 @@
-# Integration Blueprint
+# Delta Dore Tydom
 
 [![GitHub Release][releases-shield]][releases]
 [![GitHub Activity][commits-shield]][commits]
@@ -11,7 +11,11 @@
 [![Discord][discord-shield]][discord]
 [![Community Forum][forum-shield]][forum]
 
-_Integration to integrate with [integration_blueprint][integration_blueprint]._
+This a *custom component* for [Home Assistant](https://www.home-assistant.io/).
+The `Delta Dore Tydom` integration allows you to observe and control [Delta Dore Tydom smart home gateway](https://www.deltadore.fr/).
+
+![GitHub release](https://img.shields.io/github/release/CyrilP/hass-deltadore-tydom-component)
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration)
 
 **This integration will set up the following platforms.**
 
@@ -23,13 +27,20 @@ Platform | Description
 
 ## Installation
 
+The preferred way to install the Delta Dore Tydom integration is by addig it using HACS.
+Add your device via the Integration menu
+
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=deltadore-tydom)
+
+Manual method :
+
 1. Using the tool of choice open the directory (folder) for your HA configuration (where you find `configuration.yaml`).
 1. If you do not have a `custom_components` directory (folder) there, you need to create it.
-1. In the `custom_components` directory (folder) create a new folder called `integration_blueprint`.
-1. Download _all_ the files from the `custom_components/integration_blueprint/` directory (folder) in this repository.
+1. In the `custom_components` directory (folder) create a new folder called `deltadore-tydom`.
+1. Download _all_ the files from the `custom_components/deltadore-tydom/` directory (folder) in this repository.
 1. Place the files you downloaded in the new directory (folder) you created.
 1. Restart Home Assistant
-1. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "Integration blueprint"
+1. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "Delta Dore Tydom"
 
 ## Configuration is done in the UI
 
