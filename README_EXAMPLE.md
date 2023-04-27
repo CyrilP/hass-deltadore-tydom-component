@@ -6,6 +6,7 @@
 [![BuyMeCoffee][buymecoffeebadge]][buymecoffee]
 
 This a *custom component* for [Home Assistant](https://www.home-assistant.io/).
+
 The `Delta Dore Tydom` integration allows you to observe and control [Delta Dore Tydom smart home gateway](https://www.deltadore.fr/).
 
 ![GitHub release](https://img.shields.io/github/release/CyrilP/hass-deltadore-tydom-component)
