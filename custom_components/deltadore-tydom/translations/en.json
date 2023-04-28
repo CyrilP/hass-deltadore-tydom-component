@@ -2,10 +2,9 @@
     "config": {
         "step": {
             "user": {
-                "title": "Inverter Connection Configuration",
-                "description": "If you need help with the configuration go to: https://github.com/alexdelprete/ha-abb-powerone-pvi-sunspec",
+                "title": "Delta Dore Tydom Configuration",
+                "description": "If you need help with the configuration go to: https://github.com/CyrilP/hass-deltadore-tydom-component",
                 "data": {
-                    "name": "Custom Name of the inverter (used for sensors' prefix)",
                     "host": "IP or hostname",
                     "mac": "MAC address",
                     "email": "Email",

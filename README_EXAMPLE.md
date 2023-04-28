@@ -8,6 +8,8 @@ This a *custom component* for [Home Assistant](https://www.home-assistant.io/).
 
 The `Delta Dore Tydom` integration allows you to observe and control [Delta Dore Tydom smart home gateway](https://www.deltadore.fr/).
 
+This integration can work in local mode or cloud mode depending on how the integration is configured (see Configuration part)
+
 ![GitHub release](https://img.shields.io/github/release/CyrilP/hass-deltadore-tydom-component)
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration)
 
@@ -40,6 +42,15 @@ Manual method :
 ## Configuration is done in the UI
 
 <!---->
+The hostname/ip can be :
+* The hostname/ip of your Tydom (local mode only). An access to the cloud is done to retrieve the Tydom credentials
+* mediation.tydom.com. Using this configuration makes the integration work through the cloud
+
+The Mac address is the Mac of you Tydom
+
+Email/Password are you Dela Dore credentials
+
+The alarm PIN is optional and used to set your alarm mode
 
 ## Contributions are welcome!
 
