@@ -39,7 +39,7 @@ class Hub:
         self._pin = alarmpin
         self._hass = hass
         self._name = mac
-        self._id = mac.lower()
+        self._id = "Tydom-" + mac
 
         self._tydom_client = TydomClient(
             session=async_create_clientsession(self._hass, False),
@@ -84,6 +84,13 @@ class Hub:
         logger.info("Listen to tydom events")
         await self._tydom_client.listen_tydom(connection)
 
+    async def ping(self, connection: ClientWebSocketResponse) -> None:
+        """Periodically send pings"""
+        logger.info("Sending ping")
+        while True:
+            await self._tydom_client.ping()
+            await asyncio.sleep(10)
+
 
 class Roller:
     """Dummy roller (device for HA) for Hello World example."""
@@ -113,6 +120,7 @@ class Roller:
     @property
     def position(self):
         """Return position for roller."""
+        logger.error("get roller position")
         return self._current_position
 
     async def set_position(self, position: int) -> None:
@@ -120,6 +128,7 @@ class Roller:
         Set dummy cover to the given position.
         State is announced a random number of seconds later.
         """
+        logger.error("set roller position")
         self._target_position = position
 
         # Update the moving status, and broadcast the update
@@ -130,22 +139,26 @@ class Roller:
 
     async def delayed_update(self) -> None:
         """Publish updates, with a random delay to emulate interaction with device."""
+        logger.error("delayed_update")
         await asyncio.sleep(random.randint(1, 10))
         self.moving = 0
         await self.publish_updates()
 
     def register_callback(self, callback: Callable[[], None]) -> None:
         """Register callback, called when Roller changes state."""
+        logger.error("register_callback %s", callback)
         self._callbacks.add(callback)
 
     def remove_callback(self, callback: Callable[[], None]) -> None:
         """Remove previously registered callback."""
+        logger.error("remove_callback")
         self._callbacks.discard(callback)
 
     # In a real implementation, this library would call it's call backs when it was
     # notified of any state changeds for the relevant device.
     async def publish_updates(self) -> None:
         """Schedule call all registered callbacks."""
+        logger.error("publish_updates")
         self._current_position = self._target_position
         for callback in self._callbacks:
             callback()
@@ -153,6 +166,7 @@ class Roller:
     @property
     def online(self) -> float:
         """Roller is online."""
+        logger.error("online")
         # The dummy roller is offline about 10% of the time. Returns True if online,
         # False if offline.
         return random.random() > 0.1
@@ -160,14 +174,17 @@ class Roller:
     @property
     def battery_level(self) -> int:
         """Battery level as a percentage."""
+        logger.error("battery_level")
         return random.randint(0, 100)
 
     @property
     def battery_voltage(self) -> float:
+        logger.error("battery_voltage")
         """Return a random voltage roughly that of a 12v battery."""
         return round(random.random() * 3 + 10, 2)
 
     @property
     def illuminance(self) -> int:
+        logger.error("illuminance")
         """Return a sample illuminance in lux."""
         return random.randint(0, 500)

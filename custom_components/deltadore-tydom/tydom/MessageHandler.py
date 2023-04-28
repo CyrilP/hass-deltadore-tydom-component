@@ -215,15 +215,13 @@ device_type = dict()
 class MessageHandler:
     """Handle incomming Tydom messages"""
 
-    def __init__(self, incoming_bytes, tydom_client, cmd_prefix):
-        self.incoming_bytes = incoming_bytes
+    def __init__(self, tydom_client, cmd_prefix):
         self.tydom_client = tydom_client
         self.cmd_prefix = cmd_prefix
 
-    async def incoming_triage(self):
+    async def incoming_triage(self, bytes_str):
         """Identify message type and dispatch the result"""
 
-        bytes_str = self.incoming_bytes
         incoming = None
         first = str(bytes_str[:40])
         try:

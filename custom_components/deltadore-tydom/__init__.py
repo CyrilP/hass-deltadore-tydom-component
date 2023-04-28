@@ -36,9 +36,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.async_create_background_task(
             target=tydom_hub.setup(connection), hass=hass, name="Tydom"
         )
-        # entry.async_create_background_task(
-        #    target=tydom_hub.ping(connection), hass=hass, name="Tydom ping"
-        # )
+        entry.async_create_background_task(
+            target=tydom_hub.ping(connection), hass=hass, name="Tydom ping"
+        )
     except Exception as err:
         raise ConfigEntryNotReady from err
 

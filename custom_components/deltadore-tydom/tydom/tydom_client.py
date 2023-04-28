@@ -8,6 +8,7 @@ import re
 import async_timeout
 import aiohttp
 
+from typing import cast
 from urllib3 import encode_multipart_formdata
 from aiohttp import ClientWebSocketResponse, ClientSession
 from .MessageHandler import MessageHandler
@@ -76,13 +77,14 @@ class TydomClient:
                 )
 
                 logger.debug(
-                    "response status : %s\nheaders : %s\ncontent : %s",
+                    "response status for openid-config: %s\nheaders : %s\ncontent : %s",
                     response.status,
                     response.headers,
                     await response.text(),
                 )
 
                 json_response = await response.json()
+                response.close()
                 signin_url = json_response["token_endpoint"]
                 logger.info("signin_url : %s", signin_url)
 
@@ -103,13 +105,14 @@ class TydomClient:
                 )
 
                 logger.debug(
-                    "response status : %s\nheaders : %s\ncontent : %s",
+                    "response status for signin : %s\nheaders : %s\ncontent : %s",
                     response.status,
                     response.headers,
                     await response.text(),
                 )
 
                 json_response = await response.json()
+                response.close()
                 access_token = json_response["access_token"]
 
                 response = await session.request(
@@ -119,14 +122,16 @@ class TydomClient:
                 )
 
                 logger.debug(
-                    "response status : %s\nheaders : %s\ncontent : %s",
+                    "response status for https://prod.iotdeltadore.com/sitesmanagement/api/v1/sites?gateway_mac= : %s\nheaders : %s\ncontent : %s",
                     response.status,
                     response.headers,
                     await response.text(),
                 )
 
                 json_response = await response.json()
+                response.close();
 
+                session.close()
                 if (
                     "sites" in json_response
                     and len(json_response["sites"]) == 1
@@ -180,10 +185,12 @@ class TydomClient:
                     '.*nonce="([a-zA-Z0-9+=]+)".*',
                     response.headers.get("WWW-Authenticate"),
                 )
+                response.close()
                 if re_matcher:
                     logger.info("nonce : %s", re_matcher.group(1))
                 else:
                     raise TydomClientApiClientError("Could't find auth nonce")
+
 
                 http_headers = {}
                 http_headers["Authorization"] = self.build_digest_headers(
@@ -196,7 +203,7 @@ class TydomClient:
                     headers=http_headers,
                     autoclose=False,
                     autoping=True,
-                    timeout=100,
+                    timeout=-1,
                     heartbeat=10,
                 )
 
@@ -225,20 +232,19 @@ class TydomClient:
         await self.get_devices_cmeta()
         await self.get_devices_data()
 
+        message_handler = MessageHandler(tydom_client=self, cmd_prefix=self._cmd_prefix)
+
         while True:
             try:
                 if self._connection.closed:
+                    await self._connection.close()
                     self._connection = await self.async_connect()
-                incoming_bytes_str = await self._connection.receive_bytes()
-                # logger.info(incoming_bytes_str.type)
-                logger.info(incoming_bytes_str)
 
-                message_handler = MessageHandler(
-                    incoming_bytes=incoming_bytes_str,
-                    tydom_client=self,
-                    cmd_prefix=self._cmd_prefix,
-                )
-                await message_handler.incoming_triage()
+                msg = await self._connection.receive()
+                logger.info("Incomming message - type : %s - message : %s", msg.type, msg.data)
+                incoming_bytes_str = cast(bytes, msg.data)
+
+                await message_handler.incoming_triage(incoming_bytes_str)
 
             except Exception as e:
                 logger.warning("Unable to handle message: %s", e)
@@ -302,8 +308,8 @@ class TydomClient:
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
-    # Refresh (all)
     async def post_refresh(self):
+        """Refresh (all)"""
         msg_type = "/refresh/all"
         req = "POST"
         await self.send_message(method=req, msg=msg_type)
@@ -318,8 +324,8 @@ class TydomClient:
                 self.poll_device_urls[self.current_poll_index]
             )
 
-    # Send a ping (pong should be returned)
     async def ping(self):
+        """Send a ping (pong should be returned)"""
         msg_type = "/ping"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
@@ -346,19 +352,20 @@ class TydomClient:
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
-    # Get metadata configuration to list poll devices (like Tywatt)
     async def get_devices_cmeta(self):
+        """Get metadata configuration to list poll devices (like Tywatt)"""
         msg_type = "/devices/cmeta"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
     async def get_data(self):
+        """Get all config/metadata/data"""
         await self.get_configs_file()
         await self.get_devices_cmeta()
         await self.get_devices_data()
 
-    # Give order to endpoint
     async def get_device_data(self, id):
+        """Give order to endpoint"""
         # 10 here is the endpoint = the device (shutter in this case) to open.
         device_id = str(id)
         str_request = (
@@ -369,24 +376,28 @@ class TydomClient:
         await self._connection.send(a_bytes)
 
     async def get_poll_device_data(self, url):
+        logger.error("poll device data %s", url)
         msg_type = url
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
-    # Get the moments (programs)
+    def add_poll_device_url(self, url):
+        self.poll_device_urls.append(url)
+
     async def get_moments(self):
+        """Get the moments (programs)"""
         msg_type = "/moments/file"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
-    # Get the scenarios
     async def get_scenarii(self):
+        """Get the scenarios"""
         msg_type = "/scenarios/file"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
-    # Give order (name + value) to endpoint
     async def put_devices_data(self, device_id, endpoint_id, name, value):
+        """Give order (name + value) to endpoint"""
         # For shutter, value is the percentage of closing
         body = '[{"name":"' + name + '","value":"' + value + '"}]'
         # endpoint_id is the endpoint = the device (shutter in this case) to
@@ -467,6 +478,3 @@ class TydomClient:
                 logger.error(a_bytes)
         except BaseException:
             logger.error("put_alarm_cdata ERROR !", exc_info=True)
-
-    def add_poll_device_url(self, url):
-        self.poll_device_urls.append(url)
