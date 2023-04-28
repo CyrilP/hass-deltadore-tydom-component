@@ -74,9 +74,13 @@ class TydomClient:
                     method="GET",
                     url="https://deltadoreadb2ciot.b2clogin.com/deltadoreadb2ciot.onmicrosoft.com/v2.0/.well-known/openid-configuration?p=B2C_1_AccountProviderROPC_SignIn",
                 )
-                logger.info("response status : %s", response.status)
-                logger.info("response content : %s", await response.text())
-                logger.info("response headers : %s", response.headers)
+
+                logger.debug(
+                    "response status : %s\nheaders : %s\ncontent : %s",
+                    response.status,
+                    response.headers,
+                    await response.text(),
+                )
 
                 json_response = await response.json()
                 signin_url = json_response["token_endpoint"]
@@ -91,8 +95,6 @@ class TydomClient:
                         "scope": "openid profile offline_access https://deltadoreadb2ciot.onmicrosoft.com/iotapi/video_config https://deltadoreadb2ciot.onmicrosoft.com/iotapi/video_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/sites_management_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/sites_management_gateway_credentials https://deltadoreadb2ciot.onmicrosoft.com/iotapi/sites_management_camera_credentials https://deltadoreadb2ciot.onmicrosoft.com/iotapi/comptage_europe_collect_reader https://deltadoreadb2ciot.onmicrosoft.com/iotapi/comptage_europe_site_config_contributor https://deltadoreadb2ciot.onmicrosoft.com/iotapi/pilotage_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/consent_mgt_contributor https://deltadoreadb2ciot.onmicrosoft.com/iotapi/b2caccountprovider_manage_account https://deltadoreadb2ciot.onmicrosoft.com/iotapi/b2caccountprovider_allow_view_account https://deltadoreadb2ciot.onmicrosoft.com/iotapi/tydom_backend_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/websocket_remote_access https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_device https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_view https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_space https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_connector https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_endpoint https://deltadoreadb2ciot.onmicrosoft.com/iotapi/rule_management_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/collect_read_datas",
                     }
                 )
-                logger.info("body : %s", body)
-                logger.info("header : %s", ct_header)
 
                 response = await session.post(
                     url=signin_url,
@@ -100,14 +102,15 @@ class TydomClient:
                     data=body,
                 )
 
-                logger.info("response status : %s", response.status)
-                logger.info("response content : %s", await response.text())
-                logger.info("response headers : %s", response.headers)
+                logger.debug(
+                    "response status : %s\nheaders : %s\ncontent : %s",
+                    response.status,
+                    response.headers,
+                    await response.text(),
+                )
 
                 json_response = await response.json()
                 access_token = json_response["access_token"]
-
-                logger.info("access_token : %s", access_token)
 
                 response = await session.request(
                     method="GET",
@@ -115,9 +118,12 @@ class TydomClient:
                     headers={"Authorization": f"Bearer {access_token}"},
                 )
 
-                logger.info("response status : %s", response.status)
-                logger.info("response content : %s", await response.text())
-                logger.info("response headers : %s", response.headers)
+                logger.debug(
+                    "response status : %s\nheaders : %s\ncontent : %s",
+                    response.status,
+                    response.headers,
+                    await response.text(),
+                )
 
                 json_response = await response.json()
 
@@ -163,9 +169,12 @@ class TydomClient:
                     headers=http_headers,
                     json=None,
                 )
-                logger.info("response status : %s", response.status)
-                logger.info("response content : %s", await response.text())
-                logger.info("response headers : %s", response.headers)
+                logger.debug(
+                    "response status : %s\nheaders : %s\ncontent : %s",
+                    response.status,
+                    response.headers,
+                    await response.text(),
+                )
 
                 re_matcher = re.match(
                     '.*nonce="([a-zA-Z0-9+=]+)".*',
@@ -180,8 +189,6 @@ class TydomClient:
                 http_headers["Authorization"] = self.build_digest_headers(
                     re_matcher.group(1)
                 )
-
-                logger.info("new request headers : %s", http_headers)
 
                 connection = await self._session.ws_connect(
                     method="GET",
@@ -232,12 +239,7 @@ class TydomClient:
                     cmd_prefix=self._cmd_prefix,
                 )
                 await message_handler.incoming_triage()
-                #                message_handler = MessageHandler(
-                #                    incoming_bytes=incoming_bytes_str,
-                #                    tydom_client=tydom_client,
-                #                    mqtt_client=mqtt_client,
-                #                )
-                # await message_handler.incoming_triage()
+
             except Exception as e:
                 logger.warning("Unable to handle message: %s", e)
 
