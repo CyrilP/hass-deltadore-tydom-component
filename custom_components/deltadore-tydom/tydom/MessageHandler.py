@@ -420,6 +420,7 @@ class MessageHandler:
                 device_endpoint[device_unique_id] = i["id_endpoint"]
 
         logger.debug("Configuration updated")
+        logger.debug("devices : %s", devices)
         return devices
 
     async def parse_cmeta_data(self, parsed):
@@ -889,6 +890,7 @@ class MessageHandler:
                             pass
                     else:
                         pass
+        return devices
 
     async def parse_devices_cdata(self, parsed):
         logger.debug("parse_devices_data : %s", parsed)

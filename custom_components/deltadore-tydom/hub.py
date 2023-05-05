@@ -17,7 +17,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from .tydom.tydom_client import TydomClient
 from .tydom.tydom_devices import TydomBaseEntity
-from .ha_entities import HACover
+from .ha_entities import HACover, BatterySensor
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,9 @@ class Hub:
         self._id = "Tydom-" + mac
         self.device_info = TydomBaseEntity(None, None, None, None, None, None, None, None, None, None, None, False)
         self.devices = {}
+        self.ha_devices = {}
         self.add_cover_callback = None
+        self.add_sensor_callback = None
 
         self._tydom_client = TydomClient(
             hass=self._hass,
@@ -128,24 +130,30 @@ class Hub:
 
     async def create_ha_device(self, device):
         """Create a new HA device"""
-        logger.debug("Create device %s", device.uid)
+        logger.warn("Create device %s", device.uid)
+        logger.warn("### defect = %s", device.batt_defect)
         ha_device = HACover(device)
+        self.ha_devices[device.uid] = ha_device
         if self.add_cover_callback is not None:
             self.add_cover_callback([ha_device])
+        batt_sensor = BatterySensor(device)
+        if self.add_sensor_callback is not None:
+            self.add_sensor_callback([batt_sensor])
 
 
-    async def update_ha_device(self, ha_device, device):
+    async def update_ha_device(self, stored_device, device):
         """Update HA device values"""
         logger.debug("Update device %s", device.uid)
-        ha_device.thermic_defect = device.thermic_defect
-        ha_device.position = device.position
-        ha_device.on_fav_pos = device.on_fav_pos
-        ha_device.up_defect = device.up_defect
-        ha_device.down_defect = device.down_defect
-        ha_device.obstacle_defect = device.obstacle_defect
-        ha_device.intrusion = device.intrusion
-        ha_device.batt_defect = device.batt_defect
-        await ha_device.publish_updates()
+        stored_device.thermic_defect = device.thermic_defect
+        stored_device.position = device.position
+        stored_device.on_fav_pos = device.on_fav_pos
+        stored_device.up_defect = device.up_defect
+        stored_device.down_defect = device.down_defect
+        stored_device.obstacle_defect = device.obstacle_defect
+        stored_device.intrusion = device.intrusion
+        logger.warn("### defect = %s", device.batt_defect)
+        stored_device.batt_defect = device.batt_defect
+        await stored_device.publish_updates()
 
     async def ping(self) -> None:
         """Periodically send pings"""

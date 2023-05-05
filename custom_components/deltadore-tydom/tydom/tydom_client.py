@@ -185,7 +185,7 @@ class TydomClient:
                     url=f"https://{self._host}:443/mediation/client?mac={self._mac}&appli=1",
                     headers=http_headers,
                     json=None,
-                    #proxy="http://proxy.rd.francetelecom.fr:8080"
+                    proxy="http://proxy.rd.francetelecom.fr:8080"
                 )
                 logger.debug(
                     "response status : %s\nheaders : %s\ncontent : %s",
@@ -217,7 +217,7 @@ class TydomClient:
                     headers=http_headers,
                     autoping=True,
                     heartbeat=2,
-                    #proxy="http://proxy.rd.francetelecom.fr:8080"
+                    proxy="http://proxy.rd.francetelecom.fr:8080"
                 )
 
                 return connection

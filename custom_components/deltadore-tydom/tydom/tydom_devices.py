@@ -66,13 +66,21 @@ class TydomDevice():
         """Return ID for device."""
         return self.uid
 
+    # In a real implementation, this library would call it's call backs when it was
+    # notified of any state changeds for the relevant device.
+    async def publish_updates(self) -> None:
+        """Schedule call all registered callbacks."""
+        logger.error("publish_updates")
+        for callback in self._callbacks:
+            callback()
+
 class TydomShutter(TydomDevice):
     """Represents a shutter"""
     def __init__(self, uid, name, device_type, endpoint, data):
         logger.info("TydomShutter : data %s", data)
         self.thermic_defect = None
         logger.info("TydomShutter : pos")
-        #self.position = None
+        self.position = None
         logger.info("TydomShutter : on_fav_pos")
         self.on_fav_pos = None
         self.up_defect = None
@@ -102,8 +110,3 @@ class TydomShutter(TydomDevice):
                 self.batt_defect = data["battDefect"]
         super().__init__(uid, name, device_type, endpoint)
 
-    @property
-    def position(self):
-        """Return position for shutter."""
-        # logger.error("get shutter position")
-        return self.position
