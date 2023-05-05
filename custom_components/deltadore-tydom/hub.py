@@ -10,11 +10,14 @@ import asyncio
 import random
 import logging
 import time
+from typing import Callable
 from aiohttp import ClientWebSocketResponse, ClientSession
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from .tydom.tydom_client import TydomClient
+from .tydom.tydom_devices import TydomBaseEntity
+from .ha_entities import HACover
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +27,10 @@ class Hub:
 
     manufacturer = "Delta Dore"
 
+    def handle_event(self, event):
+        """Event callback"""
+        pass
+
     def __init__(
         self,
         hass: HomeAssistant,
@@ -32,7 +39,7 @@ class Hub:
         password: str,
         alarmpin: str,
     ) -> None:
-        """Init dummy hub."""
+        """Init hub."""
         self._host = host
         self._mac = mac
         self._pass = password
@@ -40,13 +47,17 @@ class Hub:
         self._hass = hass
         self._name = mac
         self._id = "Tydom-" + mac
+        self.device_info = TydomBaseEntity(None, None, None, None, None, None, None, None, None, None, None, False)
+        self.devices = {}
+        self.add_cover_callback = None
 
         self._tydom_client = TydomClient(
-            session=async_create_clientsession(self._hass, False),
+            hass=self._hass,
             mac=self._mac,
             host=self._host,
             password=self._pass,
             alarm_pin=self._pin,
+            event_callback=self.handle_event
         )
 
         self.rollers = [
@@ -83,13 +94,68 @@ class Hub:
         """Listen to tydom events."""
         logger.info("Listen to tydom events")
         await self._tydom_client.listen_tydom(connection)
+        while True:
+            devices = await self._tydom_client.consume_messages()
+            if devices is not None:
+                for device in devices:
+                    logger.info("*** device %s", device)
+                    if isinstance(device, TydomBaseEntity):
+                        await self.update_tydom_entity(device)
+                    else:
+                        logger.error("*** publish_updates for device : %s", device)
+                        if device.uid not in self.devices:
+                            self.devices[device.uid] = device
+                            await self.create_ha_device(device)
+                        else:
+                            await self.update_ha_device(self.devices[device.uid], device)
 
-    async def ping(self, connection: ClientWebSocketResponse) -> None:
+    async def update_tydom_entity(self, updated_entity: TydomBaseEntity) -> None:
+        """Update Tydom Base entity values and push to HA"""
+        logger.error("update Tydom ")
+        self.device_info.product_name = updated_entity.product_name
+        self.device_info.main_version_sw = updated_entity.main_version_sw
+        self.device_info.main_version_hw = updated_entity.main_version_hw
+        self.device_info.main_id = updated_entity.main_id
+        self.device_info.main_reference = updated_entity.main_reference
+        self.device_info.key_version_sw = updated_entity.key_version_sw
+        self.device_info.key_version_hw = updated_entity.key_version_hw
+        self.device_info.key_version_stack = updated_entity.key_version_stack
+        self.device_info.key_reference = updated_entity.key_reference
+        self.device_info.boot_reference = updated_entity.boot_reference
+        self.device_info.boot_version = updated_entity.boot_version
+        self.device_info.update_available = updated_entity.update_available
+        await self.device_info.publish_updates()
+
+    async def create_ha_device(self, device):
+        """Create a new HA device"""
+        logger.debug("Create device %s", device.uid)
+        ha_device = HACover(device)
+        if self.add_cover_callback is not None:
+            self.add_cover_callback([ha_device])
+
+
+    async def update_ha_device(self, ha_device, device):
+        """Update HA device values"""
+        logger.debug("Update device %s", device.uid)
+        ha_device.thermic_defect = device.thermic_defect
+        ha_device.position = device.position
+        ha_device.on_fav_pos = device.on_fav_pos
+        ha_device.up_defect = device.up_defect
+        ha_device.down_defect = device.down_defect
+        ha_device.obstacle_defect = device.obstacle_defect
+        ha_device.intrusion = device.intrusion
+        ha_device.batt_defect = device.batt_defect
+        await ha_device.publish_updates()
+
+    async def ping(self) -> None:
         """Periodically send pings"""
         logger.info("Sending ping")
         while True:
             await self._tydom_client.ping()
             await asyncio.sleep(10)
+
+    async def async_trigger_firmware_update(self) -> None:
+        """Trigger firmware update"""
 
 
 class Roller:
@@ -179,12 +245,12 @@ class Roller:
 
     @property
     def battery_voltage(self) -> float:
-        logger.error("battery_voltage")
         """Return a random voltage roughly that of a 12v battery."""
+        logger.error("battery_voltage")
         return round(random.random() * 3 + 10, 2)
 
     @property
     def illuminance(self) -> int:
-        logger.error("illuminance")
         """Return a sample illuminance in lux."""
+        logger.error("illuminance")
         return random.randint(0, 500)

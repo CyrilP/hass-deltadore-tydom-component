@@ -7,11 +7,16 @@ import base64
 import re
 import async_timeout
 import aiohttp
+import traceback
 
 from typing import cast
 from urllib3 import encode_multipart_formdata
 from aiohttp import ClientWebSocketResponse, ClientSession
+from homeassistant.helpers.aiohttp_client import async_create_clientsession
+
 from .MessageHandler import MessageHandler
+
+
 
 from requests.auth import HTTPDigestAuth
 
@@ -35,21 +40,23 @@ class TydomClient:
 
     def __init__(
         self,
-        session: aiohttp.ClientSession,
+        hass,
         mac: str,
         password: str,
         alarm_pin: str = None,
         host: str = "mediation.tydom.com",
+        event_callback=None
     ) -> None:
         logger.debug("Initializing TydomClient Class")
 
-        self._session = session
+        self._hass = hass
         self._password = password
         self._mac = mac
         self._host = host
         self._alarm_pin = alarm_pin
         self._remote_mode = self._host == "mediation.tydom.com"
         self._connection = None
+        self.event_callback = event_callback
 
         # Some devices (like Tywatt) need polling
         self.poll_device_urls = []
@@ -63,6 +70,8 @@ class TydomClient:
             logger.info("Configure local mode (%s)", self._host)
             self._cmd_prefix = ""
             self._ping_timeout = None
+
+        self._message_handler = MessageHandler(tydom_client=self, cmd_prefix=self._cmd_prefix)
 
     @staticmethod
     async def async_get_credentials(
@@ -151,6 +160,7 @@ class TydomClient:
                 "Error fetching information",
             ) from exception
         except Exception as exception:  # pylint: disable=broad-except
+            traceback.print_exception
             raise TydomClientApiClientError(
                 "Something really wrong happened!"
             ) from exception
@@ -166,6 +176,8 @@ class TydomClient:
             "Sec-WebSocket-Version": "13",
         }
 
+        self._session = async_create_clientsession(self._hass, False)
+
         try:
             async with async_timeout.timeout(10):
                 response = await self._session.request(
@@ -173,6 +185,7 @@ class TydomClient:
                     url=f"https://{self._host}:443/mediation/client?mac={self._mac}&appli=1",
                     headers=http_headers,
                     json=None,
+                    #proxy="http://proxy.rd.francetelecom.fr:8080"
                 )
                 logger.debug(
                     "response status : %s\nheaders : %s\ncontent : %s",
@@ -186,6 +199,7 @@ class TydomClient:
                     response.headers.get("WWW-Authenticate"),
                 )
                 response.close()
+
                 if re_matcher:
                     logger.info("nonce : %s", re_matcher.group(1))
                 else:
@@ -201,10 +215,9 @@ class TydomClient:
                     method="GET",
                     url=f"wss://{self._host}:443/mediation/client?mac={self._mac}&appli=1",
                     headers=http_headers,
-                    autoclose=False,
                     autoping=True,
-                    timeout=-1,
-                    heartbeat=10,
+                    heartbeat=2,
+                    #proxy="http://proxy.rd.francetelecom.fr:8080"
                 )
 
                 return connection
@@ -218,6 +231,7 @@ class TydomClient:
                 "Error fetching information",
             ) from exception
         except Exception as exception:  # pylint: disable=broad-except
+            traceback.print_exception(exception)
             raise TydomClientApiClientError(
                 "Something really wrong happened!"
             ) from exception
@@ -232,22 +246,23 @@ class TydomClient:
         await self.get_devices_cmeta()
         await self.get_devices_data()
 
-        message_handler = MessageHandler(tydom_client=self, cmd_prefix=self._cmd_prefix)
+    async def consume_messages(self):
+        """Read and parse incomming messages"""
+        try:
+            if self._connection.closed:
+                await self._connection.close()
+                await asyncio.sleep(10)
+                self._connection = await self.async_connect()
 
-        while True:
-            try:
-                if self._connection.closed:
-                    await self._connection.close()
-                    self._connection = await self.async_connect()
+            msg = await self._connection.receive()
+            logger.info("Incomming message - type : %s - message : %s", msg.type, msg.data)
+            incoming_bytes_str = cast(bytes, msg.data)
 
-                msg = await self._connection.receive()
-                logger.info("Incomming message - type : %s - message : %s", msg.type, msg.data)
-                incoming_bytes_str = cast(bytes, msg.data)
+            return await self._message_handler.incoming_triage(incoming_bytes_str)
 
-                await message_handler.incoming_triage(incoming_bytes_str)
-
-            except Exception as e:
-                logger.warning("Unable to handle message: %s", e)
+        except Exception as e:
+            logger.warning("Unable to handle message: %s", e)
+            return None
 
     def build_digest_headers(self, nonce):
         """Build the headers of Digest Authentication."""

@@ -1,7 +1,7 @@
 """The Detailed Hello World Push integration."""
 from __future__ import annotations
 
-from homeassistant.const import CONF_HOST, CONF_MAC, CONF_PASSWORD, CONF_PIN
+from homeassistant.const import CONF_HOST, CONF_MAC, CONF_PASSWORD, CONF_PIN, Platform
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
@@ -11,7 +11,7 @@ from .const import DOMAIN
 
 # List of platforms to support. There should be a matching .py file for each,
 # eg <cover.py> and <sensor.py>
-PLATFORMS: list[str] = ["cover", "sensor"]
+PLATFORMS: list[str] = [Platform.COVER, Platform.SENSOR, Platform.UPDATE]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -36,9 +36,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.async_create_background_task(
             target=tydom_hub.setup(connection), hass=hass, name="Tydom"
         )
-        entry.async_create_background_task(
-            target=tydom_hub.ping(connection), hass=hass, name="Tydom ping"
-        )
+        #entry.async_create_background_task(
+        #    target=tydom_hub.ping(connection), hass=hass, name="Tydom ping"
+        #)
     except Exception as err:
         raise ConfigEntryNotReady from err
 
