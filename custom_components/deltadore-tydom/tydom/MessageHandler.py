@@ -6,7 +6,7 @@ from io import BytesIO
 import traceback
 import urllib3
 
-from .tydom_devices import TydomBaseEntity, TydomDevice, TydomShutter
+from .tydom_devices import *
 
 logger = logging.getLogger(__name__)
 
@@ -362,6 +362,8 @@ class MessageHandler:
         match last_usage:
             case "shutter" | "klineShutter":
                 return TydomShutter(uid, name, last_usage, endpoint, data)
+            case "conso":
+                return TydomEnergy(uid, name, last_usage, endpoint, data)
             case _:
                 return
 

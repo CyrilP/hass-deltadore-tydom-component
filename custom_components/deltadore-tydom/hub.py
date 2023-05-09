@@ -17,7 +17,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from .tydom.tydom_client import TydomClient
 from .tydom.tydom_devices import TydomBaseEntity
-from .ha_entities import HACover, BatterySensor
+from .ha_entities import *
 
 logger = logging.getLogger(__name__)
 
@@ -130,30 +130,39 @@ class Hub:
 
     async def create_ha_device(self, device):
         """Create a new HA device"""
-        logger.warn("Create device %s", device.uid)
-        logger.warn("### defect = %s", device.batt_defect)
-        ha_device = HACover(device)
-        self.ha_devices[device.uid] = ha_device
-        if self.add_cover_callback is not None:
-            self.add_cover_callback([ha_device])
-        batt_sensor = BatterySensor(device)
-        if self.add_sensor_callback is not None:
-            self.add_sensor_callback([batt_sensor])
+        logger.warn("device type %s", device.type)
+        match device.type:
+            case "shutter":
+                logger.warn("Create cover %s", device.uid)
+                ha_device = HACover(device)
+                self.ha_devices[device.uid] = ha_device
+                if self.add_cover_callback is not None:
+                    self.add_cover_callback([ha_device])
+                batt_sensor = BatteryDefectSensor(device)
+                thermic_sensor = ThermicDefectSensor(device)
+                on_fav_pos = OnFavPosSensor(device)
+                up_defect= UpDefectSensor(device)
+                down_defect = DownDefectSensor(device)
+                obstacle_defect = ObstacleDefectSensor(device)
+                intrusion_defect = IntrusionDefectSensor(device)
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback([batt_sensor, thermic_sensor, on_fav_pos, up_defect, down_defect, obstacle_defect, intrusion_defect])
+            case "conso":
+                logger.warn("Create conso %s", device.uid)
+                ha_device = HAEnergy(device)
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback([ha_device])
 
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback(ha_device.get_sensors())
+
+            case _:
+                return
 
     async def update_ha_device(self, stored_device, device):
         """Update HA device values"""
-        logger.debug("Update device %s", device.uid)
-        stored_device.thermic_defect = device.thermic_defect
-        stored_device.position = device.position
-        stored_device.on_fav_pos = device.on_fav_pos
-        stored_device.up_defect = device.up_defect
-        stored_device.down_defect = device.down_defect
-        stored_device.obstacle_defect = device.obstacle_defect
-        stored_device.intrusion = device.intrusion
-        logger.warn("### defect = %s", device.batt_defect)
-        stored_device.batt_defect = device.batt_defect
-        await stored_device.publish_updates()
+        await stored_device.update_device(device)
+
 
     async def ping(self) -> None:
         """Periodically send pings"""
