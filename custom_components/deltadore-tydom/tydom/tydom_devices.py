@@ -30,6 +30,23 @@ class TydomBaseEntity:
         """Remove previously registered callback."""
         self._callbacks.discard(callback)
 
+    async def update_device(self, updated_entity):
+        """Update the device values from another device"""
+        logger.error("update Tydom ")
+        self.product_name = updated_entity.product_name
+        self.main_version_sw = updated_entity.main_version_sw
+        self.main_version_hw = updated_entity.main_version_hw
+        self.main_id = updated_entity.main_id
+        self.main_reference = updated_entity.main_reference
+        self.key_version_sw = updated_entity.key_version_sw
+        self.key_version_hw = updated_entity.key_version_hw
+        self.key_version_stack = updated_entity.key_version_stack
+        self.key_reference = updated_entity.key_reference
+        self.boot_reference = updated_entity.boot_reference
+        self.boot_version = updated_entity.boot_version
+        self.update_available = updated_entity.update_available
+        await self.publish_updates()
+
     # In a real implementation, this library would call it's call backs when it was
     # notified of any state changeds for the relevant device.
     async def publish_updates(self) -> None:
@@ -251,4 +268,32 @@ class TydomEnergy(TydomDevice):
             self.energyIndexHeatGas = device.energyIndexHeatGas
         if device.outTemperature is not None:
             self.outTemperature = device.outTemperature
+        await self.publish_updates()
+
+class TydomSmoke(TydomDevice):
+    """Represents an smoke detector sensor"""
+
+    def __init__(self, uid, name, device_type, endpoint, data):
+        logger.info("TydomSmoke : data %s", data)
+        if "config" in data:
+            self.config = data["config"]
+        if "battDefect" in data:
+            self.batt_defect = data["battDefect"]
+        if "supervisionMode" in data:
+            self.supervisionMode = data["supervisionMode"]
+        if "techSmokeDefect" in data:
+            self.techSmokeDefect = data["techSmokeDefect"]
+        super().__init__(uid, name, device_type, endpoint)
+
+    async def update_device(self, device):
+        """Update the device values from another device"""
+        logger.debug("Update device %s", device.uid)
+        if device.config is not None:
+            self.config = device.config
+        if device.batt_defect is not None:
+            self.batt_defect = device.batt_defect
+        if device.supervisionMode is not None:
+            self.supervisionMode = device.supervisionMode
+        if device.techSmokeDefect is not None:
+            self.techSmokeDefect = device.techSmokeDefect
         await self.publish_updates()

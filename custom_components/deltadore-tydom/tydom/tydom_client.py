@@ -16,8 +16,6 @@ from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .MessageHandler import MessageHandler
 
-
-
 from requests.auth import HTTPDigestAuth
 
 logger = logging.getLogger(__name__)
@@ -138,19 +136,18 @@ class TydomClient:
                 )
 
                 json_response = await response.json()
-                response.close();
+                response.close()
 
-                session.close()
+                await session.close()
                 if (
                     "sites" in json_response
-                    and len(json_response["sites"]) == 1
-                    and "gateway" in json_response["sites"][0]
-                    and "password" in json_response["sites"][0]["gateway"]
+                    and len(json_response["sites"]) > 0
                 ):
-                    password = json_response["sites"][0]["gateway"]["password"]
-                    return password
-                else:
-                    raise TydomClientApiClientError("Tydom credentials not found")
+                    for site in json_response["sites"]:
+                        if "gateway" in site and site["gateway"]["mac"] == macaddress:
+                            password = json_response["sites"][0]["gateway"]["password"]
+                            return password
+                raise TydomClientApiClientAuthenticationError("Tydom credentials not found")
         except asyncio.TimeoutError as exception:
             raise TydomClientApiClientCommunicationError(
                 "Timeout error fetching information",
@@ -176,16 +173,16 @@ class TydomClient:
             "Sec-WebSocket-Version": "13",
         }
 
-        self._session = async_create_clientsession(self._hass, False)
+        session = async_create_clientsession(self._hass, False)
 
         try:
             async with async_timeout.timeout(10):
-                response = await self._session.request(
+                response = await session.request(
                     method="GET",
                     url=f"https://{self._host}:443/mediation/client?mac={self._mac}&appli=1",
                     headers=http_headers,
                     json=None,
-                    proxy="http://proxy.rd.francetelecom.fr:8080"
+                    #proxy="http://proxy.rd.francetelecom.fr:8080"
                 )
                 logger.debug(
                     "response status : %s\nheaders : %s\ncontent : %s",
@@ -211,13 +208,13 @@ class TydomClient:
                     re_matcher.group(1)
                 )
 
-                connection = await self._session.ws_connect(
+                connection = await session.ws_connect(
                     method="GET",
                     url=f"wss://{self._host}:443/mediation/client?mac={self._mac}&appli=1",
                     headers=http_headers,
                     autoping=True,
                     heartbeat=2,
-                    proxy="http://proxy.rd.francetelecom.fr:8080"
+                    #proxy="http://proxy.rd.francetelecom.fr:8080"
                 )
 
                 return connection

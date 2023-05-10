@@ -5,6 +5,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
+
 from homeassistant.helpers.entity import Entity, DeviceInfo, Entity
 from homeassistant.components.cover import (
     ATTR_POSITION,
@@ -18,7 +19,7 @@ from homeassistant.components.cover import (
 from homeassistant.components.sensor import SensorDeviceClass
 
 
-from .tydom.tydom_devices import TydomShutter, TydomEnergy
+from .tydom.tydom_devices import *
 
 from .const import DOMAIN, LOGGER
 
@@ -30,10 +31,12 @@ class HAEnergy(Entity):
     device_class = None
     supported_features = None
 
+
     def __init__(self, energy: TydomEnergy) -> None:
         self._energy = energy
         self._attr_unique_id = f"{self._energy.uid}_energy"
         self._attr_name = self._energy.name
+        self.registered_sensors = []
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
@@ -62,56 +65,79 @@ class HAEnergy(Entity):
     def get_sensors(self):
         """Get available sensors for this entity"""
         sensors = []
-        if self._energy.energyInstantTotElec is not None:
+        if self._energy.energyInstantTotElec is not None and "energyInstantTotElec" not in self.registered_sensors:
             sensors.append(EnergyInstantTotElecSensor(self._energy))
-        if self._energy.energyInstantTotElec_Min is not None:
+            self.registered_sensors.append("energyInstantTotElec")
+        if self._energy.energyInstantTotElec_Min is not None and "energyInstantTotElec_Min" not in self.registered_sensors:
             sensors.append(EnergyInstantTotElec_MinSensor(self._energy))
-        if self._energy.energyInstantTotElec_Max is not None:
+            self.registered_sensors.append("energyInstantTotElec_Min")
+        if self._energy.energyInstantTotElec_Max is not None and "energyInstantTotElec_Max" not in self.registered_sensors:
             sensors.append(EnergyInstantTotElec_MaxSensor(self._energy))
-        if self._energy.energyScaleTotElec_Min is not None:
+            self.registered_sensors.append("energyInstantTotElec_Max")
+        if self._energy.energyScaleTotElec_Min is not None and "energyScaleTotElec_Min" not in self.registered_sensors:
             sensors.append(EnergyScaleTotElec_MinSensor(self._energy))
-        if self._energy.energyScaleTotElec_Max is not None:
+            self.registered_sensors.append("energyScaleTotElec_Min")
+        if self._energy.energyScaleTotElec_Max is not None and "energyScaleTotElec_Max" not in self.registered_sensors:
             sensors.append(EnergyScaleTotElec_MaxSensor(self._energy))
-        if self._energy.energyInstantTotElecP is not None:
+            self.registered_sensors.append("energyScaleTotElec_Max")
+        if self._energy.energyInstantTotElecP is not None and "energyInstantTotElecP" not in self.registered_sensors:
             sensors.append(EnergyInstantTotElecPSensor(self._energy))
-        if self._energy.energyInstantTotElec_P_Min is not None:
+            self.registered_sensors.append("energyInstantTotElecP")
+        if self._energy.energyInstantTotElec_P_Min is not None and "energyInstantTotElec_P_Min" not in self.registered_sensors:
             sensors.append(EnergyInstantTotElec_P_MinSensor(self._energy))
-        if self._energy.energyInstantTotElec_P_Max is not None:
+            self.registered_sensors.append("energyInstantTotElec_P_Min")
+        if self._energy.energyInstantTotElec_P_Max is not None and "energyInstantTotElec_P_Max" not in self.registered_sensors:
             sensors.append(EnergyInstantTotElec_P_MaxSensor(self._energy))
-        if self._energy.energyScaleTotElec_P_Min is not None:
+            self.registered_sensors.append("energyInstantTotElec_P_Max")
+        if self._energy.energyScaleTotElec_P_Min is not None and "energyScaleTotElec_P_Min" not in self.registered_sensors:
             sensors.append(EnergyScaleTotElec_P_MinSensor(self._energy))
-        if self._energy.energyScaleTotElec_P_Max is not None:
+            self.registered_sensors.append("energyScaleTotElec_P_Min")
+        if self._energy.energyScaleTotElec_P_Max is not None and "energyScaleTotElec_P_Max" not in self.registered_sensors:
             sensors.append(EnergyScaleTotElec_P_MaxSensor(self._energy))
-        if self._energy.energyInstantTi1P is not None:
+            self.registered_sensors.append("energyScaleTotElec_P_Max")
+        if self._energy.energyInstantTi1P is not None and "energyInstantTi1P" not in self.registered_sensors:
             sensors.append(EnergyInstantTi1PSensor(self._energy))
-        if self._energy.energyInstantTi1P_Min is not None:
+            self.registered_sensors.append("energyInstantTi1P")
+        if self._energy.energyInstantTi1P_Min is not None and "energyInstantTi1P_Min" not in self.registered_sensors:
            sensors.append(EnergyInstantTi1P_MinSensor(self._energy))
-        if self._energy.energyInstantTi1P_Max is not None:
+           self.registered_sensors.append("energyInstantTi1P_Min")
+        if self._energy.energyInstantTi1P_Max is not None and "energyInstantTi1P_Max" not in self.registered_sensors:
             sensors.append(EnergyInstantTi1P_MaxSensor(self._energy))
-        if self._energy.energyScaleTi1P_Min is not None:
+            self.registered_sensors.append("energyInstantTi1P_Max")
+        if self._energy.energyScaleTi1P_Min is not None and "energyScaleTi1P_Min" not in self.registered_sensors:
             sensors.append(EnergyScaleTi1P_MinSensor(self._energy))
-        if self._energy.energyScaleTi1P_Max is not None:
+            self.registered_sensors.append("energyScaleTi1P_Min")
+        if self._energy.energyScaleTi1P_Max is not None and "energyScaleTi1P_Max" not in self.registered_sensors:
             sensors.append(EnergyScaleTi1P_MaxSensor(self._energy))
-        if self._energy.energyInstantTi1I is not None:
+            self.registered_sensors.append("energyScaleTi1P_Max")
+        if self._energy.energyInstantTi1I is not None and "energyInstantTi1I" not in self.registered_sensors:
             sensors.append(EnergyInstantTi1ISensor(self._energy))
-        if self._energy.energyInstantTi1I_Min is not None:
+            self.registered_sensors.append("energyInstantTi1I")
+        if self._energy.energyInstantTi1I_Min is not None and "energyInstantTi1I_Min" not in self.registered_sensors:
             sensors.append(EnergyInstantTi1I_MinSensor(self._energy))
-        if self._energy.energyInstantTi1I_Max is not None:
+            self.registered_sensors.append("energyInstantTi1I_Min")
+        if self._energy.energyInstantTi1I_Max is not None and "energyInstantTi1I_Max" not in self.registered_sensors:
             sensors.append(EnergyInstantTi1I_MaxSensor(self._energy))
-        if self._energy.energyTotIndexWatt is not None:
+            self.registered_sensors.append("energyInstantTi1I_Max")
+        if self._energy.energyTotIndexWatt is not None and "energyTotIndexWatt" not in self.registered_sensors:
             sensors.append(EnergyTotIndexWattSensor(self._energy))
-        if self._energy.energyIndexHeatWatt is not None:
+            self.registered_sensors.append("energyTotIndexWatt")
+        if self._energy.energyIndexHeatWatt is not None and "energyIndexHeatWatt" not in self.registered_sensors:
             sensors.append(EnergyIndexHeatWattSensor(self._energy))
-        if self._energy.energyIndexECSWatt is not None:
+            self.registered_sensors.append("energyIndexHeatWatt")
+        if self._energy.energyIndexECSWatt is not None and "energyIndexECSWatt" not in self.registered_sensors:
             sensors.append(EnergyIndexECSWattSensor(self._energy))
-        if self._energy.energyIndexHeatGas is not None:
+            self.registered_sensors.append("energyIndexECSWatt")
+        if self._energy.energyIndexHeatGas is not None and "energyIndexHeatGas" not in self.registered_sensors:
             sensors.append(EnergyIndexHeatGasSensor(self._energy))
-        if self._energy.outTemperature is not None:
+            self.registered_sensors.append("energyIndexHeatGas")
+        if self._energy.outTemperature is not None and "outTemperature" not in self.registered_sensors:
             sensors.append(OutTemperatureSensor(self._energy))
+            self.registered_sensors.append("outTemperature")
         return sensors
 
-class EnergySensorBase(Entity):
-    """Base representation of a Sensor."""
+class SensorBase(Entity):
+    """Representation of a Tydom."""
 
     should_poll = False
 
@@ -147,11 +173,10 @@ class EnergySensorBase(Entity):
         # The opposite of async_added_to_hass. Remove any registered call backs here.
         self._device.remove_callback(self.async_write_ha_state)
 
-class EnergyInstantTotElecSensor(EnergySensorBase):
+class EnergyInstantTotElecSensor(SensorBase):
     """energyInstantTotElec sensor"""
 
     device_class = SensorDeviceClass.CURRENT
-    #_attr_unit_of_measurement = "lx"
 
     def __init__(self, device: TydomEnergy):
         """Initialize the sensor."""
@@ -168,11 +193,10 @@ class EnergyInstantTotElecSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyInstantTotElec
 
-class EnergyInstantTotElec_MinSensor(EnergySensorBase):
+class EnergyInstantTotElec_MinSensor(SensorBase):
     """energyInstantTotElec_Min sensor"""
 
     device_class = SensorDeviceClass.CURRENT
-    #_attr_unit_of_measurement = "lx"
 
     def __init__(self, device: TydomEnergy):
         """Initialize the sensor."""
@@ -189,11 +213,10 @@ class EnergyInstantTotElec_MinSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyInstantTotElec_Min
 
-class EnergyInstantTotElec_MaxSensor(EnergySensorBase):
+class EnergyInstantTotElec_MaxSensor(SensorBase):
     """energyInstantTotElec_Max sensor"""
 
     device_class = SensorDeviceClass.CURRENT
-    #_attr_unit_of_measurement = "lx"
 
     def __init__(self, device: TydomEnergy):
         """Initialize the sensor."""
@@ -211,7 +234,7 @@ class EnergyInstantTotElec_MaxSensor(EnergySensorBase):
         return self._device.energyInstantTotElec_Max
 
 
-class EnergyScaleTotElec_MinSensor(EnergySensorBase):
+class EnergyScaleTotElec_MinSensor(SensorBase):
     """energyScaleTotElec_Min sensor"""
 
     device_class = SensorDeviceClass.CURRENT
@@ -227,7 +250,7 @@ class EnergyScaleTotElec_MinSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyScaleTotElec_Min
 
-class EnergyScaleTotElec_MaxSensor(EnergySensorBase):
+class EnergyScaleTotElec_MaxSensor(SensorBase):
     """energyScaleTotElec_Min sensor"""
 
     device_class = SensorDeviceClass.CURRENT
@@ -243,7 +266,7 @@ class EnergyScaleTotElec_MaxSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyScaleTotElec_Max
 
-class EnergyInstantTotElecPSensor(EnergySensorBase):
+class EnergyInstantTotElecPSensor(SensorBase):
     """energyInstantTotElecP sensor"""
 
     device_class = SensorDeviceClass.POWER
@@ -259,7 +282,7 @@ class EnergyInstantTotElecPSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyInstantTotElecP
 
-class EnergyInstantTotElec_P_MinSensor(EnergySensorBase):
+class EnergyInstantTotElec_P_MinSensor(SensorBase):
     """energyInstantTotElec_P_Min sensor"""
 
     device_class = SensorDeviceClass.POWER
@@ -275,7 +298,7 @@ class EnergyInstantTotElec_P_MinSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyInstantTotElec_P_Min
 
-class EnergyInstantTotElec_P_MaxSensor(EnergySensorBase):
+class EnergyInstantTotElec_P_MaxSensor(SensorBase):
     """energyInstantTotElec_P_Max sensor"""
 
     device_class = SensorDeviceClass.POWER
@@ -291,7 +314,7 @@ class EnergyInstantTotElec_P_MaxSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyInstantTotElec_P_Max
 
-class EnergyScaleTotElec_P_MinSensor(EnergySensorBase):
+class EnergyScaleTotElec_P_MinSensor(SensorBase):
     """energyScaleTotElec_P_Min sensor"""
 
     device_class = SensorDeviceClass.POWER
@@ -307,7 +330,7 @@ class EnergyScaleTotElec_P_MinSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyScaleTotElec_P_Min
 
-class EnergyScaleTotElec_P_MaxSensor(EnergySensorBase):
+class EnergyScaleTotElec_P_MaxSensor(SensorBase):
     """energyScaleTotElec_P_Max sensor"""
 
     device_class = SensorDeviceClass.POWER
@@ -323,7 +346,7 @@ class EnergyScaleTotElec_P_MaxSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyScaleTotElec_P_Max
 
-class EnergyInstantTi1PSensor(EnergySensorBase):
+class EnergyInstantTi1PSensor(SensorBase):
     """energyInstantTi1P sensor"""
 
     device_class = SensorDeviceClass.POWER
@@ -339,7 +362,7 @@ class EnergyInstantTi1PSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyInstantTi1P
 
-class EnergyInstantTi1P_MinSensor(EnergySensorBase):
+class EnergyInstantTi1P_MinSensor(SensorBase):
     """energyInstantTi1P_Min sensor"""
 
     device_class = SensorDeviceClass.POWER
@@ -355,7 +378,7 @@ class EnergyInstantTi1P_MinSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyInstantTi1P_Min
 
-class EnergyInstantTi1P_MaxSensor(EnergySensorBase):
+class EnergyInstantTi1P_MaxSensor(SensorBase):
     """energyInstantTi1P_Max sensor"""
 
     device_class = SensorDeviceClass.POWER
@@ -371,7 +394,7 @@ class EnergyInstantTi1P_MaxSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyInstantTi1P_Max
 
-class EnergyScaleTi1P_MinSensor(EnergySensorBase):
+class EnergyScaleTi1P_MinSensor(SensorBase):
     """energyInstantenergyScaleTi1P_MinTi1P sensor"""
 
     device_class = SensorDeviceClass.POWER
@@ -387,7 +410,7 @@ class EnergyScaleTi1P_MinSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyScaleTi1P_Min
 
-class EnergyScaleTi1P_MaxSensor(EnergySensorBase):
+class EnergyScaleTi1P_MaxSensor(SensorBase):
     """energyScaleTi1P_Max sensor"""
 
     device_class = SensorDeviceClass.POWER
@@ -403,7 +426,7 @@ class EnergyScaleTi1P_MaxSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyScaleTi1P_Max
 
-class EnergyInstantTi1ISensor(EnergySensorBase):
+class EnergyInstantTi1ISensor(SensorBase):
     """energyInstantTi1I sensor"""
 
     device_class = SensorDeviceClass.CURRENT
@@ -419,7 +442,7 @@ class EnergyInstantTi1ISensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyInstantTi1I
 
-class EnergyInstantTi1I_MinSensor(EnergySensorBase):
+class EnergyInstantTi1I_MinSensor(SensorBase):
     """energyInstantTi1I_Min sensor"""
 
     device_class = SensorDeviceClass.CURRENT
@@ -435,7 +458,7 @@ class EnergyInstantTi1I_MinSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyInstantTi1I_Min
 
-class EnergyInstantTi1I_MaxSensor(EnergySensorBase):
+class EnergyInstantTi1I_MaxSensor(SensorBase):
     """energyInstantTi1I_Max sensor"""
 
     device_class = SensorDeviceClass.CURRENT
@@ -451,7 +474,7 @@ class EnergyInstantTi1I_MaxSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyInstantTi1I_Max
 
-class EnergyScaleTi1I_MinSensor(EnergySensorBase):
+class EnergyScaleTi1I_MinSensor(SensorBase):
     """energyScaleTi1I_Min sensor"""
 
     device_class = SensorDeviceClass.CURRENT
@@ -467,7 +490,7 @@ class EnergyScaleTi1I_MinSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyScaleTi1I_Min
 
-class EnergyScaleTi1I_MaxSensor(EnergySensorBase):
+class EnergyScaleTi1I_MaxSensor(SensorBase):
     """energyScaleTi1I_Max sensor"""
 
     device_class = SensorDeviceClass.CURRENT
@@ -483,7 +506,7 @@ class EnergyScaleTi1I_MaxSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyScaleTi1I_Max
 
-class EnergyTotIndexWattSensor(EnergySensorBase):
+class EnergyTotIndexWattSensor(SensorBase):
     """energyTotIndexWatt sensor"""
 
     device_class = SensorDeviceClass.ENERGY
@@ -499,7 +522,7 @@ class EnergyTotIndexWattSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyTotIndexWatt
 
-class EnergyIndexHeatWattSensor(EnergySensorBase):
+class EnergyIndexHeatWattSensor(SensorBase):
     """energyIndexHeatWatt sensor"""
 
     device_class = SensorDeviceClass.ENERGY
@@ -515,7 +538,7 @@ class EnergyIndexHeatWattSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyIndexHeatWatt
 
-class EnergyIndexECSWattSensor(EnergySensorBase):
+class EnergyIndexECSWattSensor(SensorBase):
     """energyIndexECSWatt sensor"""
 
     device_class = SensorDeviceClass.ENERGY
@@ -531,7 +554,7 @@ class EnergyIndexECSWattSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyIndexECSWatt
 
-class EnergyIndexHeatGasSensor(EnergySensorBase):
+class EnergyIndexHeatGasSensor(SensorBase):
     """energyIndexHeatGas sensor"""
 
     device_class = SensorDeviceClass.ENERGY
@@ -547,10 +570,10 @@ class EnergyIndexHeatGasSensor(EnergySensorBase):
         """Return the state of the sensor."""
         return self._device.energyIndexHeatGas
 
-class OutTemperatureSensor(EnergySensorBase):
+class OutTemperatureSensor(SensorBase):
     """outTemperature sensor"""
 
-    device_class = SensorDeviceClass.POWER
+    device_class = SensorDeviceClass.TEMPERATURE
 
     def __init__(self, device: TydomEnergy):
         """Initialize the sensor."""
@@ -706,15 +729,43 @@ class HACover(CoverEntity):
         """Close the cover."""
         await self._shutter.set_position(kwargs[ATTR_POSITION])
 
+    def get_sensors(self) -> list:
+        """Get available sensors for this entity"""
+        sensors = []
+        device = self._shutter
+        if self._shutter.batt_defect is not None:
+            batt_sensor = BatteryDefectSensor(device)
+            sensors.append(batt_sensor)
+        if self._shutter.thermic_defect is not None:
+            thermic_sensor = ThermicDefectSensor(device)
+            sensors.append(thermic_sensor)
+        if self._shutter.on_fav_pos is not None:
+            on_fav_pos = OnFavPosSensor(device)
+            sensors.append(on_fav_pos)
+        if self._shutter.up_defect is not None:
+            up_defect= UpDefectSensor(device)
+            sensors.append(up_defect)
+        if self._shutter.down_defect is not None:
+            down_defect = DownDefectSensor(device)
+            sensors.append(down_defect)
+        if self._shutter.obstacle_defect is not None:
+            obstacle_defect = ObstacleDefectSensor(device)
+            sensors.append(obstacle_defect)
+        if self._shutter.intrusion is not None:
+            intrusion_defect = IntrusionDefectSensor(device)
+            sensors.append(intrusion_defect)
+        return sensors
 
-class CoverBinarySensorBase(BinarySensorEntity):
+
+
+class BinarySensorBase(BinarySensorEntity):
     """Base representation of a Sensor."""
 
     should_poll = False
 
-    def __init__(self, shutter: TydomShutter):
+    def __init__(self, device: TydomDevice):
         """Initialize the sensor."""
-        self._shutter = shutter
+        self._device = device
 
     # To link this entity to the cover device, this property must return an
     # identifiers value matching that used in the cover, but no other information such
@@ -723,7 +774,7 @@ class CoverBinarySensorBase(BinarySensorEntity):
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
-        return {"identifiers": {(DOMAIN, self._shutter.uid)}}
+        return {"identifiers": {(DOMAIN, self._device.uid)}}
 
     # This property is important to let HA know if this entity is online or not.
     # If an entity is offline (return False), the UI will refelect this.
@@ -737,14 +788,14 @@ class CoverBinarySensorBase(BinarySensorEntity):
     async def async_added_to_hass(self):
         """Run when this Entity has been added to HA."""
         # Sensors should also register callbacks to HA when their state changes
-        self._shutter.register_callback(self.async_write_ha_state)
+        self._device.register_callback(self.async_write_ha_state)
 
     async def async_will_remove_from_hass(self):
         """Entity being removed from hass."""
         # The opposite of async_added_to_hass. Remove any registered call backs here.
-        self._shutter.remove_callback(self.async_write_ha_state)
+        self._device.remove_callback(self.async_write_ha_state)
 
-class BatteryDefectSensor(CoverBinarySensorBase):
+class BatteryDefectSensor(BinarySensorBase):
     """Representation of a Battery Defect Sensor."""
 
     # The class of this device. Note the value should come from the homeassistant.const
@@ -752,16 +803,16 @@ class BatteryDefectSensor(CoverBinarySensorBase):
     # https://developers.home-assistant.io/docs/core/entity/sensor
     device_class = BinarySensorDeviceClass.PROBLEM
 
-    def __init__(self, shutter):
+    def __init__(self, device):
         """Initialize the sensor."""
-        super().__init__(shutter)
+        super().__init__(device)
 
         # As per the sensor, this must be a unique value within this domain. This is done
         # by using the device ID, and appending "_battery"
-        self._attr_unique_id = f"{self._shutter.uid}_battery"
+        self._attr_unique_id = f"{self._device.uid}_battery"
 
         # The name of the entity
-        self._attr_name = f"{self._shutter.name} Battery defect"
+        self._attr_name = f"{self._device.name} Battery defect"
 
         self._state = False
 
@@ -770,9 +821,9 @@ class BatteryDefectSensor(CoverBinarySensorBase):
     @property
     def is_on(self):
         """Return the state of the sensor."""
-        return self._shutter.batt_defect
+        return self._device.batt_defect
 
-class ThermicDefectSensor(CoverBinarySensorBase):
+class ThermicDefectSensor(BinarySensorBase):
     """Representation of a Thermic Defect Sensor."""
         # The class of this device. Note the value should come from the homeassistant.const
     # module. More information on the available devices classes can be seen here:
@@ -785,10 +836,10 @@ class ThermicDefectSensor(CoverBinarySensorBase):
 
         # As per the sensor, this must be a unique value within this domain. This is done
         # by using the device ID, and appending "_battery"
-        self._attr_unique_id = f"{self._shutter.uid}_thermic"
+        self._attr_unique_id = f"{self._device.uid}_thermic"
 
         # The name of the entity
-        self._attr_name = f"{self._shutter.name} Thermic defect"
+        self._attr_name = f"{self._device.name} Thermic defect"
 
         self._state = False
 
@@ -797,9 +848,9 @@ class ThermicDefectSensor(CoverBinarySensorBase):
     @property
     def is_on(self):
         """Return the state of the sensor."""
-        return self._shutter.thermic_defect
+        return self._device.thermic_defect
 
-class OnFavPosSensor(CoverBinarySensorBase):
+class OnFavPosSensor(BinarySensorBase):
     """Representation of a fav position Sensor."""
     device_class = None
 
@@ -807,16 +858,16 @@ class OnFavPosSensor(CoverBinarySensorBase):
         """Initialize the sensor."""
         super().__init__(shutter)
 
-        self._attr_unique_id = f"{self._shutter.uid}_on_fav_pos"
-        self._attr_name = f"{self._shutter.name} On favorite position"
+        self._attr_unique_id = f"{self._device.uid}_on_fav_pos"
+        self._attr_name = f"{self._device.name} On favorite position"
         self._state = False
 
     @property
     def is_on(self):
         """Return the state of the sensor."""
-        return self._shutter.on_fav_pos
+        return self._device.on_fav_pos
 
-class UpDefectSensor(CoverBinarySensorBase):
+class UpDefectSensor(BinarySensorBase):
     """Representation of a Up Defect Sensor."""
     device_class = BinarySensorDeviceClass.PROBLEM
 
@@ -824,16 +875,16 @@ class UpDefectSensor(CoverBinarySensorBase):
         """Initialize the sensor."""
         super().__init__(shutter)
 
-        self._attr_unique_id = f"{self._shutter.uid}_up_defect"
-        self._attr_name = f"{self._shutter.name} Up defect"
+        self._attr_unique_id = f"{self._device.uid}_up_defect"
+        self._attr_name = f"{self._device.name} Up defect"
         self._state = False
 
     @property
     def is_on(self):
         """Return the state of the sensor."""
-        return self._shutter.up_defect
+        return self._device.up_defect
 
-class DownDefectSensor(CoverBinarySensorBase):
+class DownDefectSensor(BinarySensorBase):
     """Representation of a Down Defect Sensor."""
     device_class = BinarySensorDeviceClass.PROBLEM
 
@@ -841,16 +892,16 @@ class DownDefectSensor(CoverBinarySensorBase):
         """Initialize the sensor."""
         super().__init__(shutter)
 
-        self._attr_unique_id = f"{self._shutter.uid}_down_defect"
-        self._attr_name = f"{self._shutter.name} Down defect"
+        self._attr_unique_id = f"{self._device.uid}_down_defect"
+        self._attr_name = f"{self._device.name} Down defect"
         self._state = False
 
     @property
     def is_on(self):
         """Return the state of the sensor."""
-        return self._shutter.down_defect
+        return self._device.down_defect
 
-class ObstacleDefectSensor(CoverBinarySensorBase):
+class ObstacleDefectSensor(BinarySensorBase):
     """Representation of a Obstacle Defect Sensor."""
     device_class = BinarySensorDeviceClass.PROBLEM
 
@@ -858,16 +909,16 @@ class ObstacleDefectSensor(CoverBinarySensorBase):
         """Initialize the sensor."""
         super().__init__(shutter)
 
-        self._attr_unique_id = f"{self._shutter.uid}_obstacle_defect"
-        self._attr_name = f"{self._shutter.name} Obstacle defect"
+        self._attr_unique_id = f"{self._device.uid}_obstacle_defect"
+        self._attr_name = f"{self._device.name} Obstacle defect"
         self._state = False
 
     @property
     def is_on(self):
         """Return the state of the sensor."""
-        return self._shutter.obstacle_defect
+        return self._device.obstacle_defect
 
-class IntrusionDefectSensor(CoverBinarySensorBase):
+class IntrusionDefectSensor(BinarySensorBase):
     """Representation of a Obstacle Defect Sensor."""
     device_class = BinarySensorDeviceClass.PROBLEM
 
@@ -875,11 +926,104 @@ class IntrusionDefectSensor(CoverBinarySensorBase):
         """Initialize the sensor."""
         super().__init__(shutter)
 
-        self._attr_unique_id = f"{self._shutter.uid}_intrusion_defect"
-        self._attr_name = f"{self._shutter.name} Intrusion defect"
+        self._attr_unique_id = f"{self._device.uid}_intrusion_defect"
+        self._attr_name = f"{self._device.name} Intrusion defect"
         self._state = False
 
     @property
     def is_on(self):
         """Return the state of the sensor."""
-        return self._shutter.intrusion
+        return self._device.intrusion
+
+class ConfigSensor(SensorBase):
+    """config sensor"""
+
+    device_class = None
+
+    def __init__(self, device: TydomDevice):
+        """Initialize the sensor."""
+        super().__init__(device)
+        # As per the sensor, this must be a unique value within this domain. This is done
+        # by using the device ID, and appending "_battery"
+        self._attr_unique_id = f"{self._device.uid}_config"
+
+        # The name of the entity
+        self._attr_name = f"{self._device.name} config"
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        return self._device.config
+
+class SupervisionModeSensor(SensorBase):
+    """supervisionMode sensor"""
+
+    device_class = None
+
+    def __init__(self, device: TydomDevice):
+        """Initialize the sensor."""
+        super().__init__(device)
+        # As per the sensor, this must be a unique value within this domain. This is done
+        # by using the device ID, and appending "_battery"
+        self._attr_unique_id = f"{self._device.uid}_supervisionMode"
+
+        # The name of the entity
+        self._attr_name = f"{self._device.name} supervisionMode"
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        return self._device.supervisionMode
+
+class HASmoke(BinarySensorEntity):
+    """Representation of an smoke sensor"""
+    should_poll = False
+    device_class = None
+    supported_features = None
+
+    device_class = BinarySensorDeviceClass.PROBLEM
+
+    def __init__(self, smoke: TydomSmoke) -> None:
+        self._smoke = smoke
+        self._attr_unique_id = f"{self._smoke.uid}_smoke_defect"
+        self._attr_name = self._smoke.name
+        self._state = False
+
+    @property
+    def is_on(self):
+        """Return the state of the sensor."""
+        return self._smoke.techSmokeDefect
+
+    @property
+    def device_info(self):
+        """Return information to link this entity with the correct device."""
+        return {
+            "identifiers": {(DOMAIN, self._smoke.uid)},
+            "name": self._smoke.name}
+
+    async def async_added_to_hass(self) -> None:
+        """Run when this Entity has been added to HA."""
+        # Importantly for a push integration, the module that will be getting updates
+        # needs to notify HA of changes. The dummy device has a registercallback
+        # method, so to this we add the 'self.async_write_ha_state' method, to be
+        # called where ever there are changes.
+        # The call back registration is done once this entity is registered with HA
+        # (rather than in the __init__)
+        self._smoke.register_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Entity being removed from hass."""
+        # The opposite of async_added_to_hass. Remove any registered call backs here.
+        self._smoke.remove_callback(self.async_write_ha_state)
+
+    def get_sensors(self):
+        """Get available sensors for this entity"""
+        sensors = []
+        if self._smoke.config is not None:
+            sensors.append(ConfigSensor(self._smoke))
+        if self._smoke.batt_defect is not None:
+            sensors.append(BatteryDefectSensor(self._smoke))
+        if self._smoke.supervisionMode is not None:
+            sensors.append(SupervisionModeSensor(self._smoke))
+
+        return sensors

@@ -63,9 +63,9 @@ class Hub:
         )
 
         self.rollers = [
-            Roller(f"{self._id}_1", f"{self._name} 1", self),
-            Roller(f"{self._id}_2", f"{self._name} 2", self),
-            Roller(f"{self._id}_3", f"{self._name} 3", self),
+        #    Roller(f"{self._id}_1", f"{self._name} 1", self),
+        #    Roller(f"{self._id}_2", f"{self._name} 2", self),
+        #    Roller(f"{self._id}_3", f"{self._name} 3", self),
         ]
         self.online = True
 
@@ -76,7 +76,9 @@ class Hub:
 
     async def connect(self) -> ClientWebSocketResponse:
         """Connect to Tydom"""
-        return await self._tydom_client.async_connect()
+        connection = await self._tydom_client.async_connect()
+        await self._tydom_client.listen_tydom(connection)
+        return connection
 
     @staticmethod
     async def get_tydom_credentials(
@@ -95,14 +97,13 @@ class Hub:
     async def setup(self, connection: ClientWebSocketResponse) -> None:
         """Listen to tydom events."""
         logger.info("Listen to tydom events")
-        await self._tydom_client.listen_tydom(connection)
         while True:
             devices = await self._tydom_client.consume_messages()
             if devices is not None:
                 for device in devices:
                     logger.info("*** device %s", device)
                     if isinstance(device, TydomBaseEntity):
-                        await self.update_tydom_entity(device)
+                        await self.device_info.update_device(device)
                     else:
                         logger.error("*** publish_updates for device : %s", device)
                         if device.uid not in self.devices:
@@ -110,23 +111,6 @@ class Hub:
                             await self.create_ha_device(device)
                         else:
                             await self.update_ha_device(self.devices[device.uid], device)
-
-    async def update_tydom_entity(self, updated_entity: TydomBaseEntity) -> None:
-        """Update Tydom Base entity values and push to HA"""
-        logger.error("update Tydom ")
-        self.device_info.product_name = updated_entity.product_name
-        self.device_info.main_version_sw = updated_entity.main_version_sw
-        self.device_info.main_version_hw = updated_entity.main_version_hw
-        self.device_info.main_id = updated_entity.main_id
-        self.device_info.main_reference = updated_entity.main_reference
-        self.device_info.key_version_sw = updated_entity.key_version_sw
-        self.device_info.key_version_hw = updated_entity.key_version_hw
-        self.device_info.key_version_stack = updated_entity.key_version_stack
-        self.device_info.key_reference = updated_entity.key_reference
-        self.device_info.boot_reference = updated_entity.boot_reference
-        self.device_info.boot_version = updated_entity.boot_version
-        self.device_info.update_available = updated_entity.update_available
-        await self.device_info.publish_updates()
 
     async def create_ha_device(self, device):
         """Create a new HA device"""
@@ -138,30 +122,38 @@ class Hub:
                 self.ha_devices[device.uid] = ha_device
                 if self.add_cover_callback is not None:
                     self.add_cover_callback([ha_device])
-                batt_sensor = BatteryDefectSensor(device)
-                thermic_sensor = ThermicDefectSensor(device)
-                on_fav_pos = OnFavPosSensor(device)
-                up_defect= UpDefectSensor(device)
-                down_defect = DownDefectSensor(device)
-                obstacle_defect = ObstacleDefectSensor(device)
-                intrusion_defect = IntrusionDefectSensor(device)
                 if self.add_sensor_callback is not None:
-                    self.add_sensor_callback([batt_sensor, thermic_sensor, on_fav_pos, up_defect, down_defect, obstacle_defect, intrusion_defect])
+                    self.add_sensor_callback(ha_device.get_sensors())
             case "conso":
                 logger.warn("Create conso %s", device.uid)
                 ha_device = HAEnergy(device)
+                self.ha_devices[device.uid] = ha_device
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback([ha_device])
 
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
 
+            case "smoke":
+                logger.warn("Create smoke %s", device.uid)
+                ha_device = HASmoke(device)
+                self.ha_devices[device.uid] = ha_device
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback([ha_device])
+
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback(ha_device.get_sensors())
             case _:
                 return
 
     async def update_ha_device(self, stored_device, device):
         """Update HA device values"""
         await stored_device.update_device(device)
+        ha_device = self.ha_devices[device.uid]
+        new_sensors = ha_device.get_sensors()
+        if len(new_sensors) > 0 and self.add_sensor_callback is not None:
+            # add new sensors
+            self.add_sensor_callback(new_sensors)
 
 
     async def ping(self) -> None:

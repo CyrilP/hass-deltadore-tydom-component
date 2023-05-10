@@ -359,11 +359,26 @@ class MessageHandler:
     @staticmethod
     async def get_device(last_usage, uid, name, endpoint = None, data = None) -> TydomDevice:
         """Get device class from its last usage"""
+
+            #FIXME voir: class CoverDeviceClass(StrEnum):
+                # Refer to the cover dev docs for device class descriptions
+                #AWNING = "awning"
+                #BLIND = "blind"
+                #CURTAIN = "curtain"
+                #DAMPER = "damper"
+                #DOOR = "door"
+                #GARAGE = "garage"
+                #GATE = "gate"
+                #SHADE = "shade"
+                #SHUTTER = "shutter"
+                #WINDOW = "window"
         match last_usage:
             case "shutter" | "klineShutter":
                 return TydomShutter(uid, name, last_usage, endpoint, data)
             case "conso":
                 return TydomEnergy(uid, name, last_usage, endpoint, data)
+            case "smoke":
+                return TydomSmoke(uid, name, last_usage, endpoint, data)
             case _:
                 return
 
@@ -374,9 +389,9 @@ class MessageHandler:
         for i in parsed["endpoints"]:
             device_unique_id = str(i["id_endpoint"]) + "_" + str(i["id_device"])
 
-            device = await MessageHandler.get_device(i["last_usage"], device_unique_id, i["name"], i["id_endpoint"], None)
-            if device is not None:
-                devices.append(device)
+            #device = await MessageHandler.get_device(i["last_usage"], device_unique_id, i["name"], i["id_endpoint"], None)
+            #if device is not None:
+            #    devices.append(device)
 
             if (
                 i["last_usage"] == "shutter"
@@ -736,7 +751,7 @@ class MessageHandler:
                         logger.error("msg_data error in parsing !")
                         logger.error(e)
 
-                    device = await MessageHandler.get_device(type_of_id, unique_id, None, endpoint_id, data)
+                    device = await MessageHandler.get_device(type_of_id, unique_id, name_of_id, endpoint_id, data)
                     if device is not None:
                         devices.append(device)
 
