@@ -52,6 +52,7 @@ class Hub:
         self.ha_devices = {}
         self.add_cover_callback = None
         self.add_sensor_callback = None
+        self.add_climate_callback = None
 
         self._tydom_client = TydomClient(
             hass=self._hass,
@@ -102,32 +103,32 @@ class Hub:
             if devices is not None:
                 for device in devices:
                     logger.info("*** device %s", device)
-                    if isinstance(device, TydomBaseEntity):
+                    if isinstance(device, HATydom):
                         await self.device_info.update_device(device)
                     else:
                         logger.error("*** publish_updates for device : %s", device)
-                        if device.uid not in self.devices:
-                            self.devices[device.uid] = device
+                        if device.device_id not in self.devices:
+                            self.devices[device.device_id] = device
                             await self.create_ha_device(device)
                         else:
-                            await self.update_ha_device(self.devices[device.uid], device)
+                            await self.update_ha_device(self.devices[device.device_id], device)
 
     async def create_ha_device(self, device):
         """Create a new HA device"""
-        logger.warn("device type %s", device.type)
-        match device.type:
+        logger.warn("device type %s", device.device_type)
+        match device.device_type:
             case "shutter":
-                logger.warn("Create cover %s", device.uid)
+                logger.warn("Create cover %s", device.device_id)
                 ha_device = HACover(device)
-                self.ha_devices[device.uid] = ha_device
+                self.ha_devices[device.device_id] = ha_device
                 if self.add_cover_callback is not None:
                     self.add_cover_callback([ha_device])
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
             case "conso":
-                logger.warn("Create conso %s", device.uid)
+                logger.warn("Create conso %s", device.device_id)
                 ha_device = HAEnergy(device)
-                self.ha_devices[device.uid] = ha_device
+                self.ha_devices[device.device_id] = ha_device
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback([ha_device])
 
@@ -135,21 +136,31 @@ class Hub:
                     self.add_sensor_callback(ha_device.get_sensors())
 
             case "smoke":
-                logger.warn("Create smoke %s", device.uid)
+                logger.warn("Create smoke %s", device.device_id)
                 ha_device = HASmoke(device)
-                self.ha_devices[device.uid] = ha_device
+                self.ha_devices[device.device_id] = ha_device
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback([ha_device])
 
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
+            case "boiler":
+                logger.warn("Create boiler %s", device.device_id)
+                ha_device = HaClimate(device)
+                self.ha_devices[device.device_id] = ha_device
+                if self.add_climate_callback is not None:
+                    self.add_climate_callback([ha_device])
+
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback(ha_device.get_sensors())
             case _:
+                logger.error("unsupported device type %s for device %s", device.device_type, device.device_id)
                 return
 
     async def update_ha_device(self, stored_device, device):
         """Update HA device values"""
         await stored_device.update_device(device)
-        ha_device = self.ha_devices[device.uid]
+        ha_device = self.ha_devices[device.device_id]
         new_sensors = ha_device.get_sensors()
         if len(new_sensors) > 0 and self.add_sensor_callback is not None:
             # add new sensors

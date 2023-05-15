@@ -32,6 +32,8 @@ class TydomClientApiClientCommunicationError(TydomClientApiClientError):
 class TydomClientApiClientAuthenticationError(TydomClientApiClientError):
     """Exception to indicate an authentication error."""
 
+#proxy = None
+proxy = "http://proxy.rd.francetelecom.fr:8080/"
 
 class TydomClient:
     """Tydom API Client."""
@@ -55,7 +57,6 @@ class TydomClient:
         self._remote_mode = self._host == "mediation.tydom.com"
         self._connection = None
         self.event_callback = event_callback
-
         # Some devices (like Tywatt) need polling
         self.poll_device_urls = []
         self.current_poll_index = 0
@@ -81,6 +82,7 @@ class TydomClient:
                 response = await session.request(
                     method="GET",
                     url="https://deltadoreadb2ciot.b2clogin.com/deltadoreadb2ciot.onmicrosoft.com/v2.0/.well-known/openid-configuration?p=B2C_1_AccountProviderROPC_SignIn",
+                    proxy=proxy
                 )
 
                 logger.debug(
@@ -109,6 +111,7 @@ class TydomClient:
                     url=signin_url,
                     headers={"Content-Type": ct_header},
                     data=body,
+                    proxy=proxy
                 )
 
                 logger.debug(
@@ -126,6 +129,7 @@ class TydomClient:
                     method="GET",
                     url=f"https://prod.iotdeltadore.com/sitesmanagement/api/v1/sites?gateway_mac={macaddress}",
                     headers={"Authorization": f"Bearer {access_token}"},
+                    proxy=proxy
                 )
 
                 logger.debug(
@@ -182,7 +186,7 @@ class TydomClient:
                     url=f"https://{self._host}:443/mediation/client?mac={self._mac}&appli=1",
                     headers=http_headers,
                     json=None,
-                    #proxy="http://proxy.rd.francetelecom.fr:8080"
+                    proxy=proxy
                 )
                 logger.debug(
                     "response status : %s\nheaders : %s\ncontent : %s",
@@ -214,7 +218,7 @@ class TydomClient:
                     headers=http_headers,
                     autoping=True,
                     heartbeat=2,
-                    #proxy="http://proxy.rd.francetelecom.fr:8080"
+                    proxy=proxy
                 )
 
                 return connection

@@ -379,7 +379,10 @@ class MessageHandler:
                 return TydomEnergy(uid, name, last_usage, endpoint, data)
             case "smoke":
                 return TydomSmoke(uid, name, last_usage, endpoint, data)
+            case "boiler":
+                return TydomBoiler(uid, name, last_usage, endpoint, data)
             case _:
+                logger.warn("Unknown usage : %s", last_usage)
                 return
 
     @staticmethod
