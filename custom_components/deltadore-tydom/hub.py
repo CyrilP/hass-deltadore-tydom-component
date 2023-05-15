@@ -103,7 +103,7 @@ class Hub:
             if devices is not None:
                 for device in devices:
                     logger.info("*** device %s", device)
-                    if isinstance(device, HATydom):
+                    if isinstance(device, TydomBaseEntity):
                         await self.device_info.update_device(device)
                     else:
                         logger.error("*** publish_updates for device : %s", device)

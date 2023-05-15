@@ -39,11 +39,14 @@ from .tydom.tydom_devices import *
 from .const import DOMAIN, LOGGER
 
 
-class GenericSensor(SensorBase):
+class GenericSensor(Entity):
     """Representation of a generic sensor """
-    def __init__(self, device: TydomEnergy, device_class: SensorDeviceClass, name: str, attribute: str):
+
+    should_poll = False
+
+    def __init__(self, device: TydomDevice, device_class: SensorDeviceClass, name: str, attribute: str):
         """Initialize the sensor."""
-        super().__init__(device)
+        self._device = device
         self._attr_unique_id = f"{self._device.device_id}_{name}"
         self._attr_name = f"{self._device.device_name} {name}"
         self._attribute = attribute
@@ -53,6 +56,34 @@ class GenericSensor(SensorBase):
     def state(self):
         """Return the state of the sensor."""
         return getattr(self._device, self._attribute)
+
+    # To link this entity to the cover device, this property must return an
+    # identifiers value matching that used in the cover, but no other information such
+    # as name. If name is returned, this entity will then also become a device in the
+    # HA UI.
+    @property
+    def device_info(self):
+        """Return information to link this entity with the correct device."""
+        return {"identifiers": {(DOMAIN, self._device.device_id)}}
+
+    # This property is important to let HA know if this entity is online or not.
+    # If an entity is offline (return False), the UI will refelect this.
+    @property
+    def available(self) -> bool:
+        """Return True if roller and hub is available."""
+        # FIXME
+        #return self._device.online and self._device.hub.online
+        return True
+
+    async def async_added_to_hass(self):
+        """Run when this Entity has been added to HA."""
+        # Sensors should also register callbacks to HA when their state changes
+        self._device.register_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self):
+        """Entity being removed from hass."""
+        # The opposite of async_added_to_hass. Remove any registered call backs here.
+        self._device.remove_callback(self.async_write_ha_state)
 
 class BinarySensorBase(BinarySensorEntity):
     """Base representation of a Sensor."""
