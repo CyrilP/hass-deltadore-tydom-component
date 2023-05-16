@@ -35,7 +35,7 @@ class TydomUpdateEntity(UpdateEntity):
     ) -> None:
         """Init Tydom connectivity class."""
         self._attr_name = f"{device_friendly_name} Tydom"
-        self._attr_unique_id = f"{hub.hub_id()}-update"
+        self._attr_unique_id = f"{hub.hub_id}-update"
         self._hub = hub
 
     async def async_added_to_hass(self) -> None:

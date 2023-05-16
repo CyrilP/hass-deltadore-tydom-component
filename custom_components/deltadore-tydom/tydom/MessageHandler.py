@@ -375,12 +375,24 @@ class MessageHandler:
         match last_usage:
             case "shutter" | "klineShutter":
                 return TydomShutter(uid, name, last_usage, endpoint, data)
+            case "window" | "windowFrench" | "windowSliding" | "klineWindowFrench" | "klineWindowSliding":
+                return TydomWindow(uid, name, last_usage, endpoint, data)
+            case "belmDoor" | "klineDoor":
+                return TydomDoor(uid, name, last_usage, endpoint, data)
+            case "garage_door":
+                return TydomGarage(uid, name, last_usage, endpoint, data)
+            case "gate":
+                return TydomGate(uid, name, last_usage, endpoint, data)
+            case "light":
+                return TydomLight(uid, name, last_usage, endpoint, data)
             case "conso":
                 return TydomEnergy(uid, name, last_usage, endpoint, data)
             case "smoke":
                 return TydomSmoke(uid, name, last_usage, endpoint, data)
             case "boiler":
                 return TydomBoiler(uid, name, last_usage, endpoint, data)
+            case "alarm":
+                return TydoAlarm(uid, name, last_usage, endpoint, data)
             case _:
                 logger.warn("Unknown usage : %s", last_usage)
                 return

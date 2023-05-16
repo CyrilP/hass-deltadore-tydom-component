@@ -141,3 +141,39 @@ class TydomBoiler(TydomDevice):
         # {'authorization': 'HEATING', 'setpoint': 19.0, 'thermicLevel': None, 'hvacMode': 'NORMAL', 'timeDelay': 0, 'temperature': 21.35, 'tempoOn': False, 'antifrostOn': False, 'loadSheddingOn': False,  'openingDetected': False, 'presenceDetected': False, 'absence': False, 'productionDefect': False, 'batteryCmdDefect': False, 'tempSensorDefect': False, 'tempSensorShortCut': False, 'tempSensorOpenCirc': False, 'boostOn': False, 'anticipCoeff': 30}
 
         super().__init__(uid, name, device_type, endpoint, data)
+
+class TydomWindow(TydomDevice):
+    """represents a window"""
+    def __init__(self, uid, name, device_type, endpoint, data):
+        logger.info("TydomWindow : data %s", data)
+        super().__init__(uid, name, device_type, endpoint, data)
+
+class TydomDoor(TydomDevice):
+    """represents a door"""
+    def __init__(self, uid, name, device_type, endpoint, data):
+        logger.info("TydomDoor : data %s", data)
+        super().__init__(uid, name, device_type, endpoint, data)
+
+class TydomGate(TydomDevice):
+    """represents a door"""
+    def __init__(self, uid, name, device_type, endpoint, data):
+        logger.info("TydomGate : data %s", data)
+        super().__init__(uid, name, device_type, endpoint, data)
+
+class TydomGarage(TydomDevice):
+    """represents a door"""
+    def __init__(self, uid, name, device_type, endpoint, data):
+        logger.info("TydomGarage : data %s", data)
+        super().__init__(uid, name, device_type, endpoint, data)
+
+class TydomLight(TydomDevice):
+    """represents a door"""
+    def __init__(self, uid, name, device_type, endpoint, data):
+        logger.info("TydomLight : data %s", data)
+        super().__init__(uid, name, device_type, endpoint, data)
+
+class TydoAlarm(TydomDevice):
+    """represents an alarm"""
+    def __init__(self, uid, name, device_type, endpoint, data):
+        logger.info("TydomAlarm : data %s", data)
+        super().__init__(uid, name, device_type, endpoint, data)

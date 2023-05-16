@@ -14,6 +14,7 @@ from urllib3 import encode_multipart_formdata
 from aiohttp import ClientWebSocketResponse, ClientSession
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
+from .const import *
 from .MessageHandler import MessageHandler
 
 from requests.auth import HTTPDigestAuth
@@ -44,7 +45,7 @@ class TydomClient:
         mac: str,
         password: str,
         alarm_pin: str = None,
-        host: str = "mediation.tydom.com",
+        host: str = MEDIATION_URL,
         event_callback=None
     ) -> None:
         logger.debug("Initializing TydomClient Class")
@@ -54,7 +55,7 @@ class TydomClient:
         self._mac = mac
         self._host = host
         self._alarm_pin = alarm_pin
-        self._remote_mode = self._host == "mediation.tydom.com"
+        self._remote_mode = self._host == MEDIATION_URL
         self._connection = None
         self.event_callback = event_callback
         # Some devices (like Tywatt) need polling
@@ -81,7 +82,7 @@ class TydomClient:
             async with async_timeout.timeout(10):
                 response = await session.request(
                     method="GET",
-                    url="https://deltadoreadb2ciot.b2clogin.com/deltadoreadb2ciot.onmicrosoft.com/v2.0/.well-known/openid-configuration?p=B2C_1_AccountProviderROPC_SignIn",
+                    url=DELTADORE_AUTH_URL,
                     proxy=proxy
                 )
 
@@ -101,9 +102,9 @@ class TydomClient:
                     {
                         "username": f"{email}",
                         "password": f"{password}",
-                        "grant_type": "password",
-                        "client_id": "8782839f-3264-472a-ab87-4d4e23524da4",
-                        "scope": "openid profile offline_access https://deltadoreadb2ciot.onmicrosoft.com/iotapi/video_config https://deltadoreadb2ciot.onmicrosoft.com/iotapi/video_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/sites_management_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/sites_management_gateway_credentials https://deltadoreadb2ciot.onmicrosoft.com/iotapi/sites_management_camera_credentials https://deltadoreadb2ciot.onmicrosoft.com/iotapi/comptage_europe_collect_reader https://deltadoreadb2ciot.onmicrosoft.com/iotapi/comptage_europe_site_config_contributor https://deltadoreadb2ciot.onmicrosoft.com/iotapi/pilotage_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/consent_mgt_contributor https://deltadoreadb2ciot.onmicrosoft.com/iotapi/b2caccountprovider_manage_account https://deltadoreadb2ciot.onmicrosoft.com/iotapi/b2caccountprovider_allow_view_account https://deltadoreadb2ciot.onmicrosoft.com/iotapi/tydom_backend_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/websocket_remote_access https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_device https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_view https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_space https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_connector https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_endpoint https://deltadoreadb2ciot.onmicrosoft.com/iotapi/rule_management_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/collect_read_datas",
+                        "grant_type": DELTADORE_AUTH_GRANT_TYPE,
+                        "client_id": DELTADORE_AUTH_CLIENTID,
+                        "scope": DELTADORE_AUTH_SCOPE,
                     }
                 )
 
@@ -127,7 +128,7 @@ class TydomClient:
 
                 response = await session.request(
                     method="GET",
-                    url=f"https://prod.iotdeltadore.com/sitesmanagement/api/v1/sites?gateway_mac={macaddress}",
+                    url=DELTADORE_API_SITES + macaddress,
                     headers={"Authorization": f"Bearer {access_token}"},
                     proxy=proxy
                 )

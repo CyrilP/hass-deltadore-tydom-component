@@ -32,7 +32,8 @@ from homeassistant.components.cover import (
     CoverDeviceClass
 )
 from homeassistant.components.sensor import SensorDeviceClass
-
+from homeassistant.components.light import LightEntity
+from homeassistant.components.lock import LockEntity
 
 from .tydom.tydom_devices import *
 
@@ -597,6 +598,270 @@ class HaClimate(ClimateEntity):
         """Entity being removed from hass."""
         # The opposite of async_added_to_hass. Remove any registered call backs here.
         self._device.remove_callback(self.async_write_ha_state)
+
+    def get_sensors(self):
+        """Get available sensors for this entity"""
+        sensors = []
+
+        for attribute, value in self._device.__dict__.items():
+            if attribute[:1] != '_' and value is not None and attribute not in self._registered_sensors:
+                sensor_class = None
+                if attribute in self.sensor_classes:
+                    sensor_class = self.sensor_classes[attribute]
+                if isinstance(value, bool):
+                    sensors.append(GenericBinarySensor(self._device, sensor_class, attribute, attribute))
+                else:
+                    sensors.append(GenericSensor(self._device, sensor_class, attribute, attribute))
+                self._registered_sensors.append(attribute)
+
+        return sensors
+
+class HaWindow(CoverEntity):
+    """Representation of a Cover."""
+
+    should_poll = False
+    supported_features = None
+    device_class = CoverDeviceClass.WINDOW
+
+    sensor_classes = {
+        "battDefect": BinarySensorDeviceClass.PROBLEM,
+        "intrusionDetect": BinarySensorDeviceClass.PROBLEM,
+
+    }
+
+    def __init__(self, device: TydomWindow) -> None:
+        """Initialize the sensor."""
+        self._device = device
+        self._attr_unique_id = f"{self._device.device_id}_cover"
+        self._attr_name = self._device.device_name
+        self._registered_sensors = []
+
+    async def async_added_to_hass(self) -> None:
+        """Run when this Entity has been added to HA."""
+
+        self._device.register_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Entity being removed from hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Information about this entity/device."""
+        return {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self.name,
+        }
+
+    @property
+    def is_closed(self) -> bool:
+        """Return if the window is closed"""
+        return self._device.openState == "LOCKED"
+
+    def get_sensors(self):
+        """Get available sensors for this entity"""
+        sensors = []
+
+        for attribute, value in self._device.__dict__.items():
+            if attribute[:1] != '_' and value is not None and attribute not in self._registered_sensors:
+                sensor_class = None
+                if attribute in self.sensor_classes:
+                    sensor_class = self.sensor_classes[attribute]
+                if isinstance(value, bool):
+                    sensors.append(GenericBinarySensor(self._device, sensor_class, attribute, attribute))
+                else:
+                    sensors.append(GenericSensor(self._device, sensor_class, attribute, attribute))
+                self._registered_sensors.append(attribute)
+
+        return sensors
+
+class HaDoor(LockEntity, CoverEntity):
+    """Representation of a Cover."""
+
+    should_poll = False
+    supported_features = None
+    device_class = CoverDeviceClass.DOOR
+    sensor_classes = {
+        "battDefect": BinarySensorDeviceClass.PROBLEM,
+        "calibrationDefect": BinarySensorDeviceClass.PROBLEM,
+        "intrusionDetect": BinarySensorDeviceClass.PROBLEM,
+    }
+
+    def __init__(self, device: TydomDoor) -> None:
+        """Initialize the sensor."""
+        self._device = device
+        self._attr_unique_id = f"{self._device.device_id}_cover"
+        self._attr_name = self._device.device_name
+        self._registered_sensors = []
+
+    async def async_added_to_hass(self) -> None:
+        """Run when this Entity has been added to HA."""
+
+        self._device.register_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Entity being removed from hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Information about this entity/device."""
+        return {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self.name,
+        }
+
+    @property
+    def is_closed(self) -> bool:
+        """Return if the door is closed"""
+        return self._device.openState == "LOCKED"
+
+    def get_sensors(self):
+        """Get available sensors for this entity"""
+        sensors = []
+
+        for attribute, value in self._device.__dict__.items():
+            if attribute[:1] != '_' and value is not None and attribute not in self._registered_sensors:
+                sensor_class = None
+                if attribute in self.sensor_classes:
+                    sensor_class = self.sensor_classes[attribute]
+                if isinstance(value, bool):
+                    sensors.append(GenericBinarySensor(self._device, sensor_class, attribute, attribute))
+                else:
+                    sensors.append(GenericSensor(self._device, sensor_class, attribute, attribute))
+                self._registered_sensors.append(attribute)
+
+        return sensors
+
+class HaGate(CoverEntity):
+    """Representation of a Cover."""
+
+    should_poll = False
+    supported_features = None
+    device_class = CoverDeviceClass.GATE
+    sensor_classes = {}
+
+    def __init__(self, device: TydomGate) -> None:
+        """Initialize the sensor."""
+        self._device = device
+        self._attr_unique_id = f"{self._device.device_id}_cover"
+        self._attr_name = self._device.device_name
+        self._registered_sensors = []
+
+    async def async_added_to_hass(self) -> None:
+        """Run when this Entity has been added to HA."""
+
+        self._device.register_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Entity being removed from hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Information about this entity/device."""
+        return {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self.name,
+        }
+
+    def get_sensors(self):
+        """Get available sensors for this entity"""
+        sensors = []
+
+        for attribute, value in self._device.__dict__.items():
+            if attribute[:1] != '_' and value is not None and attribute not in self._registered_sensors:
+                sensor_class = None
+                if attribute in self.sensor_classes:
+                    sensor_class = self.sensor_classes[attribute]
+                if isinstance(value, bool):
+                    sensors.append(GenericBinarySensor(self._device, sensor_class, attribute, attribute))
+                else:
+                    sensors.append(GenericSensor(self._device, sensor_class, attribute, attribute))
+                self._registered_sensors.append(attribute)
+
+        return sensors
+
+class HaGarage(CoverEntity):
+    """Representation of a Cover."""
+
+    should_poll = False
+    supported_features = None
+    device_class = CoverDeviceClass.GARAGE
+    sensor_classes = {}
+
+    def __init__(self, device: TydomGarage) -> None:
+        """Initialize the sensor."""
+        self._device = device
+        self._attr_unique_id = f"{self._device.device_id}_cover"
+        self._attr_name = self._device.device_name
+        self._registered_sensors = []
+
+    async def async_added_to_hass(self) -> None:
+        """Run when this Entity has been added to HA."""
+
+        self._device.register_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Entity being removed from hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Information about this entity/device."""
+        return {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self.name,
+        }
+
+    def get_sensors(self):
+        """Get available sensors for this entity"""
+        sensors = []
+
+        for attribute, value in self._device.__dict__.items():
+            if attribute[:1] != '_' and value is not None and attribute not in self._registered_sensors:
+                sensor_class = None
+                if attribute in self.sensor_classes:
+                    sensor_class = self.sensor_classes[attribute]
+                if isinstance(value, bool):
+                    sensors.append(GenericBinarySensor(self._device, sensor_class, attribute, attribute))
+                else:
+                    sensors.append(GenericSensor(self._device, sensor_class, attribute, attribute))
+                self._registered_sensors.append(attribute)
+
+        return sensors
+
+class HaLight(LightEntity):
+    """Representation of a Light."""
+
+    should_poll = False
+    supported_features = None
+    sensor_classes = {}
+
+    def __init__(self, device: TydomLight) -> None:
+        """Initialize the sensor."""
+        self._device = device
+        self._attr_unique_id = f"{self._device.device_id}_cover"
+        self._attr_name = self._device.device_name
+        self._registered_sensors = []
+
+    async def async_added_to_hass(self) -> None:
+        """Run when this Entity has been added to HA."""
+
+        self._device.register_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Entity being removed from hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Information about this entity/device."""
+        return {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self.name,
+        }
 
     def get_sensors(self):
         """Get available sensors for this entity"""
