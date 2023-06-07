@@ -224,6 +224,7 @@ class Hub:
 
     async def async_trigger_firmware_update(self) -> None:
         """Trigger firmware update"""
+        logger.info("Installing update...")
 
 
 class Roller:

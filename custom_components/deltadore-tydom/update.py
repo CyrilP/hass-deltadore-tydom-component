@@ -6,6 +6,7 @@ from homeassistant.components.update import UpdateEntity, UpdateEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from datetime import date
 
 from .const import DOMAIN, LOGGER
 from .hub import Hub
@@ -66,7 +67,8 @@ class TydomUpdateEntity(UpdateEntity):
         """Latest version available for install."""
         if self._hub.device_info is not None:
             if self._hub.device_info.update_available:
-                return self._hub.device_info.main_version_sw
+                # return version based on today's date for update version
+                return date.today().strftime("%y.%m.%d")
             return self._hub.device_info.main_version_sw
         # FIXME : return correct version on update
         return None
