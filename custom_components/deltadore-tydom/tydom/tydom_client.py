@@ -377,6 +377,24 @@ class TydomClient:
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
+    async def get_areas_meta(self):
+        """Get areas metadata"""
+        msg_type = "/areas/meta"
+        req = "GET"
+        await self.send_message(method=req, msg=msg_type)
+
+    async def get_areas_cmeta(self):
+        """Get areas metadata"""
+        msg_type = "/areas/cmeta"
+        req = "GET"
+        await self.send_message(method=req, msg=msg_type)
+
+    async def get_areas_data(self):
+        """Get areas metadata"""
+        msg_type = "/areas/data"
+        req = "GET"
+        await self.send_message(method=req, msg=msg_type)
+
     async def get_data(self):
         """Get all config/metadata/data"""
         await self.get_configs_file()
