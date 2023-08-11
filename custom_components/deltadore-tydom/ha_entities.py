@@ -29,7 +29,7 @@ from homeassistant.components.cover import (
     SUPPORT_SET_POSITION,
     SUPPORT_STOP,
     CoverEntity,
-    CoverDeviceClass
+    CoverDeviceClass,
 )
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.components.light import LightEntity
@@ -41,11 +41,17 @@ from .const import DOMAIN, LOGGER
 
 
 class GenericSensor(Entity):
-    """Representation of a generic sensor """
+    """Representation of a generic sensor"""
 
     should_poll = False
 
-    def __init__(self, device: TydomDevice, device_class: SensorDeviceClass, name: str, attribute: str):
+    def __init__(
+        self,
+        device: TydomDevice,
+        device_class: SensorDeviceClass,
+        name: str,
+        attribute: str,
+    ):
         """Initialize the sensor."""
         self._device = device
         self._attr_unique_id = f"{self._device.device_id}_{name}"
@@ -73,7 +79,7 @@ class GenericSensor(Entity):
     def available(self) -> bool:
         """Return True if roller and hub is available."""
         # FIXME
-        #return self._device.online and self._device.hub.online
+        # return self._device.online and self._device.hub.online
         return True
 
     async def async_added_to_hass(self):
@@ -85,6 +91,7 @@ class GenericSensor(Entity):
         """Entity being removed from hass."""
         # The opposite of async_added_to_hass. Remove any registered call backs here.
         self._device.remove_callback(self.async_write_ha_state)
+
 
 class BinarySensorBase(BinarySensorEntity):
     """Base representation of a Sensor."""
@@ -109,7 +116,7 @@ class BinarySensorBase(BinarySensorEntity):
     @property
     def available(self) -> bool:
         """Return True if roller and hub is available."""
-        #return self._roller.online and self._roller.hub.online
+        # return self._roller.online and self._roller.hub.online
         # FIXME
         return True
 
@@ -123,9 +130,17 @@ class BinarySensorBase(BinarySensorEntity):
         # The opposite of async_added_to_hass. Remove any registered call backs here.
         self._device.remove_callback(self.async_write_ha_state)
 
+
 class GenericBinarySensor(BinarySensorBase):
     """Generic representation of a Binary Sensor."""
-    def __init__(self, device: TydomDevice, device_class: BinarySensorDeviceClass, name: str, attribute: str):
+
+    def __init__(
+        self,
+        device: TydomDevice,
+        device_class: BinarySensorDeviceClass,
+        name: str,
+        attribute: str,
+    ):
         """Initialize the sensor."""
         super().__init__(device)
         self._attr_unique_id = f"{self._device.device_id}_{name}"
@@ -138,6 +153,7 @@ class GenericBinarySensor(BinarySensorBase):
     def is_on(self):
         """Return the state of the sensor."""
         return getattr(self._device, self._attribute)
+
 
 class HATydom(Entity):
     """Representation of a Tydom."""
@@ -163,7 +179,7 @@ class HATydom(Entity):
     def available(self) -> bool:
         """Return True if roller and hub is available."""
         # FIXME
-        #return self._device.online and self._device.hub.online
+        # return self._device.online and self._device.hub.online
         return True
 
     async def async_added_to_hass(self):
@@ -175,6 +191,7 @@ class HATydom(Entity):
         """Entity being removed from hass."""
         # The opposite of async_added_to_hass. Remove any registered call backs here.
         self._device.remove_callback(self.async_write_ha_state)
+
 
 class HAEnergy(Entity):
     """Representation of an energy sensor"""
@@ -237,21 +254,34 @@ class HAEnergy(Entity):
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
-        return {"identifiers": {(DOMAIN, self._energy.device_id)}, "name": self._energy.device_name}
+        return {
+            "identifiers": {(DOMAIN, self._energy.device_id)},
+            "name": self._energy.device_name,
+        }
 
     def get_sensors(self):
         """Get available sensors for this entity"""
         sensors = []
 
         for attribute, value in self._energy.__dict__.items():
-            if attribute[:1] != '_' and value is not None and attribute not in self._registered_sensors:
+            if (
+                attribute[:1] != "_"
+                and value is not None
+                and attribute not in self._registered_sensors
+            ):
                 sensor_class = None
                 if attribute in self.sensor_classes:
                     sensor_class = self.sensor_classes[attribute]
                 if isinstance(value, bool):
-                    sensors.append(GenericBinarySensor(self._energy, sensor_class, attribute, attribute))
-                else :
-                    sensors.append(GenericSensor(self._energy, sensor_class, attribute, attribute))
+                    sensors.append(
+                        GenericBinarySensor(
+                            self._energy, sensor_class, attribute, attribute
+                        )
+                    )
+                else:
+                    sensors.append(
+                        GenericSensor(self._energy, sensor_class, attribute, attribute)
+                    )
                 self._registered_sensors.append(attribute)
 
         return sensors
@@ -269,17 +299,19 @@ class HACover(CoverEntity):
     # imported above, we can tell HA the features that are supported by this entity.
     # If the supported features were dynamic (ie: different depending on the external
     # device it connected to), then this should be function with an @property decorator.
-    supported_features = SUPPORT_SET_POSITION | SUPPORT_OPEN | SUPPORT_CLOSE | SUPPORT_STOP
+    supported_features = (
+        SUPPORT_SET_POSITION | SUPPORT_OPEN | SUPPORT_CLOSE | SUPPORT_STOP
+    )
     device_class = CoverDeviceClass.SHUTTER
 
     sensor_classes = {
-            "batt_defect": BinarySensorDeviceClass.PROBLEM,
-            "thermic_defect": BinarySensorDeviceClass.PROBLEM,
-            "up_defect": BinarySensorDeviceClass.PROBLEM,
-            "down_defect": BinarySensorDeviceClass.PROBLEM,
-            "obstacle_defect": BinarySensorDeviceClass.PROBLEM,
-            "intrusion": BinarySensorDeviceClass.PROBLEM,
-        }
+        "batt_defect": BinarySensorDeviceClass.PROBLEM,
+        "thermic_defect": BinarySensorDeviceClass.PROBLEM,
+        "up_defect": BinarySensorDeviceClass.PROBLEM,
+        "down_defect": BinarySensorDeviceClass.PROBLEM,
+        "obstacle_defect": BinarySensorDeviceClass.PROBLEM,
+        "intrusion": BinarySensorDeviceClass.PROBLEM,
+    }
 
     def __init__(self, shutter: TydomShutter) -> None:
         """Initialize the sensor."""
@@ -340,9 +372,9 @@ class HACover(CoverEntity):
             "identifiers": {(DOMAIN, self._shutter.device_id)},
             # If desired, the name for the device could be different to the entity
             "name": self.name,
-            #"sw_version": self._shutter.firmware_version,
-            #"model": self._shutter.model,
-            #"manufacturer": self._shutter.hub.manufacturer,
+            # "sw_version": self._shutter.firmware_version,
+            # "model": self._shutter.model,
+            # "manufacturer": self._shutter.hub.manufacturer,
         }
 
     # This property is important to let HA know if this entity is online or not.
@@ -372,42 +404,32 @@ class HACover(CoverEntity):
         """Return if the cover is closed, same as position 0."""
         return self._shutter.position == 0
 
-    #@property
-    #def is_closing(self) -> bool:
+    # @property
+    # def is_closing(self) -> bool:
     #    """Return if the cover is closing or not."""
     #    return self._shutter.moving < 0
 
-    #@property
-    #def is_opening(self) -> bool:
+    # @property
+    # def is_opening(self) -> bool:
     #    """Return if the cover is opening or not."""
     #    return self._shutter.moving > 0
-
-
-
-        #self.on_fav_pos = None
-        #self.up_defect = None
-        #self.down_defect = None
-        #self.obstacle_defect = None
-        #self.intrusion = None
-        #self.batt_defect = None
-
-    @property
-    def is_thermic_defect(self) -> bool:
-        """Return the thermic_defect status"""
-        return self._shutter.thermic_defect
 
     # These methods allow HA to tell the actual device what to do. In this case, move
     # the cover to the desired position, or open and close it all the way.
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
-        await self._shutter.set_position(100)
+        await self._shutter.up()
 
     async def async_close_cover(self, **kwargs: Any) -> None:
         """Close the cover."""
-        await self._shutter.set_position(0)
+        await self._shutter.down()
+
+    async def async_stop_cover(self, **kwargs):
+        """Stop the cover."""
+        await self._shutter.stop()
 
     async def async_set_cover_position(self, **kwargs: Any) -> None:
-        """Close the cover."""
+        """Set the cover's position."""
         await self._shutter.set_position(kwargs[ATTR_POSITION])
 
     def get_sensors(self) -> list:
@@ -415,31 +437,39 @@ class HACover(CoverEntity):
         sensors = []
 
         for attribute, value in self._shutter.__dict__.items():
-            if attribute[:1] != '_' and value is not None and attribute not in self._registered_sensors:
+            if (
+                attribute[:1] != "_"
+                and value is not None
+                and attribute not in self._registered_sensors
+            ):
                 sensor_class = None
                 if attribute in self.sensor_classes:
                     sensor_class = self.sensor_classes[attribute]
                 if isinstance(value, bool):
-                    sensors.append(GenericBinarySensor(self._shutter, sensor_class, attribute, attribute))
+                    sensors.append(
+                        GenericBinarySensor(
+                            self._shutter, sensor_class, attribute, attribute
+                        )
+                    )
                 else:
-                    sensors.append(GenericSensor(self._shutter, sensor_class, attribute, attribute))
+                    sensors.append(
+                        GenericSensor(self._shutter, sensor_class, attribute, attribute)
+                    )
                 self._registered_sensors.append(attribute)
 
         return sensors
 
 
-
 class HASmoke(BinarySensorEntity):
     """Representation of an smoke sensor"""
+
     should_poll = False
     device_class = None
     supported_features = None
 
     device_class = BinarySensorDeviceClass.PROBLEM
 
-    sensor_classes = {
-            "batt_defect" : BinarySensorDeviceClass.PROBLEM
-        }
+    sensor_classes = {"batt_defect": BinarySensorDeviceClass.PROBLEM}
 
     def __init__(self, smoke: TydomSmoke) -> None:
         self._device = smoke
@@ -458,7 +488,8 @@ class HASmoke(BinarySensorEntity):
         """Return information to link this entity with the correct device."""
         return {
             "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self._device.device_name}
+            "name": self._device.device_name,
+        }
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
@@ -480,17 +511,28 @@ class HASmoke(BinarySensorEntity):
         sensors = []
 
         for attribute, value in self._device.__dict__.items():
-            if attribute[:1] != '_' and value is not None and attribute not in self._registered_sensors:
+            if (
+                attribute[:1] != "_"
+                and value is not None
+                and attribute not in self._registered_sensors
+            ):
                 sensor_class = None
                 if attribute in self.sensor_classes:
                     sensor_class = self.sensor_classes[attribute]
                 if isinstance(value, bool):
-                    sensors.append(GenericBinarySensor(self._device, sensor_class, attribute, attribute))
+                    sensors.append(
+                        GenericBinarySensor(
+                            self._device, sensor_class, attribute, attribute
+                        )
+                    )
                 else:
-                    sensors.append(GenericSensor(self._device, sensor_class, attribute, attribute))
+                    sensors.append(
+                        GenericSensor(self._device, sensor_class, attribute, attribute)
+                    )
                 self._registered_sensors.append(attribute)
 
         return sensors
+
 
 class HaClimate(ClimateEntity):
     """A climate entity."""
@@ -504,7 +546,7 @@ class HaClimate(ClimateEntity):
         "TempSensorShortCut": BinarySensorDeviceClass.PROBLEM,
         "ProductionDefect": BinarySensorDeviceClass.PROBLEM,
         "BatteryCmdDefect": BinarySensorDeviceClass.PROBLEM,
-        }
+    }
     DICT_HA_TO_DD = {
         HVACMode.AUTO: "todo",
         HVACMode.COOL: "todo",
@@ -523,7 +565,10 @@ class HaClimate(ClimateEntity):
         self._device = device
         self._attr_unique_id = f"{self._device.device_id}_climate"
         self._attr_name = self._device.device_name
-        self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT] # , HVACMode.AUTO, HVACMode.COOL,
+        self._attr_hvac_modes = [
+            HVACMode.OFF,
+            HVACMode.HEAT,
+        ]  # , HVACMode.AUTO, HVACMode.COOL,
         self._registered_sensors = []
 
     @property
@@ -532,15 +577,15 @@ class HaClimate(ClimateEntity):
         features = ClimateEntityFeature(0)
 
         features = features | ClimateEntityFeature.TARGET_TEMPERATURE
-        #set_req = self.gateway.const.SetReq
-        #if set_req.V_HVAC_SPEED in self._values:
+        # set_req = self.gateway.const.SetReq
+        # if set_req.V_HVAC_SPEED in self._values:
         #    features = features | ClimateEntityFeature.FAN_MODE
-        #if (
+        # if (
         #    set_req.V_HVAC_SETPOINT_COOL in self._values
         #    and set_req.V_HVAC_SETPOINT_HEAT in self._values
-        #):
+        # ):
         #    features = features | ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
-        #else:
+        # else:
         #    features = features | ClimateEntityFeature.TARGET_TEMPERATURE
         return features
 
@@ -561,7 +606,7 @@ class HaClimate(ClimateEntity):
     def hvac_mode(self) -> HVACMode:
         """Return the current operation (e.g. heat, cool, idle)."""
         # FIXME
-        #return self._device.hvacMode
+        # return self._device.hvacMode
         return HVACMode.HEAT
 
     @property
@@ -604,17 +649,28 @@ class HaClimate(ClimateEntity):
         sensors = []
 
         for attribute, value in self._device.__dict__.items():
-            if attribute[:1] != '_' and value is not None and attribute not in self._registered_sensors:
+            if (
+                attribute[:1] != "_"
+                and value is not None
+                and attribute not in self._registered_sensors
+            ):
                 sensor_class = None
                 if attribute in self.sensor_classes:
                     sensor_class = self.sensor_classes[attribute]
                 if isinstance(value, bool):
-                    sensors.append(GenericBinarySensor(self._device, sensor_class, attribute, attribute))
+                    sensors.append(
+                        GenericBinarySensor(
+                            self._device, sensor_class, attribute, attribute
+                        )
+                    )
                 else:
-                    sensors.append(GenericSensor(self._device, sensor_class, attribute, attribute))
+                    sensors.append(
+                        GenericSensor(self._device, sensor_class, attribute, attribute)
+                    )
                 self._registered_sensors.append(attribute)
 
         return sensors
+
 
 class HaWindow(CoverEntity):
     """Representation of a Cover."""
@@ -626,7 +682,6 @@ class HaWindow(CoverEntity):
     sensor_classes = {
         "battDefect": BinarySensorDeviceClass.PROBLEM,
         "intrusionDetect": BinarySensorDeviceClass.PROBLEM,
-
     }
 
     def __init__(self, device: TydomWindow) -> None:
@@ -644,7 +699,6 @@ class HaWindow(CoverEntity):
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
         self._device.remove_callback(self.async_write_ha_state)
-
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -664,17 +718,28 @@ class HaWindow(CoverEntity):
         sensors = []
 
         for attribute, value in self._device.__dict__.items():
-            if attribute[:1] != '_' and value is not None and attribute not in self._registered_sensors:
+            if (
+                attribute[:1] != "_"
+                and value is not None
+                and attribute not in self._registered_sensors
+            ):
                 sensor_class = None
                 if attribute in self.sensor_classes:
                     sensor_class = self.sensor_classes[attribute]
                 if isinstance(value, bool):
-                    sensors.append(GenericBinarySensor(self._device, sensor_class, attribute, attribute))
+                    sensors.append(
+                        GenericBinarySensor(
+                            self._device, sensor_class, attribute, attribute
+                        )
+                    )
                 else:
-                    sensors.append(GenericSensor(self._device, sensor_class, attribute, attribute))
+                    sensors.append(
+                        GenericSensor(self._device, sensor_class, attribute, attribute)
+                    )
                 self._registered_sensors.append(attribute)
 
         return sensors
+
 
 class HaDoor(LockEntity, CoverEntity):
     """Representation of a Cover."""
@@ -722,17 +787,28 @@ class HaDoor(LockEntity, CoverEntity):
         sensors = []
 
         for attribute, value in self._device.__dict__.items():
-            if attribute[:1] != '_' and value is not None and attribute not in self._registered_sensors:
+            if (
+                attribute[:1] != "_"
+                and value is not None
+                and attribute not in self._registered_sensors
+            ):
                 sensor_class = None
                 if attribute in self.sensor_classes:
                     sensor_class = self.sensor_classes[attribute]
                 if isinstance(value, bool):
-                    sensors.append(GenericBinarySensor(self._device, sensor_class, attribute, attribute))
+                    sensors.append(
+                        GenericBinarySensor(
+                            self._device, sensor_class, attribute, attribute
+                        )
+                    )
                 else:
-                    sensors.append(GenericSensor(self._device, sensor_class, attribute, attribute))
+                    sensors.append(
+                        GenericSensor(self._device, sensor_class, attribute, attribute)
+                    )
                 self._registered_sensors.append(attribute)
 
         return sensors
+
 
 class HaGate(CoverEntity):
     """Representation of a Cover."""
@@ -771,17 +847,28 @@ class HaGate(CoverEntity):
         sensors = []
 
         for attribute, value in self._device.__dict__.items():
-            if attribute[:1] != '_' and value is not None and attribute not in self._registered_sensors:
+            if (
+                attribute[:1] != "_"
+                and value is not None
+                and attribute not in self._registered_sensors
+            ):
                 sensor_class = None
                 if attribute in self.sensor_classes:
                     sensor_class = self.sensor_classes[attribute]
                 if isinstance(value, bool):
-                    sensors.append(GenericBinarySensor(self._device, sensor_class, attribute, attribute))
+                    sensors.append(
+                        GenericBinarySensor(
+                            self._device, sensor_class, attribute, attribute
+                        )
+                    )
                 else:
-                    sensors.append(GenericSensor(self._device, sensor_class, attribute, attribute))
+                    sensors.append(
+                        GenericSensor(self._device, sensor_class, attribute, attribute)
+                    )
                 self._registered_sensors.append(attribute)
 
         return sensors
+
 
 class HaGarage(CoverEntity):
     """Representation of a Cover."""
@@ -820,17 +907,28 @@ class HaGarage(CoverEntity):
         sensors = []
 
         for attribute, value in self._device.__dict__.items():
-            if attribute[:1] != '_' and value is not None and attribute not in self._registered_sensors:
+            if (
+                attribute[:1] != "_"
+                and value is not None
+                and attribute not in self._registered_sensors
+            ):
                 sensor_class = None
                 if attribute in self.sensor_classes:
                     sensor_class = self.sensor_classes[attribute]
                 if isinstance(value, bool):
-                    sensors.append(GenericBinarySensor(self._device, sensor_class, attribute, attribute))
+                    sensors.append(
+                        GenericBinarySensor(
+                            self._device, sensor_class, attribute, attribute
+                        )
+                    )
                 else:
-                    sensors.append(GenericSensor(self._device, sensor_class, attribute, attribute))
+                    sensors.append(
+                        GenericSensor(self._device, sensor_class, attribute, attribute)
+                    )
                 self._registered_sensors.append(attribute)
 
         return sensors
+
 
 class HaLight(LightEntity):
     """Representation of a Light."""
@@ -868,14 +966,24 @@ class HaLight(LightEntity):
         sensors = []
 
         for attribute, value in self._device.__dict__.items():
-            if attribute[:1] != '_' and value is not None and attribute not in self._registered_sensors:
+            if (
+                attribute[:1] != "_"
+                and value is not None
+                and attribute not in self._registered_sensors
+            ):
                 sensor_class = None
                 if attribute in self.sensor_classes:
                     sensor_class = self.sensor_classes[attribute]
                 if isinstance(value, bool):
-                    sensors.append(GenericBinarySensor(self._device, sensor_class, attribute, attribute))
+                    sensors.append(
+                        GenericBinarySensor(
+                            self._device, sensor_class, attribute, attribute
+                        )
+                    )
                 else:
-                    sensors.append(GenericSensor(self._device, sensor_class, attribute, attribute))
+                    sensors.append(
+                        GenericSensor(self._device, sensor_class, attribute, attribute)
+                    )
                 self._registered_sensors.append(attribute)
 
         return sensors

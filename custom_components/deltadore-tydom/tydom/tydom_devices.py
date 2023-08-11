@@ -4,10 +4,25 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class TydomBaseEntity:
     """Tydom entity base class."""
-    def __init__(self, product_name, main_version_sw, main_version_hw, main_id, main_reference,
-                 key_version_sw, key_version_hw, key_version_stack, key_reference, boot_reference, boot_version, update_available):
+
+    def __init__(
+        self,
+        product_name,
+        main_version_sw,
+        main_version_hw,
+        main_id,
+        main_reference,
+        key_version_sw,
+        key_version_hw,
+        key_version_stack,
+        key_reference,
+        boot_reference,
+        boot_version,
+        update_available,
+    ):
         self.product_name = product_name
         self.main_version_sw = main_version_sw
         self.main_version_hw = main_version_hw
@@ -55,18 +70,20 @@ class TydomBaseEntity:
             callback()
 
 
-class TydomDevice():
+class TydomDevice:
     """represents a generic device"""
 
-    def __init__(self, uid, name, device_type, endpoint, data):
+    def __init__(self, tydom_client, uid, device_id, name, device_type, endpoint, data):
+        self._tydom_client = tydom_client
         self._uid = uid
+        self._id = device_id
         self._name = name
         self._type = device_type
         self._endpoint = endpoint
         self._callbacks = set()
+
         for key in data:
             setattr(self, key, data[key])
-
 
     def register_callback(self, callback: Callable[[], None]) -> None:
         """Register callback, called when Roller changes state."""
@@ -100,8 +117,8 @@ class TydomDevice():
         """Update the device values from another device"""
         logger.debug("Update device %s", device.device_id)
         for attribute, value in device.__dict__.items():
-            if attribute[:1] != '_' and value is not None:
-                 setattr(self, attribute, value)
+            if attribute[:1] != "_" and value is not None:
+                setattr(self, attribute, value)
         await self.publish_updates()
 
     # In a real implementation, this library would call it's call backs when it was
@@ -111,69 +128,76 @@ class TydomDevice():
         for callback in self._callbacks:
             callback()
 
+
 class TydomShutter(TydomDevice):
     """Represents a shutter"""
-    def __init__(self, uid, name, device_type, endpoint, data):
 
-        super().__init__(uid, name, device_type, endpoint, data)
+    async def down(self) -> None:
+        """Tell cover to go down"""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "positionCmd", "DOWN"
+        )
+
+    async def up(self) -> None:
+        """Tell cover to go up"""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "positionCmd", "UP"
+        )
+
+    async def stop(self) -> None:
+        """Tell cover to stop moving"""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "positionCmd", "STOP"
+        )
+
+    async def set_position(self, position: int) -> None:
+        """
+        Set cover to the given position.
+        """
+        logger.error("set roller position (device) to : %s", position)
+
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "position", str(position)
+        )
+
 
 class TydomEnergy(TydomDevice):
     """Represents an energy sensor (for example TYWATT)"""
-
-    def __init__(self, uid, name, device_type, endpoint, data):
-        logger.info("TydomEnergy : data %s", data)
-
-        super().__init__(uid, name, device_type, endpoint, data)
 
 
 class TydomSmoke(TydomDevice):
     """Represents an smoke detector sensor"""
 
-    def __init__(self, uid, name, device_type, endpoint, data):
-        logger.info("TydomSmoke : data %s", data)
-        super().__init__(uid, name, device_type, endpoint, data)
 
 class TydomBoiler(TydomDevice):
     """represents a boiler"""
 
-    def __init__(self, uid, name, device_type, endpoint, data):
-        logger.info("TydomBoiler : data %s", data)
-        # {'authorization': 'HEATING', 'setpoint': 19.0, 'thermicLevel': None, 'hvacMode': 'NORMAL', 'timeDelay': 0, 'temperature': 21.35, 'tempoOn': False, 'antifrostOn': False, 'loadSheddingOn': False,  'openingDetected': False, 'presenceDetected': False, 'absence': False, 'productionDefect': False, 'batteryCmdDefect': False, 'tempSensorDefect': False, 'tempSensorShortCut': False, 'tempSensorOpenCirc': False, 'boostOn': False, 'anticipCoeff': 30}
-
-        super().__init__(uid, name, device_type, endpoint, data)
 
 class TydomWindow(TydomDevice):
     """represents a window"""
-    def __init__(self, uid, name, device_type, endpoint, data):
-        logger.info("TydomWindow : data %s", data)
-        super().__init__(uid, name, device_type, endpoint, data)
+
 
 class TydomDoor(TydomDevice):
     """represents a door"""
-    def __init__(self, uid, name, device_type, endpoint, data):
-        logger.info("TydomDoor : data %s", data)
-        super().__init__(uid, name, device_type, endpoint, data)
+
 
 class TydomGate(TydomDevice):
-    """represents a door"""
-    def __init__(self, uid, name, device_type, endpoint, data):
-        logger.info("TydomGate : data %s", data)
-        super().__init__(uid, name, device_type, endpoint, data)
+    """represents a gate"""
+
 
 class TydomGarage(TydomDevice):
-    """represents a door"""
-    def __init__(self, uid, name, device_type, endpoint, data):
+    """represents a garage door"""
+
+    def __init__(self, tydom_client, uid, device_id, name, device_type, endpoint, data):
         logger.info("TydomGarage : data %s", data)
-        super().__init__(uid, name, device_type, endpoint, data)
+        super().__init__(
+            tydom_client, uid, device_id, name, device_type, endpoint, data
+        )
+
 
 class TydomLight(TydomDevice):
-    """represents a door"""
-    def __init__(self, uid, name, device_type, endpoint, data):
-        logger.info("TydomLight : data %s", data)
-        super().__init__(uid, name, device_type, endpoint, data)
+    """represents a light"""
 
-class TydoAlarm(TydomDevice):
+
+class TydomAlarm(TydomDevice):
     """represents an alarm"""
-    def __init__(self, uid, name, device_type, endpoint, data):
-        logger.info("TydomAlarm : data %s", data)
-        super().__init__(uid, name, device_type, endpoint, data)

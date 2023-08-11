@@ -213,6 +213,7 @@ device_name = dict()
 device_endpoint = dict()
 device_type = dict()
 
+
 class MessageHandler:
     """Handle incomming Tydom messages"""
 
@@ -354,45 +355,94 @@ class MessageHandler:
         boot_reference = parsed["bootReference"]
         boot_version = parsed["bootVersion"]
         update_available = parsed["updateAvailable"]
-        return [TydomBaseEntity(product_name, main_version_sw, main_version_hw, main_id, main_reference, key_version_sw, key_version_hw, key_version_stack, key_reference, boot_reference, boot_version, update_available)]
+        return [
+            TydomBaseEntity(
+                product_name,
+                main_version_sw,
+                main_version_hw,
+                main_id,
+                main_reference,
+                key_version_sw,
+                key_version_hw,
+                key_version_stack,
+                key_reference,
+                boot_reference,
+                boot_version,
+                update_available,
+            )
+        ]
 
     @staticmethod
-    async def get_device(last_usage, uid, name, endpoint = None, data = None) -> TydomDevice:
+    async def get_device(
+        tydom_client, last_usage, uid, device_id, name, endpoint=None, data=None
+    ) -> TydomDevice:
         """Get device class from its last usage"""
 
-            #FIXME voir: class CoverDeviceClass(StrEnum):
-                # Refer to the cover dev docs for device class descriptions
-                #AWNING = "awning"
-                #BLIND = "blind"
-                #CURTAIN = "curtain"
-                #DAMPER = "damper"
-                #DOOR = "door"
-                #GARAGE = "garage"
-                #GATE = "gate"
-                #SHADE = "shade"
-                #SHUTTER = "shutter"
-                #WINDOW = "window"
+        # FIXME voir: class CoverDeviceClass(StrEnum):
+        # Refer to the cover dev docs for device class descriptions
+        # AWNING = "awning"
+        # BLIND = "blind"
+        # CURTAIN = "curtain"
+        # DAMPER = "damper"
+        # DOOR = "door"
+        # GARAGE = "garage"
+        # GATE = "gate"
+        # SHADE = "shade"
+        # SHUTTER = "shutter"
+        # WINDOW = "window"
         match last_usage:
             case "shutter" | "klineShutter":
-                return TydomShutter(uid, name, last_usage, endpoint, data)
+                return TydomShutter(
+                    tydom_client, uid, device_id, name, last_usage, endpoint, data
+                )
             case "window" | "windowFrench" | "windowSliding" | "klineWindowFrench" | "klineWindowSliding":
-                return TydomWindow(uid, name, last_usage, endpoint, data)
+                return TydomWindow(
+                    tydom_client, uid, device_id, name, last_usage, endpoint, data
+                )
             case "belmDoor" | "klineDoor":
-                return TydomDoor(uid, name, last_usage, endpoint, data)
+                return TydomDoor(
+                    tydom_client, uid, device_id, name, last_usage, endpoint, data
+                )
             case "garage_door":
-                return TydomGarage(uid, name, last_usage, endpoint, data)
+                return TydomGarage(
+                    tydom_client, uid, device_id, name, last_usage, endpoint, data
+                )
             case "gate":
-                return TydomGate(uid, name, last_usage, endpoint, data)
+                return TydomGate(
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    data,
+                )
             case "light":
-                return TydomLight(uid, name, last_usage, endpoint, data)
+                return TydomLight(
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    data,
+                )
             case "conso":
-                return TydomEnergy(uid, name, last_usage, endpoint, data)
+                return TydomEnergy(
+                    tydom_client, uid, device_id, name, last_usage, endpoint, data
+                )
             case "smoke":
-                return TydomSmoke(uid, name, last_usage, endpoint, data)
+                return TydomSmoke(
+                    tydom_client, uid, device_id, name, last_usage, endpoint, data
+                )
             case "boiler":
-                return TydomBoiler(uid, name, last_usage, endpoint, data)
+                return TydomBoiler(
+                    tydom_client, uid, device_id, name, last_usage, endpoint, data
+                )
             case "alarm":
-                return TydoAlarm(uid, name, last_usage, endpoint, data)
+                return TydomAlarm(
+                    tydom_client, uid, device_id, name, last_usage, endpoint, data
+                )
             case _:
                 logger.warn("Unknown usage : %s", last_usage)
                 return
@@ -404,8 +454,8 @@ class MessageHandler:
         for i in parsed["endpoints"]:
             device_unique_id = str(i["id_endpoint"]) + "_" + str(i["id_device"])
 
-            #device = await MessageHandler.get_device(i["last_usage"], device_unique_id, i["name"], i["id_endpoint"], None)
-            #if device is not None:
+            # device = await MessageHandler.get_device(i["last_usage"], device_unique_id, i["name"], i["id_endpoint"], None)
+            # if device is not None:
             #    devices.append(device)
 
             if (
@@ -583,7 +633,6 @@ class MessageHandler:
                                     attr_light[element_name] = element_value
 
                             if type_of_id == "shutter" or type_of_id == "klineShutter":
-
                                 if (
                                     element_name in deviceCoverKeywords
                                     and element_validity == "upToDate"
@@ -766,7 +815,15 @@ class MessageHandler:
                         logger.error("msg_data error in parsing !")
                         logger.error(e)
 
-                    device = await MessageHandler.get_device(type_of_id, unique_id, name_of_id, endpoint_id, data)
+                    device = await MessageHandler.get_device(
+                        self.tydom_client,
+                        type_of_id,
+                        unique_id,
+                        device_id,
+                        name_of_id,
+                        endpoint_id,
+                        data,
+                    )
                     if device is not None:
                         devices.append(device)
 

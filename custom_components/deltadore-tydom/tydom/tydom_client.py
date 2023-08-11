@@ -33,8 +33,9 @@ class TydomClientApiClientCommunicationError(TydomClientApiClientError):
 class TydomClientApiClientAuthenticationError(TydomClientApiClientError):
     """Exception to indicate an authentication error."""
 
-#proxy = None
-proxy = "http://proxy.rd.francetelecom.fr:8080/"
+
+proxy = None
+
 
 class TydomClient:
     """Tydom API Client."""
@@ -46,7 +47,7 @@ class TydomClient:
         password: str,
         alarm_pin: str = None,
         host: str = MEDIATION_URL,
-        event_callback=None
+        event_callback=None,
     ) -> None:
         logger.debug("Initializing TydomClient Class")
 
@@ -71,7 +72,9 @@ class TydomClient:
             self._cmd_prefix = ""
             self._ping_timeout = None
 
-        self._message_handler = MessageHandler(tydom_client=self, cmd_prefix=self._cmd_prefix)
+        self._message_handler = MessageHandler(
+            tydom_client=self, cmd_prefix=self._cmd_prefix
+        )
 
     @staticmethod
     async def async_get_credentials(
@@ -81,9 +84,7 @@ class TydomClient:
         try:
             async with async_timeout.timeout(10):
                 response = await session.request(
-                    method="GET",
-                    url=DELTADORE_AUTH_URL,
-                    proxy=proxy
+                    method="GET", url=DELTADORE_AUTH_URL, proxy=proxy
                 )
 
                 logger.debug(
@@ -112,7 +113,7 @@ class TydomClient:
                     url=signin_url,
                     headers={"Content-Type": ct_header},
                     data=body,
-                    proxy=proxy
+                    proxy=proxy,
                 )
 
                 logger.debug(
@@ -130,7 +131,7 @@ class TydomClient:
                     method="GET",
                     url=DELTADORE_API_SITES + macaddress,
                     headers={"Authorization": f"Bearer {access_token}"},
-                    proxy=proxy
+                    proxy=proxy,
                 )
 
                 logger.debug(
@@ -144,15 +145,14 @@ class TydomClient:
                 response.close()
 
                 await session.close()
-                if (
-                    "sites" in json_response
-                    and len(json_response["sites"]) > 0
-                ):
+                if "sites" in json_response and len(json_response["sites"]) > 0:
                     for site in json_response["sites"]:
                         if "gateway" in site and site["gateway"]["mac"] == macaddress:
                             password = json_response["sites"][0]["gateway"]["password"]
                             return password
-                raise TydomClientApiClientAuthenticationError("Tydom credentials not found")
+                raise TydomClientApiClientAuthenticationError(
+                    "Tydom credentials not found"
+                )
         except asyncio.TimeoutError as exception:
             raise TydomClientApiClientCommunicationError(
                 "Timeout error fetching information",
@@ -187,7 +187,7 @@ class TydomClient:
                     url=f"https://{self._host}:443/mediation/client?mac={self._mac}&appli=1",
                     headers=http_headers,
                     json=None,
-                    proxy=proxy
+                    proxy=proxy,
                 )
                 logger.debug(
                     "response status : %s\nheaders : %s\ncontent : %s",
@@ -207,7 +207,6 @@ class TydomClient:
                 else:
                     raise TydomClientApiClientError("Could't find auth nonce")
 
-
                 http_headers = {}
                 http_headers["Authorization"] = self.build_digest_headers(
                     re_matcher.group(1)
@@ -219,7 +218,7 @@ class TydomClient:
                     headers=http_headers,
                     autoping=True,
                     heartbeat=2,
-                    proxy=proxy
+                    proxy=proxy,
                 )
 
                 return connection
@@ -254,10 +253,13 @@ class TydomClient:
             if self._connection.closed:
                 await self._connection.close()
                 await asyncio.sleep(10)
-                self._connection = await self.async_connect()
+                self.listen_tydom(await self.async_connect())
+                # self._connection = await self.async_connect()
 
             msg = await self._connection.receive()
-            logger.info("Incomming message - type : %s - message : %s", msg.type, msg.data)
+            logger.info(
+                "Incomming message - type : %s - message : %s", msg.type, msg.data
+            )
             incoming_bytes_str = cast(bytes, msg.data)
 
             return await self._message_handler.incoming_triage(incoming_bytes_str)
@@ -429,7 +431,11 @@ class TydomClient:
         )
         a_bytes = bytes(str_request, "ascii")
         logger.debug("Sending message to tydom (%s %s)", "PUT data", body)
-        await self._connection.send(a_bytes)
+        # self._connection.send_bytes
+        # self._connection.send_json
+        # self._connection.send_str
+        # await self._connection.send(a_bytes)
+        await self._connection.send_bytes(a_bytes)
         return 0
 
     async def put_alarm_cdata(self, device_id, alarm_id=None, value=None, zone_id=None):

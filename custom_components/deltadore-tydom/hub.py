@@ -47,7 +47,9 @@ class Hub:
         self._hass = hass
         self._name = mac
         self._id = "Tydom-" + mac
-        self.device_info = TydomBaseEntity(None, None, None, None, None, None, None, None, None, None, None, False)
+        self.device_info = TydomBaseEntity(
+            None, None, None, None, None, None, None, None, None, None, None, False
+        )
         self.devices = {}
         self.ha_devices = {}
         self.add_cover_callback = None
@@ -55,6 +57,7 @@ class Hub:
         self.add_climate_callback = None
         self.add_light_callback = None
         self.add_lock_callback = None
+        self.add_light_callback = None
 
         self._tydom_client = TydomClient(
             hass=self._hass,
@@ -62,13 +65,13 @@ class Hub:
             host=self._host,
             password=self._pass,
             alarm_pin=self._pin,
-            event_callback=self.handle_event
+            event_callback=self.handle_event,
         )
 
         self.rollers = [
-        #    Roller(f"{self._id}_1", f"{self._name} 1", self),
-        #    Roller(f"{self._id}_2", f"{self._name} 2", self),
-        #    Roller(f"{self._id}_3", f"{self._name} 3", self),
+            #    Roller(f"{self._id}_1", f"{self._name} 1", self),
+            #    Roller(f"{self._id}_2", f"{self._name} 2", self),
+            #    Roller(f"{self._id}_3", f"{self._name} 3", self),
         ]
         self.online = True
 
@@ -108,13 +111,19 @@ class Hub:
                     if isinstance(device, TydomBaseEntity):
                         await self.device_info.update_device(device)
                     else:
-                        logger.error("*** publish_updates for device : %s", device)
+                        logger.warn("*** publish_updates for device : %s", device)
                         if device.device_id not in self.devices:
                             self.devices[device.device_id] = device
                             await self.create_ha_device(device)
                         else:
-                            logger.warn("update device %s : %s", device.device_id, self.devices[device.device_id])
-                            await self.update_ha_device(self.devices[device.device_id], device)
+                            logger.warn(
+                                "update device %s : %s",
+                                device.device_id,
+                                self.devices[device.device_id],
+                            )
+                            await self.update_ha_device(
+                                self.devices[device.device_id], device
+                            )
 
     async def create_ha_device(self, device):
         """Create a new HA device"""
@@ -202,7 +211,12 @@ class Hub:
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
             case _:
-                logger.error("unsupported device type (%s) %s for device %s", type(device), device.device_type, device.device_id)
+                logger.error(
+                    "unsupported device type (%s) %s for device %s",
+                    type(device),
+                    device.device_type,
+                    device.device_id,
+                )
                 return
 
     async def update_ha_device(self, stored_device, device):
@@ -213,7 +227,6 @@ class Hub:
         if len(new_sensors) > 0 and self.add_sensor_callback is not None:
             # add new sensors
             self.add_sensor_callback(new_sensors)
-
 
     async def ping(self) -> None:
         """Periodically send pings"""
@@ -263,7 +276,7 @@ class Roller:
         Set dummy cover to the given position.
         State is announced a random number of seconds later.
         """
-        logger.error("set roller position")
+        logger.error("set roller position (hub)")
         self._target_position = position
 
         # Update the moving status, and broadcast the update
