@@ -1,4 +1,4 @@
-# How it Tydom working ?
+# How is Tydom working ?
 
 ## Authentication
 GET request to https://deltadoreadb2ciot.b2clogin.com/deltadoreadb2ciot.onmicrosoft.com/v2.0/.well-known/openid-configuration?p=B2C_1_AccountProviderROPC_SignIn
@@ -30,5 +30,28 @@ POST request to https://pilotage.iotdeltadore.com/pilotageservice/api/v1/control
 }
 
 The id is the mac address
+this is also available using websockets.
 
+connection to Tydom/cloud mediation server
+GET request to https://host:443/mediation/client?mac=001Axxxxxxxx&appli=1
+host is either tydom ip or mediation server address (depending on mode used)
+This first request is used to get the digest authentication informations and to indicate the server that we want to upgrade connection to websockets using request headers
 
+GET request to wss://host:443/mediation/client?mac=001Axxxxxxxx&appli=1
+this request is sent with digest authentication challenge answer
+
+We now have a websocket connection to send commands
+
+Init flow used by the app :
+GET /ping
+GET /info
+PUT /configs/gateway/api_mode
+GET /configs/gateway/geoloc
+GET /configs/gateway/local_claim
+GET /devices/meta
+GET /areas/meta
+GET /devices/cmeta
+GET /areas/cmeta
+GET /devices/data
+GET /areas/data
+POST /refresh/all

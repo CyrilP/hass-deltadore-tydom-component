@@ -5,8 +5,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class TydomBaseEntity:
-    """Tydom entity base class."""
+class Tydom:
+    """Tydom"""
 
     def __init__(
         self,
@@ -81,7 +81,6 @@ class TydomDevice:
         self._type = device_type
         self._endpoint = endpoint
         self._callbacks = set()
-
         for key in data:
             setattr(self, key, data[key])
 
@@ -155,6 +154,38 @@ class TydomShutter(TydomDevice):
         Set cover to the given position.
         """
         logger.error("set roller position (device) to : %s", position)
+
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "position", str(position)
+        )
+
+    # FIXME replace command
+    async def slope_open(self) -> None:
+        """Tell the cover to tilt open"""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "positionCmd", "DOWN"
+        )
+
+    # FIXME replace command
+    async def slope_close(self) -> None:
+        """Tell the cover to tilt closed"""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "positionCmd", "UP"
+        )
+
+    # FIXME replace command
+    async def slope_stop(self) -> None:
+        """Tell the cover to stop tilt"""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "positionCmd", "STOP"
+        )
+
+    # FIXME replace command
+    async def set_slope_position(self, position: int) -> None:
+        """
+        Set cover to the given position.
+        """
+        logger.error("set roller tilt position (device) to : %s", position)
 
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "position", str(position)

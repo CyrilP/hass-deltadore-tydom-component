@@ -16,7 +16,7 @@ from aiohttp import ClientWebSocketResponse, ClientSession
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from .tydom.tydom_client import TydomClient
-from .tydom.tydom_devices import TydomBaseEntity
+from .tydom.tydom_devices import Tydom
 from .ha_entities import *
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ class Hub:
         self._hass = hass
         self._name = mac
         self._id = "Tydom-" + mac
-        self.device_info = TydomBaseEntity(
+        self.device_info = Tydom(
             None, None, None, None, None, None, None, None, None, None, None, False
         )
         self.devices = {}
@@ -108,7 +108,7 @@ class Hub:
             if devices is not None:
                 for device in devices:
                     logger.info("*** device %s", device)
-                    if isinstance(device, TydomBaseEntity):
+                    if isinstance(device, Tydom):
                         await self.device_info.update_device(device)
                     else:
                         logger.warn("*** publish_updates for device : %s", device)
@@ -237,7 +237,8 @@ class Hub:
 
     async def async_trigger_firmware_update(self) -> None:
         """Trigger firmware update"""
-        logger.info("Installing update...")
+        logger.info("Installing firmware update...")
+        self._tydom_client.update_firmware()
 
 
 class Roller:

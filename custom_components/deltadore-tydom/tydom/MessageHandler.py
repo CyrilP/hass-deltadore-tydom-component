@@ -356,7 +356,7 @@ class MessageHandler:
         boot_version = parsed["bootVersion"]
         update_available = parsed["updateAvailable"]
         return [
-            TydomBaseEntity(
+            Tydom(
                 product_name,
                 main_version_sw,
                 main_version_hw,

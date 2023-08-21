@@ -241,9 +241,23 @@ class TydomClient:
         """Listen for Tydom messages"""
         logger.info("Listen for Tydom messages")
         self._connection = connection
+        await self.ping()
         await self.get_info()
+        await self.put_api_mode()
+        # await self.get_geoloc()
+        # await self.get_local_claim()
+        # await self.get_devices_meta()
+        # await self.get_areas_meta()
+        # await self.get_devices_cmeta()
+        # await self.get_areas_cmeta()
+        # await self.get_devices_data()
+        # await self.get_areas_data()
+        # await self.post_refresh()
+
+        # await self.get_info()
         await self.post_refresh()
         await self.get_configs_file()
+        await self.get_devices_meta()
         await self.get_devices_cmeta()
         await self.get_devices_data()
 
@@ -327,6 +341,24 @@ class TydomClient:
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
+    async def get_local_claim(self):
+        """Ask some information from Tydom"""
+        msg_type = "/configs/gateway/local_claim"
+        req = "GET"
+        await self.send_message(method=req, msg=msg_type)
+
+    async def get_geoloc(self):
+        """Ask some information from Tydom"""
+        msg_type = "/configs/gateway/geoloc"
+        req = "GET"
+        await self.send_message(method=req, msg=msg_type)
+
+    async def put_api_mode(self):
+        """Use Tydom API mode ?"""
+        msg_type = "/configs/gateway/api_mode"
+        req = "PUT"
+        await self.send_message(method=req, msg=msg_type)
+
     async def post_refresh(self):
         """Refresh (all)"""
         msg_type = "/refresh/all"
@@ -366,7 +398,7 @@ class TydomClient:
             await self.get_poll_device_data(url)
 
     async def get_configs_file(self):
-        """List the device to get the endpoint id"""
+        """List the devices to get the endpoint id"""
         msg_type = "/configs/file"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
@@ -519,3 +551,9 @@ class TydomClient:
                 logger.error(a_bytes)
         except BaseException:
             logger.error("put_alarm_cdata ERROR !", exc_info=True)
+
+    async def update_firmware(self):
+        """Update Tydom firmware"""
+        msg_type = "/configs/gateway/update"
+        req = "PUT"
+        await self.send_message(method=req, msg=msg_type)

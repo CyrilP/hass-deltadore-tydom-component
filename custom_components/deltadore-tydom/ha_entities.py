@@ -24,10 +24,15 @@ from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.helpers.entity import Entity, DeviceInfo, Entity
 from homeassistant.components.cover import (
     ATTR_POSITION,
+    ATTR_TILT_POSITION,
     SUPPORT_CLOSE,
     SUPPORT_OPEN,
     SUPPORT_SET_POSITION,
     SUPPORT_STOP,
+    SUPPORT_SET_TILT_POSITION,
+    SUPPORT_OPEN_TILT,
+    SUPPORT_CLOSE_TILT,
+    SUPPORT_STOP_TILT,
     CoverEntity,
     CoverDeviceClass,
 )
@@ -299,9 +304,7 @@ class HACover(CoverEntity):
     # imported above, we can tell HA the features that are supported by this entity.
     # If the supported features were dynamic (ie: different depending on the external
     # device it connected to), then this should be function with an @property decorator.
-    supported_features = (
-        SUPPORT_SET_POSITION | SUPPORT_OPEN | SUPPORT_CLOSE | SUPPORT_STOP
-    )
+    supported_features = 0
     device_class = CoverDeviceClass.SHUTTER
 
     sensor_classes = {
@@ -330,6 +333,22 @@ class HACover(CoverEntity):
         # entity screens, and used to build the Entity ID that's used is automations etc.
         self._attr_name = self._shutter.device_name
         self._registered_sensors = []
+        if hasattr(shutter, "position"):
+            self.supported_features = (
+                self.supported_features
+                | SUPPORT_SET_POSITION
+                | SUPPORT_OPEN
+                | SUPPORT_CLOSE
+                | SUPPORT_STOP
+            )
+        if hasattr(shutter, "slope"):
+            self.supported_features = (
+                self.supported_features
+                | SUPPORT_SET_TILT_POSITION
+                | SUPPORT_OPEN_TILT
+                | SUPPORT_CLOSE_TILT
+                | SUPPORT_STOP_TILT
+            )
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
@@ -404,6 +423,11 @@ class HACover(CoverEntity):
         """Return if the cover is closed, same as position 0."""
         return self._shutter.position == 0
 
+    @property
+    def current_cover_tilt_position(self):
+        """Return the current tilt position of the cover."""
+        return self._shutter.slope
+
     # @property
     # def is_closing(self) -> bool:
     #    """Return if the cover is closing or not."""
@@ -431,6 +455,22 @@ class HACover(CoverEntity):
     async def async_set_cover_position(self, **kwargs: Any) -> None:
         """Set the cover's position."""
         await self._shutter.set_position(kwargs[ATTR_POSITION])
+
+    async def async_open_cover_tilt(self, **kwargs):
+        """Open the cover tilt."""
+        await self._shutter.slope_open()
+
+    async def async_close_cover_tilt(self, **kwargs):
+        """Close the cover tilt."""
+        await self._shutter.slope_close()
+
+    async def async_set_cover_tilt_position(self, **kwargs):
+        """Move the cover tilt to a specific position."""
+        await self._shutter.set_slope_position(kwargs[ATTR_TILT_POSITION])
+
+    async def async_stop_cover_tilt(self, **kwargs):
+        """Stop the cover tilt."""
+        await self._shutter.slope_stop()
 
     def get_sensors(self) -> list:
         """Get available sensors for this entity"""
