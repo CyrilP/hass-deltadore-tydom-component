@@ -20,6 +20,17 @@ Platform | Description
 `binary_sensor` | Show something `True` or `False`.
 `sensor` | Show info from blueprint API.
 `switch` | Switch something `True` or `False`.
+`cover` | controls an opening or cover.
+`climate` | controls temperature, humidity, or fans.
+`light` | controls a light.
+`alarm_control_panel` | controls an alarm.
+
+Tested hardware
+- Cover (Up/Down/Stop)
+- Tywatt 5400
+- Tyxal+ DFR
+- K-Line DVI
+- Typass ATL (zones temperatures, target temperature, mode, power usage)
 
 ## Installation
 
