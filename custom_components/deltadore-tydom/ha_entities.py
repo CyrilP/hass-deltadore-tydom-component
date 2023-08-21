@@ -426,7 +426,10 @@ class HACover(CoverEntity):
     @property
     def current_cover_tilt_position(self):
         """Return the current tilt position of the cover."""
-        return self._shutter.slope
+        if hasattr(self._shutter, "slope"):
+            return self._shutter.slope
+        else:
+            return None
 
     # @property
     # def is_closing(self) -> bool:
