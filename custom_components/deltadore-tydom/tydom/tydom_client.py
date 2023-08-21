@@ -427,12 +427,6 @@ class TydomClient:
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
-    async def get_data(self):
-        """Get all config/metadata/data"""
-        await self.get_configs_file()
-        await self.get_devices_cmeta()
-        await self.get_devices_data()
-
     async def get_device_data(self, id):
         """Give order to endpoint"""
         # 10 here is the endpoint = the device (shutter in this case) to open.
