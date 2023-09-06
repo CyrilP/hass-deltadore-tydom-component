@@ -255,11 +255,14 @@ class TydomClient:
         # await self.post_refresh()
 
         # await self.get_info()
+        await self.get_groups()
         await self.post_refresh()
         await self.get_configs_file()
         await self.get_devices_meta()
         await self.get_devices_cmeta()
         await self.get_devices_data()
+
+        await self.get_scenarii()
 
     async def consume_messages(self):
         """Read and parse incomming messages"""
@@ -459,6 +462,12 @@ class TydomClient:
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
+    async def get_groups(self):
+        """Get the groups"""
+        msg_type = "/groups/file"
+        req = "GET"
+        await self.send_message(method=req, msg=msg_type)
+
     async def put_devices_data(self, device_id, endpoint_id, name, value):
         """Give order (name + value) to endpoint"""
         # For shutter, value is the percentage of closing
@@ -475,10 +484,6 @@ class TydomClient:
         )
         a_bytes = bytes(str_request, "ascii")
         logger.debug("Sending message to tydom (%s %s)", "PUT data", body)
-        # self._connection.send_bytes
-        # self._connection.send_json
-        # self._connection.send_str
-        # await self._connection.send(a_bytes)
         await self._connection.send_bytes(a_bytes)
         return 0
 

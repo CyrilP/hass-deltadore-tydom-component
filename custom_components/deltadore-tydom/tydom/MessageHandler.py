@@ -5,6 +5,7 @@ from http.server import BaseHTTPRequestHandler
 from io import BytesIO
 import traceback
 import urllib3
+import re
 
 from .tydom_devices import *
 
@@ -221,15 +222,84 @@ class MessageHandler:
         self.tydom_client = tydom_client
         self.cmd_prefix = cmd_prefix
 
+    @staticmethod
+    def get_uri_origin(data) -> str:
+        """Extract Uri-Origin from Tydom messages if present"""
+        uri_origin = ""
+        re_matcher = re.match(
+            ".*Uri-Origin: ([a-zA-Z0-9\\-._~:/?#\\[\\]@!$&'\\(\\)\\*\\+,;%=]+).*",
+            data,
+        )
+
+        if re_matcher:
+            # logger.info("///// Uri-Origin : %s", re_matcher.group(1))
+            uri_origin = re_matcher.group(1)
+        # else:
+        # logger.info("///// no match")
+        return uri_origin
+
+    @staticmethod
+    def get_http_request_line(data) -> str:
+        """Extract Http request line"""
+        request_line = ""
+        re_matcher = re.match(
+            "b'(.*)HTTP/1.1",
+            data,
+        )
+        if re_matcher:
+            # logger.info("///// PUT : %s", re_matcher.group(1))
+            request_line = re_matcher.group(1)
+        # else:
+        #    logger.info("///// no match")
+        return request_line
+
     async def incoming_triage(self, bytes_str):
         """Identify message type and dispatch the result"""
 
         incoming = None
         first = str(bytes_str[:40])
+
+        # Find Uri-Origin in header if available
+        uri_origin = MessageHandler.get_uri_origin(str(bytes_str))
+
+        # Find http request line before http response
+        http_request_line = MessageHandler.get_http_request_line(str(bytes_str))
+
         try:
-            if "Uri-Origin: /refresh/all" in first in first:
+            if len(http_request_line) > 0:
+                logger.debug("%s detected !", http_request_line)
+                try:
+                    try:
+                        incoming = self.parse_put_response(bytes_str)
+                    except BaseException:
+                        # Tywatt response starts at 7
+                        incoming = self.parse_put_response(bytes_str, 7)
+                    return await self.parse_response(
+                        incoming, uri_origin, http_request_line
+                    )
+                except BaseException:
+                    logger.error("Error when parsing tydom message (%s)", bytes_str)
+                    return None
+            elif len(uri_origin) > 0:
+                response = self.response_from_bytes(bytes_str[len(self.cmd_prefix) :])
+                incoming = response.data.decode("utf-8")
+                try:
+                    return await self.parse_response(
+                        incoming, uri_origin, http_request_line
+                    )
+                except BaseException:
+                    logger.error("Error when parsing tydom message (%s)", bytes_str)
+                    return None
+            else:
+                logger.warning("Unknown tydom message type received (%s)", bytes_str)
+                return None
+
+            """
+            if "/refresh/all" in uri_origin:
                 pass
-            elif ("PUT /devices/data" in first) or ("/devices/cdata" in first):
+            elif ("PUT /devices/data" in http_request_line) or (
+                "/devices/cdata" in http_request_line
+            ):
                 logger.debug("PUT /devices/data message detected !")
                 try:
                     try:
@@ -245,9 +315,7 @@ class MessageHandler:
                     return None
             elif "scn" in first:
                 try:
-                    # FIXME
-                    # incoming = get(bytes_str)
-                    incoming = first
+                    incoming = str(bytes_str)
                     scenarii = await self.parse_response(incoming)
                     logger.debug("Scenarii message processed")
                     return scenarii
@@ -256,7 +324,7 @@ class MessageHandler:
                         "Error when parsing Scenarii tydom message (%s)", bytes_str
                     )
                     return None
-            elif "POST" in first:
+            elif "POST" in http_request_line:
                 try:
                     incoming = self.parse_put_response(bytes_str)
                     post = await self.parse_response(incoming)
@@ -267,6 +335,8 @@ class MessageHandler:
                         "Error when parsing POST tydom message (%s)", bytes_str
                     )
                     return None
+            elif "/devices/meta" in uri_origin:
+                pass
             elif "HTTP/1.1" in first:
                 response = self.response_from_bytes(bytes_str[len(self.cmd_prefix) :])
                 incoming = response.data.decode("utf-8")
@@ -279,34 +349,44 @@ class MessageHandler:
                     return None
             else:
                 logger.warning("Unknown tydom message type received (%s)", bytes_str)
-                return None
+                return None """
 
-        except Exception as e:
-            logger.error("Technical error when parsing tydom message (%s)", bytes_str)
+        except Exception as ex:
+            logger.error(
+                "Technical error when parsing tydom message (%s) : %s", bytes_str, ex
+            )
             logger.debug("Incoming payload (%s)", incoming)
-            logger.debug("exception : %s", e)
+            logger.debug("exception : %s", ex)
             return None
 
     # Basic response parsing. Typically GET responses + instanciate covers and
     # alarm class for updating data
-    async def parse_response(self, incoming):
+    async def parse_response(self, incoming, uri_origin, http_request_line):
         data = incoming
         msg_type = None
         first = str(data[:40])
 
         if data != "":
-            if "id_catalog" in data:
+            if "/configs/file" in uri_origin:
                 msg_type = "msg_config"
-            elif "cmetadata" in data:
+            elif "/devices/cmeta" in uri_origin:
                 msg_type = "msg_cmetadata"
+            elif "/configs/gateway/api_mode" in uri_origin:
+                msg_type = "msg_api_mode"
+            elif "/groups/file" in uri_origin:
+                msg_type = "msg_groups"
+            elif "/devices/meta" in uri_origin:
+                msg_type = "msg_metadata"
+            elif "/scenarios/file" in uri_origin:
+                msg_type = "msg_scenarios"
             elif "cdata" in data:
                 msg_type = "msg_cdata"
-            elif "id" in first:
-                msg_type = "msg_data"
             elif "doctype" in first:
                 msg_type = "msg_html"
-            elif "productName" in first:
+            elif "/info" in uri_origin:
                 msg_type = "msg_info"
+            elif "id" in first:
+                msg_type = "msg_data"
 
             if msg_type is None:
                 logger.warning("Unknown message type received %s", data)
@@ -391,7 +471,7 @@ class MessageHandler:
         # SHUTTER = "shutter"
         # WINDOW = "window"
         match last_usage:
-            case "shutter" | "klineShutter":
+            case "shutter" | "klineShutter" | "awning":
                 return TydomShutter(
                     tydom_client, uid, device_id, name, last_usage, endpoint, data
                 )
@@ -435,7 +515,7 @@ class MessageHandler:
                 return TydomSmoke(
                     tydom_client, uid, device_id, name, last_usage, endpoint, data
                 )
-            case "boiler":
+            case "boiler" | "sh_hvac":
                 return TydomBoiler(
                     tydom_client, uid, device_id, name, last_usage, endpoint, data
                 )

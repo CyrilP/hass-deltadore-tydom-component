@@ -11,7 +11,15 @@ from .const import DOMAIN
 
 # List of platforms to support. There should be a matching .py file for each,
 # eg <cover.py> and <sensor.py>
-PLATFORMS: list[str] = [Platform.CLIMATE, Platform.COVER, Platform.SENSOR, Platform.LOCK,  Platform.LIGHT, Platform.UPDATE]
+PLATFORMS: list[str] = [
+    # Platform.ALARM_CONTROL_PANEL,
+    Platform.CLIMATE,
+    Platform.COVER,
+    Platform.SENSOR,
+    Platform.LOCK,
+    Platform.LIGHT,
+    Platform.UPDATE,
+]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -36,12 +44,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.async_create_background_task(
             target=tydom_hub.setup(connection), hass=hass, name="Tydom"
         )
-        #entry.async_create_background_task(
+        # entry.async_create_background_task(
         #    target=tydom_hub.ping(connection), hass=hass, name="Tydom ping"
-        #)
+        # )
     except Exception as err:
         raise ConfigEntryNotReady from err
-
 
     # This creates each HA object for each platform your device requires.
     # It's done by calling the `async_setup_entry` function in each platform module.
