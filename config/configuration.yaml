@@ -3,7 +3,8 @@ default_config:
 
 # https://www.home-assistant.io/integrations/logger/
 logger:
-  default: warn
+  default: info
   logs:
     custom_components.deltadore-tydom: debug
 
+# demo:

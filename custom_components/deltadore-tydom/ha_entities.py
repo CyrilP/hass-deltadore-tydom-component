@@ -19,9 +19,17 @@ from homeassistant.components.climate import (
     HVACAction,
     HVACMode,
 )
-from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
+from homeassistant.const import (
+    PERCENTAGE,
+    ATTR_TEMPERATURE,
+    UnitOfTemperature,
+    UnitOfElectricPotential,
+    UnitOfEnergy,
+    UnitOfPower,
+    UnitOfElectricCurrent,
+)
 
-from homeassistant.helpers.entity import Entity, DeviceInfo, Entity
+from homeassistant.helpers.entity import Entity, DeviceInfo
 from homeassistant.components.cover import (
     ATTR_POSITION,
     ATTR_TILT_POSITION,
@@ -36,7 +44,7 @@ from homeassistant.components.cover import (
     CoverEntity,
     CoverDeviceClass,
 )
-from homeassistant.components.sensor import SensorDeviceClass
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass, SensorEntity
 from homeassistant.components.light import LightEntity
 from homeassistant.components.lock import LockEntity
 
@@ -45,7 +53,7 @@ from .tydom.tydom_devices import *
 from .const import DOMAIN, LOGGER
 
 
-class GenericSensor(Entity):
+class GenericSensor(SensorEntity):
     """Representation of a generic sensor"""
 
     should_poll = False
@@ -54,8 +62,10 @@ class GenericSensor(Entity):
         self,
         device: TydomDevice,
         device_class: SensorDeviceClass,
+        state_class: SensorStateClass,
         name: str,
         attribute: str,
+        unit_of_measurement
     ):
         """Initialize the sensor."""
         self._device = device
@@ -63,6 +73,8 @@ class GenericSensor(Entity):
         self._attr_name = f"{self._device.device_name} {name}"
         self._attribute = attribute
         self._attr_device_class = device_class
+        self._attr_state_class = state_class
+        self._attr_native_unit_of_measurement = unit_of_measurement
 
     @property
     def state(self):
@@ -231,6 +243,50 @@ class HAEnergy(Entity):
         "outTemperature": SensorDeviceClass.TEMPERATURE,
     }
 
+
+    #MEASUREMENT = "measurement"
+    """The state represents a measurement in present time."""
+    #TOTAL = "total"
+    """The state represents a total amount.
+    For example: net energy consumption"""
+    #TOTAL_INCREASING = "total_increasing"
+    """The state represents a monotonically increasing total.
+    For example: an amount of consumed gas"""
+
+    state_classes = {
+        "energyTotIndexWatt" : SensorStateClass.TOTAL_INCREASING,
+        "energyIndexECSWatt" : SensorStateClass.TOTAL_INCREASING,
+        "energyIndexHeatGas" : SensorStateClass.TOTAL_INCREASING,
+    }
+
+    units = {
+        "energyInstantTotElec": UnitOfElectricCurrent.AMPERE,
+        "energyInstantTotElec_Min": UnitOfElectricCurrent.AMPERE,
+        "energyInstantTotElec_Max": UnitOfElectricCurrent.AMPERE,
+        "energyScaleTotElec_Min": UnitOfElectricCurrent.AMPERE,
+        "energyScaleTotElec_Max": UnitOfElectricCurrent.AMPERE,
+        "energyInstantTotElecP": UnitOfPower.WATT,
+        "energyInstantTotElec_P_Min": UnitOfPower.WATT,
+        "energyInstantTotElec_P_Max": UnitOfPower.WATT,
+        "energyScaleTotElec_P_Min": UnitOfPower.WATT,
+        "energyScaleTotElec_P_Max": UnitOfPower.WATT,
+        "energyInstantTi1P": UnitOfPower.WATT,
+        "energyInstantTi1P_Min": UnitOfPower.WATT,
+        "energyInstantTi1P_Max": UnitOfPower.WATT,
+        "energyScaleTi1P_Min": UnitOfPower.WATT,
+        "energyScaleTi1P_Max": UnitOfPower.WATT,
+        "energyInstantTi1I": UnitOfElectricCurrent.AMPERE,
+        "energyInstantTi1I_Min": UnitOfElectricCurrent.AMPERE,
+        "energyInstantTi1I_Max": UnitOfElectricCurrent.AMPERE,
+        "energyScaleTi1I_Min": UnitOfElectricCurrent.AMPERE,
+        "energyScaleTi1I_Max": UnitOfElectricCurrent.AMPERE,
+        "energyTotIndexWatt": UnitOfEnergy.WATT_HOUR,
+        "energyIndexHeatWatt": UnitOfEnergy.WATT_HOUR,
+        "energyIndexECSWatt": UnitOfEnergy.WATT_HOUR,
+        "energyIndexHeatGas": UnitOfEnergy.WATT_HOUR,
+        "outTemperature": UnitOfTemperature.CELSIUS,
+    }
+
     def __init__(self, energy: TydomEnergy) -> None:
         self._energy = energy
         self._attr_unique_id = f"{self._energy.device_id}_energy"
@@ -277,6 +333,15 @@ class HAEnergy(Entity):
                 sensor_class = None
                 if attribute in self.sensor_classes:
                     sensor_class = self.sensor_classes[attribute]
+
+                state_class = None
+                if attribute in self.state_classes:
+                    state_class = self.state_classes[attribute]
+
+                unit = None
+                if attribute in self.units:
+                    unit = self.units[attribute]
+
                 if isinstance(value, bool):
                     sensors.append(
                         GenericBinarySensor(
@@ -285,7 +350,7 @@ class HAEnergy(Entity):
                     )
                 else:
                     sensors.append(
-                        GenericSensor(self._energy, sensor_class, attribute, attribute)
+                        GenericSensor(self._energy, sensor_class, state_class, attribute, attribute, unit)
                     )
                 self._registered_sensors.append(attribute)
 
@@ -496,7 +561,7 @@ class HACover(CoverEntity):
                     )
                 else:
                     sensors.append(
-                        GenericSensor(self._shutter, sensor_class, attribute, attribute)
+                        GenericSensor(self._shutter, sensor_class, None, attribute, attribute, None)
                     )
                 self._registered_sensors.append(attribute)
 
@@ -570,7 +635,7 @@ class HASmoke(BinarySensorEntity):
                     )
                 else:
                     sensors.append(
-                        GenericSensor(self._device, sensor_class, attribute, attribute)
+                        GenericSensor(self._device, sensor_class, None, attribute, attribute, None)
                     )
                 self._registered_sensors.append(attribute)
 
@@ -580,27 +645,32 @@ class HASmoke(BinarySensorEntity):
 class HaClimate(ClimateEntity):
     """A climate entity."""
 
-    _attr_should_poll = False
     should_poll = False
 
     sensor_classes = {
+        "temperature": SensorDeviceClass.TEMPERATURE,
         "TempSensorDefect": BinarySensorDeviceClass.PROBLEM,
         "TempSensorOpenCirc": BinarySensorDeviceClass.PROBLEM,
         "TempSensorShortCut": BinarySensorDeviceClass.PROBLEM,
         "ProductionDefect": BinarySensorDeviceClass.PROBLEM,
         "BatteryCmdDefect": BinarySensorDeviceClass.PROBLEM,
     }
-    DICT_HA_TO_DD = {
-        HVACMode.AUTO: "todo",
-        HVACMode.COOL: "todo",
-        HVACMode.HEAT: "todo",
-        HVACMode.OFF: "todo",
+
+    units = {
+        "temperature": UnitOfTemperature.CELSIUS,
     }
-    DICT_DD_TO_HA = {
-        "todo": HVACMode.AUTO,
-        "todo": HVACMode.COOL,
-        "todo": HVACMode.HEAT,
-        "todo": HVACMode.OFF,
+
+    DICT_MODES_HA_TO_DD = {
+        HVACMode.AUTO: None,
+        HVACMode.COOL: None,
+        HVACMode.HEAT: "HEATING",
+        HVACMode.OFF: "STOP",
+    }
+    DICT_MODES_DD__TO_HA = {
+        # "": HVACMode.AUTO,
+        # "": HVACMode.COOL,
+        "HEATING": HVACMode.HEAT,
+        "STOP": HVACMode.OFF,
     }
 
     def __init__(self, device: TydomBoiler) -> None:
@@ -608,18 +678,48 @@ class HaClimate(ClimateEntity):
         self._device = device
         self._attr_unique_id = f"{self._device.device_id}_climate"
         self._attr_name = self._device.device_name
+
         self._attr_hvac_modes = [
             HVACMode.OFF,
             HVACMode.HEAT,
         ]  # , HVACMode.AUTO, HVACMode.COOL,
         self._registered_sensors = []
 
+        self._attr_preset_modes = ["NORMAL", "STOP", "ANTI_FROST"]
+        #self._attr_preset_mode = "STOP"
+        self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
+        # self._attr_hvac_mode = DICT_MODES_DD__TO_HA[]
+    """
+    {
+                  "name":"authorization",
+                  "type":"string",
+                  "permission":"rw",
+                  "validity":"STATUS_POLLING",
+                  "enum_values":[
+                     "STOP",
+                     "HEATING"
+                  ]
+
+
+                                 {
+                  "name":"hvacMode",
+                  "type":"string",
+                  "permission":"rw",
+                  "validity":"DATA_POLLING",
+                  "enum_values":[
+                     "NORMAL",
+                     "STOP",
+                     "ANTI_FROST"
+                  ]
+    
+    """
+
     @property
     def supported_features(self) -> ClimateEntityFeature:
         """Return the list of supported features."""
         features = ClimateEntityFeature(0)
 
-        features = features | ClimateEntityFeature.TARGET_TEMPERATURE
+        features = features | ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
         # set_req = self.gateway.const.SetReq
         # if set_req.V_HVAC_SPEED in self._values:
         #    features = features | ClimateEntityFeature.FAN_MODE
@@ -649,8 +749,13 @@ class HaClimate(ClimateEntity):
     def hvac_mode(self) -> HVACMode:
         """Return the current operation (e.g. heat, cool, idle)."""
         # FIXME
-        # return self._device.hvacMode
-        return HVACMode.HEAT
+        return self.DICT_MODES_DD__TO_HA[self._device.authorization]
+
+    @property
+    def preset_mode(self) -> HVACMode:
+        """Return the current operation (e.g. heat, cool, idle)."""
+        # FIXME
+        return self._device.hvacMode
 
     @property
     def current_temperature(self) -> float | None:
@@ -666,10 +771,19 @@ class HaClimate(ClimateEntity):
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
+        # FIXME
+        self._device.set_hvac_mode(self.DICT_MODES_HA_TO_DD[hvac_mode]) 
         logger.warn("SET HVAC MODE")
+
+    async def async_set_preset_mode(self, preset_mode):
+        """Set new target preset mode."""
+        # FIXME
+        self._device.set_preset_mode(preset_mode)
+        logger.warn("SET preset MODE")
 
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
+        # FIXME
         logger.warn("SET TEMPERATURE")
 
     async def async_added_to_hass(self) -> None:
@@ -700,6 +814,12 @@ class HaClimate(ClimateEntity):
                 sensor_class = None
                 if attribute in self.sensor_classes:
                     sensor_class = self.sensor_classes[attribute]
+
+                unit = None
+                if attribute in self.units:
+                    unit = self.units[attribute]
+
+
                 if isinstance(value, bool):
                     sensors.append(
                         GenericBinarySensor(
@@ -708,7 +828,7 @@ class HaClimate(ClimateEntity):
                     )
                 else:
                     sensors.append(
-                        GenericSensor(self._device, sensor_class, attribute, attribute)
+                        GenericSensor(self._device, sensor_class, None, attribute, attribute, unit)
                     )
                 self._registered_sensors.append(attribute)
 
@@ -777,7 +897,7 @@ class HaWindow(CoverEntity):
                     )
                 else:
                     sensors.append(
-                        GenericSensor(self._device, sensor_class, attribute, attribute)
+                        GenericSensor(self._device, sensor_class, None, attribute, attribute, None)
                     )
                 self._registered_sensors.append(attribute)
 
@@ -846,7 +966,7 @@ class HaDoor(LockEntity, CoverEntity):
                     )
                 else:
                     sensors.append(
-                        GenericSensor(self._device, sensor_class, attribute, attribute)
+                        GenericSensor(self._device, sensor_class, None, attribute, attribute, None)
                     )
                 self._registered_sensors.append(attribute)
 
@@ -906,7 +1026,7 @@ class HaGate(CoverEntity):
                     )
                 else:
                     sensors.append(
-                        GenericSensor(self._device, sensor_class, attribute, attribute)
+                        GenericSensor(self._device, sensor_class, None, attribute, attribute, None)
                     )
                 self._registered_sensors.append(attribute)
 
@@ -966,7 +1086,7 @@ class HaGarage(CoverEntity):
                     )
                 else:
                     sensors.append(
-                        GenericSensor(self._device, sensor_class, attribute, attribute)
+                        GenericSensor(self._device, sensor_class, None, attribute, attribute, None)
                     )
                 self._registered_sensors.append(attribute)
 
@@ -1025,7 +1145,7 @@ class HaLight(LightEntity):
                     )
                 else:
                     sensors.append(
-                        GenericSensor(self._device, sensor_class, attribute, attribute)
+                        GenericSensor(self._device, sensor_class, None, attribute, attribute, None)
                     )
                 self._registered_sensors.append(attribute)
 

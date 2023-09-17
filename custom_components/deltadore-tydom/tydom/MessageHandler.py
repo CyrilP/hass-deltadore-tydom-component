@@ -1,5 +1,4 @@
 import json
-import logging
 from http.client import HTTPResponse
 from http.server import BaseHTTPRequestHandler
 from io import BytesIO
@@ -9,7 +8,7 @@ import re
 
 from .tydom_devices import *
 
-logger = logging.getLogger(__name__)
+from ..const import LOGGER
 
 # Dicts
 deviceAlarmKeywords = [
@@ -232,32 +231,32 @@ class MessageHandler:
         )
 
         if re_matcher:
-            # logger.info("///// Uri-Origin : %s", re_matcher.group(1))
+            # LOGGER.info("///// Uri-Origin : %s", re_matcher.group(1))
             uri_origin = re_matcher.group(1)
         # else:
-        # logger.info("///// no match")
+        # LOGGER.info("///// no match")
         return uri_origin
 
     @staticmethod
     def get_http_request_line(data) -> str:
         """Extract Http request line"""
+        clean_data = data.replace('\\x02', '')
         request_line = ""
         re_matcher = re.match(
             "b'(.*)HTTP/1.1",
-            data,
+            clean_data,
         )
         if re_matcher:
-            # logger.info("///// PUT : %s", re_matcher.group(1))
+            # LOGGER.info("///// PUT : %s", re_matcher.group(1))
             request_line = re_matcher.group(1)
         # else:
-        #    logger.info("///// no match")
-        return request_line
+        #    LOGGER.info("///// no match")
+        return request_line.strip()
 
     async def incoming_triage(self, bytes_str):
         """Identify message type and dispatch the result"""
 
         incoming = None
-        first = str(bytes_str[:40])
 
         # Find Uri-Origin in header if available
         uri_origin = MessageHandler.get_uri_origin(str(bytes_str))
@@ -266,8 +265,8 @@ class MessageHandler:
         http_request_line = MessageHandler.get_http_request_line(str(bytes_str))
 
         try:
-            if len(http_request_line) > 0:
-                logger.debug("%s detected !", http_request_line)
+            if http_request_line is not None and len(http_request_line) > 0:
+                LOGGER.debug("%s detected !", http_request_line)
                 try:
                     try:
                         incoming = self.parse_put_response(bytes_str)
@@ -278,7 +277,8 @@ class MessageHandler:
                         incoming, uri_origin, http_request_line
                     )
                 except BaseException:
-                    logger.error("Error when parsing tydom message (%s)", bytes_str)
+                    LOGGER.error("Error when parsing tydom message (%s)", bytes_str)
+                    LOGGER.exception("Error when parsing tydom message")
                     return None
             elif len(uri_origin) > 0:
                 response = self.response_from_bytes(bytes_str[len(self.cmd_prefix) :])
@@ -288,75 +288,22 @@ class MessageHandler:
                         incoming, uri_origin, http_request_line
                     )
                 except BaseException:
-                    logger.error("Error when parsing tydom message (%s)", bytes_str)
+                    LOGGER.error("Error when parsing tydom message (%s)", bytes_str)
                     return None
             else:
-                logger.warning("Unknown tydom message type received (%s)", bytes_str)
+                LOGGER.warning("Unknown tydom message type received (%s)", bytes_str)
                 return None
 
-            """
-            if "/refresh/all" in uri_origin:
-                pass
-            elif ("PUT /devices/data" in http_request_line) or (
-                "/devices/cdata" in http_request_line
-            ):
-                logger.debug("PUT /devices/data message detected !")
-                try:
-                    try:
-                        incoming = self.parse_put_response(bytes_str)
-                    except BaseException:
-                        # Tywatt response starts at 7
-                        incoming = self.parse_put_response(bytes_str, 7)
-                    return await self.parse_response(incoming)
-                except BaseException:
-                    logger.error(
-                        "Error when parsing devices/data tydom message (%s)", bytes_str
-                    )
-                    return None
-            elif "scn" in first:
-                try:
-                    incoming = str(bytes_str)
-                    scenarii = await self.parse_response(incoming)
-                    logger.debug("Scenarii message processed")
-                    return scenarii
-                except BaseException:
-                    logger.error(
-                        "Error when parsing Scenarii tydom message (%s)", bytes_str
-                    )
-                    return None
-            elif "POST" in http_request_line:
-                try:
-                    incoming = self.parse_put_response(bytes_str)
-                    post = await self.parse_response(incoming)
-                    logger.debug("POST message processed")
-                    return post
-                except BaseException:
-                    logger.error(
-                        "Error when parsing POST tydom message (%s)", bytes_str
-                    )
-                    return None
-            elif "/devices/meta" in uri_origin:
-                pass
-            elif "HTTP/1.1" in first:
-                response = self.response_from_bytes(bytes_str[len(self.cmd_prefix) :])
-                incoming = response.data.decode("utf-8")
-                try:
-                    return await self.parse_response(incoming)
-                except BaseException:
-                    logger.error(
-                        "Error when parsing HTTP/1.1 tydom message (%s)", bytes_str
-                    )
-                    return None
-            else:
-                logger.warning("Unknown tydom message type received (%s)", bytes_str)
-                return None """
-
         except Exception as ex:
-            logger.error(
+            LOGGER.exception("exception")
+            LOGGER.error(
                 "Technical error when parsing tydom message (%s) : %s", bytes_str, ex
             )
-            logger.debug("Incoming payload (%s)", incoming)
-            logger.debug("exception : %s", ex)
+            LOGGER.debug("Incoming payload (%s)", incoming)
+            LOGGER.debug("exception : %s", ex)
+            raise Exception(
+                "Something really wrong happened!"
+            ) from ex
             return None
 
     # Basic response parsing. Typically GET responses + instanciate covers and
@@ -389,9 +336,9 @@ class MessageHandler:
                 msg_type = "msg_data"
 
             if msg_type is None:
-                logger.warning("Unknown message type received %s", data)
+                LOGGER.warning("Unknown message type received %s", data)
             else:
-                logger.debug("Message received detected as (%s)", msg_type)
+                LOGGER.debug("Message received detected as (%s)", msg_type)
                 try:
                     if msg_type == "msg_config":
                         parsed = json.loads(data)
@@ -410,19 +357,20 @@ class MessageHandler:
                         return await self.parse_devices_cdata(parsed=parsed)
 
                     elif msg_type == "msg_html":
-                        logger.debug("HTML Response ?")
+                        LOGGER.debug("HTML Response ?")
 
                     elif msg_type == "msg_info":
                         parsed = json.loads(data)
                         return await self.parse_msg_info(parsed)
 
                 except Exception as e:
-                    logger.error("Error on parsing tydom response (%s)", e)
+                    LOGGER.error("Error on parsing tydom response (%s)", e)
+                    LOGGER.exception("Error on parsing tydom response")
                     traceback.print_exception(e)
-            logger.debug("Incoming data parsed with success")
+            LOGGER.debug("Incoming data parsed with success")
 
     async def parse_msg_info(self, parsed):
-        logger.debug("parse_msg_info : %s", parsed)
+        LOGGER.debug("parse_msg_info : %s", parsed)
         product_name = parsed["productName"]
         main_version_sw = parsed["mainVersionSW"]
         main_version_hw = parsed["mainVersionHW"]
@@ -457,6 +405,8 @@ class MessageHandler:
         tydom_client, last_usage, uid, device_id, name, endpoint=None, data=None
     ) -> TydomDevice:
         """Get device class from its last usage"""
+
+        LOGGER.error("- %s", name)
 
         # FIXME voir: class CoverDeviceClass(StrEnum):
         # Refer to the cover dev docs for device class descriptions
@@ -511,11 +461,11 @@ class MessageHandler:
                 return TydomEnergy(
                     tydom_client, uid, device_id, name, last_usage, endpoint, data
                 )
-            case "smoke":
+            case "sensorDFR":
                 return TydomSmoke(
                     tydom_client, uid, device_id, name, last_usage, endpoint, data
                 )
-            case "boiler" | "sh_hvac":
+            case "boiler" | "sh_hvac" | "electric":
                 return TydomBoiler(
                     tydom_client, uid, device_id, name, last_usage, endpoint, data
                 )
@@ -524,12 +474,13 @@ class MessageHandler:
                     tydom_client, uid, device_id, name, last_usage, endpoint, data
                 )
             case _:
-                logger.warn("Unknown usage : %s", last_usage)
+                # TODO generic sensor ?
+                LOGGER.warn("Unknown usage : %s", last_usage)
                 return
 
     @staticmethod
     async def parse_config_data(parsed):
-        logger.debug("parse_config_data : %s", parsed)
+        LOGGER.debug("parse_config_data : %s", parsed)
         devices = []
         for i in parsed["endpoints"]:
             device_unique_id = str(i["id_endpoint"]) + "_" + str(i["id_device"])
@@ -537,6 +488,12 @@ class MessageHandler:
             # device = await MessageHandler.get_device(i["last_usage"], device_unique_id, i["name"], i["id_endpoint"], None)
             # if device is not None:
             #    devices.append(device)
+
+            LOGGER.warning(" config_data : %s - %s", device_unique_id, i["name"])
+
+            device_name[device_unique_id] = i["name"]
+            device_type[device_unique_id] = i["last_usage"]
+            device_endpoint[device_unique_id] = i["id_endpoint"]
 
             if (
                 i["last_usage"] == "shutter"
@@ -552,41 +509,28 @@ class MessageHandler:
                 or i["last_usage"] == "garage_door"
                 or i["last_usage"] == "gate"
             ):
-                device_name[device_unique_id] = i["name"]
-                device_type[device_unique_id] = i["last_usage"]
-                device_endpoint[device_unique_id] = i["id_endpoint"]
+                pass
 
             if i["last_usage"] == "boiler" or i["last_usage"] == "conso":
-                device_name[device_unique_id] = i["name"]
-                device_type[device_unique_id] = i["last_usage"]
-                device_endpoint[device_unique_id] = i["id_endpoint"]
-
+                pass
             if i["last_usage"] == "alarm":
                 device_name[device_unique_id] = "Tyxal Alarm"
-                device_type[device_unique_id] = "alarm"
-                device_endpoint[device_unique_id] = i["id_endpoint"]
 
             if i["last_usage"] == "electric":
-                device_name[device_unique_id] = i["name"]
-                device_type[device_unique_id] = "boiler"
-                device_endpoint[device_unique_id] = i["id_endpoint"]
+                pass
 
             if i["last_usage"] == "sensorDFR":
-                device_name[device_unique_id] = i["name"]
-                device_type[device_unique_id] = "smoke"
-                device_endpoint[device_unique_id] = i["id_endpoint"]
+                pass
 
             if i["last_usage"] == "":
-                device_name[device_unique_id] = i["name"]
                 device_type[device_unique_id] = "unknown"
-                device_endpoint[device_unique_id] = i["id_endpoint"]
 
-        logger.debug("Configuration updated")
-        logger.debug("devices : %s", devices)
+        LOGGER.debug("Configuration updated")
+        LOGGER.debug("devices : %s", devices)
         return devices
 
     async def parse_cmeta_data(self, parsed):
-        logger.debug("parse_cmeta_data : %s", parsed)
+        LOGGER.debug("parse_cmeta_data : %s", parsed)
         for i in parsed:
             for endpoint in i["endpoints"]:
                 if len(endpoint["cmetadata"]) > 0:
@@ -613,7 +557,7 @@ class MessageHandler:
                                             + "&reset=false"
                                         )
                                         self.tydom_client.add_poll_device_url(url)
-                                        logger.debug("Add poll device : %s", url)
+                                        LOGGER.debug("Add poll device : %s", url)
                         elif elem["name"] == "energyInstant":
                             device_name[unique_id] = "Tywatt"
                             device_type[unique_id] = "conso"
@@ -632,7 +576,7 @@ class MessageHandler:
                                             + "&reset=false"
                                         )
                                         self.tydom_client.add_poll_device_url(url)
-                                        logger.debug("Add poll device : " + url)
+                                        LOGGER.debug("Add poll device : " + url)
                         elif elem["name"] == "energyDistrib":
                             device_name[unique_id] = "Tywatt"
                             device_type[unique_id] = "conso"
@@ -650,17 +594,59 @@ class MessageHandler:
                                             + src
                                         )
                                         self.tydom_client.add_poll_device_url(url)
-                                        logger.debug("Add poll device : " + url)
+                                        LOGGER.debug("Add poll device : " + url)
 
-        logger.debug("Metadata configuration updated")
+        LOGGER.debug("Metadata configuration updated")
 
     async def parse_devices_data(self, parsed):
-        logger.debug("parse_devices_data : %s", parsed)
+        LOGGER.debug("parse_devices_data : %s", parsed)
         devices = []
 
         for i in parsed:
             for endpoint in i["endpoints"]:
                 if endpoint["error"] == 0 and len(endpoint["data"]) > 0:
+
+                    try:
+                        device_id = i["id"]
+                        endpoint_id = endpoint["id"]
+                        unique_id = str(endpoint_id) + "_" + str(device_id)
+                        name_of_id = self.get_name_from_id(unique_id)
+                        type_of_id = self.get_type_from_id(unique_id)
+
+                        data = {}
+
+                        for elem in endpoint["data"]:
+                            element_name = elem["name"]
+                            element_value = elem["value"]
+                            element_validity = elem["validity"]
+
+                            if element_validity == "upToDate":
+                                data[element_name] = element_value
+
+                        # Create the device
+                        device = await MessageHandler.get_device(
+                            self.tydom_client,
+                            type_of_id,
+                            unique_id,
+                            device_id,
+                            name_of_id,
+                            endpoint_id,
+                            data,
+                        )
+                        if device is not None:
+                            devices.append(device)
+                            LOGGER.info(
+                                "Device update (id=%s, endpoint=%s, name=%s, type=%s)",
+                                device_id,
+                                endpoint_id,
+                                name_of_id,
+                                type_of_id,
+                            )
+                    except Exception as e:
+                        LOGGER.error("msg_data error in parsing !")
+                        LOGGER.error(e)
+
+                    """
                     try:
                         attr_alarm = {}
                         attr_cover = {}
@@ -677,7 +663,7 @@ class MessageHandler:
                         name_of_id = self.get_name_from_id(unique_id)
                         type_of_id = self.get_type_from_id(unique_id)
 
-                        logger.info(
+                        LOGGER.info(
                             "Device update (id=%s, endpoint=%s, name=%s, type=%s)",
                             device_id,
                             endpoint_id,
@@ -692,7 +678,7 @@ class MessageHandler:
                             element_value = elem["value"]
                             element_validity = elem["validity"]
 
-                            if element_validity == "upToDate":
+                            if element_validity == "upToDate" and element_name != "name":
                                 data[element_name] = element_value
 
                             print_id = name_of_id if len(name_of_id) != 0 else device_id
@@ -892,20 +878,11 @@ class MessageHandler:
                                     attr_ukn[element_name] = element_value
 
                     except Exception as e:
-                        logger.error("msg_data error in parsing !")
-                        logger.error(e)
+                        LOGGER.error("msg_data error in parsing !")
+                        LOGGER.error(e)
+                    """
 
-                    device = await MessageHandler.get_device(
-                        self.tydom_client,
-                        type_of_id,
-                        unique_id,
-                        device_id,
-                        name_of_id,
-                        endpoint_id,
-                        data,
-                    )
-                    if device is not None:
-                        devices.append(device)
+                    """ 
 
                     if (
                         "device_type" in attr_cover
@@ -1041,7 +1018,7 @@ class MessageHandler:
                                 state = "disarmed"
 
                             if sos_state:
-                                logger.warning("SOS !")
+                                LOGGER.warning("SOS !")
 
                             if not (state is None):
                                 # alarm = Alarm(
@@ -1054,15 +1031,16 @@ class MessageHandler:
                                 pass
 
                         except Exception as e:
-                            logger.error("Error in alarm parsing !")
-                            logger.error(e)
+                            LOGGER.error("Error in alarm parsing !")
+                            LOGGER.error(e)
                             pass
                     else:
                         pass
+                    """
         return devices
 
     async def parse_devices_cdata(self, parsed):
-        logger.debug("parse_devices_data : %s", parsed)
+        LOGGER.debug("parse_devices_data : %s", parsed)
         for i in parsed:
             for endpoint in i["endpoints"]:
                 if endpoint["error"] == 0 and len(endpoint["cdata"]) > 0:
@@ -1072,7 +1050,7 @@ class MessageHandler:
                         unique_id = str(endpoint_id) + "_" + str(device_id)
                         name_of_id = self.get_name_from_id(unique_id)
                         type_of_id = self.get_type_from_id(unique_id)
-                        logger.info(
+                        LOGGER.info(
                             "Device configured (id=%s, endpoint=%s, name=%s, type=%s)",
                             device_id,
                             endpoint_id,
@@ -1161,7 +1139,7 @@ class MessageHandler:
                                             # await new_conso.update()
 
                     except Exception as e:
-                        logger.error("Error when parsing msg_cdata (%s)", e)
+                        LOGGER.error("Error when parsing msg_cdata (%s)", e)
 
     # PUT response DIRTY parsing
     def parse_put_response(self, bytes_str, start=6):
@@ -1201,7 +1179,7 @@ class MessageHandler:
         if id in device_type.keys():
             device_type_detected = device_type[id]
         else:
-            logger.warning("Unknown device type (%s)", id)
+            LOGGER.warning("Unknown device type (%s)", id)
         return device_type_detected
 
     # Get pretty name for a device id
@@ -1210,7 +1188,7 @@ class MessageHandler:
         if id in device_name.keys():
             name = device_name[id]
         else:
-            logger.warning("Unknown device name (%s)", id)
+            LOGGER.warning("Unknown device name (%s)", id)
         return name
 
 

@@ -11,6 +11,17 @@
                     "password": "Password",
                     "pin": "Alarm PIN"
                 }
+            },
+            "discovery_confirm": {
+                "title": "Delta Dore Tydom Configuration",
+                "description": "If you need help with the configuration go to: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "data": {
+                    "host": "IP or hostname",
+                    "mac": "MAC address",
+                    "email": "Email",
+                    "password": "Password",
+                    "pin": "Alarm PIN"
+                }
             }
         },
         "error": {
@@ -21,7 +32,13 @@
             "invalid_password": "Password is invalid"
         },
         "abort": {
+            "discover_timeout": "Unable to discover devices",
+            "no_bridges": "No device discovered",
+            "all_configured": "All device are already configured",
+            "unknown": "Unknown error occurred",
+            "cannot_connect": "Unable to connect to the device",
             "already_configured": "Device is already configured"
         }
-    }
+    },
+    "flow_title": "{name}"
 }

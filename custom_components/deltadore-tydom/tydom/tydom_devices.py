@@ -202,6 +202,16 @@ class TydomSmoke(TydomDevice):
 
 class TydomBoiler(TydomDevice):
     """represents a boiler"""
+    def set_hvac_mode(self, mode):
+        """Set hvac mode (STOP/HEATING)"""
+        logger.info("setting mode to %s", mode)
+        # authorization
+
+    def set_preset_mode(self, mode):
+        """Set preset mode (NORMAL/STOP/ANTI_FROST)"""
+        logger.info("setting preset to %s", mode)
+        # hvacMode
+
 
 
 class TydomWindow(TydomDevice):

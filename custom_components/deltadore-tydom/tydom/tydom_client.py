@@ -11,7 +11,7 @@ import traceback
 
 from typing import cast
 from urllib3 import encode_multipart_formdata
-from aiohttp import ClientWebSocketResponse, ClientSession
+from aiohttp import ClientWebSocketResponse, ClientSession, WSMsgType
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .const import *
@@ -19,8 +19,7 @@ from .MessageHandler import MessageHandler
 
 from requests.auth import HTTPDigestAuth
 
-logger = logging.getLogger(__name__)
-
+from ..const import LOGGER
 
 class TydomClientApiClientError(Exception):
     """Exception to indicate a general API error."""
@@ -49,7 +48,7 @@ class TydomClient:
         host: str = MEDIATION_URL,
         event_callback=None,
     ) -> None:
-        logger.debug("Initializing TydomClient Class")
+        LOGGER.debug("Initializing TydomClient Class")
 
         self._hass = hass
         self._password = password
@@ -64,11 +63,11 @@ class TydomClient:
         self.current_poll_index = 0
 
         if self._remote_mode:
-            logger.info("Configure remote mode (%s)", self._host)
+            LOGGER.info("Configure remote mode (%s)", self._host)
             self._cmd_prefix = "\x02"
             self._ping_timeout = 40
         else:
-            logger.info("Configure local mode (%s)", self._host)
+            LOGGER.info("Configure local mode (%s)", self._host)
             self._cmd_prefix = ""
             self._ping_timeout = None
 
@@ -87,7 +86,7 @@ class TydomClient:
                     method="GET", url=DELTADORE_AUTH_URL, proxy=proxy
                 )
 
-                logger.debug(
+                LOGGER.debug(
                     "response status for openid-config: %s\nheaders : %s\ncontent : %s",
                     response.status,
                     response.headers,
@@ -97,7 +96,7 @@ class TydomClient:
                 json_response = await response.json()
                 response.close()
                 signin_url = json_response["token_endpoint"]
-                logger.info("signin_url : %s", signin_url)
+                LOGGER.info("signin_url : %s", signin_url)
 
                 body, ct_header = encode_multipart_formdata(
                     {
@@ -116,7 +115,7 @@ class TydomClient:
                     proxy=proxy,
                 )
 
-                logger.debug(
+                LOGGER.debug(
                     "response status for signin : %s\nheaders : %s\ncontent : %s",
                     response.status,
                     response.headers,
@@ -134,7 +133,7 @@ class TydomClient:
                     proxy=proxy,
                 )
 
-                logger.debug(
+                LOGGER.debug(
                     "response status for https://prod.iotdeltadore.com/sitesmanagement/api/v1/sites?gateway_mac= : %s\nheaders : %s\ncontent : %s",
                     response.status,
                     response.headers,
@@ -144,7 +143,6 @@ class TydomClient:
                 json_response = await response.json()
                 response.close()
 
-                await session.close()
                 if "sites" in json_response and len(json_response["sites"]) > 0:
                     for site in json_response["sites"]:
                         if "gateway" in site and site["gateway"]["mac"] == macaddress:
@@ -189,7 +187,7 @@ class TydomClient:
                     json=None,
                     proxy=proxy,
                 )
-                logger.debug(
+                LOGGER.debug(
                     "response status : %s\nheaders : %s\ncontent : %s",
                     response.status,
                     response.headers,
@@ -203,7 +201,7 @@ class TydomClient:
                 response.close()
 
                 if re_matcher:
-                    logger.info("nonce : %s", re_matcher.group(1))
+                    LOGGER.info("nonce : %s", re_matcher.group(1))
                 else:
                     raise TydomClientApiClientError("Could't find auth nonce")
 
@@ -239,7 +237,7 @@ class TydomClient:
 
     async def listen_tydom(self, connection: ClientWebSocketResponse):
         """Listen for Tydom messages"""
-        logger.info("Listen for Tydom messages")
+        LOGGER.info("Listen for Tydom messages")
         self._connection = connection
         await self.ping()
         await self.get_info()
@@ -270,19 +268,30 @@ class TydomClient:
             if self._connection.closed:
                 await self._connection.close()
                 await asyncio.sleep(10)
-                self.listen_tydom(await self.async_connect())
+                await self.listen_tydom(await self.async_connect())
                 # self._connection = await self.async_connect()
 
             msg = await self._connection.receive()
-            logger.info(
+            LOGGER.info(
                 "Incomming message - type : %s - message : %s", msg.type, msg.data
             )
+
+            if msg.type == WSMsgType.CLOSE or msg.type == WSMsgType.CLOSED or msg.type == WSMsgType.CLOSING:
+                LOGGER.debug("Close message type received")
+                return None
+            elif msg.type == WSMsgType.ERROR:
+                LOGGER.debug("Error message type received")
+                return None
+            elif msg.type == WSMsgType.PING or msg.type == WSMsgType.PONG:
+                LOGGER.debug("Ping/Pong message type received")
+                return None
+
             incoming_bytes_str = cast(bytes, msg.data)
 
             return await self._message_handler.incoming_triage(incoming_bytes_str)
 
         except Exception as e:
-            logger.warning("Unable to handle message: %s", e)
+            LOGGER.exception("Unable to handle message")
             return None
 
     def build_digest_headers(self, nonce):
@@ -313,7 +322,7 @@ class TydomClient:
             + " HTTP/1.1\r\nContent-Length: 0\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
         )
         a_bytes = bytes(message, "ascii")
-        logger.debug(
+        LOGGER.debug(
             "Sending message to tydom (%s %s)",
             method,
             msg if "pwd" not in msg else "***",
@@ -322,7 +331,7 @@ class TydomClient:
         if self._connection is not None:
             await self._connection.send_bytes(a_bytes)
         else:
-            logger.warning(
+            LOGGER.warning(
                 "Cannot send message to Tydom because no connection has been established yet"
             )
 
@@ -383,7 +392,7 @@ class TydomClient:
         msg_type = "/ping"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
-        logger.debug("Ping")
+        LOGGER.debug("Ping")
 
     async def get_devices_meta(self):
         """Get all devices metadata"""
@@ -442,7 +451,7 @@ class TydomClient:
         await self._connection.send(a_bytes)
 
     async def get_poll_device_data(self, url):
-        logger.error("poll device data %s", url)
+        LOGGER.error("poll device data %s", url)
         msg_type = url
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
@@ -483,7 +492,7 @@ class TydomClient:
             + "\r\n\r\n"
         )
         a_bytes = bytes(str_request, "ascii")
-        logger.debug("Sending message to tydom (%s %s)", "PUT data", body)
+        LOGGER.debug("Sending message to tydom (%s %s)", "PUT data", body)
         await self._connection.send_bytes(a_bytes)
         return 0
 
@@ -504,7 +513,7 @@ class TydomClient:
         # zones
 
         if self._alarm_pin is None:
-            logger.warning("Tydom alarm pin is not set!")
+            LOGGER.warning("Tydom alarm pin is not set!")
 
         try:
             if zone_id is None:
@@ -540,16 +549,16 @@ class TydomClient:
             )
 
             a_bytes = bytes(str_request, "ascii")
-            logger.debug("Sending message to tydom (%s %s)", "PUT cdata", body)
+            LOGGER.debug("Sending message to tydom (%s %s)", "PUT cdata", body)
 
             try:
                 await self._connection.send(a_bytes)
                 return 0
             except BaseException:
-                logger.error("put_alarm_cdata ERROR !", exc_info=True)
-                logger.error(a_bytes)
+                LOGGER.error("put_alarm_cdata ERROR !", exc_info=True)
+                LOGGER.error(a_bytes)
         except BaseException:
-            logger.error("put_alarm_cdata ERROR !", exc_info=True)
+            LOGGER.error("put_alarm_cdata ERROR !", exc_info=True)
 
     async def update_firmware(self):
         """Update Tydom firmware"""

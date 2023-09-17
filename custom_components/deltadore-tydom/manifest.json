@@ -12,7 +12,7 @@
   ],
   "dhcp": [
     {
-      "hostname": "TYDOM-*",
+      "hostname": "tydom-*",
       "macaddress": "001A25*"
     }
   ],

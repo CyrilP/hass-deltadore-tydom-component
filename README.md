@@ -9,6 +9,7 @@ This a *custom component* for [Home Assistant](https://www.home-assistant.io/).
 The `Delta Dore Tydom` integration allows you to observe and control [Delta Dore Tydom smart home gateway](https://www.deltadore.fr/).
 
 This integration can work in local mode or cloud mode depending on how the integration is configured (see Configuration part)
+The Delta Dore gateway can be detected using dhcp discovery.
 
 ![GitHub release](https://img.shields.io/github/release/CyrilP/hass-deltadore-tydom-component)
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration)
@@ -18,19 +19,21 @@ This integration can work in local mode or cloud mode depending on how the integ
 Platform | Description
 -- | --
 `binary_sensor` | Show something `True` or `False`.
-`sensor` | Show info from blueprint API.
+`sensor` | Show info.
 `switch` | Switch something `True` or `False`.
 `cover` | controls an opening or cover.
 `climate` | controls temperature, humidity, or fans.
 `light` | controls a light.
 `alarm_control_panel` | controls an alarm.
+`update` | firmware update
 
-Tested hardware
+**This integration has been tested with the following hardware.**
+
 - Cover (Up/Down/Stop)
 - Tywatt 5400
 - Tyxal+ DFR
 - K-Line DVI
-- Typass ATL (zones temperatures, target temperature, mode, power usage)
+- Typass ATL (zones temperatures, target temperature, mode, presets, water/heat power usage)
 
 ## Installation
 

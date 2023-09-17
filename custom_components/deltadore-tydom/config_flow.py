@@ -7,11 +7,11 @@ from typing import Any
 
 import voluptuous as vol
 
-
+from homeassistant.helpers.device_registry import format_mac
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries, exceptions
-from homeassistant.const import CONF_HOST, CONF_MAC, CONF_EMAIL, CONF_PASSWORD, CONF_PIN
+from homeassistant.const import CONF_NAME, CONF_HOST, CONF_MAC, CONF_EMAIL, CONF_PASSWORD, CONF_PIN
 from homeassistant.core import HomeAssistant
 from homeassistant.components import dhcp
 
@@ -204,29 +204,94 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ),
             errors=_errors,
         )
+    
+    @property
+    def _name(self) -> str | None:
+        return self.context.get(CONF_NAME)
+
+    @_name.setter
+    def _name(self, value: str) -> None:
+        self.context[CONF_NAME] = value
+        self.context["title_placeholders"] = {"name": self._name}
 
     async def async_step_dhcp(self, discovery_info: dhcp.DhcpServiceInfo):
         """Handle the discovery from dhcp."""
         self._discovered_host = discovery_info.ip
-        self._discovered_mac = discovery_info.macaddress
-        return await self._async_handle_discovery()
-
-    async def _async_handle_discovery(self):
-        self.context[CONF_HOST] = self._discovered_host
-        self.context[CONF_MAC] = self._discovered_mac
+        self._discovered_mac = discovery_info.macaddress.upper()
+        self._name = discovery_info.hostname.upper()
+        await self.async_set_unique_id(format_mac(discovery_info.macaddress))
+        self._abort_if_unique_id_configured(updates={CONF_HOST: discovery_info.ip})
         return await self.async_step_discovery_confirm()
 
     async def async_step_discovery_confirm(self, user_input=None):
         """Confirm discovery."""
+
+        _errors = {}
+        if user_input is not None:
+            try:
+                await validate_input(self.hass, user_input)
+                # Ensure it's working as expected
+
+                tydom_hub = hub.Hub(
+                    self.hass,
+                    user_input[CONF_HOST],
+                    user_input[CONF_MAC],
+                    user_input[CONF_PASSWORD],
+                    None,
+                )
+                await tydom_hub.test_credentials()
+
+            except CannotConnect:
+                _errors["base"] = "cannot_connect"
+            except InvalidHost:
+                # The error string is set here, and should be translated.
+                # This example does not currently cover translations, see the
+                # comments on `DATA_SCHEMA` for further details.
+                # Set the error on the `host` field, not the entire form.
+                _errors[CONF_HOST] = "invalid_host"
+            except InvalidMacAddress:
+                _errors[CONF_MAC] = "invalid_macaddress"
+            except InvalidEmail:
+                _errors[CONF_EMAIL] = "invalid_email"
+            except InvalidPassword:
+                _errors[CONF_PASSWORD] = "invalid_password"
+            except TydomClientApiClientCommunicationError:
+                traceback.print_exc()
+                _errors["base"] = "communication_error"
+            except TydomClientApiClientAuthenticationError:
+                traceback.print_exc()
+                _errors["base"] = "authentication_error"
+            except TydomClientApiClientError:
+                traceback.print_exc()
+                _errors["base"] = "unknown"
+
+            except Exception:  # pylint: disable=broad-except
+                traceback.print_exc()
+                LOGGER.exception("Unexpected exception")
+                _errors["base"] = "unknown"
+            else:
+
+                await self.async_set_unique_id(user_input[CONF_MAC])
+                self._abort_if_unique_id_configured()
+
+                return self.async_create_entry(
+                    title="Tydom-" + user_input[CONF_MAC][6:], data=user_input
+                )
+
+        user_input = user_input or {}
         return self.async_show_form(
-            step_id="user",
+            step_id="discovery_confirm",
+            description_placeholders={"name": self._name},
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_HOST, default=user_input.get(CONF_HOST, "")): str,
-                    vol.Required(CONF_MAC, default=user_input.get(CONF_MAC, "")): str,
+                    vol.Required(CONF_HOST, default=user_input.get(CONF_HOST, self._discovered_host)): str,
+                    vol.Required(CONF_MAC, default=user_input.get(CONF_MAC, self._discovered_mac)): str,
                     vol.Required(
-                        CONF_PASSWORD, default=user_input.get(CONF_PASSWORD, "")
-                    ): str,
+                        CONF_EMAIL, default=user_input.get(CONF_EMAIL)
+                    ): cv.string,
+                    vol.Required(
+                        CONF_PASSWORD, default=user_input.get(CONF_PASSWORD)
+                    ): cv.string,
                     vol.Optional(CONF_PIN, default=user_input.get(CONF_PIN, "")): str,
                 }
             ),
