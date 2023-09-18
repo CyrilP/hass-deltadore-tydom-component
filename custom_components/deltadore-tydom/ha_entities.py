@@ -27,6 +27,7 @@ from homeassistant.const import (
     UnitOfEnergy,
     UnitOfPower,
     UnitOfElectricCurrent,
+    EntityCategory,
 )
 
 from homeassistant.helpers.entity import Entity, DeviceInfo
@@ -75,6 +76,8 @@ class GenericSensor(SensorEntity):
         self._attr_device_class = device_class
         self._attr_state_class = state_class
         self._attr_native_unit_of_measurement = unit_of_measurement
+        if name == "config" or name == "supervisionMode":
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
     def state(self):
