@@ -219,8 +219,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._discovered_host = discovery_info.ip
         self._discovered_mac = discovery_info.macaddress.upper()
         self._name = discovery_info.hostname.upper()
-        await self.async_set_unique_id(format_mac(discovery_info.macaddress))
-        self._abort_if_unique_id_configured(updates={CONF_HOST: discovery_info.ip})
+        await self.async_set_unique_id(discovery_info.macaddress.upper())
+        self._abort_if_unique_id_configured()
         return await self.async_step_discovery_confirm()
 
     async def async_step_discovery_confirm(self, user_input=None):
