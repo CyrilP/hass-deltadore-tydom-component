@@ -35,9 +35,6 @@ async def async_setup_entry(
     hub = hass.data[DOMAIN][config_entry.entry_id]
     hub.add_cover_callback = async_add_entities
 
-    # Add all entities to HA
-    async_add_entities(HelloWorldCover(roller) for roller in hub.rollers)
-
 
 # This entire class could be written to extend a base class to ensure common attributes
 # are kept identical/in sync. It's broken apart here between the Cover and Sensors to
