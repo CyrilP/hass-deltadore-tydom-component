@@ -58,6 +58,21 @@ class GenericSensor(SensorEntity):
     """Representation of a generic sensor"""
 
     should_poll = False
+    diagnostic_attrs = [
+        "config",
+        "supervisionMode",
+        "bootReference",
+        "bootVersion",
+        "keyReference",
+        "keyVersionHW",
+        "keyVersionStack",
+        "keyVersionSW",
+        "mainId",
+        "mainReference",
+        "mainVersionHW",
+        "productName",
+        "mac"
+    ]
 
     def __init__(
         self,
@@ -71,12 +86,12 @@ class GenericSensor(SensorEntity):
         """Initialize the sensor."""
         self._device = device
         self._attr_unique_id = f"{self._device.device_id}_{name}"
-        self._attr_name = f"{self._device.device_name} {name}"
+        self._attr_name = name
         self._attribute = attribute
         self._attr_device_class = device_class
         self._attr_state_class = state_class
         self._attr_native_unit_of_measurement = unit_of_measurement
-        if name == "config" or name == "supervisionMode":
+        if name in self.diagnostic_attrs:
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
@@ -131,15 +146,6 @@ class BinarySensorBase(BinarySensorEntity):
         """Return information to link this entity with the correct device."""
         return {"identifiers": {(DOMAIN, self._device.device_id)}}
 
-    # This property is important to let HA know if this entity is online or not.
-    # If an entity is offline (return False), the UI will refelect this.
-    @property
-    def available(self) -> bool:
-        """Return True if roller and hub is available."""
-        # return self._roller.online and self._roller.hub.online
-        # FIXME
-        return True
-
     async def async_added_to_hass(self):
         """Run when this Entity has been added to HA."""
         # Sensors should also register callbacks to HA when their state changes
@@ -164,7 +170,7 @@ class GenericBinarySensor(BinarySensorBase):
         """Initialize the sensor."""
         super().__init__(device)
         self._attr_unique_id = f"{self._device.device_id}_{name}"
-        self._attr_name = f"{self._device.device_name} {name}"
+        self._attr_name = name
         self._attribute = attribute
         self._attr_device_class = device_class
 
@@ -178,11 +184,66 @@ class GenericBinarySensor(BinarySensorBase):
 class HATydom(Entity):
     """Representation of a Tydom."""
 
-    should_poll = False
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    entity_description: str
 
-    def __init__(self, device: TydomEnergy):
-        """Initialize the sensor."""
-        self._device = device
+    should_poll = False
+    device_class = None
+    supported_features = None
+
+    sensor_classes = {
+        "update_available": BinarySensorDeviceClass.UPDATE
+    }
+
+    filtered_attrs = [
+        "absence.json",
+        "anticip.json",
+        "bdd_mig.json",
+        "bdd.json",
+        "bioclim.json",
+        "collect.json",
+        "config.json",
+        "data_config.json",
+        "gateway.dat",
+        "gateway.dat",
+        "groups.json",
+        "info_col.json",
+        "info_mig.json",
+        "mom_api.json",
+        "mom.json",
+        "scenario.json",
+        "site.json",
+        "trigger.json",
+        "TYDOM.dat",
+    ]
+
+    def __init__(self, device: Tydom) -> None:
+        self.device = device
+        self._attr_unique_id = f"{self.device.device_id}"
+        self._attr_name = self.device.device_name
+        self._registered_sensors = []
+
+
+    @property
+    def is_on(self):
+        """Return the state of the sensor."""
+        return self._device.update_available
+
+    async def async_added_to_hass(self) -> None:
+        """Run when this Entity has been added to HA."""
+        # Importantly for a push integration, the module that will be getting updates
+        # needs to notify HA of changes. The dummy device has a registercallback
+        # method, so to this we add the 'self.async_write_ha_state' method, to be
+        # called where ever there are changes.
+        # The call back registration is done once this entity is registered with HA
+        # (rather than in the __init__)
+        self.device.register_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Entity being removed from hass."""
+        # The opposite of async_added_to_hass. Remove any registered call backs here.
+        self.device.remove_callback(self.async_write_ha_state)
 
     # To link this entity to the cover device, this property must return an
     # identifiers value matching that used in the cover, but no other information such
@@ -191,7 +252,14 @@ class HATydom(Entity):
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
-        return {"identifiers": {(DOMAIN, self._device.device_id)}}
+        return {
+            "identifiers": {(DOMAIN, self.device.device_id)},
+            "name": self.device.device_id,
+            "manufacturer": "Delta Dore",
+            "sw_version": self.device.mainVersionSW,
+            "model": self.device.productName,
+        }
+
 
     # This property is important to let HA know if this entity is online or not.
     # If an entity is offline (return False), the UI will refelect this.
@@ -202,15 +270,37 @@ class HATydom(Entity):
         # return self._device.online and self._device.hub.online
         return True
 
-    async def async_added_to_hass(self):
-        """Run when this Entity has been added to HA."""
-        # Sensors should also register callbacks to HA when their state changes
-        self._device.register_callback(self.async_write_ha_state)
 
-    async def async_will_remove_from_hass(self):
-        """Entity being removed from hass."""
-        # The opposite of async_added_to_hass. Remove any registered call backs here.
-        self._device.remove_callback(self.async_write_ha_state)
+    def get_sensors(self) -> list:
+        """Get available sensors for this entity"""
+        sensors = []
+
+        for attribute, value in self.device.__dict__.items():
+            if (
+                attribute[:1] != "_"
+                and value is not None
+                and attribute not in self._registered_sensors
+            ):
+                sensor_class = None
+                if attribute in self.filtered_attrs:
+                    continue
+                if attribute in self.sensor_classes:
+                    LOGGER.warn("sensor class for %s", attribute)
+                    LOGGER.warn("sensor class for %s = %s", attribute, self.sensor_classes[attribute])
+                    sensor_class = self.sensor_classes[attribute]
+                if isinstance(value, bool):
+                    sensors.append(
+                        GenericBinarySensor(
+                            self.device, sensor_class, attribute, attribute
+                        )
+                    )
+                else:
+                    sensors.append(
+                        GenericSensor(self.device, sensor_class, None, attribute, attribute, None)
+                    )
+                self._registered_sensors.append(attribute)
+
+        return sensors
 
 
 class HAEnergy(Entity):
@@ -257,9 +347,10 @@ class HAEnergy(Entity):
     For example: an amount of consumed gas"""
 
     state_classes = {
-        "energyTotIndexWatt" : SensorStateClass.TOTAL_INCREASING,
-        "energyIndexECSWatt" : SensorStateClass.TOTAL_INCREASING,
-        "energyIndexHeatGas" : SensorStateClass.TOTAL_INCREASING,
+        "energyTotIndexWatt": SensorStateClass.TOTAL_INCREASING,
+        "energyIndexECSWatt": SensorStateClass.TOTAL_INCREASING,
+        "energyIndexHeatWatt": SensorStateClass.TOTAL_INCREASING,
+        "energyIndexHeatGas": SensorStateClass.TOTAL_INCREASING,
     }
 
     units = {
@@ -575,10 +666,8 @@ class HASmoke(BinarySensorEntity):
     """Representation of an smoke sensor"""
 
     should_poll = False
-    device_class = None
-    supported_features = None
-
     device_class = BinarySensorDeviceClass.PROBLEM
+    supported_features = None
 
     sensor_classes = {"batt_defect": BinarySensorDeviceClass.PROBLEM}
 
@@ -600,6 +689,7 @@ class HASmoke(BinarySensorEntity):
         return {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
+            "manufacturer": "Delta Dore",
         }
 
     async def async_added_to_hass(self) -> None:
@@ -752,7 +842,11 @@ class HaClimate(ClimateEntity):
     def hvac_mode(self) -> HVACMode:
         """Return the current operation (e.g. heat, cool, idle)."""
         # FIXME
-        return self.DICT_MODES_DD__TO_HA[self._device.authorization]
+        if (hasattr(self._device, 'authorization')):
+            return self.DICT_MODES_DD__TO_HA[self._device.authorization]
+        else:
+            return None
+        
 
     @property
     def preset_mode(self) -> HVACMode:

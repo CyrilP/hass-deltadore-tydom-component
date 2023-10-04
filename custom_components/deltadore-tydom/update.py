@@ -35,7 +35,7 @@ class TydomUpdateEntity(UpdateEntity):
         device_friendly_name: str,
     ) -> None:
         """Init Tydom connectivity class."""
-        self._attr_name = f"{device_friendly_name} Tydom"
+        self._attr_name = f"{device_friendly_name}"
         self._attr_unique_id = f"{hub.hub_id}-update"
         self._hub = hub
 
@@ -60,16 +60,19 @@ class TydomUpdateEntity(UpdateEntity):
         if self._hub.device_info is None:
             return None
         # return self._hub.current_firmware
-        return self._hub.device_info.main_version_sw
+        if hasattr (self._hub.device_info, "mainVersionSW"):
+            return self._hub.device_info.mainVersionSW
+        else: 
+            return None
 
     @property
     def latest_version(self) -> str | None:
         """Latest version available for install."""
-        if self._hub.device_info is not None:
-            if self._hub.device_info.update_available:
+        if self._hub.device_info is not None and hasattr (self._hub.device_info, "mainVersionSW"):
+            if self._hub.device_info.updateAvailable:
                 # return version based on today's date for update version
                 return date.today().strftime("%y.%m.%d")
-            return self._hub.device_info.main_version_sw
+            return self._hub.device_info.mainVersionSW
         # FIXME : return correct version on update
         return None
 

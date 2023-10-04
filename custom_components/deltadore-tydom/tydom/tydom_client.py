@@ -42,6 +42,7 @@ class TydomClient:
     def __init__(
         self,
         hass,
+        id: str,
         mac: str,
         password: str,
         alarm_pin: str = None,
@@ -51,6 +52,7 @@ class TydomClient:
         LOGGER.debug("Initializing TydomClient Class")
 
         self._hass = hass
+        self.id = id
         self._password = password
         self._mac = mac
         self._host = host

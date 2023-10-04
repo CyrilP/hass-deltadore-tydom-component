@@ -46,10 +46,8 @@ class Hub:
         self._pin = alarmpin
         self._hass = hass
         self._name = mac
-        self._id = "Tydom-" + mac
-        self.device_info = Tydom(
-            None, None, None, None, None, None, None, None, None, None, None, False
-        )
+        self._id = "Tydom-" + mac[6:]
+        self.device_info = Tydom(None, None, None, None, None, None, None)
         self.devices = {}
         self.ha_devices = {}
         self.add_cover_callback = None
@@ -61,6 +59,7 @@ class Hub:
 
         self._tydom_client = TydomClient(
             hass=self._hass,
+            id=self._id,
             mac=self._mac,
             host=self._host,
             password=self._pass,
@@ -68,11 +67,6 @@ class Hub:
             event_callback=self.handle_event,
         )
 
-        self.rollers = [
-            #    Roller(f"{self._id}_1", f"{self._name} 1", self),
-            #    Roller(f"{self._id}_2", f"{self._name} 2", self),
-            #    Roller(f"{self._id}_3", f"{self._name} 3", self),
-        ]
         self.online = True
 
     @property
@@ -107,28 +101,35 @@ class Hub:
             devices = await self._tydom_client.consume_messages()
             if devices is not None:
                 for device in devices:
-                    logger.info("*** device %s", device)
-                    if isinstance(device, Tydom):
-                        await self.device_info.update_device(device)
+                    if device.device_id not in self.devices:
+                        self.devices[device.device_id] = device
+                        await self.create_ha_device(device)
                     else:
-                        logger.warn("*** publish_updates for device : %s", device)
-                        if device.device_id not in self.devices:
-                            self.devices[device.device_id] = device
-                            await self.create_ha_device(device)
-                        else:
-                            logger.warn(
-                                "update device %s : %s",
-                                device.device_id,
-                                self.devices[device.device_id],
-                            )
-                            await self.update_ha_device(
-                                self.devices[device.device_id], device
-                            )
+                        logger.warn(
+                            "update device %s : %s",
+                            device.device_id,
+                            self.devices[device.device_id],
+                        )
+                        await self.update_ha_device(
+                            self.devices[device.device_id], device
+                        )
 
     async def create_ha_device(self, device):
         """Create a new HA device"""
         logger.warn("device type %s", device.device_type)
         match device:
+            case Tydom(): 
+
+                logger.info("Create Tydom gateway %s", device.device_id)
+                self.devices[device.device_id] = self.device_info
+                await self.device_info.update_device(device)
+                ha_device = HATydom(self.device_info)
+                
+                self.ha_devices[self.device_info.device_id] = ha_device
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback([ha_device])
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback(ha_device.get_sensors())
             case TydomShutter():
                 logger.warn("Create cover %s", device.device_id)
                 ha_device = HACover(device)
@@ -239,101 +240,3 @@ class Hub:
         """Trigger firmware update"""
         logger.info("Installing firmware update...")
         self._tydom_client.update_firmware()
-
-
-class Roller:
-    """Dummy roller (device for HA) for Hello World example."""
-
-    def __init__(self, rollerid: str, name: str, hub: Hub) -> None:
-        """Init dummy roller."""
-        self._id = rollerid
-        self.hub = hub
-        self.name = name
-        self._callbacks = set()
-        self._loop = asyncio.get_event_loop()
-        self._target_position = 100
-        self._current_position = 100
-        # Reports if the roller is moving up or down.
-        # >0 is up, <0 is down. This very much just for demonstration.
-        self.moving = 0
-
-        # Some static information about this device
-        self.firmware_version = f"0.0.{random.randint(1, 9)}"
-        self.model = "Test Device"
-
-    @property
-    def roller_id(self) -> str:
-        """Return ID for roller."""
-        return self._id
-
-    @property
-    def position(self):
-        """Return position for roller."""
-        logger.error("get roller position")
-        return self._current_position
-
-    async def set_position(self, position: int) -> None:
-        """
-        Set dummy cover to the given position.
-        State is announced a random number of seconds later.
-        """
-        logger.error("set roller position (hub)")
-        self._target_position = position
-
-        # Update the moving status, and broadcast the update
-        self.moving = position - 50
-        await self.publish_updates()
-
-        self._loop.create_task(self.delayed_update())
-
-    async def delayed_update(self) -> None:
-        """Publish updates, with a random delay to emulate interaction with device."""
-        logger.error("delayed_update")
-        await asyncio.sleep(random.randint(1, 10))
-        self.moving = 0
-        await self.publish_updates()
-
-    def register_callback(self, callback: Callable[[], None]) -> None:
-        """Register callback, called when Roller changes state."""
-        logger.error("register_callback %s", callback)
-        self._callbacks.add(callback)
-
-    def remove_callback(self, callback: Callable[[], None]) -> None:
-        """Remove previously registered callback."""
-        logger.error("remove_callback")
-        self._callbacks.discard(callback)
-
-    # In a real implementation, this library would call it's call backs when it was
-    # notified of any state changeds for the relevant device.
-    async def publish_updates(self) -> None:
-        """Schedule call all registered callbacks."""
-        logger.error("publish_updates")
-        self._current_position = self._target_position
-        for callback in self._callbacks:
-            callback()
-
-    @property
-    def online(self) -> float:
-        """Roller is online."""
-        logger.error("online")
-        # The dummy roller is offline about 10% of the time. Returns True if online,
-        # False if offline.
-        return random.random() > 0.1
-
-    @property
-    def battery_level(self) -> int:
-        """Battery level as a percentage."""
-        logger.error("battery_level")
-        return random.randint(0, 100)
-
-    @property
-    def battery_voltage(self) -> float:
-        """Return a random voltage roughly that of a 12v battery."""
-        logger.error("battery_voltage")
-        return round(random.random() * 3 + 10, 2)
-
-    @property
-    def illuminance(self) -> int:
-        """Return a sample illuminance in lux."""
-        logger.error("illuminance")
-        return random.randint(0, 500)

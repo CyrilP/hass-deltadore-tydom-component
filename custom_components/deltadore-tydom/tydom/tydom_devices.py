@@ -4,72 +4,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
-class Tydom:
-    """Tydom"""
-
-    def __init__(
-        self,
-        product_name,
-        main_version_sw,
-        main_version_hw,
-        main_id,
-        main_reference,
-        key_version_sw,
-        key_version_hw,
-        key_version_stack,
-        key_reference,
-        boot_reference,
-        boot_version,
-        update_available,
-    ):
-        self.product_name = product_name
-        self.main_version_sw = main_version_sw
-        self.main_version_hw = main_version_hw
-        self.main_id = main_id
-        self.main_reference = main_reference
-        self.key_version_sw = key_version_sw
-        self.key_version_hw = key_version_hw
-        self.key_version_stack = key_version_stack
-        self.key_reference = key_reference
-        self.boot_reference = boot_reference
-        self.boot_version = boot_version
-        self.update_available = update_available
-        self._callbacks = set()
-
-    def register_callback(self, callback: Callable[[], None]) -> None:
-        """Register callback, called when Roller changes state."""
-        self._callbacks.add(callback)
-
-    def remove_callback(self, callback: Callable[[], None]) -> None:
-        """Remove previously registered callback."""
-        self._callbacks.discard(callback)
-
-    async def update_device(self, updated_entity):
-        """Update the device values from another device"""
-        logger.error("update Tydom ")
-        self.product_name = updated_entity.product_name
-        self.main_version_sw = updated_entity.main_version_sw
-        self.main_version_hw = updated_entity.main_version_hw
-        self.main_id = updated_entity.main_id
-        self.main_reference = updated_entity.main_reference
-        self.key_version_sw = updated_entity.key_version_sw
-        self.key_version_hw = updated_entity.key_version_hw
-        self.key_version_stack = updated_entity.key_version_stack
-        self.key_reference = updated_entity.key_reference
-        self.boot_reference = updated_entity.boot_reference
-        self.boot_version = updated_entity.boot_version
-        self.update_available = updated_entity.update_available
-        await self.publish_updates()
-
-    # In a real implementation, this library would call it's call backs when it was
-    # notified of any state changeds for the relevant device.
-    async def publish_updates(self) -> None:
-        """Schedule call all registered callbacks."""
-        for callback in self._callbacks:
-            callback()
-
-
 class TydomDevice:
     """represents a generic device"""
 
@@ -81,8 +15,17 @@ class TydomDevice:
         self._type = device_type
         self._endpoint = endpoint
         self._callbacks = set()
-        for key in data:
-            setattr(self, key, data[key])
+        if data is not None:
+            for key in data:
+                
+                if isinstance(data[key], dict):
+                    logger.warning("type of %s : %s", key, type(data[key]))
+                    logger.warning("%s => %s", key, data[key])
+                elif isinstance(data[key], list):
+                    logger.warning("type of %s : %s", key, type(data[key]))
+                    logger.warning("%s => %s", key, data[key])
+                else:
+                    setattr(self, key, data[key])
 
     def register_callback(self, callback: Callable[[], None]) -> None:
         """Register callback, called when Roller changes state."""
@@ -116,7 +59,7 @@ class TydomDevice:
         """Update the device values from another device"""
         logger.debug("Update device %s", device.device_id)
         for attribute, value in device.__dict__.items():
-            if attribute[:1] != "_" and value is not None:
+            if (attribute == "_uid" or attribute[:1] != "_") and value is not None:
                 setattr(self, attribute, value)
         await self.publish_updates()
 
@@ -127,6 +70,9 @@ class TydomDevice:
         for callback in self._callbacks:
             callback()
 
+
+class Tydom(TydomDevice):
+    """Tydom Gateway"""
 
 class TydomShutter(TydomDevice):
     """Represents a shutter"""

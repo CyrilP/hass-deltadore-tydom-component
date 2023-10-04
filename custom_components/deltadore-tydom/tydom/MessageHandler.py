@@ -371,33 +371,23 @@ class MessageHandler:
 
     async def parse_msg_info(self, parsed):
         LOGGER.debug("parse_msg_info : %s", parsed)
-        product_name = parsed["productName"]
-        main_version_sw = parsed["mainVersionSW"]
-        main_version_hw = parsed["mainVersionHW"]
-        main_id = parsed["mainId"]
-        main_reference = parsed["mainReference"]
-        key_version_sw = parsed["keyVersionSW"]
-        key_version_hw = parsed["keyVersionHW"]
-        key_version_stack = parsed["keyVersionStack"]
-        key_reference = parsed["keyReference"]
-        boot_reference = parsed["bootReference"]
-        boot_version = parsed["bootVersion"]
-        update_available = parsed["updateAvailable"]
+
         return [
-            Tydom(
-                product_name,
-                main_version_sw,
-                main_version_hw,
-                main_id,
-                main_reference,
-                key_version_sw,
-                key_version_hw,
-                key_version_stack,
-                key_reference,
-                boot_reference,
-                boot_version,
-                update_available,
-            )
+            Tydom(self.tydom_client, self.tydom_client.id, self.tydom_client.id, self.tydom_client.id, "Tydom Gateway", None, parsed)
+            #Tydom(
+            #    product_name,
+            #    main_version_sw,
+            #    main_version_hw,
+            #    main_id,
+            #    main_reference,
+            #    key_version_sw,
+            #    key_version_hw,
+            #    key_version_stack,
+            #    key_reference,
+            #    boot_reference,
+            #    boot_version,
+            #    update_available,
+            #)
         ]
 
     @staticmethod
