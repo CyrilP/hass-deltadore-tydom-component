@@ -1,6 +1,7 @@
 """Home assistant entites"""
 from typing import Any
 
+from homeassistant.helpers import device_registry as dr
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
@@ -221,12 +222,24 @@ class HATydom(Entity):
         "TYDOM.dat",
     ]
 
-    def __init__(self, device: Tydom) -> None:
+    def __init__(self, device: Tydom, hass) -> None:
         self.device = device
-        self._attr_unique_id = f"{self.device.device_id}_gateway"
+        self._attr_unique_id = f"{self.device.device_id}"
         self._attr_name = self.device.device_name
         self._registered_sensors = []
 
+        device_registry = dr.async_get(hass)
+
+        device_registry.async_get_or_create(
+            config_entry_id=self.device.device_id,
+            identifiers={(DOMAIN, self.device.device_id)},
+            name=self.device.device_id,
+            manufacturer="Delta Dore",
+            model=self.device.productName,
+            sw_version=self.device.mainVersionSW,
+
+        )
+        
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
         # Importantly for a push integration, the module that will be getting updates
@@ -372,11 +385,19 @@ class HAEnergy(Entity):
         "outTemperature": UnitOfTemperature.CELSIUS,
     }
 
-    def __init__(self, device: TydomEnergy) -> None:
+    def __init__(self, device: TydomEnergy, hass) -> None:
         self._device = device
         self._attr_unique_id = f"{self._device.device_id}_energy"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
+
+        device_registry = dr.async_get(hass)
+
+        device_registry.async_get_or_create(
+            config_entry_id=self._device.device_id,
+            identifiers={(DOMAIN, self._device.device_id)},
+            name=self._device.device_name,
+        )
         
     # This property is important to let HA know if this entity is online or not.
     # If an entity is offline (return False), the UI will refelect this.
