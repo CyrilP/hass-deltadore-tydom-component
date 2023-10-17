@@ -24,6 +24,7 @@ Platform | Description
 `cover` | controls an opening or cover.
 `climate` | controls temperature, humidity, or fans.
 `light` | controls a light.
+`lock` | controls a lock.
 `alarm_control_panel` | controls an alarm.
 `update` | firmware update
 
