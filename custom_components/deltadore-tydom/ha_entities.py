@@ -54,6 +54,67 @@ from .tydom.tydom_devices import *
 
 from .const import DOMAIN, LOGGER
 
+class HAEntity:
+
+    sensor_classes = {}
+    state_classes = {}
+    units = {}
+    filtered_attrs = {}
+
+    async def async_added_to_hass(self) -> None:
+        """Run when this Entity has been added to HA."""
+
+        self._device.register_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Entity being removed from hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+
+    @property
+    def available(self) -> bool:
+        """Return True if roller and hub is available."""
+        # FIXME
+        # return self._device.online and self._device.hub.online
+        return True
+    
+    def get_sensors(self):
+        """Get available sensors for this entity"""
+        sensors = []
+
+        for attribute, value in self._device.__dict__.items():
+            if (
+                attribute[:1] != "_"
+                and value is not None
+                and attribute not in self._registered_sensors
+            ):
+                if attribute in self.filtered_attrs:
+                    continue
+                sensor_class = None
+                if attribute in self.sensor_classes:
+                    sensor_class = self.sensor_classes[attribute]
+
+                state_class = None
+                if attribute in self.state_classes:
+                    state_class = self.state_classes[attribute]
+
+                unit = None
+                if attribute in self.units:
+                    unit = self.units[attribute]
+
+                if isinstance(value, bool):
+                    sensors.append(
+                        GenericBinarySensor(
+                            self._device, sensor_class, attribute, attribute
+                        )
+                    )
+                else:
+                    sensors.append(
+                        GenericSensor(self._device, sensor_class, state_class, attribute, attribute, unit)
+                    )
+                self._registered_sensors.append(attribute)
+
+        return sensors
+
 
 class GenericSensor(SensorEntity):
     """Representation of a generic sensor"""
@@ -103,22 +164,16 @@ class GenericSensor(SensorEntity):
         """Return the state of the sensor."""
         return getattr(self._device, self._attribute)
 
-    # To link this entity to the cover device, this property must return an
-    # identifiers value matching that used in the cover, but no other information such
-    # as name. If name is returned, this entity will then also become a device in the
-    # HA UI.
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
         return {"identifiers": {(DOMAIN, self._device.device_id)}}
 
-    # This property is important to let HA know if this entity is online or not.
-    # If an entity is offline (return False), the UI will refelect this.
     @property
     def available(self) -> bool:
-        """Return True if roller and hub is available."""
+        """Return True if hub is available."""
         # FIXME
-        # return self._device.online and self._device.hub.online
+        # return self._device.online
         return True
 
     async def async_added_to_hass(self):
@@ -141,10 +196,6 @@ class BinarySensorBase(BinarySensorEntity):
         """Initialize the sensor."""
         self._device = device
 
-    # To link this entity to the cover device, this property must return an
-    # identifiers value matching that used in the cover, but no other information such
-    # as name. If name is returned, this entity will then also become a device in the
-    # HA UI.
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
@@ -178,6 +229,13 @@ class GenericBinarySensor(BinarySensorBase):
         self._attribute = attribute
         self._attr_device_class = device_class
 
+    @property
+    def available(self) -> bool:
+        """Return True if hub is available."""
+        # FIXME
+        # return self._device.online
+        return True
+
     # The value of this sensor.
     @property
     def is_on(self):
@@ -185,7 +243,7 @@ class GenericBinarySensor(BinarySensorBase):
         return getattr(self._device, self._attribute)
 
 
-class HATydom(Entity):
+class HATydom(Entity, HAEntity):
     """Representation of a Tydom Gateway."""
 
     _attr_has_entity_name = False
@@ -223,97 +281,35 @@ class HATydom(Entity):
     ]
 
     def __init__(self, device: Tydom, hass) -> None:
-        self.device = device
-        self._attr_unique_id = f"{self.device.device_id}"
-        self._attr_name = self.device.device_name
+        self._device = device
+        self._attr_unique_id = f"{self._device.device_id}"
+        self._attr_name = self._device.device_name
         self._registered_sensors = []
 
         device_registry = dr.async_get(hass)
 
         device_registry.async_get_or_create(
-            config_entry_id=self.device.device_id,
-            identifiers={(DOMAIN, self.device.device_id)},
-            name=self.device.device_id,
+            config_entry_id=self._device.device_id,
+            identifiers={(DOMAIN, self._device.device_id)},
+            name=self._device.device_id,
             manufacturer="Delta Dore",
-            model=self.device.productName,
-            sw_version=self.device.mainVersionSW,
+            model=self._device.productName,
+            sw_version=self._device.mainVersionSW,
 
         )
         
-    async def async_added_to_hass(self) -> None:
-        """Run when this Entity has been added to HA."""
-        # Importantly for a push integration, the module that will be getting updates
-        # needs to notify HA of changes. The dummy device has a registercallback
-        # method, so to this we add the 'self.async_write_ha_state' method, to be
-        # called where ever there are changes.
-        # The call back registration is done once this entity is registered with HA
-        # (rather than in the __init__)
-        self.device.register_callback(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Entity being removed from hass."""
-        # The opposite of async_added_to_hass. Remove any registered call backs here.
-        self.device.remove_callback(self.async_write_ha_state)
-
-    # To link this entity to the cover device, this property must return an
-    # identifiers value matching that used in the cover, but no other information such
-    # as name. If name is returned, this entity will then also become a device in the
-    # HA UI.
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
         return {
             "identifiers": {(DOMAIN, self.device.device_id)},
-            "name": self.device.device_id,
+            "name": self._device.device_id,
             "manufacturer": "Delta Dore",
-            "sw_version": self.device.mainVersionSW,
-            "model": self.device.productName,
+            "sw_version": self._device.mainVersionSW,
+            "model": self._device.productName,
         }
 
-
-    # This property is important to let HA know if this entity is online or not.
-    # If an entity is offline (return False), the UI will refelect this.
-    @property
-    def available(self) -> bool:
-        """Return True if roller and hub is available."""
-        # FIXME
-        # return self._device.online and self._device.hub.online
-        return True
-
-
-    def get_sensors(self) -> list:
-        """Get available sensors for this entity"""
-        sensors = []
-
-        for attribute, value in self.device.__dict__.items():
-            if (
-                attribute[:1] != "_"
-                and value is not None
-                and attribute not in self._registered_sensors
-            ):
-                sensor_class = None
-                if attribute in self.filtered_attrs:
-                    continue
-                if attribute in self.sensor_classes:
-                    LOGGER.warn("sensor class for %s", attribute)
-                    LOGGER.warn("sensor class for %s = %s", attribute, self.sensor_classes[attribute])
-                    sensor_class = self.sensor_classes[attribute]
-                if isinstance(value, bool):
-                    sensors.append(
-                        GenericBinarySensor(
-                            self.device, sensor_class, attribute, attribute
-                        )
-                    )
-                else:
-                    sensors.append(
-                        GenericSensor(self.device, sensor_class, None, attribute, attribute, None)
-                    )
-                self._registered_sensors.append(attribute)
-
-        return sensors
-
-
-class HAEnergy(Entity):
+class HAEnergy(Entity, HAEntity):
     """Representation of an Energy sensor"""
 
     _attr_has_entity_name = False
@@ -343,6 +339,7 @@ class HAEnergy(Entity):
         "energyInstantTi1I": SensorDeviceClass.CURRENT,
         "energyInstantTi1I_Min": SensorDeviceClass.CURRENT,
         "energyInstantTi1I_Max": SensorDeviceClass.CURRENT,
+        "energyIndexTi1": SensorDeviceClass.ENERGY,
         "energyTotIndexWatt": SensorDeviceClass.ENERGY,
         "energyIndexHeatWatt": SensorDeviceClass.ENERGY,
         "energyIndexECSWatt": SensorDeviceClass.ENERGY,
@@ -351,6 +348,7 @@ class HAEnergy(Entity):
     }
 
     state_classes = {
+        "energyIndexTi1": SensorStateClass.TOTAL_INCREASING,
         "energyTotIndexWatt": SensorStateClass.TOTAL_INCREASING,
         "energyIndexECSWatt": SensorStateClass.TOTAL_INCREASING,
         "energyIndexHeatWatt": SensorStateClass.TOTAL_INCREASING,
@@ -378,6 +376,7 @@ class HAEnergy(Entity):
         "energyInstantTi1I_Max": UnitOfElectricCurrent.AMPERE,
         "energyScaleTi1I_Min": UnitOfElectricCurrent.AMPERE,
         "energyScaleTi1I_Max": UnitOfElectricCurrent.AMPERE,
+        "energyIndexTi1": UnitOfEnergy.WATT_HOUR,
         "energyTotIndexWatt": UnitOfEnergy.WATT_HOUR,
         "energyIndexHeatWatt": UnitOfEnergy.WATT_HOUR,
         "energyIndexECSWatt": UnitOfEnergy.WATT_HOUR,
@@ -393,97 +392,34 @@ class HAEnergy(Entity):
 
         device_registry = dr.async_get(hass)
 
+        sw_version = None
+        if  hasattr(self._device, "softVersion"):
+            sw_version = self._device.softVersion
+
         device_registry.async_get_or_create(
             config_entry_id=self._device.device_id,
             identifiers={(DOMAIN, self._device.device_id)},
             name=self._device.device_name,
+            sw_version= sw_version,
         )
         
-    # This property is important to let HA know if this entity is online or not.
-    # If an entity is offline (return False), the UI will refelect this.
-    @property
-    def available(self) -> bool:
-        """Return True if roller and hub is available."""
-        # FIXME
-        # return self._device.online and self._device.hub.online
-        return True
-
-    async def async_added_to_hass(self) -> None:
-        """Run when this Entity has been added to HA."""
-        # Importantly for a push integration, the module that will be getting updates
-        # needs to notify HA of changes. The dummy device has a registercallback
-        # method, so to this we add the 'self.async_write_ha_state' method, to be
-        # called where ever there are changes.
-        # The call back registration is done once this entity is registered with HA
-        # (rather than in the __init__)
-        self._device.register_callback(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Entity being removed from hass."""
-        # The opposite of async_added_to_hass. Remove any registered call backs here.
-        self._device.remove_callback(self.async_write_ha_state)
-
-    # To link this entity to the cover device, this property must return an
-    # identifiers value matching that used in the cover, but no other information such
-    # as name. If name is returned, this entity will then also become a device in the
-    # HA UI.
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
+        sw_version = None
+        if  hasattr(self._device, "softVersion"):
+            sw_version = self._device.softVersion
         return {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
+            "sw_version": sw_version,
         }
-    
-    def get_sensors(self):
-        """Get available sensors for this entity"""
-        sensors = []
 
-        for attribute, value in self._device.__dict__.items():
-            if (
-                attribute[:1] != "_"
-                and value is not None
-                and attribute not in self._registered_sensors
-            ):
-                sensor_class = None
-                if attribute in self.sensor_classes:
-                    sensor_class = self.sensor_classes[attribute]
-
-                state_class = None
-                if attribute in self.state_classes:
-                    state_class = self.state_classes[attribute]
-
-                unit = None
-                if attribute in self.units:
-                    unit = self.units[attribute]
-
-                if isinstance(value, bool):
-                    sensors.append(
-                        GenericBinarySensor(
-                            self._device, sensor_class, attribute, attribute
-                        )
-                    )
-                else:
-                    sensors.append(
-                        GenericSensor(self._device, sensor_class, state_class, attribute, attribute, unit)
-                    )
-                self._registered_sensors.append(attribute)
-
-        return sensors
-
-
-# This entire class could be written to extend a base class to ensure common attributes
-# are kept identical/in sync. It's broken apart here between the Cover and Sensors to
-# be explicit about what is returned, and the comments outline where the overlap is.
-class HACover(CoverEntity):
+class HACover(CoverEntity, HAEntity):
     """Representation of a Cover."""
 
-    # Our dummy class is PUSH, so we tell HA that it should not be polled
+
     should_poll = False
-    # The supported features of a cover are done using a bitmask. Using the constants
-    # imported above, we can tell HA the features that are supported by this entity.
-    # If the supported features were dynamic (ie: different depending on the external
-    # device it connected to), then this should be function with an @property decorator.
     supported_features = 0
     device_class = CoverDeviceClass.SHUTTER
 
@@ -498,19 +434,9 @@ class HACover(CoverEntity):
 
     def __init__(self, device: TydomShutter) -> None:
         """Initialize the sensor."""
-        # Usual setup is done here. Callbacks are added in async_added_to_hass.
+
         self._device = device
-
-        # A unique_id for this entity with in this domain. This means for example if you
-        # have a sensor on this cover, you must ensure the value returned is unique,
-        # which is done here by appending "_cover". For more information, see:
-        # https://developers.home-assistant.io/docs/entity_registry_index/#unique-id-requirements
-        # Note: This is NOT used to generate the user visible Entity ID used in automations.
         self._attr_unique_id = f"{self._device.device_id}_cover"
-
-        # This is the name for this *entity*, the "name" attribute from "device_info"
-        # is used as the device name for device screens in the UI. This name is used on
-        # entity screens, and used to build the Entity ID that's used is automations etc.
         self._attr_name = self._device.device_name
         self._registered_sensors = []
         if hasattr(device, "position"):
@@ -530,66 +456,14 @@ class HACover(CoverEntity):
                 | SUPPORT_STOP_TILT
             )
 
-    async def async_added_to_hass(self) -> None:
-        """Run when this Entity has been added to HA."""
-        # Importantly for a push integration, the module that will be getting updates
-        # needs to notify HA of changes. The dummy device has a registercallback
-        # method, so to this we add the 'self.async_write_ha_state' method, to be
-        # called where ever there are changes.
-        # The call back registration is done once this entity is registered with HA
-        # (rather than in the __init__)
-        self._device.register_callback(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Entity being removed from hass."""
-        # The opposite of async_added_to_hass. Remove any registered call backs here.
-        self._device.remove_callback(self.async_write_ha_state)
-
-    # Information about the devices that is partially visible in the UI.
-    # The most critical thing here is to give this entity a name so it is displayed
-    # as a "device" in the HA UI. This name is used on the Devices overview table,
-    # and the initial screen when the device is added (rather than the entity name
-    # property below). You can then associate other Entities (eg: a battery
-    # sensor) with this device, so it shows more like a unified element in the UI.
-    # For example, an associated battery sensor will be displayed in the right most
-    # column in the Configuration > Devices view for a device.
-    # To associate an entity with this device, the device_info must also return an
-    # identical "identifiers" attribute, but not return a name attribute.
-    # See the sensors.py file for the corresponding example setup.
-    # Additional meta data can also be returned here, including sw_version (displayed
-    # as Firmware), model and manufacturer (displayed as <model> by <manufacturer>)
-    # shown on the device info screen. The Manufacturer and model also have their
-    # respective columns on the Devices overview table. Note: Many of these must be
-    # set when the device is first added, and they are not always automatically
-    # refreshed by HA from it's internal cache.
-    # For more information see:
-    # https://developers.home-assistant.io/docs/device_registry_index/#device-properties
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
         return {
             "identifiers": {(DOMAIN, self._device.device_id)},
-            # If desired, the name for the device could be different to the entity
             "name": self.name,
         }
 
-    # This property is important to let HA know if this entity is online or not.
-    # If an entity is offline (return False), the UI will refelect this.
-    @property
-    def available(self) -> bool:
-        """Return True if roller and hub is available."""
-        # return self._device.online and self._device.hub.online
-        # FIXME
-        return True
-
-    # The following properties are how HA knows the current state of the device.
-    # These must return a value from memory, not make a live query to the device/hub
-    # etc when called (hence they are properties). For a push based integration,
-    # HA is notified of changes via the async_write_ha_state call. See the __init__
-    # method for hos this is implemented in this example.
-    # The properties that are expected for a cover are based on the supported_features
-    # property of the object. In the case of a cover, see the following for more
-    # details: https://developers.home-assistant.io/docs/core/entity/cover/
     @property
     def current_cover_position(self):
         """Return the current position of the cover."""
@@ -652,35 +526,8 @@ class HACover(CoverEntity):
         """Stop the cover tilt."""
         await self._device.slope_stop()
 
-    def get_sensors(self) -> list:
-        """Get available sensors for this entity"""
-        sensors = []
 
-        for attribute, value in self._device.__dict__.items():
-            if (
-                attribute[:1] != "_"
-                and value is not None
-                and attribute not in self._registered_sensors
-            ):
-                sensor_class = None
-                if attribute in self.sensor_classes:
-                    sensor_class = self.sensor_classes[attribute]
-                if isinstance(value, bool):
-                    sensors.append(
-                        GenericBinarySensor(
-                            self._device, sensor_class, attribute, attribute
-                        )
-                    )
-                else:
-                    sensors.append(
-                        GenericSensor(self._device, sensor_class, None, attribute, attribute, None)
-                    )
-                self._registered_sensors.append(attribute)
-
-        return sensors
-
-
-class HASmoke(BinarySensorEntity):
+class HASmoke(BinarySensorEntity, HAEntity):
     """Representation of an Smoke sensor"""
 
     should_poll = False
@@ -711,50 +558,7 @@ class HASmoke(BinarySensorEntity):
             "manufacturer": "Delta Dore",
         }
 
-    async def async_added_to_hass(self) -> None:
-        """Run when this Entity has been added to HA."""
-        # Importantly for a push integration, the module that will be getting updates
-        # needs to notify HA of changes. The dummy device has a registercallback
-        # method, so to this we add the 'self.async_write_ha_state' method, to be
-        # called where ever there are changes.
-        # The call back registration is done once this entity is registered with HA
-        # (rather than in the __init__)
-        self._device.register_callback(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Entity being removed from hass."""
-        # The opposite of async_added_to_hass. Remove any registered call backs here.
-        self._device.remove_callback(self.async_write_ha_state)
-
-    def get_sensors(self):
-        """Get available sensors for this entity"""
-        sensors = []
-
-        for attribute, value in self._device.__dict__.items():
-            if (
-                attribute[:1] != "_"
-                and value is not None
-                and attribute not in self._registered_sensors
-            ):
-                sensor_class = None
-                if attribute in self.sensor_classes:
-                    sensor_class = self.sensor_classes[attribute]
-                if isinstance(value, bool):
-                    sensors.append(
-                        GenericBinarySensor(
-                            self._device, sensor_class, attribute, attribute
-                        )
-                    )
-                else:
-                    sensors.append(
-                        GenericSensor(self._device, sensor_class, None, attribute, attribute, None)
-                    )
-                self._registered_sensors.append(attribute)
-
-        return sensors
-
-
-class HaClimate(ClimateEntity):
+class HaClimate(ClimateEntity, HAEntity):
     """A climate entity."""
 
     should_poll = False
@@ -829,7 +633,6 @@ class HaClimate(ClimateEntity):
         else:
             return None
         
-
     @property
     def preset_mode(self) -> HVACMode:
         """Return the current operation (e.g. heat, cool, idle)."""
@@ -865,56 +668,7 @@ class HaClimate(ClimateEntity):
         # FIXME
         logger.warn("SET TEMPERATURE")
 
-    async def async_added_to_hass(self) -> None:
-        """Run when this Entity has been added to HA."""
-        # Importantly for a push integration, the module that will be getting updates
-        # needs to notify HA of changes. The dummy device has a registercallback
-        # method, so to this we add the 'self.async_write_ha_state' method, to be
-        # called where ever there are changes.
-        # The call back registration is done once this entity is registered with HA
-        # (rather than in the __init__)
-        self._device.register_callback(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Entity being removed from hass."""
-        # The opposite of async_added_to_hass. Remove any registered call backs here.
-        self._device.remove_callback(self.async_write_ha_state)
-
-    def get_sensors(self):
-        """Get available sensors for this entity"""
-        sensors = []
-
-        for attribute, value in self._device.__dict__.items():
-            if (
-                attribute[:1] != "_"
-                and value is not None
-                and attribute not in self._registered_sensors
-            ):
-                sensor_class = None
-                if attribute in self.sensor_classes:
-                    sensor_class = self.sensor_classes[attribute]
-
-                unit = None
-                if attribute in self.units:
-                    unit = self.units[attribute]
-
-
-                if isinstance(value, bool):
-                    sensors.append(
-                        GenericBinarySensor(
-                            self._device, sensor_class, attribute, attribute
-                        )
-                    )
-                else:
-                    sensors.append(
-                        GenericSensor(self._device, sensor_class, None, attribute, attribute, unit)
-                    )
-                self._registered_sensors.append(attribute)
-
-        return sensors
-
-
-class HaWindow(CoverEntity):
+class HaWindow(CoverEntity, HAEntity):
     """Representation of a Window."""
 
     should_poll = False
@@ -933,15 +687,6 @@ class HaWindow(CoverEntity):
         self._attr_name = self._device.device_name
         self._registered_sensors = []
 
-    async def async_added_to_hass(self) -> None:
-        """Run when this Entity has been added to HA."""
-
-        self._device.register_callback(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Entity being removed from hass."""
-        self._device.remove_callback(self.async_write_ha_state)
-
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
@@ -955,35 +700,7 @@ class HaWindow(CoverEntity):
         """Return if the window is closed"""
         return self._device.openState == "LOCKED"
 
-    def get_sensors(self):
-        """Get available sensors for this entity"""
-        sensors = []
-
-        for attribute, value in self._device.__dict__.items():
-            if (
-                attribute[:1] != "_"
-                and value is not None
-                and attribute not in self._registered_sensors
-            ):
-                sensor_class = None
-                if attribute in self.sensor_classes:
-                    sensor_class = self.sensor_classes[attribute]
-                if isinstance(value, bool):
-                    sensors.append(
-                        GenericBinarySensor(
-                            self._device, sensor_class, attribute, attribute
-                        )
-                    )
-                else:
-                    sensors.append(
-                        GenericSensor(self._device, sensor_class, None, attribute, attribute, None)
-                    )
-                self._registered_sensors.append(attribute)
-
-        return sensors
-
-
-class HaDoor(LockEntity, CoverEntity):
+class HaDoor(LockEntity, HAEntity):
     """Representation of a Door."""
 
     should_poll = False
@@ -1002,15 +719,6 @@ class HaDoor(LockEntity, CoverEntity):
         self._attr_name = self._device.device_name
         self._registered_sensors = []
 
-    async def async_added_to_hass(self) -> None:
-        """Run when this Entity has been added to HA."""
-
-        self._device.register_callback(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Entity being removed from hass."""
-        self._device.remove_callback(self.async_write_ha_state)
-
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
@@ -1020,39 +728,11 @@ class HaDoor(LockEntity, CoverEntity):
         }
 
     @property
-    def is_closed(self) -> bool:
+    def is_locked(self) -> bool:
         """Return if the door is closed"""
         return self._device.openState == "LOCKED"
 
-    def get_sensors(self):
-        """Get available sensors for this entity"""
-        sensors = []
-
-        for attribute, value in self._device.__dict__.items():
-            if (
-                attribute[:1] != "_"
-                and value is not None
-                and attribute not in self._registered_sensors
-            ):
-                sensor_class = None
-                if attribute in self.sensor_classes:
-                    sensor_class = self.sensor_classes[attribute]
-                if isinstance(value, bool):
-                    sensors.append(
-                        GenericBinarySensor(
-                            self._device, sensor_class, attribute, attribute
-                        )
-                    )
-                else:
-                    sensors.append(
-                        GenericSensor(self._device, sensor_class, None, attribute, attribute, None)
-                    )
-                self._registered_sensors.append(attribute)
-
-        return sensors
-
-
-class HaGate(CoverEntity):
+class HaGate(CoverEntity, HAEntity):
     """Representation of a Gate."""
 
     should_poll = False
@@ -1067,15 +747,6 @@ class HaGate(CoverEntity):
         self._attr_name = self._device.device_name
         self._registered_sensors = []
 
-    async def async_added_to_hass(self) -> None:
-        """Run when this Entity has been added to HA."""
-
-        self._device.register_callback(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Entity being removed from hass."""
-        self._device.remove_callback(self.async_write_ha_state)
-
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
@@ -1084,35 +755,7 @@ class HaGate(CoverEntity):
             "name": self.name,
         }
 
-    def get_sensors(self):
-        """Get available sensors for this entity"""
-        sensors = []
-
-        for attribute, value in self._device.__dict__.items():
-            if (
-                attribute[:1] != "_"
-                and value is not None
-                and attribute not in self._registered_sensors
-            ):
-                sensor_class = None
-                if attribute in self.sensor_classes:
-                    sensor_class = self.sensor_classes[attribute]
-                if isinstance(value, bool):
-                    sensors.append(
-                        GenericBinarySensor(
-                            self._device, sensor_class, attribute, attribute
-                        )
-                    )
-                else:
-                    sensors.append(
-                        GenericSensor(self._device, sensor_class, None, attribute, attribute, None)
-                    )
-                self._registered_sensors.append(attribute)
-
-        return sensors
-
-
-class HaGarage(CoverEntity):
+class HaGarage(CoverEntity, HAEntity):
     """Representation of a Garage door."""
 
     should_poll = False
@@ -1127,15 +770,6 @@ class HaGarage(CoverEntity):
         self._attr_name = self._device.device_name
         self._registered_sensors = []
 
-    async def async_added_to_hass(self) -> None:
-        """Run when this Entity has been added to HA."""
-
-        self._device.register_callback(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Entity being removed from hass."""
-        self._device.remove_callback(self.async_write_ha_state)
-
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
@@ -1144,35 +778,7 @@ class HaGarage(CoverEntity):
             "name": self.name,
         }
 
-    def get_sensors(self):
-        """Get available sensors for this entity"""
-        sensors = []
-
-        for attribute, value in self._device.__dict__.items():
-            if (
-                attribute[:1] != "_"
-                and value is not None
-                and attribute not in self._registered_sensors
-            ):
-                sensor_class = None
-                if attribute in self.sensor_classes:
-                    sensor_class = self.sensor_classes[attribute]
-                if isinstance(value, bool):
-                    sensors.append(
-                        GenericBinarySensor(
-                            self._device, sensor_class, attribute, attribute
-                        )
-                    )
-                else:
-                    sensors.append(
-                        GenericSensor(self._device, sensor_class, None, attribute, attribute, None)
-                    )
-                self._registered_sensors.append(attribute)
-
-        return sensors
-
-
-class HaLight(LightEntity):
+class HaLight(LightEntity, HAEntity):
     """Representation of a Light."""
 
     should_poll = False
@@ -1186,15 +792,6 @@ class HaLight(LightEntity):
         self._attr_name = self._device.device_name
         self._registered_sensors = []
 
-    async def async_added_to_hass(self) -> None:
-        """Run when this Entity has been added to HA."""
-
-        self._device.register_callback(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Entity being removed from hass."""
-        self._device.remove_callback(self.async_write_ha_state)
-
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
@@ -1203,29 +800,3 @@ class HaLight(LightEntity):
             "name": self.name,
         }
 
-    def get_sensors(self):
-        """Get available sensors for this entity"""
-        sensors = []
-
-        for attribute, value in self._device.__dict__.items():
-            if (
-                attribute[:1] != "_"
-                and value is not None
-                and attribute not in self._registered_sensors
-            ):
-                sensor_class = None
-                if attribute in self.sensor_classes:
-                    sensor_class = self.sensor_classes[attribute]
-                if isinstance(value, bool):
-                    sensors.append(
-                        GenericBinarySensor(
-                            self._device, sensor_class, attribute, attribute
-                        )
-                    )
-                else:
-                    sensors.append(
-                        GenericSensor(self._device, sensor_class, None, attribute, attribute, None)
-                    )
-                self._registered_sensors.append(attribute)
-
-        return sensors
