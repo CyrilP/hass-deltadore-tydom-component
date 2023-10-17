@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
 from . import hub
-from .const import DOMAIN
+from .const import DOMAIN, CONF_TYDOM_PASSWORD
 
 # List of platforms to support. There should be a matching .py file for each,
 # eg <cover.py> and <sensor.py>
@@ -34,7 +34,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass,
         entry.data[CONF_HOST],
         entry.data[CONF_MAC],
-        entry.data[CONF_PASSWORD],
+        entry.data[CONF_TYDOM_PASSWORD],
         pin,
     )
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = tydom_hub

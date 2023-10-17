@@ -9,3 +9,5 @@ DOMAIN = "deltadore-tydom"
 NAME = "Integration blueprint"
 VERSION = "0.0.1"
 ATTRIBUTION = "Data provided by http://jsonplaceholder.typicode.com/"
+
+CONF_TYDOM_PASSWORD = "tydom_password"

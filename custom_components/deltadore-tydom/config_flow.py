@@ -15,7 +15,7 @@ from homeassistant.const import CONF_NAME, CONF_HOST, CONF_MAC, CONF_EMAIL, CONF
 from homeassistant.core import HomeAssistant
 from homeassistant.components import dhcp
 
-from .const import DOMAIN, LOGGER
+from .const import DOMAIN, LOGGER, CONF_TYDOM_PASSWORD
 from . import hub
 from .tydom.tydom_client import (
     TydomClientApiClientCommunicationError,
@@ -73,7 +73,7 @@ async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
     # This is a simple example to show an error in the UI for a short hostname
     # The exceptions are defined at the end of this file, and are used in the
     # `async_step_user` method below.
-
+    LOGGER.debug("validating input: %s", data)
     if not host_valid(data[CONF_HOST]):
         raise InvalidHost
 
@@ -92,16 +92,17 @@ async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
         data[CONF_PASSWORD],
         data[CONF_MAC],
     )
-    data[CONF_PASSWORD] = password
+    data[CONF_TYDOM_PASSWORD] = password
 
     pin = None
     if CONF_PIN in data:
         pin = data[CONF_PIN]
-
+    LOGGER.debug("Input is valid.")
     return {
         CONF_HOST: data[CONF_HOST],
         CONF_MAC: data[CONF_MAC],
         CONF_PASSWORD: data[CONF_PASSWORD],
+        CONF_TYDOM_PASSWORD: password,
         CONF_PIN: pin,
     }
 
@@ -136,14 +137,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         _errors = {}
         if user_input is not None:
             try:
-                await validate_input(self.hass, user_input)
+                user_input = await validate_input(self.hass, user_input)
                 # Ensure it's working as expected
 
                 tydom_hub = hub.Hub(
                     self.hass,
                     user_input[CONF_HOST],
                     user_input[CONF_MAC],
-                    user_input[CONF_PASSWORD],
+                    user_input[CONF_TYDOM_PASSWORD],
                     None,
                 )
                 await tydom_hub.test_credentials()
@@ -158,27 +159,35 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # comments on `DATA_SCHEMA` for further details.
                 # Set the error on the `host` field, not the entire form.
                 _errors[CONF_HOST] = "invalid_host"
+                LOGGER.error("Invalid host: %s", user_input[CONF_HOST])
             except InvalidMacAddress:
                 _errors[CONF_MAC] = "invalid_macaddress"
+                LOGGER.error("Invalid MAC: %s", user_input[CONF_MAC])
             except InvalidEmail:
                 _errors[CONF_EMAIL] = "invalid_email"
+                LOGGER.error("Invalid email: %s", user_input[CONF_EMAIL])
             except InvalidPassword:
                 _errors[CONF_PASSWORD] = "invalid_password"
+                LOGGER.error("Invalid password")
             except TydomClientApiClientCommunicationError:
                 traceback.print_exc()
                 _errors["base"] = "communication_error"
+                LOGGER.exception("Communication error")
             except TydomClientApiClientAuthenticationError:
                 traceback.print_exc()
                 _errors["base"] = "authentication_error"
+                LOGGER.exception("Authentication error")
             except TydomClientApiClientError:
                 traceback.print_exc()
                 _errors["base"] = "unknown"
+                LOGGER.exception("Unknown error")
 
             except Exception:  # pylint: disable=broad-except
                 traceback.print_exc()
                 LOGGER.exception("Unexpected exception")
                 _errors["base"] = "unknown"
             else:
+                user_input[CONF_PASSWORD] = password
                 return self.async_create_entry(
                     title="Tydom-" + user_input[CONF_MAC], data=user_input
                 )
@@ -229,14 +238,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         _errors = {}
         if user_input is not None:
             try:
-                await validate_input(self.hass, user_input)
+                user_input = await validate_input(self.hass, user_input)
                 # Ensure it's working as expected
 
                 tydom_hub = hub.Hub(
                     self.hass,
                     user_input[CONF_HOST],
                     user_input[CONF_MAC],
-                    user_input[CONF_PASSWORD],
+                    user_input[CONF_TYDOM_PASSWORD],
                     None,
                 )
                 await tydom_hub.test_credentials()
