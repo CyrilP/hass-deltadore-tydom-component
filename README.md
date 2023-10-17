@@ -32,7 +32,7 @@ Platform | Description
 - Cover (Up/Down/Stop)
 - Tywatt 5400
 - Tyxal+ DFR
-- K-Line DVI
+- K-Line DVI (windows, door)
 - Typass ATL (zones temperatures, target temperature, mode, presets, water/heat power usage)
 
 ## Installation
