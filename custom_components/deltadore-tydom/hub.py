@@ -46,7 +46,7 @@ class Hub:
         self._hass = hass
         self._name = mac
         self._id = "Tydom-" + mac[6:]
-        self.device_info = Tydom(None, None, None, None, None, None, None)
+        self.device_info = Tydom(None, None, None, None, None, None, None, None)
         self.devices = {}
         self.ha_devices = {}
         self.add_cover_callback = None

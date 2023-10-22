@@ -293,7 +293,6 @@ class HATydom(Entity, HAEntity):
             manufacturer="Delta Dore",
             model=self._device.productName,
             sw_version=self._device.mainVersionSW,
-
         )
         
     @property
@@ -559,7 +558,7 @@ class HASmoke(BinarySensorEntity, HAEntity):
 class HaClimate(ClimateEntity, HAEntity):
     """A climate entity."""
 
-    should_poll = True
+    should_poll = False
 
     sensor_classes = {
         "temperature": SensorDeviceClass.TEMPERATURE,
@@ -590,6 +589,7 @@ class HaClimate(ClimateEntity, HAEntity):
     def __init__(self, device: TydomBoiler) -> None:
         super().__init__()
         self._device = device
+        self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_climate"
         self._attr_name = self._device.device_name
 
@@ -601,6 +601,12 @@ class HaClimate(ClimateEntity, HAEntity):
 
         self._attr_preset_modes = ["NORMAL", "STOP", "ANTI_FROST"]
         self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
+
+        if "min" in self._device._metadata["setpoint"]:
+            self._attr_min_temp = self._device._metadata["setpoint"]["min"]
+        
+        if "max" in self._device._metadata["setpoint"]:
+            self._attr_max_temp = self._device._metadata["setpoint"]["max"]
  
     @property
     def supported_features(self) -> ClimateEntityFeature:
@@ -651,7 +657,7 @@ class HaClimate(ClimateEntity, HAEntity):
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
-        await self._device.set_hvac_mode(self.DICT_MODES_HA_TO_DD[hvac_mode]) 
+        await self._device.set_hvac_mode(self.DICT_MODES_HA_TO_DD[hvac_mode])
 
     async def async_set_preset_mode(self, preset_mode):
         """Set new target preset mode."""

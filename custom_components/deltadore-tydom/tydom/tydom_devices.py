@@ -8,13 +8,14 @@ logger = logging.getLogger(__name__)
 class TydomDevice:
     """represents a generic device"""
 
-    def __init__(self, tydom_client, uid, device_id, name, device_type, endpoint, data):
+    def __init__(self, tydom_client, uid, device_id, name, device_type, endpoint, metadata, data):
         self._tydom_client = tydom_client
         self._uid = uid
         self._id = device_id
         self._name = name
         self._type = device_type
         self._endpoint = endpoint
+        self._metadata = metadata
         self._callbacks = set()
         if data is not None:
             for key in data:
@@ -63,6 +64,8 @@ class TydomDevice:
             if (attribute == "_uid" or attribute[:1] != "_") and value is not None:
                 setattr(self, attribute, value)
         await self.publish_updates()
+        if hasattr(self,"_ha_device"):
+            self._ha_device.async_write_ha_state()
 
     async def publish_updates(self) -> None:
         """Schedule call all registered callbacks."""
@@ -146,6 +149,9 @@ class TydomSmoke(TydomDevice):
 
 
 class TydomBoiler(TydomDevice):
+    
+    _ha_device = None
+
     """represents a boiler"""
     async def set_hvac_mode(self, mode):
         """Set hvac mode (STOP/HEATING)"""
