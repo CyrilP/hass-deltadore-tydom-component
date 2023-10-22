@@ -657,9 +657,9 @@ class HaClimate(ClimateEntity, HAEntity):
         """Set new target preset mode."""
         await self._device.set_preset_mode(preset_mode)
 
-    async def async_set_temperature(self, target_temperature):
+    async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
-        await self._device.set_temperature(target_temperature)
+        await self._device.set_temperature(str(kwargs.get(ATTR_TEMPERATURE)))
 
 class HaWindow(CoverEntity, HAEntity):
     """Representation of a Window."""

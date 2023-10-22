@@ -60,18 +60,13 @@ class TydomDevice:
         """Update the device values from another device"""
         logger.debug("Update device %s", device.device_id)
         for attribute, value in device.__dict__.items():
-#            if device._type == "boiler":
-#                LOGGER.debug("updating device attr %s=>%s", attribute, value)
             if (attribute == "_uid" or attribute[:1] != "_") and value is not None:
                 setattr(self, attribute, value)
         await self.publish_updates()
 
-    # In a real implementation, this library would call it's call backs when it was
-    # notified of any state changeds for the relevant device.
     async def publish_updates(self) -> None:
         """Schedule call all registered callbacks."""
         for callback in self._callbacks:
-#            LOGGER.debug("calling callback%s", callback)
             callback()
 
 
