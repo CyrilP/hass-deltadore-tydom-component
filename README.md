@@ -34,7 +34,7 @@ Platform | Description
 - Tywatt 5400
 - Tyxal+ DFR
 - K-Line DVI (windows, door)
-- Typass ATL (zones temperatures, target temperature, mode, presets, water/heat power usage)
+- Typass ATL (zones temperatures, target temperature, mode, presets, water/heat power usage) with Tybox 5101
 
 ## Installation
 
