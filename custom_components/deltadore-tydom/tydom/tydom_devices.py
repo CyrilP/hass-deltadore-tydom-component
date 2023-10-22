@@ -56,7 +56,7 @@ class TydomDevice:
 
     async def update_device(self, device):
         """Update the device values from another device"""
-        logger.debug("Update device %s", device.device_id)
+        LOGGER.debug("Update device %s", device.device_id)
         for attribute, value in device.__dict__.items():
             if (attribute == "_uid" or attribute[:1] != "_") and value is not None:
                 setattr(self, attribute, value)
@@ -128,7 +128,7 @@ class TydomShutter(TydomDevice):
         """
         Set cover to the given position.
         """
-        logger.error("set roller tilt position (device) to : %s", position)
+        LOGGER.debug("set roller tilt position (device) to : %s", position)
 
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "position", str(position)
@@ -150,14 +150,14 @@ class TydomBoiler(TydomDevice):
     """represents a boiler"""
     async def set_hvac_mode(self, mode):
         """Set hvac mode (STOP/HEATING)"""
-        LOGGER.error("setting mode to %s", mode)
+        LOGGER.debug("setting mode to %s", mode)
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "authorization", mode
         )
 
     async def set_preset_mode(self, mode):
         """Set preset mode (NORMAL/STOP/ANTI_FROST)"""
-        LOGGER.error("setting preset to %s", mode)
+        LOGGER.debug("setting preset to %s", mode)
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "hvacMode", mode
         )
@@ -167,32 +167,20 @@ class TydomBoiler(TydomDevice):
             self._id, self._endpoint, "setpoint", temperature
         )
 
-
 class TydomWindow(TydomDevice):
     """represents a window"""
-
 
 class TydomDoor(TydomDevice):
     """represents a door"""
 
-
 class TydomGate(TydomDevice):
     """represents a gate"""
-
 
 class TydomGarage(TydomDevice):
     """represents a garage door"""
 
-    def __init__(self, tydom_client, uid, device_id, name, device_type, endpoint, data):
-        logger.info("TydomGarage : data %s", data)
-        super().__init__(
-            tydom_client, uid, device_id, name, device_type, endpoint, data
-        )
-
-
 class TydomLight(TydomDevice):
     """represents a light"""
-
 
 class TydomAlarm(TydomDevice):
     """represents an alarm"""
