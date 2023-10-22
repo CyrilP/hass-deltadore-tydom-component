@@ -1,6 +1,7 @@
 """Support for Tydom classes"""
 from typing import Callable
 import logging
+from ..const import LOGGER
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ class TydomDevice:
                     setattr(self, key, data[key])
 
     def register_callback(self, callback: Callable[[], None]) -> None:
-        """Register callback, called when Roller changes state."""
+        """Register callback, called when state changes."""
         self._callbacks.add(callback)
 
     def remove_callback(self, callback: Callable[[], None]) -> None:
@@ -59,6 +60,8 @@ class TydomDevice:
         """Update the device values from another device"""
         logger.debug("Update device %s", device.device_id)
         for attribute, value in device.__dict__.items():
+#            if device._type == "boiler":
+#                LOGGER.debug("updating device attr %s=>%s", attribute, value)
             if (attribute == "_uid" or attribute[:1] != "_") and value is not None:
                 setattr(self, attribute, value)
         await self.publish_updates()
@@ -68,6 +71,7 @@ class TydomDevice:
     async def publish_updates(self) -> None:
         """Schedule call all registered callbacks."""
         for callback in self._callbacks:
+#            LOGGER.debug("calling callback%s", callback)
             callback()
 
 
@@ -148,16 +152,27 @@ class TydomSmoke(TydomDevice):
 
 class TydomBoiler(TydomDevice):
     """represents a boiler"""
-    def set_hvac_mode(self, mode):
+    async def set_hvac_mode(self, mode):
         """Set hvac mode (STOP/HEATING)"""
-        logger.info("setting mode to %s", mode)
-        # authorization
+        logger.error("setting mode to %s", mode)
+        LOGGER.debug("setting mode to %s", mode)
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "authorization", mode
+        )
 
-    def set_preset_mode(self, mode):
+    async def set_preset_mode(self, mode):
         """Set preset mode (NORMAL/STOP/ANTI_FROST)"""
-        logger.info("setting preset to %s", mode)
-        # hvacMode
-
+        logger.error("setting preset to %s", mode)
+        LOGGER.debug("setting preset to %s", mode)
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "hvacMode", mode
+        )
+    async def set_temperature(self, temperature):
+        """Set target temperature"""
+        logger.error("setting target temperature to %s", temperature)
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "setpoint", temperature
+        )
 
 
 class TydomWindow(TydomDevice):

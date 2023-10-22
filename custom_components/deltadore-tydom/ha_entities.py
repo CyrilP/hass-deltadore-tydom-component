@@ -63,7 +63,6 @@ class HAEntity:
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
-
         self._device.register_callback(self.async_write_ha_state)
 
     async def async_will_remove_from_hass(self) -> None:
@@ -241,7 +240,6 @@ class GenericBinarySensor(BinarySensorBase):
     def is_on(self):
         """Return the state of the sensor."""
         return getattr(self._device, self._attribute)
-
 
 class HATydom(Entity, HAEntity):
     """Representation of a Tydom Gateway."""
@@ -561,7 +559,7 @@ class HASmoke(BinarySensorEntity, HAEntity):
 class HaClimate(ClimateEntity, HAEntity):
     """A climate entity."""
 
-    should_poll = False
+    should_poll = True
 
     sensor_classes = {
         "temperature": SensorDeviceClass.TEMPERATURE,
@@ -582,7 +580,7 @@ class HaClimate(ClimateEntity, HAEntity):
         HVACMode.HEAT: "HEATING",
         HVACMode.OFF: "STOP",
     }
-    DICT_MODES_DD__TO_HA = {
+    DICT_MODES_DD_TO_HA = {
         # "": HVACMode.AUTO,
         # "": HVACMode.COOL,
         "HEATING": HVACMode.HEAT,
@@ -627,16 +625,16 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def hvac_mode(self) -> HVACMode:
         """Return the current operation (e.g. heat, cool, idle)."""
-        # FIXME
         if (hasattr(self._device, 'authorization')):
-            return self.DICT_MODES_DD__TO_HA[self._device.authorization]
+            LOGGER.debug("hvac_mode = %s", self.DICT_MODES_DD_TO_HA[self._device.authorization])
+            return self.DICT_MODES_DD_TO_HA[self._device.authorization]
         else:
             return None
         
     @property
     def preset_mode(self) -> HVACMode:
         """Return the current operation (e.g. heat, cool, idle)."""
-        # FIXME
+        LOGGER.debug("preset_mode = %s", self._device.hvacMode)
         return self._device.hvacMode
 
     @property
@@ -653,20 +651,15 @@ class HaClimate(ClimateEntity, HAEntity):
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
-        # FIXME
-        self._device.set_hvac_mode(self.DICT_MODES_HA_TO_DD[hvac_mode]) 
-        logger.warn("SET HVAC MODE")
+        await self._device.set_hvac_mode(self.DICT_MODES_HA_TO_DD[hvac_mode]) 
 
     async def async_set_preset_mode(self, preset_mode):
         """Set new target preset mode."""
-        # FIXME
-        self._device.set_preset_mode(preset_mode)
-        logger.warn("SET preset MODE")
+        await self._device.set_preset_mode(preset_mode)
 
-    async def async_set_temperature(self, **kwargs):
+    async def async_set_temperature(self, target_temperature):
         """Set new target temperature."""
-        # FIXME
-        logger.warn("SET TEMPERATURE")
+        await self._device.set_temperature(target_temperature)
 
 class HaWindow(CoverEntity, HAEntity):
     """Representation of a Window."""

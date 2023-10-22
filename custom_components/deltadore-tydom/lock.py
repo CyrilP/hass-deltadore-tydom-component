@@ -18,7 +18,6 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Add cover for passed config_entry in HA."""
-    LOGGER.error("***** async_setup_entry *****")
     # The hub is loaded from the associated hass.data entry that was created in the
     # __init__.async_setup_entry function
     hub = hass.data[DOMAIN][config_entry.entry_id]

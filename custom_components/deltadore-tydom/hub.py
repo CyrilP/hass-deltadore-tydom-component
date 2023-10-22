@@ -19,8 +19,7 @@ from .tydom.tydom_client import TydomClient
 from .tydom.tydom_devices import Tydom
 from .ha_entities import *
 
-logger = logging.getLogger(__name__)
-
+from .const import LOGGER
 
 class Hub:
     """Hub for Delta Dore Tydom."""
@@ -96,7 +95,7 @@ class Hub:
 
     async def setup(self, connection: ClientWebSocketResponse) -> None:
         """Listen to tydom events."""
-        logger.info("Listen to tydom events")
+        LOGGER.debug("Listen to tydom events")
         while True:
             devices = await self._tydom_client.consume_messages()
             if devices is not None:
@@ -105,7 +104,7 @@ class Hub:
                         self.devices[device.device_id] = device
                         await self.create_ha_device(device)
                     else:
-                        logger.warn(
+                        LOGGER.debug(
                             "update device %s : %s",
                             device.device_id,
                             self.devices[device.device_id],
@@ -116,11 +115,9 @@ class Hub:
 
     async def create_ha_device(self, device):
         """Create a new HA device"""
-        logger.warn("device type %s", device.device_type)
         match device:
             case Tydom(): 
-
-                logger.info("Create Tydom gateway %s", device.device_id)
+                LOGGER.debug("Create Tydom gateway %s", device.device_id)
                 self.devices[device.device_id] = self.device_info
                 await self.device_info.update_device(device)
                 ha_device = HATydom(self.device_info, self._hass)
@@ -129,7 +126,7 @@ class Hub:
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomShutter():
-                logger.warn("Create cover %s", device.device_id)
+                LOGGER.debug("Create cover %s", device.device_id)
                 ha_device = HACover(device)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_cover_callback is not None:
@@ -137,7 +134,7 @@ class Hub:
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomEnergy():
-                logger.warn("Create conso %s", device.device_id)
+                LOGGER.debug("Create conso %s", device.device_id)
                 ha_device = HAEnergy(device, self._hass)
                 self.ha_devices[device.device_id] = ha_device
 
@@ -145,7 +142,7 @@ class Hub:
                     self.add_sensor_callback(ha_device.get_sensors())
 
             case TydomSmoke():
-                logger.warn("Create smoke %s", device.device_id)
+                LOGGER.debug("Create smoke %s", device.device_id)
                 ha_device = HASmoke(device)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_sensor_callback is not None:
@@ -154,7 +151,7 @@ class Hub:
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomBoiler():
-                logger.warn("Create boiler %s", device.device_id)
+                LOGGER.debug("Create boiler %s", device.device_id)
                 ha_device = HaClimate(device)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_climate_callback is not None:
@@ -163,7 +160,7 @@ class Hub:
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomWindow():
-                logger.warn("Create window %s", device.device_id)
+                LOGGER.debug("Create window %s", device.device_id)
                 ha_device = HaWindow(device)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_cover_callback is not None:
@@ -172,7 +169,7 @@ class Hub:
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomDoor():
-                logger.warn("Create door %s", device.device_id)
+                LOGGER.debug("Create door %s", device.device_id)
                 ha_device = HaDoor(device)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_cover_callback is not None:
@@ -181,7 +178,7 @@ class Hub:
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomGate():
-                logger.warn("Create gate %s", device.device_id)
+                LOGGER.debug("Create gate %s", device.device_id)
                 ha_device = HaGate(device)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_cover_callback is not None:
@@ -190,7 +187,7 @@ class Hub:
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomGarage():
-                logger.warn("Create garage %s", device.device_id)
+                LOGGER.debug("Create garage %s", device.device_id)
                 ha_device = HaGarage(device)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_cover_callback is not None:
@@ -199,7 +196,7 @@ class Hub:
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomLight():
-                logger.warn("Create light %s", device.device_id)
+                LOGGER.debug("Create light %s", device.device_id)
                 ha_device = HaLight(device)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_light_callback is not None:
@@ -208,7 +205,7 @@ class Hub:
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
             case _:
-                logger.error(
+                LOGGER.error(
                     "unsupported device type (%s) %s for device %s",
                     type(device),
                     device.device_type,
@@ -227,12 +224,11 @@ class Hub:
 
     async def ping(self) -> None:
         """Periodically send pings"""
-        logger.info("Sending ping")
         while True:
             await self._tydom_client.ping()
             await asyncio.sleep(10)
 
     async def async_trigger_firmware_update(self) -> None:
         """Trigger firmware update"""
-        logger.info("Installing firmware update...")
+        LOGGER.debug("Installing firmware update...")
         self._tydom_client.update_firmware()
