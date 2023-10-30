@@ -479,10 +479,40 @@ class TydomClient:
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
+    async def put_data(self, path, name, value):
+        """Give order (name + value) to path"""
+        body: str
+        if value is None:
+            body = '{"' + name + '":"null}'
+        elif type(value)==bool or type(value)==int:
+            body = '{"' + name + '":"' + str(value).lower() + '}'
+        else:
+            body = '{"' + name + '":"' + value + '"}'
+
+        str_request = (
+            self._cmd_prefix
+            + f"PUT {path} HTTP/1.1\r\nContent-Length: "
+            + str(len(body))
+            + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
+            + body
+            + "\r\n\r\n"
+        )
+        a_bytes = bytes(str_request, "ascii")
+        LOGGER.debug("Sending message to tydom (%s %s)", "PUT data", body)
+        await self._connection.send_bytes(a_bytes)
+        return 0
+
     async def put_devices_data(self, device_id, endpoint_id, name, value):
         """Give order (name + value) to endpoint"""
         # For shutter, value is the percentage of closing
-        body = '[{"name":"' + name + '","value":"' + value + '"}]'
+        body: str
+        if value is None:
+            body = '[{"name":"' + name + '","value":null}]'
+        elif type(value)==bool:
+            body = '[{"name":"' + name + '","value":' + str(value).lower() + '}]'
+        else:
+            body = '[{"name":"' + name + '","value":"' + value + '"}]'
+        
         # endpoint_id is the endpoint = the device (shutter in this case) to
         # open.
         str_request = (

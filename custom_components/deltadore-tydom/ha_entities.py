@@ -574,15 +574,16 @@ class HaClimate(ClimateEntity, HAEntity):
     }
 
     DICT_MODES_HA_TO_DD = {
-        HVACMode.AUTO: None,
+        HVACMode.AUTO: "ANTI_FROST",
         HVACMode.COOL: None,
-        HVACMode.HEAT: "HEATING",
+        HVACMode.HEAT: "NORMAL",
         HVACMode.OFF: "STOP",
     }
     DICT_MODES_DD_TO_HA = {
         # "": HVACMode.AUTO,
         # "": HVACMode.COOL,
-        "HEATING": HVACMode.HEAT,
+        "ANTI_FROST": HVACMode.AUTO,
+        "NORMAL": HVACMode.HEAT,
         "STOP": HVACMode.OFF,
     }
 
@@ -593,14 +594,13 @@ class HaClimate(ClimateEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_climate"
         self._attr_name = self._device.device_name
 
+        # self._attr_preset_modes = ["NORMAL", "STOP", "ANTI_FROST"]
         self._attr_hvac_modes = [
             HVACMode.OFF,
             HVACMode.HEAT,
+            HVACMode.AUTO,
         ]
         self._registered_sensors = []
-
-        self._attr_preset_modes = ["NORMAL", "STOP", "ANTI_FROST"]
-        self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
 
         if "min" in self._device._metadata["setpoint"]:
             self._attr_min_temp = self._device._metadata["setpoint"]["min"]
@@ -612,7 +612,7 @@ class HaClimate(ClimateEntity, HAEntity):
     def supported_features(self) -> ClimateEntityFeature:
         """Return the list of supported features."""
         features = ClimateEntityFeature(0)
-        features = features | ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
+        features = features | ClimateEntityFeature.TARGET_TEMPERATURE #| ClimateEntityFeature.PRESET_MODE
         return features
 
     @property
@@ -631,9 +631,9 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def hvac_mode(self) -> HVACMode:
         """Return the current operation (e.g. heat, cool, idle)."""
-        if (hasattr(self._device, 'authorization')):
-            LOGGER.debug("hvac_mode = %s", self.DICT_MODES_DD_TO_HA[self._device.authorization])
-            return self.DICT_MODES_DD_TO_HA[self._device.authorization]
+        if (hasattr(self._device, 'hvacMode')):
+            LOGGER.debug("hvac_mode = %s", self.DICT_MODES_DD_TO_HA[self._device.hvacMode])
+            return self.DICT_MODES_DD_TO_HA[self._device.hvacMode]
         else:
             return None
         

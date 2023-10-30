@@ -125,9 +125,7 @@ class TydomShutter(TydomDevice):
 
     # FIXME replace command
     async def set_slope_position(self, position: int) -> None:
-        """
-        Set cover to the given position.
-        """
+        """ Set cover to the given position. """
         LOGGER.debug("set roller tilt position (device) to : %s", position)
 
         await self._tydom_client.put_devices_data(
@@ -149,18 +147,86 @@ class TydomBoiler(TydomDevice):
 
     """represents a boiler"""
     async def set_hvac_mode(self, mode):
-        """Set hvac mode (STOP/HEATING)"""
-        LOGGER.debug("setting mode to %s", mode)
-        await self._tydom_client.put_devices_data(
-            self._id, self._endpoint, "authorization", mode
-        )
+        """Set hvac mode (ANTI_FROST/NORMAL/STOP)"""
+        LOGGER.debug("setting hvac mode to %s", mode)
+        if mode == "ANTI_FROST":
+            #await self._tydom_client.put_devices_data(
+            #    self._id, self._endpoint, "thermicLevel", None
+            #)
+            #await self._tydom_client.put_devices_data(
+            #    self._id, self._endpoint, "authorization", mode
+            #)
+            #await self._tydom_client.put_devices_data(
+            #    self._id, self._endpoint, "antifrostOn", False
+            #)
+            #await self.set_temperature("19.0")
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "setpoint", None
+            )
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "thermicLevel", "STOP"
+            )
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "hvacMode", "ANTI_FROST"
+            )
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "antifrostOn", True
+            )
+            await self._tydom_client.put_data(
+                "/home/absence", "to", -1
+            )
+            await self._tydom_client.put_data(
+                "/events/home/absence", "to", -1
+            )
+            await self._tydom_client.put_data(
+                "/events/home/absence", "actions", "in"
+            )
+        elif mode == "NORMAL":
+            if self.hvacMode == "ANTI_FROST":
+                await self._tydom_client.put_data(
+                    "/home/absence", "to", 0
+                )
+                await self._tydom_client.put_data(
+                    "/events/home/absence", "to", 0
+                )
+                await self._tydom_client.put_data(
+                    "/events/home/absence", "actions", "in"
+                )
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "hvacMode", "NORMAL"
+            )
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "authorization", "HEATING"
+            )
+            await self.set_temperature("19.0")
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "antifrostOn", False
+            )
+        elif mode == "STOP":
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "hvacMode", "STOP"
+            )
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "authorization", "STOP"
+            )
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "thermicLevel", "STOP"
+            )
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "setpoint", None
+            )
+        else:
+            LOGGER.error("Unknown hvac mode: %s", mode)
+            #await self._tydom_client.put_devices_data(
+            #    self._id, self._endpoint, "thermicLevel", "STOP"
+            #)
+            #await self._tydom_client.put_devices_data(
+            #    self._id, self._endpoint, "antifrostOn", True
+            #)
+            #await self._tydom_client.put_devices_data(
+            #    self._id, self._endpoint, "authorization", mode
+            #)
 
-    async def set_preset_mode(self, mode):
-        """Set preset mode (NORMAL/STOP/ANTI_FROST)"""
-        LOGGER.debug("setting preset to %s", mode)
-        await self._tydom_client.put_devices_data(
-            self._id, self._endpoint, "hvacMode", mode
-        )
     async def set_temperature(self, temperature):
         """Set target temperature"""
         await self._tydom_client.put_devices_data(

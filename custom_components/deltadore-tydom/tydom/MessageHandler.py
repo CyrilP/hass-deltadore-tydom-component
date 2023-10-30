@@ -177,24 +177,19 @@ class MessageHandler:
 
     async def parse_devices_metadata(self, parsed):
         LOGGER.debug("metadata : %s", parsed)
-        #LOGGER.error("metadata : %s", parsed)
         for device in parsed:
             id = device["id"]
             for endpoint in device["endpoints"]:
                 id_endpoint = endpoint["id"]
                 device_unique_id = str(id_endpoint) + "_" + str(id)
                 device_metadata[device_unique_id] = dict()
-                LOGGER.error("metadata unique id : %s", device_unique_id)
                 for metadata in endpoint["metadata"]:
                     metadata_name = metadata["name"]
                     device_metadata[device_unique_id][metadata_name] = dict()
-                    LOGGER.error("\tmetadata name : %s", metadata_name)
                     for meta in metadata:
                         if meta == "name":
                             continue
-                        LOGGER.error("\t\tmetadata meta : %s => %s", meta, metadata[meta])
                         device_metadata[device_unique_id][metadata_name][meta] = metadata[meta]
-        LOGGER.error("metadata result %s", device_metadata)
         return []
 
     async def parse_msg_info(self, parsed):
@@ -209,8 +204,6 @@ class MessageHandler:
         tydom_client, last_usage, uid, device_id, name, endpoint=None, data=None
     ) -> TydomDevice:
         """Get device class from its last usage"""
-
-        LOGGER.error("- %s", name)
 
         # FIXME voir: class CoverDeviceClass(StrEnum):
         # Refer to the cover dev docs for device class descriptions
@@ -295,7 +288,7 @@ class MessageHandler:
             # if device is not None:
             #    devices.append(device)
 
-            LOGGER.warning(" config_data : %s - %s", device_unique_id, i["name"])
+            LOGGER.debug("config_data device parsed : %s - %s", device_unique_id, i["name"])
 
             device_name[device_unique_id] = i["name"]
             device_type[device_unique_id] = i["last_usage"]
