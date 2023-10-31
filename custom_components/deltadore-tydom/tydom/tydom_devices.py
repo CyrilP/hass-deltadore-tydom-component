@@ -1,11 +1,12 @@
-"""Support for Tydom classes"""
+"""Support for Tydom classes."""
 from collections.abc import Callable
 from ..const import LOGGER
 
 class TydomDevice:
-    """represents a generic device"""
+    """represents a generic device."""
 
     def __init__(self, tydom_client, uid, device_id, name, device_type, endpoint, metadata, data):
+        """Initialize a TydomDevice."""
         self._tydom_client = tydom_client
         self._uid = uid
         self._id = device_id
@@ -40,21 +41,21 @@ class TydomDevice:
 
     @property
     def device_name(self) -> str:
-        """Return name for device"""
+        """Return name for device."""
         return self._name
 
     @property
     def device_type(self) -> str:
-        """Return type for device"""
+        """Return type for device."""
         return self._type
 
     @property
     def device_endpoint(self) -> str:
-        """Return endpoint for device"""
+        """Return endpoint for device."""
         return self._endpoint
 
     async def update_device(self, device):
-        """Update the device values from another device"""
+        """Update the device values from another device."""
         LOGGER.debug("Update device %s", device.device_id)
         for attribute, value in device.__dict__.items():
             if (attribute == "_uid" or attribute[:1] != "_") and value is not None:
@@ -70,53 +71,52 @@ class TydomDevice:
 
 
 class Tydom(TydomDevice):
-    """Tydom Gateway"""
+    """Tydom Gateway."""
 
 class TydomShutter(TydomDevice):
-    """Represents a shutter"""
+    """Represents a shutter."""
 
     async def down(self) -> None:
-        """Tell cover to go down"""
+        """Tell cover to go down."""
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "positionCmd", "DOWN"
         )
 
     async def up(self) -> None:
-        """Tell cover to go up"""
+        """Tell cover to go up."""
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "positionCmd", "UP"
         )
 
     async def stop(self) -> None:
-        """Tell cover to stop moving"""
+        """Tell cover to stop moving."""
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "positionCmd", "STOP"
         )
 
     async def set_position(self, position: int) -> None:
-        """Set cover to the given position.
-        """
+        """Set cover to the given position."""
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "position", str(position)
         )
 
     # FIXME replace command
     async def slope_open(self) -> None:
-        """Tell the cover to tilt open"""
+        """Tell the cover to tilt open."""
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "positionCmd", "DOWN"
         )
 
     # FIXME replace command
     async def slope_close(self) -> None:
-        """Tell the cover to tilt closed"""
+        """Tell the cover to tilt closed."""
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "positionCmd", "UP"
         )
 
     # FIXME replace command
     async def slope_stop(self) -> None:
-        """Tell the cover to stop tilt"""
+        """Tell the cover to stop tilt."""
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "positionCmd", "STOP"
         )
@@ -132,20 +132,21 @@ class TydomShutter(TydomDevice):
 
 
 class TydomEnergy(TydomDevice):
-    """Represents an energy sensor (for example TYWATT)"""
+    """Represents an energy sensor (for example TYWATT)."""
 
 
 class TydomSmoke(TydomDevice):
-    """Represents an smoke detector sensor"""
+    """Represents an smoke detector sensor."""
 
 
 class TydomBoiler(TydomDevice):
+    """Represents a Boiler."""
 
     _ha_device = None
 
     """represents a boiler"""
     async def set_hvac_mode(self, mode):
-        """Set hvac mode (ANTI_FROST/NORMAL/STOP)"""
+        """Set hvac mode (ANTI_FROST/NORMAL/STOP)."""
         LOGGER.debug("setting hvac mode to %s", mode)
         if mode == "ANTI_FROST":
             #await self._tydom_client.put_devices_data(
@@ -215,36 +216,27 @@ class TydomBoiler(TydomDevice):
             )
         else:
             LOGGER.error("Unknown hvac mode: %s", mode)
-            #await self._tydom_client.put_devices_data(
-            #    self._id, self._endpoint, "thermicLevel", "STOP"
-            #)
-            #await self._tydom_client.put_devices_data(
-            #    self._id, self._endpoint, "antifrostOn", True
-            #)
-            #await self._tydom_client.put_devices_data(
-            #    self._id, self._endpoint, "authorization", mode
-            #)
 
     async def set_temperature(self, temperature):
-        """Set target temperature"""
+        """Set target temperature."""
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "setpoint", temperature
         )
 
 class TydomWindow(TydomDevice):
-    """represents a window"""
+    """represents a window."""
 
 class TydomDoor(TydomDevice):
-    """represents a door"""
+    """represents a door."""
 
 class TydomGate(TydomDevice):
-    """represents a gate"""
+    """represents a gate."""
 
 class TydomGarage(TydomDevice):
-    """represents a garage door"""
+    """represents a garage door."""
 
 class TydomLight(TydomDevice):
-    """represents a light"""
+    """represents a light."""
 
 class TydomAlarm(TydomDevice):
-    """represents an alarm"""
+    """represents an alarm."""
