@@ -1,4 +1,4 @@
-"""Home assistant entites"""
+"""Home assistant entites."""
 from typing import Any
 
 from homeassistant.helpers import device_registry as dr
@@ -40,7 +40,19 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass,
 from homeassistant.components.light import LightEntity
 from homeassistant.components.lock import LockEntity
 
-from .tydom.tydom_devices import *
+from .tydom.tydom_devices import (
+    Tydom,
+    TydomDevice,
+    TydomEnergy,
+    TydomShutter,
+    TydomSmoke,
+    TydomBoiler,
+    TydomWindow,
+    TydomDoor,
+    TydomGate,
+    TydomGarage,
+    TydomLight,
+)
 
 from .const import DOMAIN, LOGGER
 
@@ -269,6 +281,7 @@ class HATydom(Entity, HAEntity):
     ]
 
     def __init__(self, device: Tydom, hass) -> None:
+        """Initialize HATydom."""
         self._device = device
         self._attr_unique_id = f"{self._device.device_id}"
         self._attr_name = self._device.device_name
@@ -297,7 +310,7 @@ class HATydom(Entity, HAEntity):
         }
 
 class HAEnergy(Entity, HAEntity):
-    """Representation of an Energy sensor"""
+    """Representation of an Energy sensor."""
 
     _attr_has_entity_name = False
     _attr_entity_category = None
@@ -372,6 +385,7 @@ class HAEnergy(Entity, HAEntity):
     }
 
     def __init__(self, device: TydomEnergy, hass) -> None:
+        """Initialize HAEnergy."""
         self._device = device
         self._attr_unique_id = f"{self._device.device_id}_energy"
         self._attr_name = self._device.device_name
@@ -514,7 +528,7 @@ class HACover(CoverEntity, HAEntity):
 
 
 class HASmoke(BinarySensorEntity, HAEntity):
-    """Representation of an Smoke sensor"""
+    """Representation of an Smoke sensor."""
 
     should_poll = False
     supported_features = None
@@ -522,6 +536,7 @@ class HASmoke(BinarySensorEntity, HAEntity):
     sensor_classes = {"batt_defect": BinarySensorDeviceClass.PROBLEM}
 
     def __init__(self, device: TydomSmoke) -> None:
+        """Initialize TydomSmoke."""
         self._device = device
         self._attr_unique_id = f"{self._device.device_id}_smoke_defect"
         self._attr_name = self._device.device_name

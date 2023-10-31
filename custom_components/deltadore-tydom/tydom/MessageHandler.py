@@ -7,7 +7,20 @@ import traceback
 import urllib3
 import re
 
-from .tydom_devices import *
+from .tydom.tydom_devices import (
+    Tydom,
+    TydomDevice,
+    TydomEnergy,
+    TydomShutter,
+    TydomSmoke,
+    TydomBoiler,
+    TydomWindow,
+    TydomDoor,
+    TydomGate,
+    TydomGarage,
+    TydomLight,
+    TydomAlarm,
+)
 
 from ..const import LOGGER
 
@@ -109,9 +122,11 @@ class MessageHandler:
             ) from ex
             return None
 
-    # Basic response parsing. Typically GET responses + instanciate covers and
-    # alarm class for updating data
     async def parse_response(self, incoming, uri_origin, http_request_line):
+        """Parse basic response.
+
+        Typically GET responses + instanciate covers and alarm class for updating data.
+        """
         data = incoming
         msg_type = None
         first = str(data[:40])
@@ -184,10 +199,10 @@ class MessageHandler:
             for endpoint in device["endpoints"]:
                 id_endpoint = endpoint["id"]
                 device_unique_id = str(id_endpoint) + "_" + str(id)
-                device_metadata[device_unique_id] = dict()
+                device_metadata[device_unique_id] = {}
                 for metadata in endpoint["metadata"]:
                     metadata_name = metadata["name"]
-                    device_metadata[device_unique_id][metadata_name] = dict()
+                    device_metadata[device_unique_id][metadata_name] = {}
                     for meta in metadata:
                         if meta == "name":
                             continue
@@ -611,16 +626,20 @@ class MessageHandler:
 
 
 class BytesIOSocket:
+    """BytesIOSocket."""
+
     def __init__(self, content):
         """Initialize a BytesIOSocket."""
         self.handle = BytesIO(content)
 
     def makefile(self, mode):
-        """get handle."""
+        """Get handle."""
         return self.handle
 
 
 class HTTPRequest(BaseHTTPRequestHandler):
+    """HTTPRequest."""
+
     def __init__(self, request_text):
         """Initialize a HTTPRequest."""
         self.raw_requestline = request_text
