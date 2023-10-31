@@ -2,17 +2,32 @@
 from __future__ import annotations
 
 import asyncio
-import random
-import logging
-import time
-from typing import Callable
 from aiohttp import ClientWebSocketResponse, ClientSession
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from .tydom.tydom_client import TydomClient
 from .tydom.tydom_devices import Tydom
-from .ha_entities import *
+from .ha_entities import (
+    HATydom,
+    HACover,
+    HAEnergy,
+    HASmoke,
+    HaClimate,
+    HaWindow,
+    HaDoor,
+    HaGate,
+    HaGarage,
+    HaLight,
+    TydomShutter,
+    TydomEnergy,
+    TydomSmoke,
+    TydomBoiler,
+    TydomWindow,
+    TydomDoor,
+    TydomGate,
+    TydomGarage,
+    TydomLight,
+)
 
 from .const import LOGGER
 
@@ -22,7 +37,7 @@ class Hub:
     manufacturer = "Delta Dore"
 
     def handle_event(self, event):
-        """Event callback"""
+        """Event callback."""
         pass
 
     def __init__(
@@ -69,7 +84,7 @@ class Hub:
         return self._id
 
     async def connect(self) -> ClientWebSocketResponse:
-        """Connect to Tydom"""
+        """Connect to Tydom."""
         connection = await self._tydom_client.async_connect()
         await self._tydom_client.listen_tydom(connection)
         return connection
@@ -78,7 +93,7 @@ class Hub:
     async def get_tydom_credentials(
         session: ClientSession, email: str, password: str, macaddress: str
     ):
-        """Get Tydom credentials"""
+        """Get Tydom credentials."""
         return await TydomClient.async_get_credentials(
             session, email, password, macaddress
         )
@@ -109,14 +124,14 @@ class Hub:
                         )
 
     async def create_ha_device(self, device):
-        """Create a new HA device"""
+        """Create a new HA device."""
         match device:
-            case Tydom(): 
+            case Tydom():
                 LOGGER.debug("Create Tydom gateway %s", device.device_id)
                 self.devices[device.device_id] = self.device_info
                 await self.device_info.update_device(device)
                 ha_device = HATydom(self.device_info, self._hass)
-                
+
                 self.ha_devices[self.device_info.device_id] = ha_device
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
@@ -209,7 +224,7 @@ class Hub:
                 return
 
     async def update_ha_device(self, stored_device, device):
-        """Update HA device values"""
+        """Update HA device values."""
         await stored_device.update_device(device)
         ha_device = self.ha_devices[device.device_id]
         new_sensors = ha_device.get_sensors()
@@ -218,12 +233,12 @@ class Hub:
             self.add_sensor_callback(new_sensors)
 
     async def ping(self) -> None:
-        """Periodically send pings"""
+        """Periodically send pings."""
         while True:
             await self._tydom_client.ping()
             await asyncio.sleep(10)
 
     async def async_trigger_firmware_update(self) -> None:
-        """Trigger firmware update"""
+        """Trigger firmware update."""
         LOGGER.debug("Installing firmware update...")
         self._tydom_client.update_firmware()

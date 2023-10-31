@@ -1,6 +1,5 @@
 """Tydom API Client."""
 import os
-import logging
 import asyncio
 import socket
 import base64
@@ -14,7 +13,13 @@ from urllib3 import encode_multipart_formdata
 from aiohttp import ClientWebSocketResponse, ClientSession, WSMsgType
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
-from .const import *
+from .const import (
+    MEDIATION_URL,
+    DELTADORE_AUTH_URL,
+    DELTADORE_AUTH_GRANT_TYPE,
+    DELTADORE_AUTH_CLIENTID,
+    DELTADORE_AUTH_SCOPE,
+    DELTADORE_API_SITES)
 from .MessageHandler import MessageHandler
 
 from requests.auth import HTTPDigestAuth
@@ -49,6 +54,7 @@ class TydomClient:
         host: str = MEDIATION_URL,
         event_callback=None,
     ) -> None:
+        """Initialize client."""
         LOGGER.debug("Initializing TydomClient Class")
 
         self._hass = hass
@@ -81,7 +87,7 @@ class TydomClient:
     async def async_get_credentials(
         session: ClientSession, email: str, password: str, macaddress: str
     ):
-        """get tydom credentials from Delta Dore"""
+        """Get tydom credentials from Delta Dore."""
         try:
             async with async_timeout.timeout(10):
                 response = await session.request(
@@ -238,7 +244,7 @@ class TydomClient:
             ) from exception
 
     async def listen_tydom(self, connection: ClientWebSocketResponse):
-        """Listen for Tydom messages"""
+        """Listen for Tydom messages."""
         LOGGER.info("Listen for Tydom messages")
         self._connection = connection
         await self.ping()
@@ -265,7 +271,7 @@ class TydomClient:
         await self.get_scenarii()
 
     async def consume_messages(self):
-        """Read and parse incomming messages"""
+        """Read and parse incomming messages."""
         try:
             if self._connection.closed:
                 await self._connection.close()
@@ -292,7 +298,7 @@ class TydomClient:
 
             return await self._message_handler.incoming_triage(incoming_bytes_str)
 
-        except Exception as e:
+        except Exception:
             LOGGER.exception("Unable to handle message")
             return None
 
@@ -315,7 +321,7 @@ class TydomClient:
         return digest
 
     async def send_message(self, method, msg):
-        """Send Generic message to Tydom"""
+        """Send Generic message to Tydom."""
         message = (
             self._cmd_prefix
             + method
@@ -350,31 +356,31 @@ class TydomClient:
     # Tydom messages
     # ########################
     async def get_info(self):
-        """Ask some information from Tydom"""
+        """Ask some information from Tydom."""
         msg_type = "/info"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
     async def get_local_claim(self):
-        """Ask some information from Tydom"""
+        """Ask some information from Tydom."""
         msg_type = "/configs/gateway/local_claim"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
     async def get_geoloc(self):
-        """Ask some information from Tydom"""
+        """Ask some information from Tydom."""
         msg_type = "/configs/gateway/geoloc"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
     async def put_api_mode(self):
-        """Use Tydom API mode ?"""
+        """Use Tydom API mode."""
         msg_type = "/configs/gateway/api_mode"
         req = "PUT"
         await self.send_message(method=req, msg=msg_type)
 
     async def post_refresh(self):
-        """Refresh (all)"""
+        """Refresh (all)."""
         msg_type = "/refresh/all"
         req = "POST"
         await self.send_message(method=req, msg=msg_type)
@@ -390,20 +396,20 @@ class TydomClient:
             )
 
     async def ping(self):
-        """Send a ping (pong should be returned)"""
+        """Send a ping (pong should be returned)."""
         msg_type = "/ping"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
         LOGGER.debug("Ping")
 
     async def get_devices_meta(self):
-        """Get all devices metadata"""
+        """Get all devices metadata."""
         msg_type = "/devices/meta"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
     async def get_devices_data(self):
-        """Get all devices data"""
+        """Get all devices data."""
         msg_type = "/devices/data"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
@@ -412,37 +418,37 @@ class TydomClient:
             await self.get_poll_device_data(url)
 
     async def get_configs_file(self):
-        """List the devices to get the endpoint id"""
+        """List the devices to get the endpoint id."""
         msg_type = "/configs/file"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
     async def get_devices_cmeta(self):
-        """Get metadata configuration to list poll devices (like Tywatt)"""
+        """Get metadata configuration to list poll devices (like Tywatt)."""
         msg_type = "/devices/cmeta"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
     async def get_areas_meta(self):
-        """Get areas metadata"""
+        """Get areas metadata."""
         msg_type = "/areas/meta"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
     async def get_areas_cmeta(self):
-        """Get areas metadata"""
+        """Get areas metadata."""
         msg_type = "/areas/cmeta"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
     async def get_areas_data(self):
-        """Get areas metadata"""
+        """Get areas metadata."""
         msg_type = "/areas/data"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
     async def get_device_data(self, id):
-        """Give order to endpoint"""
+        """Give order to endpoint."""
         # 10 here is the endpoint = the device (shutter in this case) to open.
         device_id = str(id)
         str_request = (
@@ -453,34 +459,36 @@ class TydomClient:
         await self._connection.send(a_bytes)
 
     async def get_poll_device_data(self, url):
+        """Poll a device (probably unused)."""
         LOGGER.error("poll device data %s", url)
         msg_type = url
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
     def add_poll_device_url(self, url):
+        """Add a device for polling (probably unused)."""
         self.poll_device_urls.append(url)
 
     async def get_moments(self):
-        """Get the moments (programs)"""
+        """Get the moments (programs)."""
         msg_type = "/moments/file"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
     async def get_scenarii(self):
-        """Get the scenarios"""
+        """Get the scenarios."""
         msg_type = "/scenarios/file"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
     async def get_groups(self):
-        """Get the groups"""
+        """Get the groups."""
         msg_type = "/groups/file"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
     async def put_data(self, path, name, value):
-        """Give order (name + value) to path"""
+        """Give order (name + value) to path."""
         body: str
         if value is None:
             body = '{"' + name + '":"null}'
@@ -503,7 +511,7 @@ class TydomClient:
         return 0
 
     async def put_devices_data(self, device_id, endpoint_id, name, value):
-        """Give order (name + value) to endpoint"""
+        """Give order (name + value) to endpoint."""
         # For shutter, value is the percentage of closing
         body: str
         if value is None:
@@ -512,7 +520,7 @@ class TydomClient:
             body = '[{"name":"' + name + '","value":' + str(value).lower() + '}]'
         else:
             body = '[{"name":"' + name + '","value":"' + value + '"}]'
-        
+
         # endpoint_id is the endpoint = the device (shutter in this case) to
         # open.
         str_request = (
@@ -529,6 +537,7 @@ class TydomClient:
         return 0
 
     async def put_alarm_cdata(self, device_id, alarm_id=None, value=None, zone_id=None):
+        """Configure alarm mode."""
         # Credits to @mgcrea on github !
         # AWAY # "PUT /devices/{}/endpoints/{}/cdata?name=alarmCmd HTTP/1.1\r\ncontent-length: 29\r\ncontent-type: application/json; charset=utf-8\r\ntransac-id: request_124\r\n\r\n\r\n{"value":"ON","pwd":{}}\r\n\r\n"
         # HOME "PUT /devices/{}/endpoints/{}/cdata?name=zoneCmd HTTP/1.1\r\ncontent-length: 41\r\ncontent-type: application/json; charset=utf-8\r\ntransac-id: request_46\r\n\r\n\r\n{"value":"ON","pwd":"{}","zones":[1]}\r\n\r\n"
@@ -593,7 +602,7 @@ class TydomClient:
             LOGGER.error("put_alarm_cdata ERROR !", exc_info=True)
 
     async def update_firmware(self):
-        """Update Tydom firmware"""
+        """Update Tydom firmware."""
         msg_type = "/configs/gateway/update"
         req = "PUT"
         await self.send_message(method=req, msg=msg_type)

@@ -8,23 +8,13 @@ from homeassistant.components.binary_sensor import (
 )
 
 from homeassistant.components.climate import (
-    ATTR_HVAC_MODE,
-    ATTR_TARGET_TEMP_HIGH,
-    ATTR_TARGET_TEMP_LOW,
-    FAN_OFF,
-    FAN_ON,
-    PRESET_ECO,
-    PRESET_NONE,
     ClimateEntity,
     ClimateEntityFeature,
-    HVACAction,
     HVACMode,
 )
 from homeassistant.const import (
-    PERCENTAGE,
     ATTR_TEMPERATURE,
     UnitOfTemperature,
-    UnitOfElectricPotential,
     UnitOfEnergy,
     UnitOfPower,
     UnitOfElectricCurrent,
@@ -75,9 +65,9 @@ class HAEntity:
         # FIXME
         # return self._device.online and self._device.hub.online
         return True
-    
+
     def get_sensors(self):
-        """Get available sensors for this entity"""
+        """Get available sensors for this entity."""
         sensors = []
 
         for attribute, value in self._device.__dict__.items():
@@ -116,7 +106,7 @@ class HAEntity:
 
 
 class GenericSensor(SensorEntity):
-    """Representation of a generic sensor"""
+    """Representation of a generic sensor."""
 
     should_poll = False
     diagnostic_attrs = [
@@ -294,7 +284,7 @@ class HATydom(Entity, HAEntity):
             model=self._device.productName,
             sw_version=self._device.mainVersionSW,
         )
-        
+
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
@@ -399,7 +389,7 @@ class HAEnergy(Entity, HAEntity):
             name=self._device.device_name,
             sw_version= sw_version,
         )
-        
+
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
@@ -414,7 +404,6 @@ class HAEnergy(Entity, HAEntity):
 
 class HACover(CoverEntity, HAEntity):
     """Representation of a Cover."""
-
 
     should_poll = False
     supported_features = 0
@@ -588,6 +577,7 @@ class HaClimate(ClimateEntity, HAEntity):
     }
 
     def __init__(self, device: TydomBoiler) -> None:
+        """Initialize Climate."""
         super().__init__()
         self._device = device
         self._device._ha_device = self
@@ -604,10 +594,10 @@ class HaClimate(ClimateEntity, HAEntity):
 
         if "min" in self._device._metadata["setpoint"]:
             self._attr_min_temp = self._device._metadata["setpoint"]["min"]
-        
+
         if "max" in self._device._metadata["setpoint"]:
             self._attr_max_temp = self._device._metadata["setpoint"]["max"]
- 
+
     @property
     def supported_features(self) -> ClimateEntityFeature:
         """Return the list of supported features."""
@@ -636,12 +626,6 @@ class HaClimate(ClimateEntity, HAEntity):
             return self.DICT_MODES_DD_TO_HA[self._device.hvacMode]
         else:
             return None
-        
-    @property
-    def preset_mode(self) -> HVACMode:
-        """Return the current operation (e.g. heat, cool, idle)."""
-        LOGGER.debug("preset_mode = %s", self._device.hvacMode)
-        return self._device.hvacMode
 
     @property
     def current_temperature(self) -> float | None:
@@ -696,7 +680,7 @@ class HaWindow(CoverEntity, HAEntity):
 
     @property
     def is_closed(self) -> bool:
-        """Return if the window is closed"""
+        """Return if the window is closed."""
         return self._device.openState == "LOCKED"
 
 class HaDoor(LockEntity, HAEntity):
@@ -728,7 +712,7 @@ class HaDoor(LockEntity, HAEntity):
 
     @property
     def is_locked(self) -> bool:
-        """Return if the door is closed"""
+        """Return if the door is closed."""
         return self._device.openState == "LOCKED"
 
 class HaGate(CoverEntity, HAEntity):

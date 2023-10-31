@@ -1,3 +1,4 @@
+"""Tydom message parsing."""
 import json
 from http.client import HTTPResponse
 from http.server import BaseHTTPRequestHandler
@@ -11,13 +12,13 @@ from .tydom_devices import *
 from ..const import LOGGER
 
 # Device dict for parsing
-device_name = dict()
-device_endpoint = dict()
-device_type = dict()
-device_metadata = dict()
+device_name = {}
+device_endpoint = {}
+device_type = {}
+device_metadata = {}
 
 class MessageHandler:
-    """Handle incomming Tydom messages"""
+    """Handle incomming Tydom messages."""
 
     def __init__(self, tydom_client, cmd_prefix):
         self.tydom_client = tydom_client
@@ -25,7 +26,7 @@ class MessageHandler:
 
     @staticmethod
     def get_uri_origin(data) -> str:
-        """Extract Uri-Origin from Tydom messages if present"""
+        """Extract Uri-Origin from Tydom messages if present."""
         uri_origin = ""
         re_matcher = re.match(
             ".*Uri-Origin: ([a-zA-Z0-9\\-._~:/?#\\[\\]@!$&'\\(\\)\\*\\+,;%=]+).*",
@@ -41,7 +42,7 @@ class MessageHandler:
 
     @staticmethod
     def get_http_request_line(data) -> str:
-        """Extract Http request line"""
+        """Extract Http request line."""
         clean_data = data.replace('\\x02', '')
         request_line = ""
         re_matcher = re.match(
@@ -56,7 +57,7 @@ class MessageHandler:
         return request_line.strip()
 
     async def incoming_triage(self, bytes_str):
-        """Identify message type and dispatch the result"""
+        """Identify message type and dispatch the result."""
 
         incoming = None
 
@@ -176,6 +177,7 @@ class MessageHandler:
             LOGGER.debug("Incoming data parsed with success")
 
     async def parse_devices_metadata(self, parsed):
+        """Parse metadata."""
         LOGGER.debug("metadata : %s", parsed)
         for device in parsed:
             id = device["id"]
@@ -193,6 +195,7 @@ class MessageHandler:
         return []
 
     async def parse_msg_info(self, parsed):
+        """Parse message info."""
         LOGGER.debug("parse_msg_info : %s", parsed)
 
         return [
@@ -203,7 +206,7 @@ class MessageHandler:
     async def get_device(
         tydom_client, last_usage, uid, device_id, name, endpoint=None, data=None
     ) -> TydomDevice:
-        """Get device class from its last usage"""
+        """Get device class from its last usage."""
 
         # FIXME voir: class CoverDeviceClass(StrEnum):
         # Refer to the cover dev docs for device class descriptions
@@ -279,6 +282,7 @@ class MessageHandler:
 
     @staticmethod
     async def parse_config_data(parsed):
+        """Parse config data."""
         LOGGER.debug("parse_config_data : %s", parsed)
         devices = []
         for i in parsed["endpoints"]:
@@ -329,6 +333,7 @@ class MessageHandler:
         return devices
 
     async def parse_cmeta_data(self, parsed):
+        """Parse cmeta data."""
         LOGGER.debug("parse_cmeta_data : %s", parsed)
         for i in parsed:
             for endpoint in i["endpoints"]:
@@ -398,6 +403,7 @@ class MessageHandler:
         LOGGER.debug("Metadata configuration updated")
 
     async def parse_devices_data(self, parsed):
+        """Parse device data."""
         LOGGER.debug("parse_devices_data : %s", parsed)
         devices = []
 
@@ -441,11 +447,12 @@ class MessageHandler:
                                 name_of_id,
                                 type_of_id,
                             )
-                    except Exception as e:
+                    except Exception:
                         LOGGER.exception("msg_data error in parsing !")
         return devices
 
     async def parse_devices_cdata(self, parsed):
+        """Parse devices cdata."""
         LOGGER.debug("parse_devices_data : %s", parsed)
         for i in parsed:
             for endpoint in i["endpoints"]:
@@ -549,13 +556,14 @@ class MessageHandler:
 
     # PUT response DIRTY parsing
     def parse_put_response(self, bytes_str, start=6):
+        """Parse PUT response."""
         # TODO : Find a cooler way to parse nicely the PUT HTTP response
         resp = bytes_str[len(self.cmd_prefix) :].decode("utf-8")
         fields = resp.split("\r\n")
         fields = fields[start:]  # ignore the PUT / HTTP/1.1
         end_parsing = False
         i = 0
-        output = str()
+        output = ""
         while not end_parsing:
             field = fields[i]
             if len(field) == 0 or field == "0":
@@ -570,6 +578,7 @@ class MessageHandler:
 
     @staticmethod
     def response_from_bytes(data):
+        """Get HTTPResponse from bytes."""
         sock = BytesIOSocket(data)
         response = HTTPResponse(sock)
         response.begin()
@@ -577,12 +586,14 @@ class MessageHandler:
 
     @staticmethod
     def put_response_from_bytes(data):
+        """Get HTTPResponse from bytes."""
         request = HTTPRequest(data)
         return request
 
     def get_type_from_id(self, id):
+        """Get device type from id."""
         device_type_detected = ""
-        if id in device_type.keys():
+        if id in device_type:
             device_type_detected = device_type[id]
         else:
             LOGGER.warning("Unknown device type (%s)", id)
@@ -590,8 +601,9 @@ class MessageHandler:
 
     # Get pretty name for a device id
     def get_name_from_id(self, id):
+        """Get device name from id."""
         name = ""
-        if id in device_name.keys():
+        if id in device_name:
             name = device_name[id]
         else:
             LOGGER.warning("Unknown device name (%s)", id)
@@ -600,18 +612,22 @@ class MessageHandler:
 
 class BytesIOSocket:
     def __init__(self, content):
+        """Initialize a BytesIOSocket."""
         self.handle = BytesIO(content)
 
     def makefile(self, mode):
+        """get handle."""
         return self.handle
 
 
 class HTTPRequest(BaseHTTPRequestHandler):
     def __init__(self, request_text):
+        """Initialize a HTTPRequest."""
         self.raw_requestline = request_text
         self.error_code = self.error_message = None
         self.parse_request()
 
     def send_error(self, code, message):
+        """Set error code and message."""
         self.error_code = code
         self.error_message = message

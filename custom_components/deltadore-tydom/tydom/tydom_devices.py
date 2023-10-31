@@ -1,6 +1,5 @@
 """Support for Tydom classes"""
-from typing import Callable
-import logging
+from collections.abc import Callable
 from ..const import LOGGER
 
 class TydomDevice:
@@ -95,8 +94,7 @@ class TydomShutter(TydomDevice):
         )
 
     async def set_position(self, position: int) -> None:
-        """
-        Set cover to the given position.
+        """Set cover to the given position.
         """
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "position", str(position)
@@ -125,7 +123,7 @@ class TydomShutter(TydomDevice):
 
     # FIXME replace command
     async def set_slope_position(self, position: int) -> None:
-        """ Set cover to the given position. """
+        """Set cover to the given position."""
         LOGGER.debug("set roller tilt position (device) to : %s", position)
 
         await self._tydom_client.put_devices_data(
@@ -142,7 +140,7 @@ class TydomSmoke(TydomDevice):
 
 
 class TydomBoiler(TydomDevice):
-    
+
     _ha_device = None
 
     """represents a boiler"""

@@ -62,7 +62,7 @@ class TydomUpdateEntity(UpdateEntity):
         # return self._hub.current_firmware
         if hasattr (self._hub.device_info, "mainVersionSW"):
             return self._hub.device_info.mainVersionSW
-        else: 
+        else:
             return None
 
     @property

@@ -7,7 +7,6 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.helpers.device_registry import format_mac
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries, exceptions
@@ -34,7 +33,7 @@ DATA_SCHEMA = vol.Schema(
 )
 
 def host_valid(host) -> bool:
-    """Return True if hostname or IP address is valid"""
+    """Return True if hostname or IP address is valid."""
     try:
         if ipaddress.ip_address(host).version == (4 or 6):
             return True
@@ -45,12 +44,13 @@ def host_valid(host) -> bool:
 regex = re.compile(r"([A-Za-z0-9]+[.-_])*[A-Za-z0-9]+@[A-Za-z0-9-]+(\.[A-Z|a-z]{2,})+")
 
 def email_valid(email) -> bool:
-    """Return True if email is valid"""
+    """Return True if email is valid."""
     return re.fullmatch(regex, email)
 
 
 async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
     """Validate the user input allows us to connect.
+
     Data has the keys from DATA_SCHEMA with values provided by the user.
     """
     # Validate the data can be used to set up a connection.
@@ -96,6 +96,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_PUSH
 
     def __init__(self):
+        """Initialize config flow."""
         self._discovered_host = None
         self._discovered_mac = None
 
@@ -192,7 +193,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ),
             errors=_errors,
         )
-    
+
     @property
     def _name(self) -> str | None:
         return self.context.get(CONF_NAME)

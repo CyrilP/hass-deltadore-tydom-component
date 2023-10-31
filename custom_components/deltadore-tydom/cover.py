@@ -1,24 +1,11 @@
 """Platform for sensor integration."""
 from __future__ import annotations
 
-from typing import Any
-
-# These constants are relevant to the type of entity we are using.
-# See below for how they are used.
-from homeassistant.components.cover import (
-    ATTR_POSITION,
-    SUPPORT_CLOSE,
-    SUPPORT_OPEN,
-    SUPPORT_SET_POSITION,
-    SUPPORT_STOP,
-    CoverEntity,
-)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.entity import DeviceInfo
 
-from .const import DOMAIN, LOGGER
+from .const import DOMAIN
 
 
 async def async_setup_entry(
