@@ -57,7 +57,7 @@ from .tydom.tydom_devices import (
 from .const import DOMAIN, LOGGER
 
 class HAEntity:
-
+    """Generic abstract HA entity."""
     sensor_classes = {}
     state_classes = {}
     units = {}
