@@ -492,7 +492,7 @@ class TydomClient:
         body: str
         if value is None:
             body = '{"' + name + '":"null}'
-        elif type(value)==bool or type(value)==int:
+        elif isinstance(value, bool) or isinstance(value, int):
             body = '{"' + name + '":"' + str(value).lower() + '}'
         else:
             body = '{"' + name + '":"' + value + '"}'
@@ -516,7 +516,7 @@ class TydomClient:
         body: str
         if value is None:
             body = '[{"name":"' + name + '","value":null}]'
-        elif type(value)==bool:
+        elif isinstance(value, bool):
             body = '[{"name":"' + name + '","value":' + str(value).lower() + '}]'
         else:
             body = '[{"name":"' + name + '","value":"' + value + '"}]'
