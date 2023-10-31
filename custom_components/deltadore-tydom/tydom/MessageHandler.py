@@ -34,6 +34,7 @@ class MessageHandler:
     """Handle incomming Tydom messages."""
 
     def __init__(self, tydom_client, cmd_prefix):
+        """Initialize MessageHandler."""
         self.tydom_client = tydom_client
         self.cmd_prefix = cmd_prefix
 
