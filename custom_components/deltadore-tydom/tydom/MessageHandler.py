@@ -7,7 +7,7 @@ import traceback
 import urllib3
 import re
 
-from .tydom.tydom_devices import (
+from .tydom_devices import (
     Tydom,
     TydomDevice,
     TydomEnergy,

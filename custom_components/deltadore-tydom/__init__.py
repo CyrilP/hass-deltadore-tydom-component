@@ -1,7 +1,7 @@
-"""The Detailed Hello World Push integration."""
+"""The Detailed Delta Dore Tydom Push integration."""
 from __future__ import annotations
 
-from homeassistant.const import CONF_HOST, CONF_MAC, CONF_PASSWORD, CONF_PIN, Platform
+from homeassistant.const import CONF_HOST, CONF_MAC, CONF_PIN, Platform
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
@@ -44,9 +44,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.async_create_background_task(
             target=tydom_hub.setup(connection), hass=hass, name="Tydom"
         )
-        # entry.async_create_background_task(
-        #    target=tydom_hub.ping(connection), hass=hass, name="Tydom ping"
-        # )
+        entry.async_create_background_task(
+           target=tydom_hub.ping(), hass=hass, name="Tydom ping"
+        )
+        entry.async_create_background_task(
+           target=tydom_hub.refresh_all(), hass=hass, name="Tydom refresh metadata and data"
+        )
+
     except Exception as err:
         raise ConfigEntryNotReady from err
 

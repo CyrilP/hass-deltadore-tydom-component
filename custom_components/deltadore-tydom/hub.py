@@ -236,7 +236,24 @@ class Hub:
         """Periodically send pings."""
         while True:
             await self._tydom_client.ping()
-            await asyncio.sleep(10)
+            await asyncio.sleep(60)
+
+    async def refresh_all(self) -> None:
+        """Periodically refresh all metadata and data.
+
+        It allows new devices to be discovered.
+        """
+        while True:
+            await self._tydom_client.get_info()
+            await self._tydom_client.put_api_mode()
+            await self._tydom_client.get_groups()
+            await self._tydom_client.post_refresh()
+            await self._tydom_client.get_configs_file()
+            await self._tydom_client.get_devices_meta()
+            await self._tydom_client.get_devices_cmeta()
+            await self._tydom_client.get_devices_data()
+            await self._tydom_client.get_scenarii()
+            await asyncio.sleep(300)
 
     async def async_trigger_firmware_update(self) -> None:
         """Trigger firmware update."""
