@@ -6,13 +6,13 @@
   ],
   "config_flow": true,
   "dependencies": ["manual"],
-  "documentation": "https://github.com/CyrilP/hass-deltadore-tydom-component",
   "dhcp": [
     {
       "hostname": "tydom-*",
       "macaddress": "001A25*"
     }
   ],
+  "documentation": "https://github.com/CyrilP/hass-deltadore-tydom-component",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/CyrilP/hass-deltadore-tydom-component/issues",
   "loggers": [
