@@ -6,6 +6,7 @@ import base64
 import re
 import async_timeout
 import aiohttp
+import ssl
 import traceback
 
 from typing import cast
@@ -184,6 +185,12 @@ class TydomClient:
             "Sec-WebSocket-Version": "13",
         }
 
+        # configuration needed for local mode
+        sslcontext = ssl.create_default_context()
+        sslcontext.options |= 0x4  # OP_LEGACY_SERVER_CONNECT
+        sslcontext.check_hostname = False
+        sslcontext.verify_mode = ssl.CERT_NONE
+
         session = async_create_clientsession(self._hass, False)
 
         try:
@@ -194,6 +201,7 @@ class TydomClient:
                     headers=http_headers,
                     json=None,
                     proxy=proxy,
+                    ssl_context=sslcontext,
                 )
                 LOGGER.debug(
                     "response status : %s\nheaders : %s\ncontent : %s",
@@ -225,6 +233,7 @@ class TydomClient:
                     autoping=True,
                     heartbeat=2,
                     proxy=proxy,
+                    ssl_context=sslcontext,
                 )
 
                 return connection

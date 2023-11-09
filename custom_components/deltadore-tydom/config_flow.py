@@ -83,6 +83,7 @@ async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
     return {
         CONF_HOST: data[CONF_HOST],
         CONF_MAC: data[CONF_MAC],
+        CONF_EMAIL: data[CONF_EMAIL],
         CONF_PASSWORD: data[CONF_PASSWORD],
         CONF_TYDOM_PASSWORD: password,
         CONF_PIN: pin,
