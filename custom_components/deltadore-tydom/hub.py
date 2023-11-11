@@ -100,7 +100,7 @@ class Hub:
 
     async def test_credentials(self) -> None:
         """Validate credentials."""
-        connection = await self.connect()
+        connection = await self._tydom_client.async_connect()
         await connection.close()
 
     async def setup(self, connection: ClientWebSocketResponse) -> None:
