@@ -27,6 +27,7 @@ from .ha_entities import (
     TydomGate,
     TydomGarage,
     TydomLight,
+    TydomAlarm,
 )
 
 from .const import LOGGER
