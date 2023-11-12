@@ -65,6 +65,7 @@ class Hub:
         self.add_light_callback = None
         self.add_lock_callback = None
         self.add_light_callback = None
+        self.add_alarm_callback = None
 
         self._tydom_client = TydomClient(
             hass=self._hass,
@@ -214,6 +215,9 @@ class Hub:
 
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
+            case TydomAlarm():
+                LOGGER.debug("Create alarm %s", device.device_id)
+                LOGGER.error("Alarm Not implemented yet.")
             case _:
                 LOGGER.error(
                     "unsupported device type (%s) %s for device %s",
