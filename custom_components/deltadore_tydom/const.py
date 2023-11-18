@@ -1,4 +1,4 @@
-"""Constants for deltadore-tydom integration."""
+"""Constants for deltadore_tydom integration."""
 from logging import Logger, getLogger
 
 LOGGER: Logger = getLogger(__package__)
