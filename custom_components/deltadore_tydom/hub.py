@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 from aiohttp import ClientWebSocketResponse, ClientSession
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from .tydom.tydom_client import TydomClient
 from .tydom.tydom_devices import (
@@ -46,6 +47,7 @@ class Hub:
     def __init__(
         self,
         hass: HomeAssistant,
+        entry: ConfigEntry,
         host: str,
         mac: str,
         password: str,
@@ -57,6 +59,7 @@ class Hub:
         self._pass = password
         self._pin = alarmpin
         self._hass = hass
+        self._entry = entry
         self._name = mac
         self._id = "Tydom-" + mac[6:]
         self.device_info = Tydom(None, None, None, None, None, None, None, None)
@@ -134,7 +137,7 @@ class Hub:
                 LOGGER.debug("Create Tydom gateway %s", device.device_id)
                 self.devices[device.device_id] = self.device_info
                 await self.device_info.update_device(device)
-                ha_device = HATydom(self.device_info, self._hass)
+                ha_device = HATydom(self.device_info, self._hass, self._entry)
 
                 self.ha_devices[self.device_info.device_id] = ha_device
                 if self.add_sensor_callback is not None:
@@ -149,7 +152,7 @@ class Hub:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomEnergy():
                 LOGGER.debug("Create conso %s", device.device_id)
-                ha_device = HAEnergy(device, self._hass)
+                ha_device = HAEnergy(device, self._hass, self._entry)
                 self.ha_devices[device.device_id] = ha_device
 
                 if self.add_sensor_callback is not None:
