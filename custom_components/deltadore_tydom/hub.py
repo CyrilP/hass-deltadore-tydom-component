@@ -6,7 +6,19 @@ from aiohttp import ClientWebSocketResponse, ClientSession
 
 from homeassistant.core import HomeAssistant
 from .tydom.tydom_client import TydomClient
-from .tydom.tydom_devices import Tydom
+from .tydom.tydom_devices import (
+    Tydom,
+    TydomShutter,
+    TydomEnergy,
+    TydomSmoke,
+    TydomBoiler,
+    TydomWindow,
+    TydomDoor,
+    TydomGate,
+    TydomGarage,
+    TydomLight,
+    TydomAlarm,
+)
 from .ha_entities import (
     HATydom,
     HACover,
@@ -18,16 +30,6 @@ from .ha_entities import (
     HaGate,
     HaGarage,
     HaLight,
-    TydomShutter,
-    TydomEnergy,
-    TydomSmoke,
-    TydomBoiler,
-    TydomWindow,
-    TydomDoor,
-    TydomGate,
-    TydomGarage,
-    TydomLight,
-    TydomAlarm,
 )
 
 from .const import LOGGER
