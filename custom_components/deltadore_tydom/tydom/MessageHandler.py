@@ -293,7 +293,7 @@ class MessageHandler:
                 )
             case _:
                 # TODO generic sensor ?
-                LOGGER.warn("Unknown usage : %s", last_usage)
+                LOGGER.warn("Unknown usage : %s for device_id %s, uid %s", last_usage, device_id, uid)
                 return
 
     @staticmethod
