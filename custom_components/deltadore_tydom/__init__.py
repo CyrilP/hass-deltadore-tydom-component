@@ -32,6 +32,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     tydom_hub = hub.Hub(
         hass,
+        entry,
         entry.data[CONF_HOST],
         entry.data[CONF_MAC],
         entry.data[CONF_TYDOM_PASSWORD],

@@ -20,7 +20,7 @@ from homeassistant.const import (
     UnitOfElectricCurrent,
     EntityCategory,
 )
-
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity import Entity, DeviceInfo
 from homeassistant.components.cover import (
     ATTR_POSITION,
@@ -281,7 +281,7 @@ class HATydom(Entity, HAEntity):
         "TYDOM.dat",
     ]
 
-    def __init__(self, device: Tydom, hass) -> None:
+    def __init__(self, device: Tydom, hass, entry: ConfigEntry) -> None:
         """Initialize HATydom."""
         self._device = device
         self._attr_unique_id = f"{self._device.device_id}"
@@ -291,7 +291,7 @@ class HATydom(Entity, HAEntity):
         device_registry = dr.async_get(hass)
 
         device_registry.async_get_or_create(
-            config_entry_id=self._device.device_id,
+            config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, self._device.device_id)},
             name=self._device.device_id,
             manufacturer="Delta Dore",
@@ -385,7 +385,7 @@ class HAEnergy(Entity, HAEntity):
         "outTemperature": UnitOfTemperature.CELSIUS,
     }
 
-    def __init__(self, device: TydomEnergy, hass) -> None:
+    def __init__(self, device: TydomEnergy, hass, entry: ConfigEntry) -> None:
         """Initialize HAEnergy."""
         self._device = device
         self._attr_unique_id = f"{self._device.device_id}_energy"
@@ -399,7 +399,7 @@ class HAEnergy(Entity, HAEntity):
             sw_version = self._device.softVersion
 
         device_registry.async_get_or_create(
-            config_entry_id=self._device.device_id,
+            config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, self._device.device_id)},
             name=self._device.device_name,
             sw_version= sw_version,
