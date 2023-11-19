@@ -121,6 +121,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 tydom_hub = hub.Hub(
                     self.hass,
+                    None,
                     user_input[CONF_HOST],
                     user_input[CONF_MAC],
                     user_input[CONF_TYDOM_PASSWORD],
@@ -223,6 +224,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # Ensure it's working as expected
                 tydom_hub = hub.Hub(
                     self.hass,
+                    None,
                     user_input[CONF_HOST],
                     user_input[CONF_MAC],
                     user_input[CONF_TYDOM_PASSWORD],
