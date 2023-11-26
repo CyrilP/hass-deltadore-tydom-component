@@ -286,7 +286,6 @@ class TydomClient:
                 await self._connection.close()
                 await asyncio.sleep(10)
                 await self.listen_tydom(await self.async_connect())
-                # self._connection = await self.async_connect()
 
             msg = await self._connection.receive()
             LOGGER.info(
@@ -329,6 +328,25 @@ class TydomClient:
         )
         return digest
 
+    async def send_bytes(self, a_bytes : bytes):
+        """Send bytes to connection, retry if it fails."""
+        if self._connection is not None:
+            try:
+                await self._connection.send_bytes(a_bytes)
+            except ConnectionResetError:
+                # Failed, retrying...
+                try:
+                    self._connection = await self.async_connect()
+                    await self._connection.send_bytes(a_bytes)
+                except ConnectionResetError:
+                    LOGGER.warning(
+                        "Cannot send message to Tydom. Connection was lost."
+            )
+        else:
+            LOGGER.warning(
+                "Cannot send message to Tydom because no connection has been established yet."
+            )
+
     async def send_message(self, method, msg):
         """Send Generic message to Tydom."""
         message = (
@@ -345,12 +363,8 @@ class TydomClient:
             msg if "pwd" not in msg else "***",
         )
 
-        if self._connection is not None:
-            await self._connection.send_bytes(a_bytes)
-        else:
-            LOGGER.warning(
-                "Cannot send message to Tydom because no connection has been established yet"
-            )
+        await self.send_bytes(a_bytes)
+
 
     # ########################
     # Utils methods
@@ -516,7 +530,7 @@ class TydomClient:
         )
         a_bytes = bytes(str_request, "ascii")
         LOGGER.debug("Sending message to tydom (%s %s)", "PUT data", body)
-        await self._connection.send_bytes(a_bytes)
+        await self.send_bytes(a_bytes)
         return 0
 
     async def put_devices_data(self, device_id, endpoint_id, name, value):
@@ -541,8 +555,8 @@ class TydomClient:
             + "\r\n\r\n"
         )
         a_bytes = bytes(str_request, "ascii")
+        await self.send_bytes(a_bytes)
         LOGGER.debug("Sending message to tydom (%s %s)", "PUT data", body)
-        await self._connection.send_bytes(a_bytes)
         return 0
 
     async def put_alarm_cdata(self, device_id, alarm_id=None, value=None, zone_id=None):
