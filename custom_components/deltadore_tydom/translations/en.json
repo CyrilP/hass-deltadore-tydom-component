@@ -29,7 +29,8 @@
             "invalid_host": "Hostname or IP is invalid",
             "invalid_macaddress": "MAC address is invalid",
             "invalid_email": "Email is invalid",
-            "invalid_password": "Password is invalid"
+            "invalid_password": "Password is invalid",
+            "communication_error": "Couldn't connect to Tydom Gateway"
         },
         "abort": {
             "discover_timeout": "Unable to discover devices",
