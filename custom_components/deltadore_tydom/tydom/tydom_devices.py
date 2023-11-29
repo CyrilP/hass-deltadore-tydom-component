@@ -5,6 +5,8 @@ from ..const import LOGGER
 class TydomDevice:
     """represents a generic device."""
 
+    _ha_device = None
+
     def __init__(self, tydom_client, uid, device_id, name, device_type, endpoint, metadata, data):
         """Initialize a TydomDevice."""
         self._tydom_client = tydom_client
@@ -28,6 +30,7 @@ class TydomDevice:
 
     def register_callback(self, callback: Callable[[], None]) -> None:
         """Register callback, called when state changes."""
+        LOGGER.warn("register callback %s", callback)
         self._callbacks.add(callback)
 
     def remove_callback(self, callback: Callable[[], None]) -> None:
@@ -61,11 +64,12 @@ class TydomDevice:
             if (attribute == "_uid" or attribute[:1] != "_") and value is not None:
                 setattr(self, attribute, value)
         await self.publish_updates()
-        if hasattr(self,"_ha_device"):
+        if hasattr(self,"_ha_device") and self._ha_device is not None:
             self._ha_device.async_write_ha_state()
 
     async def publish_updates(self) -> None:
         """Schedule call all registered callbacks."""
+        LOGGER.warn("publish_updates...")
         for callback in self._callbacks:
             callback()
 
@@ -142,9 +146,6 @@ class TydomSmoke(TydomDevice):
 class TydomBoiler(TydomDevice):
     """Represents a Boiler."""
 
-    _ha_device = None
-
-    """represents a boiler"""
     async def set_hvac_mode(self, mode):
         """Set hvac mode (ANTI_FROST/NORMAL/STOP)."""
         LOGGER.debug("setting hvac mode to %s", mode)

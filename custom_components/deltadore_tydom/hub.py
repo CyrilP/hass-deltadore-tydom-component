@@ -144,7 +144,7 @@ class Hub:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomShutter():
                 LOGGER.debug("Create cover %s", device.device_id)
-                ha_device = HACover(device)
+                ha_device = HACover(device, self._hass)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_cover_callback is not None:
                     self.add_cover_callback([ha_device])
@@ -160,7 +160,7 @@ class Hub:
 
             case TydomSmoke():
                 LOGGER.debug("Create smoke %s", device.device_id)
-                ha_device = HASmoke(device)
+                ha_device = HASmoke(device, self._hass)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback([ha_device])
@@ -169,7 +169,7 @@ class Hub:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomBoiler():
                 LOGGER.debug("Create boiler %s", device.device_id)
-                ha_device = HaClimate(device)
+                ha_device = HaClimate(device, self._hass)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_climate_callback is not None:
                     self.add_climate_callback([ha_device])
@@ -178,7 +178,7 @@ class Hub:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomWindow():
                 LOGGER.debug("Create window %s", device.device_id)
-                ha_device = HaWindow(device)
+                ha_device = HaWindow(device, self._hass)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_cover_callback is not None:
                     self.add_cover_callback([ha_device])
@@ -187,7 +187,7 @@ class Hub:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomDoor():
                 LOGGER.debug("Create door %s", device.device_id)
-                ha_device = HaDoor(device)
+                ha_device = HaDoor(device, self._hass)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_cover_callback is not None:
                     self.add_cover_callback([ha_device])
@@ -196,7 +196,7 @@ class Hub:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomGate():
                 LOGGER.debug("Create gate %s", device.device_id)
-                ha_device = HaGate(device)
+                ha_device = HaGate(device, self._hass)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_cover_callback is not None:
                     self.add_cover_callback([ha_device])
@@ -205,7 +205,7 @@ class Hub:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomGarage():
                 LOGGER.debug("Create garage %s", device.device_id)
-                ha_device = HaGarage(device)
+                ha_device = HaGarage(device, self._hass)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_cover_callback is not None:
                     self.add_cover_callback([ha_device])
@@ -214,7 +214,7 @@ class Hub:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomLight():
                 LOGGER.debug("Create light %s", device.device_id)
-                ha_device = HaLight(device)
+                ha_device = HaLight(device, self._hass)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_light_callback is not None:
                     self.add_light_callback([ha_device])
@@ -235,12 +235,18 @@ class Hub:
 
     async def update_ha_device(self, stored_device, device):
         """Update HA device values."""
-        await stored_device.update_device(device)
-        ha_device = self.ha_devices[device.device_id]
-        new_sensors = ha_device.get_sensors()
-        if len(new_sensors) > 0 and self.add_sensor_callback is not None:
-            # add new sensors
-            self.add_sensor_callback(new_sensors)
+        try:
+            await stored_device.update_device(device)
+            ha_device = self.ha_devices[device.device_id]
+            new_sensors = ha_device.get_sensors()
+            if len(new_sensors) > 0 and self.add_sensor_callback is not None:
+                # add new sensors
+                self.add_sensor_callback(new_sensors)
+            # ha_device.publish_updates()
+            # ha_device.update()
+        except Exception:
+            LOGGER.exception("update failed")
+            
 
     async def ping(self) -> None:
         """Periodically send pings."""
