@@ -117,7 +117,6 @@ class HAEntity:
 
         return sensors
 
-
 class GenericSensor(SensorEntity):
     """Representation of a generic sensor."""
 
@@ -188,7 +187,6 @@ class GenericSensor(SensorEntity):
         # The opposite of async_added_to_hass. Remove any registered call backs here.
         self._device.remove_callback(self.async_write_ha_state)
 
-
 class BinarySensorBase(BinarySensorEntity):
     """Base representation of a Sensor."""
 
@@ -212,7 +210,6 @@ class BinarySensorBase(BinarySensorEntity):
         """Entity being removed from hass."""
         # The opposite of async_added_to_hass. Remove any registered call backs here.
         self._device.remove_callback(self.async_write_ha_state)
-
 
 class GenericBinarySensor(BinarySensorBase):
     """Generic representation of a Binary Sensor."""
@@ -247,6 +244,7 @@ class GenericBinarySensor(BinarySensorBase):
 class HATydom(Entity, HAEntity):
     """Representation of a Tydom Gateway."""
 
+    _ha_device = None
     _attr_has_entity_name = False
     _attr_entity_category = None
     entity_description: str
@@ -283,14 +281,16 @@ class HATydom(Entity, HAEntity):
 
     def __init__(self, device: Tydom, hass, entry: ConfigEntry) -> None:
         """Initialize HATydom."""
+        self.hass = hass
         self._device = device
+        self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
 
-        device_registry = dr.async_get(hass)
+        self.device_registry = dr.async_get(hass)
 
-        device_registry.async_get_or_create(
+        self.device_entry = self.device_registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, self._device.device_id)},
             name=self._device.device_id,
@@ -298,6 +298,12 @@ class HATydom(Entity, HAEntity):
             model=self._device.productName,
             sw_version=self._device.mainVersionSW,
         )
+
+#    async def publish_updates(self) -> None:
+#        """Publish device updates."""
+#        await self.device_registry.async_update_device(
+#            device_id=self.device_entry.id
+#        )
 
     @property
     def device_info(self):
@@ -387,22 +393,30 @@ class HAEnergy(Entity, HAEntity):
 
     def __init__(self, device: TydomEnergy, hass, entry: ConfigEntry) -> None:
         """Initialize HAEnergy."""
+        self.hass = hass
         self._device = device
+        self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_energy"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
 
-        device_registry = dr.async_get(hass)
+        self.device_registry = dr.async_get(hass)
 
         sw_version = None
         if  hasattr(self._device, "softVersion"):
             sw_version = self._device.softVersion
 
-        device_registry.async_get_or_create(
+        self.device_entry = self.device_registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, self._device.device_id)},
             name=self._device.device_name,
             sw_version= sw_version,
+        )
+
+    async def publish_updates(self) -> None:
+        """Publish device updates."""
+        await self.device_registry.async_update_device(
+            device_id=self.device_entry.id
         )
 
     @property
@@ -433,10 +447,11 @@ class HACover(CoverEntity, HAEntity):
         "intrusion": BinarySensorDeviceClass.PROBLEM,
     }
 
-    def __init__(self, device: TydomShutter) -> None:
+    def __init__(self, device: TydomShutter, hass) -> None:
         """Initialize the sensor."""
-
+        self.hass = hass
         self._device = device
+        self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
@@ -468,11 +483,13 @@ class HACover(CoverEntity, HAEntity):
     @property
     def current_cover_position(self):
         """Return the current position of the cover."""
+        LOGGER.error("current cover position : %s", self._device.position)
         return self._device.position
 
     @property
     def is_closed(self) -> bool:
         """Return if the cover is closed, same as position 0."""
+        LOGGER.error("isclosed : %s", self._device.position == 0)
         return self._device.position == 0
 
     @property
@@ -527,7 +544,6 @@ class HACover(CoverEntity, HAEntity):
         """Stop the cover tilt."""
         await self._device.slope_stop()
 
-
 class HASmoke(BinarySensorEntity, HAEntity):
     """Representation of an Smoke sensor."""
 
@@ -536,9 +552,11 @@ class HASmoke(BinarySensorEntity, HAEntity):
 
     sensor_classes = {"batt_defect": BinarySensorDeviceClass.PROBLEM}
 
-    def __init__(self, device: TydomSmoke) -> None:
+    def __init__(self, device: TydomSmoke, hass) -> None:
         """Initialize TydomSmoke."""
+        self.hass = hass
         self._device = device
+        self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_smoke_defect"
         self._attr_name = self._device.device_name
         self._state = False
@@ -592,9 +610,10 @@ class HaClimate(ClimateEntity, HAEntity):
         "STOP": HVACMode.OFF,
     }
 
-    def __init__(self, device: TydomBoiler) -> None:
+    def __init__(self, device: TydomBoiler, hass) -> None:
         """Initialize Climate."""
         super().__init__()
+        self.hass = hass
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_climate"
@@ -679,9 +698,11 @@ class HaWindow(CoverEntity, HAEntity):
         "intrusionDetect": BinarySensorDeviceClass.PROBLEM,
     }
 
-    def __init__(self, device: TydomWindow) -> None:
+    def __init__(self, device: TydomWindow, hass) -> None:
         """Initialize the sensor."""
+        self.hass = hass
         self._device = device
+        self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
@@ -711,9 +732,11 @@ class HaDoor(LockEntity, HAEntity):
         "intrusionDetect": BinarySensorDeviceClass.PROBLEM,
     }
 
-    def __init__(self, device: TydomDoor) -> None:
+    def __init__(self, device: TydomDoor, hass) -> None:
         """Initialize the sensor."""
+        self.hass = hass
         self._device = device
+        self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
@@ -739,9 +762,11 @@ class HaGate(CoverEntity, HAEntity):
     device_class = CoverDeviceClass.GATE
     sensor_classes = {}
 
-    def __init__(self, device: TydomGate) -> None:
+    def __init__(self, device: TydomGate, hass) -> None:
         """Initialize the sensor."""
+        self.hass = hass
         self._device = device
+        self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
@@ -762,9 +787,11 @@ class HaGarage(CoverEntity, HAEntity):
     device_class = CoverDeviceClass.GARAGE
     sensor_classes = {}
 
-    def __init__(self, device: TydomGarage) -> None:
+    def __init__(self, device: TydomGarage, hass) -> None:
         """Initialize the sensor."""
+        self.hass = hass
         self._device = device
+        self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
@@ -784,9 +811,11 @@ class HaLight(LightEntity, HAEntity):
     supported_features = None
     sensor_classes = {}
 
-    def __init__(self, device: TydomLight) -> None:
+    def __init__(self, device: TydomLight, hass) -> None:
         """Initialize the sensor."""
+        self.hass = hass
         self._device = device
+        self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
