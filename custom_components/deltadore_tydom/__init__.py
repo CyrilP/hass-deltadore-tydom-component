@@ -18,7 +18,7 @@ PLATFORMS: list[str] = [
     Platform.SENSOR,
     Platform.LOCK,
     Platform.LIGHT,
-    Platform.UPDATE,
+    Platform.UPDATE
 ]
 
 
