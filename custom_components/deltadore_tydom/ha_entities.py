@@ -1,7 +1,7 @@
 """Home assistant entites."""
 from typing import Any
+from datetime import date
 
-from homeassistant.helpers import device_registry as dr
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
@@ -21,7 +21,7 @@ from homeassistant.const import (
     EntityCategory,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.entity import Entity, DeviceInfo
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.components.cover import (
     ATTR_POSITION,
     ATTR_TILT_POSITION,
@@ -39,6 +39,7 @@ from homeassistant.components.cover import (
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass, SensorEntity
 from homeassistant.components.light import LightEntity
 from homeassistant.components.lock import LockEntity
+from homeassistant.components.update import UpdateEntity, UpdateEntityFeature, UpdateDeviceClass
 
 from .tydom.tydom_devices import (
     Tydom,
@@ -241,8 +242,10 @@ class GenericBinarySensor(BinarySensorBase):
         """Return the state of the sensor."""
         return getattr(self._device, self._attribute)
 
-class HATydom(Entity, HAEntity):
+class HATydom(UpdateEntity, HAEntity):
     """Representation of a Tydom Gateway."""
+
+    _attr_title = "Tydom"
 
     _ha_device = None
     _attr_has_entity_name = False
@@ -284,39 +287,52 @@ class HATydom(Entity, HAEntity):
         self.hass = hass
         self._device = device
         self._device._ha_device = self
+        self.supported_features = UpdateEntityFeature.INSTALL
+        self._attr_device_class = UpdateDeviceClass.FIRMWARE
         self._attr_unique_id = f"{self._device.device_id}"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
-
-        self.device_registry = dr.async_get(hass)
-
-        self.device_entry = self.device_registry.async_get_or_create(
-            config_entry_id=entry.entry_id,
-            identifiers={(DOMAIN, self._device.device_id)},
-            name=self._device.device_id,
-            manufacturer="Delta Dore",
-            model=self._device.productName,
-            sw_version=self._device.mainVersionSW,
-        )
-
-#    async def publish_updates(self) -> None:
-#        """Publish device updates."""
-#        await self.device_registry.async_update_device(
-#            device_id=self.device_entry.id
-#        )
 
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
         return {
-            "identifiers": {(DOMAIN, self.device.device_id)},
+            "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_id,
             "manufacturer": "Delta Dore",
             "sw_version": self._device.mainVersionSW,
             "model": self._device.productName,
         }
 
-class HAEnergy(Entity, HAEntity):
+    @property
+    def installed_version(self) -> str | None:
+        """Version currently in use."""
+        if self._device is None:
+            return None
+        # return self._hub.current_firmware
+        if hasattr (self._device, "mainVersionSW"):
+            return self._device.mainVersionSW
+        else:
+            return None
+
+    @property
+    def latest_version(self) -> str | None:
+        """Latest version available for install."""
+        if self._device is not None and hasattr (self._device, "mainVersionSW"):
+            if self._device.updateAvailable:
+                # return version based on today's date for update version
+                return date.today().strftime("%y.%m.%d")
+            return self._device.mainVersionSW
+        # FIXME : return correct version on update
+        return None
+
+    async def async_install(
+        self, version: str | None, backup: bool, **kwargs: Any
+    ) -> None:
+        """Install an update."""
+        await self._hub.async_trigger_firmware_update()
+
+class HAEnergy(SensorEntity, HAEntity):
     """Representation of an Energy sensor."""
 
     _attr_has_entity_name = False
@@ -399,25 +415,6 @@ class HAEnergy(Entity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_energy"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
-
-        self.device_registry = dr.async_get(hass)
-
-        sw_version = None
-        if  hasattr(self._device, "softVersion"):
-            sw_version = self._device.softVersion
-
-        self.device_entry = self.device_registry.async_get_or_create(
-            config_entry_id=entry.entry_id,
-            identifiers={(DOMAIN, self._device.device_id)},
-            name=self._device.device_name,
-            sw_version= sw_version,
-        )
-
-    async def publish_updates(self) -> None:
-        """Publish device updates."""
-        await self.device_registry.async_update_device(
-            device_id=self.device_entry.id
-        )
 
     @property
     def device_info(self):

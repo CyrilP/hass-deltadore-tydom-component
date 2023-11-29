@@ -72,6 +72,7 @@ class Hub:
         self.add_lock_callback = None
         self.add_light_callback = None
         self.add_alarm_callback = None
+        self.add_update_callback = None
 
         self._tydom_client = TydomClient(
             hass=self._hass,
@@ -138,8 +139,11 @@ class Hub:
                 self.devices[device.device_id] = self.device_info
                 await self.device_info.update_device(device)
                 ha_device = HATydom(self.device_info, self._hass, self._entry)
-
                 self.ha_devices[self.device_info.device_id] = ha_device
+                LOGGER.error("*** adding TYDOM, %s", self.add_update_callback)
+                if self.add_update_callback is not None:
+                    LOGGER.error("*** adding TYDOM")
+                    self.add_update_callback([ha_device])
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomShutter():
@@ -154,6 +158,9 @@ class Hub:
                 LOGGER.debug("Create conso %s", device.device_id)
                 ha_device = HAEnergy(device, self._hass, self._entry)
                 self.ha_devices[device.device_id] = ha_device
+
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback([ha_device])
 
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())

@@ -30,7 +30,6 @@ class TydomDevice:
 
     def register_callback(self, callback: Callable[[], None]) -> None:
         """Register callback, called when state changes."""
-        LOGGER.warn("register callback %s", callback)
         self._callbacks.add(callback)
 
     def remove_callback(self, callback: Callable[[], None]) -> None:
@@ -65,11 +64,13 @@ class TydomDevice:
                 setattr(self, attribute, value)
         await self.publish_updates()
         if hasattr(self,"_ha_device") and self._ha_device is not None:
-            self._ha_device.async_write_ha_state()
+            try:
+                self._ha_device.async_write_ha_state()
+            except Exception:
+                LOGGER.exception("update failed")
 
     async def publish_updates(self) -> None:
         """Schedule call all registered callbacks."""
-        LOGGER.warn("publish_updates...")
         for callback in self._callbacks:
             callback()
 
