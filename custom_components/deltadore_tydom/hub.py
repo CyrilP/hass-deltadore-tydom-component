@@ -70,7 +70,6 @@ class Hub:
         self.add_climate_callback = None
         self.add_light_callback = None
         self.add_lock_callback = None
-        self.add_light_callback = None
         self.add_alarm_callback = None
         self.add_update_callback = None
 
@@ -111,8 +110,17 @@ class Hub:
         connection = await self._tydom_client.async_connect()
         await connection.close()
 
+    def ready(self) -> bool:
+        """Check if we're ready to work."""
+        # and self.add_alarm_callback is not None
+        return self.add_cover_callback is not None and self.add_sensor_callback is not None and self.add_climate_callback is not None and self.add_light_callback is not None and self.add_lock_callback is not None and self.add_update_callback is not None
+
+
     async def setup(self, connection: ClientWebSocketResponse) -> None:
         """Listen to tydom events."""
+        # wait for callbacks to become available
+        while not self.ready():
+            await asyncio.sleep(1)
         LOGGER.debug("Listen to tydom events")
         while True:
             devices = await self._tydom_client.consume_messages()
@@ -253,13 +261,12 @@ class Hub:
             # ha_device.update()
         except Exception:
             LOGGER.exception("update failed")
-            
 
     async def ping(self) -> None:
         """Periodically send pings."""
         while True:
             await self._tydom_client.ping()
-            await asyncio.sleep(60)
+            await asyncio.sleep(30)
 
     async def refresh_all(self) -> None:
         """Periodically refresh all metadata and data.
