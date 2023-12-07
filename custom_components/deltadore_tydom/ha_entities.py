@@ -330,7 +330,7 @@ class HATydom(UpdateEntity, HAEntity):
         self, version: str | None, backup: bool, **kwargs: Any
     ) -> None:
         """Install an update."""
-        await self._hub.async_trigger_firmware_update()
+        await self._device.async_trigger_firmware_update()
 
 class HAEnergy(SensorEntity, HAEntity):
     """Representation of an Energy sensor."""

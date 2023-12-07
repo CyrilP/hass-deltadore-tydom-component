@@ -284,8 +284,3 @@ class Hub:
             await self._tydom_client.get_devices_data()
             await self._tydom_client.get_scenarii()
             await asyncio.sleep(300)
-
-    async def async_trigger_firmware_update(self) -> None:
-        """Trigger firmware update."""
-        LOGGER.debug("Installing firmware update...")
-        self._tydom_client.update_firmware()
