@@ -62,7 +62,6 @@ class Hub:
         self._entry = entry
         self._name = mac
         self._id = "Tydom-" + mac[6:]
-        self.device_info = Tydom(None, None, None, None, None, None, None, None)
         self.devices = {}
         self.ha_devices = {}
         self.add_cover_callback = None
@@ -144,13 +143,11 @@ class Hub:
         match device:
             case Tydom():
                 LOGGER.debug("Create Tydom gateway %s", device.device_id)
-                self.devices[device.device_id] = self.device_info
-                await self.device_info.update_device(device)
-                ha_device = HATydom(self.device_info, self._hass, self._entry)
-                self.ha_devices[self.device_info.device_id] = ha_device
-                LOGGER.error("*** adding TYDOM, %s", self.add_update_callback)
+                LOGGER.error("Tydom gateway %s", device._tydom_client)
+                self.devices[device.device_id] = device
+                ha_device = HATydom(device, self._hass, self._entry)
+                self.ha_devices[device.device_id] = ha_device
                 if self.add_update_callback is not None:
-                    LOGGER.error("*** adding TYDOM")
                     self.add_update_callback([ha_device])
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())

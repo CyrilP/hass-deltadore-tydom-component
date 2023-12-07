@@ -480,13 +480,11 @@ class HACover(CoverEntity, HAEntity):
     @property
     def current_cover_position(self):
         """Return the current position of the cover."""
-        LOGGER.error("current cover position : %s", self._device.position)
         return self._device.position
 
     @property
     def is_closed(self) -> bool:
         """Return if the cover is closed, same as position 0."""
-        LOGGER.error("isclosed : %s", self._device.position == 0)
         return self._device.position == 0
 
     @property
