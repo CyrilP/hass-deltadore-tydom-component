@@ -78,6 +78,11 @@ class TydomDevice:
 class Tydom(TydomDevice):
     """Tydom Gateway."""
 
+    async def async_trigger_firmware_update(self) -> None:
+        """Trigger firmware update."""
+        LOGGER.debug("Installing firmware update...")
+        await self._tydom_client.update_firmware()
+
 class TydomShutter(TydomDevice):
     """Represents a shutter."""
 
