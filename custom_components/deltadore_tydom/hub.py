@@ -143,7 +143,6 @@ class Hub:
         match device:
             case Tydom():
                 LOGGER.debug("Create Tydom gateway %s", device.device_id)
-                LOGGER.error("Tydom gateway %s", device._tydom_client)
                 self.devices[device.device_id] = device
                 ha_device = HATydom(device, self._hass, self._entry)
                 self.ha_devices[device.device_id] = ha_device
