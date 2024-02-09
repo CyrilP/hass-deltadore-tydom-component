@@ -25,17 +25,11 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.components.cover import (
     ATTR_POSITION,
     ATTR_TILT_POSITION,
-    SUPPORT_CLOSE,
-    SUPPORT_OPEN,
-    SUPPORT_SET_POSITION,
-    SUPPORT_STOP,
-    SUPPORT_SET_TILT_POSITION,
-    SUPPORT_OPEN_TILT,
-    SUPPORT_CLOSE_TILT,
-    SUPPORT_STOP_TILT,
     CoverEntity,
     CoverDeviceClass,
+    CoverEntityFeature,
 )
+
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass, SensorEntity
 from homeassistant.components.light import LightEntity
 from homeassistant.components.lock import LockEntity
@@ -455,18 +449,18 @@ class HACover(CoverEntity, HAEntity):
         if hasattr(device, "position"):
             self.supported_features = (
                 self.supported_features
-                | SUPPORT_SET_POSITION
-                | SUPPORT_OPEN
-                | SUPPORT_CLOSE
-                | SUPPORT_STOP
+                | CoverEntityFeature.SET_POSITION
+                | CoverEntityFeature.OPEN
+                | CoverEntityFeature.CLOSE
+                | CoverEntityFeature.STOP
             )
         if hasattr(device, "slope"):
             self.supported_features = (
                 self.supported_features
-                | SUPPORT_SET_TILT_POSITION
-                | SUPPORT_OPEN_TILT
-                | SUPPORT_CLOSE_TILT
-                | SUPPORT_STOP_TILT
+                | CoverEntityFeature.SET_TILT_POSITION
+                | CoverEntityFeature.OPEN_TILT
+                | CoverEntityFeature.CLOSE_TILT
+                | CoverEntityFeature.STOP_TILT
             )
 
     @property
@@ -613,6 +607,13 @@ class HaClimate(ClimateEntity, HAEntity):
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_climate"
         self._attr_name = self._device.device_name
+        self._enable_turn_on_off_backwards_compatibility = False
+        self._attr_supported_features = (
+            self._attr_supported_features
+            | ClimateEntityFeature.TARGET_TEMPERATURE 
+            | ClimateEntityFeature.TURN_OFF 
+            | ClimateEntityFeature.TURN_ON
+        )
 
         # self._attr_preset_modes = ["NORMAL", "STOP", "ANTI_FROST"]
         self._attr_hvac_modes = [
@@ -627,13 +628,6 @@ class HaClimate(ClimateEntity, HAEntity):
 
         if "max" in self._device._metadata["setpoint"]:
             self._attr_max_temp = self._device._metadata["setpoint"]["max"]
-
-    @property
-    def supported_features(self) -> ClimateEntityFeature:
-        """Return the list of supported features."""
-        features = ClimateEntityFeature(0)
-        features = features | ClimateEntityFeature.TARGET_TEMPERATURE #| ClimateEntityFeature.PRESET_MODE
-        return features
 
     @property
     def device_info(self) -> DeviceInfo:
