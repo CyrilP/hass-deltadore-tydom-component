@@ -610,8 +610,8 @@ class HaClimate(ClimateEntity, HAEntity):
         self._enable_turn_on_off_backwards_compatibility = False
         self._attr_supported_features = (
             self._attr_supported_features
-            | ClimateEntityFeature.TARGET_TEMPERATURE 
-            | ClimateEntityFeature.TURN_OFF 
+            | ClimateEntityFeature.TARGET_TEMPERATURE
+            | ClimateEntityFeature.TURN_OFF
             | ClimateEntityFeature.TURN_ON
         )
 
