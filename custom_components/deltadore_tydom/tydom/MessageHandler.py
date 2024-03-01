@@ -73,6 +73,9 @@ class MessageHandler:
     async def incoming_triage(self, bytes_str):
         """Identify message type and dispatch the result."""
 
+        if bytes_str is None:
+            return None
+
         incoming = None
 
         # Find Uri-Origin in header if available
@@ -187,7 +190,7 @@ class MessageHandler:
                         return await self.parse_msg_info(parsed)
 
                 except Exception as e:
-                    LOGGER.error("Error on parsing tydom response (%s)", e)
+                    LOGGER.error("Error on parsing tydom response (%s)", data)
                     LOGGER.exception("Error on parsing tydom response")
                     traceback.print_exception(e)
             LOGGER.debug("Incoming data parsed with success")
