@@ -1,6 +1,5 @@
 """Home assistant entites."""
 from typing import Any
-from typing import Optional
 from datetime import date
 import math
 
