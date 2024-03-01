@@ -245,5 +245,31 @@ class TydomGarage(TydomDevice):
 class TydomLight(TydomDevice):
     """represents a light."""
 
+    async def turn_on(self, brightness) -> None:
+        """Tell light to turn on."""
+        if brightness is None:
+            command = "TOGGLE"
+            if "ON" in self._metadata["levelCmd"]["enum_values"]:
+                command = "ON"
+
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "levelCmd", command
+            )
+        else:
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "level", brightness
+            )
+
+    async def turn_off(self) -> None:
+        """Tell light to turn off."""
+
+        command = "TOGGLE"
+        if "OFF" in self._metadata["levelCmd"]["enum_values"]:
+            command = "OFF"
+
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "levelCmd", command
+        )
+
 class TydomAlarm(TydomDevice):
     """represents an alarm."""
