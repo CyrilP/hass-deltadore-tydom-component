@@ -34,6 +34,7 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass,
 from homeassistant.components.light import LightEntity
 from homeassistant.components.lock import LockEntity
 from homeassistant.components.update import UpdateEntity, UpdateEntityFeature, UpdateDeviceClass
+from homeassistant.components.alarm_control_panel import AlarmControlPanelEntity, CodeFormat
 
 from .tydom.tydom_devices import (
     Tydom,
