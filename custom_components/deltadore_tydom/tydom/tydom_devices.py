@@ -257,7 +257,7 @@ class TydomLight(TydomDevice):
             )
         else:
             await self._tydom_client.put_devices_data(
-                self._id, self._endpoint, "level", brightness
+                self._id, self._endpoint, "level", str(brightness)
             )
 
     async def turn_off(self) -> None:

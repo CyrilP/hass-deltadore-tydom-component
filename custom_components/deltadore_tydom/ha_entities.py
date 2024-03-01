@@ -36,7 +36,10 @@ from homeassistant.components.light import LightEntity, ColorMode, ATTR_BRIGHTNE
 from homeassistant.components.lock import LockEntity
 from homeassistant.components.update import UpdateEntity, UpdateEntityFeature, UpdateDeviceClass
 from homeassistant.components.alarm_control_panel import AlarmControlPanelEntity, CodeFormat
-from homeassistant.util.color import value_to_brightness
+from homeassistant.util.percentage import (
+    percentage_to_ranged_value,
+    ranged_value_to_percentage,
+)
 
 from .tydom.tydom_devices import (
     Tydom,
@@ -816,7 +819,7 @@ class HaLight(LightEntity, HAEntity):
     color_mode = set()
     supported_color_modes = set()
 
-    BRIGHTNESS_SCALE = (0, 100)
+    BRIGHTNESS_SCALE = (0, 255)
 
     def __init__(self, device: TydomLight, hass) -> None:
         """Initialize the sensor."""
@@ -841,21 +844,26 @@ class HaLight(LightEntity, HAEntity):
             "name": self.name,
         }
 
+    @property
+    def brightness(self) -> int | None:
+        """Return the current brightness."""
+        return percentage_to_ranged_value(self.BRIGHTNESS_SCALE, self._device.level)
+
+    @property
+    def is_on(self) -> bool:
+        """Return true if light is on."""
+        return bool(self._device.level != 0)
+
     async def async_turn_on(self, **kwargs):
         """Turn device on."""
         brightness = None
         if ATTR_BRIGHTNESS in kwargs:
-            brightness = math.ceil(self.percentage_to_ranged_value(self.BRIGHTNESS_SCALE, kwargs[ATTR_BRIGHTNESS]))
+            brightness = math.ceil(ranged_value_to_percentage(self.BRIGHTNESS_SCALE, kwargs[ATTR_BRIGHTNESS]))
         await self._device.turn_on(brightness)
 
     async def async_turn_off(self, **kwargs):
         """Turn device off."""
         await self._device.turn_off()
-
-    @property
-    def brightness(self) -> int | None:
-        """Return the current brightness."""
-        return value_to_brightness(self.BRIGHTNESS_SCALE, self._device.brightness)
 
 class HaAlarm(AlarmControlPanelEntity, HAEntity):
     """Representation of an Alarm."""
