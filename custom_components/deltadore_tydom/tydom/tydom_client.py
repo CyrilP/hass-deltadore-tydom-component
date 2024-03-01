@@ -41,6 +41,11 @@ class TydomClientApiClientAuthenticationError(TydomClientApiClientError):
 
 proxy = None
 
+# For debugging with traces
+file_mode = False
+file_lines = None
+file_index = 0
+file_name = "/config/traces.txt"
 
 class TydomClient:
     """Tydom API Client."""
@@ -89,6 +94,8 @@ class TydomClient:
         session: ClientSession, email: str, password: str, macaddress: str
     ):
         """Get tydom credentials from Delta Dore."""
+        if file_mode:
+            return "dummyPassword"
         try:
             async with async_timeout.timeout(10):
                 response = await session.request(
@@ -176,6 +183,13 @@ class TydomClient:
 
     async def async_connect(self) -> ClientWebSocketResponse:
         """Connect to the Tydom API."""
+        global file_lines, file_mode, file_name
+        if file_mode:
+            file = open(file_name)
+            file_lines = file.readlines()
+
+            return None
+
         http_headers = {
             "Connection": "Upgrade",
             "Upgrade": "websocket",
@@ -281,6 +295,18 @@ class TydomClient:
 
     async def consume_messages(self):
         """Read and parse incomming messages."""
+        global file_lines, file_mode, file_index
+        if file_mode:
+            if (len(file_lines) > file_index):
+                incoming = file_lines[file_index].replace("\\r", '\x0d').replace("\\n", "\x0a")
+                incoming_bytes_str = incoming.encode("utf-8")
+                file_index += 1
+                LOGGER.info("Incomming message - message : %s", incoming_bytes_str)
+            else:
+                await asyncio.sleep(10)
+                return None
+            await asyncio.sleep(1)
+            return await self._message_handler.incoming_triage(incoming_bytes_str)
         try:
             if self._connection.closed:
                 await self._connection.close()
@@ -362,8 +388,8 @@ class TydomClient:
             method,
             msg if "pwd" not in msg else "***",
         )
-
-        await self.send_bytes(a_bytes)
+        if not file_mode:
+            await self.send_bytes(a_bytes)
 
 
     # ########################

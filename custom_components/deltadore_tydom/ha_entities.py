@@ -817,3 +817,19 @@ class HaLight(LightEntity, HAEntity):
             "name": self.name,
         }
 
+class HaAlarm(AlarmControlPanelEntity, HAEntity):
+    """Representation of an Alarm."""
+
+    should_poll = False
+    supported_features = 0
+    code_format = CodeFormat.NUMBER
+    sensor_classes = {}
+
+    def __init__(self, device: TydomAlarm, hass) -> None:
+        """Initialize the sensor."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self
+        self._attr_unique_id = f"{self._device.device_id}_cover"
+        self._attr_name = self._device.device_name
+        self._registered_sensors = []

@@ -31,6 +31,7 @@ from .ha_entities import (
     HaGate,
     HaGarage,
     HaLight,
+    HaAlarm,
 )
 
 from .const import LOGGER
@@ -107,7 +108,8 @@ class Hub:
     async def test_credentials(self) -> None:
         """Validate credentials."""
         connection = await self._tydom_client.async_connect()
-        await connection.close()
+        if hasattr(connection, "close"):
+            await connection.close()
 
     def ready(self) -> bool:
         """Check if we're ready to work."""
@@ -234,6 +236,12 @@ class Hub:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomAlarm():
                 LOGGER.debug("Create alarm %s", device.device_id)
+                ha_device = HaAlarm(device, self._hass)
+                if self.add_light_callback is not None:
+                    self.add_light_callback([ha_device])
+
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback(ha_device.get_sensors())
                 LOGGER.error("Alarm Not implemented yet.")
             case _:
                 LOGGER.error(
