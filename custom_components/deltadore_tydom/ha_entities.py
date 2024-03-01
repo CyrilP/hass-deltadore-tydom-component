@@ -854,7 +854,7 @@ class HaLight(LightEntity, HAEntity):
         await self._device.turn_off()
 
     @property
-    def brightness(self) -> Optional[int]:
+    def brightness(self) -> int | None:
         """Return the current brightness."""
         return value_to_brightness(self.BRIGHTNESS_SCALE, self._device.brightness)
 
