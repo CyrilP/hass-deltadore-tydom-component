@@ -48,6 +48,7 @@ from .tydom.tydom_devices import (
     TydomGate,
     TydomGarage,
     TydomLight,
+    TydomAlarm,
 )
 
 from .const import DOMAIN, LOGGER
