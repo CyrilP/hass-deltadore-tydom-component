@@ -820,7 +820,9 @@ class HaLight(LightEntity, HAEntity):
     """Representation of a Light."""
 
     should_poll = False
-    sensor_classes = {}
+    sensor_classes = {
+        "thermic_defect": BinarySensorDeviceClass.PROBLEM,
+    }
     color_mode = set()
     supported_color_modes = set()
 
