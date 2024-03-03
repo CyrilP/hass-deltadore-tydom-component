@@ -784,9 +784,11 @@ class HaGarage(CoverEntity, HAEntity):
     """Representation of a Garage door."""
 
     should_poll = False
-    supported_features = None
+    supported_features = CoverEntityFeature.OPEN
     device_class = CoverDeviceClass.GARAGE
-    sensor_classes = {}
+    sensor_classes = {
+        "thermic_defect": BinarySensorDeviceClass.PROBLEM,
+    }
 
     def __init__(self, device: TydomGarage, hass) -> None:
         """Initialize the sensor."""
@@ -807,9 +809,12 @@ class HaGarage(CoverEntity, HAEntity):
 
     @property
     def is_closed(self) -> bool:
-        """Return if the window is closed."""
+        """Return if the garage door is closed."""
         return None
-        #return self._device.openState == "LOCKED"
+
+    async def async_open_cover(self, **kwargs: Any) -> None:
+        """Open the cover."""
+        await self._device.open()
 
 class HaLight(LightEntity, HAEntity):
     """Representation of a Light."""
