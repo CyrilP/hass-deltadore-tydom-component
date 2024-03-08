@@ -146,7 +146,7 @@ class Hub:
             case Tydom():
                 LOGGER.debug("Create Tydom gateway %s", device.device_id)
                 self.devices[device.device_id] = device
-                ha_device = HATydom(device, self._hass, self._entry)
+                ha_device = HATydom(device, self._hass)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_update_callback is not None:
                     self.add_update_callback([ha_device])
@@ -162,7 +162,7 @@ class Hub:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomEnergy():
                 LOGGER.debug("Create conso %s", device.device_id)
-                ha_device = HAEnergy(device, self._hass, self._entry)
+                ha_device = HAEnergy(device, self._hass)
                 self.ha_devices[device.device_id] = ha_device
 
                 if self.add_sensor_callback is not None:
@@ -237,12 +237,12 @@ class Hub:
             case TydomAlarm():
                 LOGGER.debug("Create alarm %s", device.device_id)
                 ha_device = HaAlarm(device, self._hass)
-                if self.add_light_callback is not None:
-                    self.add_light_callback([ha_device])
+                self.ha_devices[device.device_id] = ha_device
+                if self.add_alarm_callback is not None:
+                    self.add_alarm_callback([ha_device])
 
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
-                LOGGER.error("Alarm Not implemented yet.")
             case _:
                 LOGGER.error(
                     "unsupported device type (%s) %s for device %s",

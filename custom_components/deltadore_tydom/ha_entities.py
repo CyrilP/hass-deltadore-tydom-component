@@ -40,6 +40,11 @@ from homeassistant.util.percentage import (
     percentage_to_ranged_value,
     ranged_value_to_percentage,
 )
+from homeassistant.components.alarm_control_panel import AlarmControlPanelEntityFeature
+from homeassistant.const import (
+    STATE_ALARM_ARMED_AWAY,
+    STATE_ALARM_DISARMED,
+)
 
 from .tydom.tydom_devices import (
     Tydom,
@@ -283,7 +288,7 @@ class HATydom(UpdateEntity, HAEntity):
         "TYDOM.dat",
     ]
 
-    def __init__(self, device: Tydom, hass, entry: ConfigEntry) -> None:
+    def __init__(self, device: Tydom, hass) -> None:
         """Initialize HATydom."""
         self.hass = hass
         self._device = device
@@ -408,7 +413,7 @@ class HAEnergy(SensorEntity, HAEntity):
         "outTemperature": UnitOfTemperature.CELSIUS,
     }
 
-    def __init__(self, device: TydomEnergy, hass, entry: ConfigEntry) -> None:
+    def __init__(self, device: TydomEnergy, hass) -> None:
         """Initialize HAEnergy."""
         self.hass = hass
         self._device = device
@@ -877,14 +882,64 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
 
     should_poll = False
     supported_features = 0
-    code_format = CodeFormat.NUMBER
-    sensor_classes = {}
+    sensor_classes = {
+        "networkDefect": BinarySensorDeviceClass.PROBLEM,
+        "remoteSurveyDefect": BinarySensorDeviceClass.PROBLEM,
+        "simDefect": BinarySensorDeviceClass.PROBLEM,
+        "systBatteryDefect": BinarySensorDeviceClass.PROBLEM,
+        "systSectorDefect": BinarySensorDeviceClass.PROBLEM,
+        "systSupervisionDefect": BinarySensorDeviceClass.PROBLEM,
+        "systTechnicalDefect": BinarySensorDeviceClass.PROBLEM,
+        "unitBatteryDefect": BinarySensorDeviceClass.PROBLEM,
+        "videoLinkDefect": BinarySensorDeviceClass.PROBLEM,
+    }
 
     def __init__(self, device: TydomAlarm, hass) -> None:
         """Initialize the sensor."""
         self.hass = hass
         self._device = device
         self._device._ha_device = self
-        self._attr_unique_id = f"{self._device.device_id}_cover"
+        self._attr_unique_id = f"{self._device.device_id}_alarm"
         self._attr_name = self._device.device_name
+        self._attr_code_format = CodeFormat.NUMBER
         self._registered_sensors = []
+        #if hasattr(device, "position"):
+        #    self.supported_features = (
+        #        self.supported_features
+        #        | CoverEntityFeature.SET_POSITION
+        #        | CoverEntityFeature.OPEN
+        #        | CoverEntityFeature.CLOSE
+        #        | CoverEntityFeature.STOP
+        #    )
+        self.supported_features = (
+            self.supported_features
+            | AlarmControlPanelEntityFeature.ARM_AWAY
+        )
+
+    @property
+    def device_info(self):
+        """Return information to link this entity with the correct device."""
+        return {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+        }
+
+    @property
+    def state(self) -> str | None:
+        """Return the state of the device."""
+        # alarmMode :  "OFF", "ON", "TEST", "ZONE", "MAINTENANCE"
+        # alarmState: "OFF", "DELAYED", "ON", "QUIET"
+        match self._device.alarmState:
+            case "OFF":
+                return STATE_ALARM_DISARMED
+            case "ON":
+                return STATE_ALARM_ARMED_AWAY
+        return None
+
+    async def async_alarm_disarm(self, code=None) -> None:
+        """Send disarm command."""
+        LOGGER.error("alarm_disarm, pin %s", code)
+
+    async def async_alarm_arm_away(self, code=None) -> None:
+        """Send arm away command."""
+        LOGGER.error("alarm_arm_away, pin %s", code)

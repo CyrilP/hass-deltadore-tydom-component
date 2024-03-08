@@ -18,7 +18,8 @@ PLATFORMS: list[str] = [
     Platform.SENSOR,
     Platform.LOCK,
     Platform.LIGHT,
-    Platform.UPDATE
+    Platform.UPDATE,
+    Platform.ALARM_CONTROL_PANEL,
 ]
 
 
