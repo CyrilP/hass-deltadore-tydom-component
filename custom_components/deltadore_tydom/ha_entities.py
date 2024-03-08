@@ -886,12 +886,19 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         "networkDefect": BinarySensorDeviceClass.PROBLEM,
         "remoteSurveyDefect": BinarySensorDeviceClass.PROBLEM,
         "simDefect": BinarySensorDeviceClass.PROBLEM,
+        "systAlarmDefect": BinarySensorDeviceClass.PROBLEM,
         "systBatteryDefect": BinarySensorDeviceClass.PROBLEM,
         "systSectorDefect": BinarySensorDeviceClass.PROBLEM,
         "systSupervisionDefect": BinarySensorDeviceClass.PROBLEM,
         "systTechnicalDefect": BinarySensorDeviceClass.PROBLEM,
         "unitBatteryDefect": BinarySensorDeviceClass.PROBLEM,
+        "unitInternalDefect": BinarySensorDeviceClass.PROBLEM,
         "videoLinkDefect": BinarySensorDeviceClass.PROBLEM,
+        "outTemperature": SensorDeviceClass.TEMPERATURE,
+    }
+
+    units = {
+        "outTemperature": UnitOfTemperature.CELSIUS,
     }
 
     def __init__(self, device: TydomAlarm, hass) -> None:
