@@ -44,6 +44,7 @@ from homeassistant.components.alarm_control_panel import AlarmControlPanelEntity
 from homeassistant.const import (
     STATE_ALARM_ARMED_AWAY,
     STATE_ALARM_DISARMED,
+    STATE_ALARM_TRIGGERED,
 )
 
 from .tydom.tydom_devices import (
@@ -910,14 +911,6 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         self._attr_name = self._device.device_name
         self._attr_code_format = CodeFormat.NUMBER
         self._registered_sensors = []
-        #if hasattr(device, "position"):
-        #    self.supported_features = (
-        #        self.supported_features
-        #        | CoverEntityFeature.SET_POSITION
-        #        | CoverEntityFeature.OPEN
-        #        | CoverEntityFeature.CLOSE
-        #        | CoverEntityFeature.STOP
-        #    )
         self.supported_features = (
             self.supported_features
             | AlarmControlPanelEntityFeature.ARM_AWAY
@@ -941,7 +934,8 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
                 return STATE_ALARM_DISARMED
             case "ON":
                 return STATE_ALARM_ARMED_AWAY
-        return None
+            case other:
+                return STATE_ALARM_TRIGGERED
 
     async def async_alarm_disarm(self, code=None) -> None:
         """Send disarm command."""
