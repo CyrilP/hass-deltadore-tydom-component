@@ -1,6 +1,7 @@
 """Home assistant entites."""
 from typing import Any
 from datetime import date
+import math
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -31,10 +32,14 @@ from homeassistant.components.cover import (
 )
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass, SensorEntity
-from homeassistant.components.light import LightEntity
+from homeassistant.components.light import LightEntity, ColorMode, ATTR_BRIGHTNESS
 from homeassistant.components.lock import LockEntity
 from homeassistant.components.update import UpdateEntity, UpdateEntityFeature, UpdateDeviceClass
 from homeassistant.components.alarm_control_panel import AlarmControlPanelEntity, CodeFormat
+from homeassistant.util.percentage import (
+    percentage_to_ranged_value,
+    ranged_value_to_percentage,
+)
 
 from .tydom.tydom_devices import (
     Tydom,
@@ -770,13 +775,20 @@ class HaGate(CoverEntity, HAEntity):
             "name": self.name,
         }
 
+    @property
+    def is_closed(self) -> bool:
+        """Return if the window is closed."""
+        return self._device.openState == "LOCKED"
+
 class HaGarage(CoverEntity, HAEntity):
     """Representation of a Garage door."""
 
     should_poll = False
-    supported_features = None
+    supported_features = CoverEntityFeature.OPEN
     device_class = CoverDeviceClass.GARAGE
-    sensor_classes = {}
+    sensor_classes = {
+        "thermic_defect": BinarySensorDeviceClass.PROBLEM,
+    }
 
     def __init__(self, device: TydomGarage, hass) -> None:
         """Initialize the sensor."""
@@ -795,12 +807,26 @@ class HaGarage(CoverEntity, HAEntity):
             "name": self.name,
         }
 
+    @property
+    def is_closed(self) -> bool:
+        """Return if the garage door is closed."""
+        return None
+
+    async def async_open_cover(self, **kwargs: Any) -> None:
+        """Open the cover."""
+        await self._device.open()
+
 class HaLight(LightEntity, HAEntity):
     """Representation of a Light."""
 
     should_poll = False
-    supported_features = None
-    sensor_classes = {}
+    sensor_classes = {
+        "thermic_defect": BinarySensorDeviceClass.PROBLEM,
+    }
+    color_mode = set()
+    supported_color_modes = set()
+
+    BRIGHTNESS_SCALE = (0, 255)
 
     def __init__(self, device: TydomLight, hass) -> None:
         """Initialize the sensor."""
@@ -810,6 +836,12 @@ class HaLight(LightEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
+        if "level" in self._device._metadata:
+            self.color_mode.add(ColorMode.BRIGHTNESS)
+            self.supported_color_modes.add(ColorMode.BRIGHTNESS)
+        else:
+            self.color_mode.add(ColorMode.ONOFF)
+            self.supported_color_modes.add(ColorMode.ONOFF)
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -818,6 +850,27 @@ class HaLight(LightEntity, HAEntity):
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self.name,
         }
+
+    @property
+    def brightness(self) -> int | None:
+        """Return the current brightness."""
+        return percentage_to_ranged_value(self.BRIGHTNESS_SCALE, self._device.level)
+
+    @property
+    def is_on(self) -> bool:
+        """Return true if light is on."""
+        return bool(self._device.level != 0)
+
+    async def async_turn_on(self, **kwargs):
+        """Turn device on."""
+        brightness = None
+        if ATTR_BRIGHTNESS in kwargs:
+            brightness = math.ceil(ranged_value_to_percentage(self.BRIGHTNESS_SCALE, kwargs[ATTR_BRIGHTNESS]))
+        await self._device.turn_on(brightness)
+
+    async def async_turn_off(self, **kwargs):
+        """Turn device off."""
+        await self._device.turn_off()
 
 class HaAlarm(AlarmControlPanelEntity, HAEntity):
     """Representation of an Alarm."""
