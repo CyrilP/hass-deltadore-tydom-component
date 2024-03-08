@@ -21,7 +21,6 @@ from homeassistant.const import (
     UnitOfElectricCurrent,
     EntityCategory,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.components.cover import (
     ATTR_POSITION,
@@ -934,7 +933,7 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
                 return STATE_ALARM_DISARMED
             case "ON":
                 return STATE_ALARM_ARMED_AWAY
-            case other:
+            case _:
                 return STATE_ALARM_TRIGGERED
 
     async def async_alarm_disarm(self, code=None) -> None:
