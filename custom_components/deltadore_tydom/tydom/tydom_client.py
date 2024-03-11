@@ -594,13 +594,10 @@ class TydomClient:
         return 0
 
     async def put_alarm_cdata(self, device_id, endpoint_id=None, alarm_pin=None, value=None, zone_id=None, legacy_zones=False):
-        LOGGER.error("is legacy : %s", legacy_zones)
         if legacy_zones:
             if zone_id is not None:
                 zones_array = zone_id.split(",")
-                LOGGER.error("zones_array : %s", zones_array)
                 for zone in zones_array:
-                    LOGGER.error("zone : %s", zone)
                     await self._put_alarm_cdata(device_id, endpoint_id, alarm_pin, value, zone, legacy_zones)
         else:
             await self._put_alarm_cdata(device_id, endpoint_id, alarm_pin, value, zone_id, legacy_zones)
