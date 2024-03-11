@@ -9,3 +9,5 @@ DOMAIN = "deltadore_tydom"
 NAME = "Delta Dore TYDOM"
 
 CONF_TYDOM_PASSWORD = "tydom_password"
+CONF_ZONES_HOME = "zones_home"
+CONF_ZONES_AWAY = "zones_away"
