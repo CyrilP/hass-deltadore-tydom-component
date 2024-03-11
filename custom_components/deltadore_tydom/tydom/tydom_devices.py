@@ -279,3 +279,20 @@ class TydomLight(TydomDevice):
 
 class TydomAlarm(TydomDevice):
     """represents an alarm."""
+
+    def is_legacy_alarm(self) -> bool:
+        if hasattr(self, "part1State"):
+            return True
+        return False
+
+    async def alarm_disarm(self, code) -> None:
+        """ Disarm alarm"""
+        await self._tydom_client.put_alarm_cdata(self._id, self._endpoint, code, "OFF", None, self.is_legacy_alarm())
+
+    async def alarm_arm_away(self, code=None) -> None:
+        """Arm away alarm."""
+        await self._tydom_client.put_alarm_cdata(self._id, self._endpoint, code, "ON", self._tydom_client._zone_away, self.is_legacy_alarm())
+
+    async def alarm_arm_home(self, code=None) -> None:
+        """Arm home alarm."""
+        await self._tydom_client.put_alarm_cdata(self._id, self._endpoint, code, "ON", self._tydom_client._zone_home, self.is_legacy_alarm())

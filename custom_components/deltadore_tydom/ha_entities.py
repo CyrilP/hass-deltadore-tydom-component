@@ -42,6 +42,7 @@ from homeassistant.util.percentage import (
 from homeassistant.components.alarm_control_panel import AlarmControlPanelEntityFeature
 from homeassistant.const import (
     STATE_ALARM_ARMED_AWAY,
+    STATE_ALARM_ARMED_HOME,
     STATE_ALARM_DISARMED,
     STATE_ALARM_TRIGGERED,
 )
@@ -909,10 +910,12 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_alarm"
         self._attr_name = self._device.device_name
         self._attr_code_format = CodeFormat.NUMBER
+        self._attr_code_arm_required = True
         self._registered_sensors = []
         self.supported_features = (
             self.supported_features
             | AlarmControlPanelEntityFeature.ARM_AWAY
+            | AlarmControlPanelEntityFeature.ARM_HOME
         )
 
     @property
@@ -928,18 +931,33 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         """Return the state of the device."""
         # alarmMode :  "OFF", "ON", "TEST", "ZONE", "MAINTENANCE"
         # alarmState: "OFF", "DELAYED", "ON", "QUIET"
+        if self._device.alarmMode == "MAINTENANCE":
+            return STATE_ALARM_DISARMED
+        
         match self._device.alarmState:
             case "OFF":
                 return STATE_ALARM_DISARMED
             case "ON":
-                return STATE_ALARM_ARMED_AWAY
+                match self._device.alarmMode:
+                    case "ON":
+                        return STATE_ALARM_ARMED_AWAY
+                    case "ZONE" | "PART":
+                        return STATE_ALARM_ARMED_HOME
             case _:
                 return STATE_ALARM_TRIGGERED
 
     async def async_alarm_disarm(self, code=None) -> None:
         """Send disarm command."""
         LOGGER.error("alarm_disarm, pin %s", code)
+        await self._device.alarm_disarm(code)
 
     async def async_alarm_arm_away(self, code=None) -> None:
         """Send arm away command."""
         LOGGER.error("alarm_arm_away, pin %s", code)
+        await self._device.alarm_arm_away(code)
+
+
+    async def async_alarm_arm_home(self, code=None) -> None:
+        """Send arm home command."""
+        LOGGER.error("alarm_arm_home, pin %s", code)
+        await self._device.alarm_arm_home(code)

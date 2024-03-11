@@ -52,12 +52,16 @@ class Hub:
         host: str,
         mac: str,
         password: str,
+        zone_home: str,
+        zone_away: str,
         alarmpin: str,
     ) -> None:
         """Init hub."""
         self._host = host
         self._mac = mac
         self._pass = password
+        self._zone_home = zone_home
+        self._zone_away = zone_away
         self._pin = alarmpin
         self._hass = hass
         self._entry = entry
@@ -79,6 +83,8 @@ class Hub:
             mac=self._mac,
             host=self._host,
             password=self._pass,
+            zone_home = self._zone_home,
+            zone_away = self._zone_away,
             alarm_pin=self._pin,
             event_callback=self.handle_event,
         )

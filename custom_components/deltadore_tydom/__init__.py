@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
 from . import hub
-from .const import DOMAIN, CONF_TYDOM_PASSWORD
+from .const import DOMAIN, LOGGER, CONF_TYDOM_PASSWORD, CONF_ZONES_HOME, CONF_ZONES_AWAY
 
 # List of platforms to support. There should be a matching .py file for each,
 # eg <cover.py> and <sensor.py>
@@ -25,8 +25,17 @@ PLATFORMS: list[str] = [
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Delta Dore Tydom from a config entry."""
+
     # Store an instance of the "connecting" class that does the work of speaking
     # with your actual devices.
+    zone_home = None
+    if CONF_ZONES_HOME in entry.data:
+        zone_home = entry.data[CONF_ZONES_HOME]
+
+    zone_away = None
+    if CONF_ZONES_AWAY in entry.data:
+        zone_away = entry.data[CONF_ZONES_AWAY]
+
     pin = None
     if CONF_PIN in entry.data:
         pin = entry.data[CONF_PIN]
@@ -37,6 +46,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.data[CONF_HOST],
         entry.data[CONF_MAC],
         entry.data[CONF_TYDOM_PASSWORD],
+        zone_home,
+        zone_away,
         pin,
     )
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = tydom_hub

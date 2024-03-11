@@ -57,6 +57,8 @@ class TydomClient:
         mac: str,
         password: str,
         alarm_pin: str = None,
+        zone_away: str = None,
+        zone_home: str = None,
         host: str = MEDIATION_URL,
         event_callback=None,
     ) -> None:
@@ -68,6 +70,8 @@ class TydomClient:
         self._password = password
         self._mac = mac
         self._host = host
+        self._zone_home = zone_home
+        self._zone_away = zone_away
         self._alarm_pin = alarm_pin
         self._remote_mode = self._host == MEDIATION_URL
         self._connection = None
@@ -585,7 +589,20 @@ class TydomClient:
         LOGGER.debug("Sending message to tydom (%s %s)", "PUT data", body)
         return 0
 
-    async def put_alarm_cdata(self, device_id, alarm_id=None, value=None, zone_id=None):
+    async def put_alarm_cdata(self, device_id, endpoint_id=None, alarm_pin=None, value=None, zone_id=None, legacy_zones=False):
+        LOGGER.error("is legacy : %s", legacy_zones)
+        if legacy_zones:
+            if zone_id is not None:
+                zones_array = zone_id.split(",")
+                LOGGER.error("zones_array : %s", zones_array)
+                for zone in zones_array:
+                    LOGGER.error("zone : %s", zone)
+                    await self._put_alarm_cdata(device_id, endpoint_id, alarm_pin, value, zone, legacy_zones)
+        else:
+            await self._put_alarm_cdata(device_id, endpoint_id, alarm_pin, value, zone_id, legacy_zones)
+
+
+    async def _put_alarm_cdata(self, device_id, endpoint_id=None, alarm_pin=None, value=None, zone_id=None, legacy_zones=False):
         """Configure alarm mode."""
         # Credits to @mgcrea on github !
         # AWAY # "PUT /devices/{}/endpoints/{}/cdata?name=alarmCmd HTTP/1.1\r\ncontent-length: 29\r\ncontent-type: application/json; charset=utf-8\r\ntransac-id: request_124\r\n\r\n\r\n{"value":"ON","pwd":{}}\r\n\r\n"
@@ -601,36 +618,51 @@ class TydomClient:
         # value
         # pwd
         # zones
-
-        if self._alarm_pin is None:
-            LOGGER.warning("Tydom alarm pin is not set!")
+        pin = None
+        if alarm_pin is None:
+            if self._alarm_pin is None:
+                LOGGER.warning("Tydom alarm pin is not set!")
+            else:
+                pin = self._alarm_pin
+        else:
+            pin = alarm_pin
 
         try:
-            if zone_id is None:
+            if zone_id is None or zone_id == "":
                 cmd = "alarmCmd"
                 body = (
                     '{"value":"'
                     + str(value)
                     + '","pwd":"'
-                    + str(self._alarm_pin)
+                    + str(pin)
                     + '"}'
                 )
             else:
-                cmd = "zoneCmd"
-                body = (
-                    '{"value":"'
-                    + str(value)
-                    + '","pwd":"'
-                    + str(self._alarm_pin)
-                    + '","zones":"['
-                    + str(zone_id)
-                    + ']"}'
-                )
+                if legacy_zones:
+                    cmd = "partCmd"
+                    body = (
+                        '{"value":"'
+                        + str(value)
+                        + ', "part":"['
+                        + str(zone_id)
+                        + ']"}'
+                    )
+                else:
+                    cmd = "zoneCmd"
+                    body = (
+                        '{"value":"'
+                        + str(value)
+                        + '","pwd":"'
+                        + str(pin)
+                        + '","zones":"['
+                        + str(zone_id)
+                        + ']"}'
+                    )
 
             str_request = (
                 self._cmd_prefix
                 + "PUT /devices/{device}/endpoints/{alarm}/cdata?name={cmd} HTTP/1.1\r\nContent-Length: ".format(
-                    device=str(device_id), alarm=str(alarm_id), cmd=str(cmd)
+                    device=str(device_id), alarm=str(endpoint_id), cmd=str(cmd)
                 )
                 + str(len(body))
                 + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
@@ -642,8 +674,9 @@ class TydomClient:
             LOGGER.debug("Sending message to tydom (%s %s)", "PUT cdata", body)
 
             try:
-                await self._connection.send(a_bytes)
-                return 0
+                if not file_mode:
+                    await self._connection.send(a_bytes)
+                    return 0
             except BaseException:
                 LOGGER.error("put_alarm_cdata ERROR !", exc_info=True)
                 LOGGER.error(a_bytes)
