@@ -366,16 +366,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 if CONF_ZONES_AWAY in user_input and not zones_valid(user_input[CONF_ZONES_AWAY]):
                     raise InvalidZoneAway
 
-                LOGGER.error("config_entry %s", self.config_entry.data)
-
                 user_input[CONF_HOST] = self.config_entry.data[CONF_HOST]
                 user_input[CONF_MAC] = self.config_entry.data[CONF_MAC]
                 user_input[CONF_EMAIL] = self.config_entry.data[CONF_EMAIL]
                 user_input[CONF_PASSWORD] = self.config_entry.data[CONF_PASSWORD]
                 user_input[CONF_TYDOM_PASSWORD] = self.config_entry.data[CONF_TYDOM_PASSWORD]
                 user_input[CONF_PIN] = self.config_entry.data[CONF_PIN]
-
-                LOGGER.error("user_input %s", user_input)
 
                 self.hass.config_entries.async_update_entry(
                     self.config_entry, data=user_input, options=self.config_entry.options

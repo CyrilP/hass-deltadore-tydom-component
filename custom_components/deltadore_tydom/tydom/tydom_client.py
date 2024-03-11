@@ -93,6 +93,10 @@ class TydomClient:
             tydom_client=self, cmd_prefix=self._cmd_prefix
         )
 
+    def update_config(self, zone_home, zone_away):
+        self._zone_home = zone_home
+        self._zone_away = zone_away
+
     @staticmethod
     async def async_get_credentials(
         session: ClientSession, email: str, password: str, macaddress: str

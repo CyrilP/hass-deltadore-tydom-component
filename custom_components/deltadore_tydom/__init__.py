@@ -26,6 +26,8 @@ PLATFORMS: list[str] = [
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Delta Dore Tydom from a config entry."""
 
+    entry.async_on_unload(entry.add_update_listener(update_listener))
+
     # Store an instance of the "connecting" class that does the work of speaking
     # with your actual devices.
     zone_home = None
@@ -83,3 +85,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
+
+async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Update listener."""
+    LOGGER.error("hub ??? %s", hass.data[DOMAIN][entry.entry_id])
+    tydom_hub = hass.data[DOMAIN][entry.entry_id]
+    tydom_hub.update_config(entry.data[CONF_ZONES_HOME], entry.data[CONF_ZONES_AWAY])
