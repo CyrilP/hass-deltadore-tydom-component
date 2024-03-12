@@ -280,7 +280,7 @@ class TydomClient:
         self._connection = connection
         await self.ping()
         await self.get_info()
-        await self.put_api_mode()
+        # await self.put_api_mode()
         # await self.get_geoloc()
         # await self.get_local_claim()
         # await self.get_devices_meta()
