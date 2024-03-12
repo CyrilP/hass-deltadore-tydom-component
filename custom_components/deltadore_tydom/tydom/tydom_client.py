@@ -664,9 +664,7 @@ class TydomClient:
 
             str_request = (
                 self._cmd_prefix
-                + "PUT /devices/{device}/endpoints/{alarm}/cdata?name={cmd} HTTP/1.1\r\nContent-Length: ".format(
-                    device=str(device_id), alarm=str(endpoint_id), cmd=str(cmd)
-                )
+                + f"PUT /devices/{device_id}/endpoints/{endpoint_id}/cdata?name={cmd} HTTP/1.1\r\nContent-Length: "
                 + str(len(body))
                 + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
                 + body
