@@ -357,8 +357,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             default_zone_away = self.config_entry.data[CONF_ZONES_AWAY]
 
         if user_input is not None:
-            default_zone_home = user_input.get(CONF_ZONES_HOME, None)
-            default_zone_away = user_input.get(CONF_ZONES_AWAY, None)
+            default_zone_home = user_input.get(CONF_ZONES_HOME, "")
+            default_zone_away = user_input.get(CONF_ZONES_AWAY, "")
+
             try:
                 if CONF_ZONES_HOME in user_input and not zones_valid(user_input[CONF_ZONES_HOME]):
                     raise InvalidZoneHome
@@ -372,6 +373,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 user_input[CONF_PASSWORD] = self.config_entry.data[CONF_PASSWORD]
                 user_input[CONF_TYDOM_PASSWORD] = self.config_entry.data[CONF_TYDOM_PASSWORD]
                 user_input[CONF_PIN] = self.config_entry.data[CONF_PIN]
+                user_input[CONF_ZONES_HOME] = default_zone_home
+                user_input[CONF_ZONES_AWAY] = default_zone_away
 
                 self.hass.config_entries.async_update_entry(
                     self.config_entry, data=user_input, options=self.config_entry.options
@@ -392,8 +395,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             step_id="init",
             data_schema=vol.Schema(
                 {
-                    vol.Optional(CONF_ZONES_HOME, default=default_zone_home): str,
-                    vol.Optional(CONF_ZONES_AWAY, default=default_zone_away): str,
+                    vol.Optional(CONF_ZONES_HOME, description={"suggested_value": default_zone_home}): str,
+                    vol.Optional(CONF_ZONES_AWAY, description={"suggested_value": default_zone_away}): str,
                 }
             ),
             errors=_errors,
