@@ -281,12 +281,13 @@ class TydomAlarm(TydomDevice):
     """represents an alarm."""
 
     def is_legacy_alarm(self) -> bool:
+        """Check if alarm is legacy."""
         if hasattr(self, "part1State"):
             return True
         return False
 
     async def alarm_disarm(self, code) -> None:
-        """ Disarm alarm"""
+        """Disarm alarm."""
         await self._tydom_client.put_alarm_cdata(self._id, self._endpoint, code, "OFF", None, self.is_legacy_alarm())
 
     async def alarm_arm_away(self, code=None) -> None:

@@ -92,6 +92,7 @@ class Hub:
         self.online = True
 
     def update_config(self, zone_home, zone_away):
+        """Update zone configuration."""
         self._tydom_client.update_config(zone_home, zone_away)
         self._zone_home = zone_home
         self._zone_away = zone_away

@@ -933,7 +933,7 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         # alarmState: "OFF", "DELAYED", "ON", "QUIET"
         if self._device.alarmMode == "MAINTENANCE":
             return STATE_ALARM_DISARMED
-        
+
         match self._device.alarmState:
             case "OFF":
                 return STATE_ALARM_DISARMED
@@ -955,7 +955,6 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         """Send arm away command."""
         LOGGER.error("alarm_arm_away, pin %s", code)
         await self._device.alarm_arm_away(code)
-
 
     async def async_alarm_arm_home(self, code=None) -> None:
         """Send arm home command."""

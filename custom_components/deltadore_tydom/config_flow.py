@@ -52,7 +52,7 @@ def email_valid(email) -> bool:
     return re.fullmatch(email_regex, email)
 
 def zones_valid(zones) -> bool:
-    """Return True if zone config is valid"""
+    """Return True if zone config is valid."""
     return re.fullmatch(zones_regex, zones)
 
 async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
@@ -339,6 +339,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
+    """Option flow to configure zones at any time."""
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
         self.config_entry = config_entry
@@ -390,7 +391,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 default_zone_away = ""
                 LOGGER.error("Invalid Zone AWAY: %s", user_input[CONF_ZONES_AWAY])
 
-    
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
@@ -422,8 +422,8 @@ class InvalidPassword(exceptions.HomeAssistantError):
     """Error to indicate there is an invalid Password."""
 
 class InvalidZoneHome(exceptions.HomeAssistantError):
-    """Error to indicate the Zones Home config is not valid"""
+    """Error to indicate the Zones Home config is not valid."""
 
 class InvalidZoneAway(exceptions.HomeAssistantError):
-    """Error to indicate the Zones Away config is not valid"""
+    """Error to indicate the Zones Away config is not valid."""
 

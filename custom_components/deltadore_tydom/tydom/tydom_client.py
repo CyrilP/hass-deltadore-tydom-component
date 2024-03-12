@@ -94,6 +94,7 @@ class TydomClient:
         )
 
     def update_config(self, zone_home, zone_away):
+        """Update zones configuration."""
         self._zone_home = zone_home
         self._zone_away = zone_away
 
@@ -594,6 +595,7 @@ class TydomClient:
         return 0
 
     async def put_alarm_cdata(self, device_id, endpoint_id=None, alarm_pin=None, value=None, zone_id=None, legacy_zones=False):
+        """Configure alarm mode."""
         if legacy_zones:
             if zone_id is not None:
                 zones_array = zone_id.split(",")
