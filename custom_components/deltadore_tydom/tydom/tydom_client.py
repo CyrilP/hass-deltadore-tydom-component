@@ -240,7 +240,7 @@ class TydomClient:
                 response.close()
 
                 if re_matcher:
-                    LOGGER.info("nonce : %s", re_matcher.group(1))
+                    pass
                 else:
                     raise TydomClientApiClientError("Could't find auth nonce")
 
