@@ -514,7 +514,7 @@ class TydomClient:
             + f"GET /devices/{device_id}/endpoints/{device_id}/data HTTP/1.1\r\nContent-Length: 0\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
         )
         a_bytes = bytes(str_request, "ascii")
-        await self._connection.send(a_bytes)
+        await self.send_bytes(a_bytes)
 
     async def get_poll_device_data(self, url):
         """Poll a device (probably unused)."""
@@ -676,7 +676,7 @@ class TydomClient:
 
             try:
                 if not file_mode:
-                    await self._connection.send(a_bytes)
+                    await self.send_bytes(a_bytes)
                     return 0
             except BaseException:
                 LOGGER.error("put_alarm_cdata ERROR !", exc_info=True)
