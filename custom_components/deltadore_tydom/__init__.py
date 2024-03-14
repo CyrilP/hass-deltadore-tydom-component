@@ -88,6 +88,5 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Update listener."""
-    LOGGER.error("hub ??? %s", hass.data[DOMAIN][entry.entry_id])
     tydom_hub = hass.data[DOMAIN][entry.entry_id]
     tydom_hub.update_config(entry.data[CONF_ZONES_HOME], entry.data[CONF_ZONES_AWAY])
