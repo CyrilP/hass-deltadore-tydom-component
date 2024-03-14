@@ -269,6 +269,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     user_input[CONF_MAC],
                     user_input[CONF_TYDOM_PASSWORD],
                     None,
+                    None,
+                    None,
                 )
                 await tydom_hub.test_credentials()
 
