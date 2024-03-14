@@ -610,6 +610,7 @@ class HaClimate(ClimateEntity, HAEntity):
         "ANTI_FROST": HVACMode.AUTO,
         "NORMAL": HVACMode.HEAT,
         "STOP": HVACMode.OFF,
+        "AUTO": HVACMode.AUTO,
     }
 
     def __init__(self, device: TydomBoiler, hass) -> None:
@@ -621,9 +622,16 @@ class HaClimate(ClimateEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_climate"
         self._attr_name = self._device.device_name
         self._enable_turn_on_off_backwards_compatibility = False
-        self._attr_supported_features = (
+        if hasattr(self._device, "temperature"):
+             self._attr_supported_features = (
             self._attr_supported_features
             | ClimateEntityFeature.TARGET_TEMPERATURE
+        )
+        if  "NORMAL" in self._device._metadata["thermicLevel"] and "AUTO" in self._device._metadata["thermicLevel"]:
+            self.DICT_MODES_HA_TO_DD[HVACMode.HEAT] = "AUTO"
+
+        self._attr_supported_features = (
+            self._attr_supported_features
             | ClimateEntityFeature.TURN_OFF
             | ClimateEntityFeature.TURN_ON
         )
@@ -636,10 +644,10 @@ class HaClimate(ClimateEntity, HAEntity):
         ]
         self._registered_sensors = []
 
-        if "min" in self._device._metadata["setpoint"]:
+        if hasattr(self._device._metadata, "setpoint") and "min" in self._device._metadata["setpoint"]:
             self._attr_min_temp = self._device._metadata["setpoint"]["min"]
 
-        if "max" in self._device._metadata["setpoint"]:
+        if hasattr(self._device._metadata, "setpoint") and "max" in self._device._metadata["setpoint"]:
             self._attr_max_temp = self._device._metadata["setpoint"]["max"]
 
     @property
@@ -672,7 +680,7 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature currently set to be reached."""
-        if self._device.authorization == "HEATING":
+        if self._device.authorization == "HEATING" and hasattr(self._device._metadata, "setpoint"):
             return self._device.setpoint
         return None
 
