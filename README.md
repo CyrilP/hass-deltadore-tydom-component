@@ -35,6 +35,8 @@ Platform | Description
 - Tyxal+ DFR
 - K-Line DVI (windows, door)
 - Typass ATL (zones temperatures, target temperature, mode (Auto mode is used for antifrost), water/heat power usage) with Tybox 5101
+- Tyxal+
+- TYXIA 6610 (issue with status change)
 
 Some other functions may also work or only report attributes.
 
