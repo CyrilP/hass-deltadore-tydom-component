@@ -920,6 +920,7 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         self._attr_code_format = CodeFormat.NUMBER
         self._attr_code_arm_required = True
         self._registered_sensors = []
+
         self.supported_features = (
             self.supported_features
             | AlarmControlPanelEntityFeature.ARM_AWAY
