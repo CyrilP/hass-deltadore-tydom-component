@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
 from . import hub
-from .const import DOMAIN, LOGGER, CONF_TYDOM_PASSWORD, CONF_ZONES_HOME, CONF_ZONES_AWAY
+from .const import DOMAIN, CONF_TYDOM_PASSWORD, CONF_ZONES_HOME, CONF_ZONES_AWAY
 
 # List of platforms to support. There should be a matching .py file for each,
 # eg <cover.py> and <sensor.py>
