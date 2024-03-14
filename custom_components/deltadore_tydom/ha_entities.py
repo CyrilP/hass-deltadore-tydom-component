@@ -889,7 +889,7 @@ class HaLight(LightEntity, HAEntity):
 class HaAlarm(AlarmControlPanelEntity, HAEntity):
     """Representation of an Alarm."""
 
-    should_poll = False
+    should_poll = True
     supported_features = 0
     sensor_classes = {
         "networkDefect": BinarySensorDeviceClass.PROBLEM,
@@ -957,15 +957,12 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
 
     async def async_alarm_disarm(self, code=None) -> None:
         """Send disarm command."""
-        LOGGER.error("alarm_disarm, pin %s", code)
         await self._device.alarm_disarm(code)
 
     async def async_alarm_arm_away(self, code=None) -> None:
         """Send arm away command."""
-        LOGGER.error("alarm_arm_away, pin %s", code)
         await self._device.alarm_arm_away(code)
 
     async def async_alarm_arm_home(self, code=None) -> None:
         """Send arm home command."""
-        LOGGER.error("alarm_arm_home, pin %s", code)
         await self._device.alarm_arm_home(code)
