@@ -514,7 +514,9 @@ class TydomClient:
             + f"GET /devices/{device_id}/endpoints/{device_id}/data HTTP/1.1\r\nContent-Length: 0\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
         )
         a_bytes = bytes(str_request, "ascii")
-        await self.send_bytes(a_bytes)
+        LOGGER.debug("Sending message to tydom (%s %s)", "GET device data", str_request)
+        if not file_mode:
+            await self.send_bytes(a_bytes)
 
     async def get_poll_device_data(self, url):
         """Poll a device (probably unused)."""
@@ -565,7 +567,8 @@ class TydomClient:
         )
         a_bytes = bytes(str_request, "ascii")
         LOGGER.debug("Sending message to tydom (%s %s)", "PUT data", body)
-        await self.send_bytes(a_bytes)
+        if not file_mode:
+            await self.send_bytes(a_bytes)
         return 0
 
     async def put_devices_data(self, device_id, endpoint_id, name, value):
@@ -590,8 +593,10 @@ class TydomClient:
             + "\r\n\r\n"
         )
         a_bytes = bytes(str_request, "ascii")
-        await self.send_bytes(a_bytes)
-        LOGGER.debug("Sending message to tydom (%s %s)", "PUT data", body)
+        LOGGER.debug("Sending message to tydom (%s %s)", "PUT device data", body)
+        if not file_mode:
+            await self.send_bytes(a_bytes)
+        
         return 0
 
     async def put_alarm_cdata(self, device_id, endpoint_id=None, alarm_pin=None, value=None, zone_id=None, legacy_zones=False):
