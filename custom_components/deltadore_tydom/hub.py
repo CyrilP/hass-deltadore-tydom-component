@@ -126,7 +126,7 @@ class Hub:
     def ready(self) -> bool:
         """Check if we're ready to work."""
         # and self.add_alarm_callback is not None
-        return self.add_cover_callback is not None and self.add_sensor_callback is not None and self.add_climate_callback is not None and self.add_light_callback is not None and self.add_lock_callback is not None and self.add_update_callback is not None
+        return self.add_cover_callback is not None and self.add_sensor_callback is not None and self.add_climate_callback is not None and self.add_light_callback is not None and self.add_lock_callback is not None and self.add_update_callback is not None and self.add_alarm_callback is not None
 
 
     async def setup(self, connection: ClientWebSocketResponse) -> None:
@@ -300,3 +300,9 @@ class Hub:
             await self._tydom_client.get_devices_data()
             await self._tydom_client.get_scenarii()
             await asyncio.sleep(300)
+
+    async def refresh_data(self) -> None:
+        """Periodically refresh data for devices which don't do push."""
+        while True:
+            await self._tydom_client.ping()
+            await asyncio.sleep(5)
