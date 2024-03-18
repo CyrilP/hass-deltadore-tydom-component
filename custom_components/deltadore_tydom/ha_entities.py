@@ -623,18 +623,18 @@ class HaClimate(ClimateEntity, HAEntity):
         self._attr_name = self._device.device_name
         self._enable_turn_on_off_backwards_compatibility = False
         if hasattr(self._device, "temperature"):
-             self._attr_supported_features = (
+            self._attr_supported_features = (
             self._attr_supported_features
-            | ClimateEntityFeature.TARGET_TEMPERATURE
-        )
-        if  "NORMAL" in self._device._metadata["thermicLevel"] and "AUTO" in self._device._metadata["thermicLevel"]:
-            self.DICT_MODES_HA_TO_DD[HVACMode.HEAT] = "AUTO"
+            | ClimateEntityFeature.TARGET_TEMPERATURE)
 
         self._attr_supported_features = (
             self._attr_supported_features
             | ClimateEntityFeature.TURN_OFF
             | ClimateEntityFeature.TURN_ON
         )
+
+        if  "NORMAL" in self._device._metadata["thermicLevel"] and "AUTO" in self._device._metadata["thermicLevel"]:
+            self.DICT_MODES_HA_TO_DD[HVACMode.HEAT] = "AUTO"
 
         # self._attr_preset_modes = ["NORMAL", "STOP", "ANTI_FROST"]
         self._attr_hvac_modes = [
@@ -669,18 +669,24 @@ class HaClimate(ClimateEntity, HAEntity):
         if (hasattr(self._device, 'hvacMode')):
             LOGGER.debug("hvac_mode = %s", self.DICT_MODES_DD_TO_HA[self._device.hvacMode])
             return self.DICT_MODES_DD_TO_HA[self._device.hvacMode]
+        elif (hasattr(self._device, 'thermicLevel')):
+            LOGGER.debug("thermicLevel = %s", self.DICT_MODES_DD_TO_HA[self._device.thermicLevel])
+            return self.DICT_MODES_DD_TO_HA[self._device.thermicLevel]
         else:
             return None
 
     @property
     def current_temperature(self) -> float | None:
         """Return the current temperature."""
-        return self._device.temperature
+        if hasattr(self._device, 'temperature'):
+            return self._device.temperature
+        else:
+            return None
 
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature currently set to be reached."""
-        if self._device.authorization == "HEATING" and hasattr(self._device._metadata, "setpoint"):
+        if self._device.authorization == "HEATING" and hasattr(self._device, "setpoint"):
             return self._device.setpoint
         return None
 
