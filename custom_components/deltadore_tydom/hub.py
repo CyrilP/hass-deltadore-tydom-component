@@ -299,10 +299,16 @@ class Hub:
             await self._tydom_client.get_devices_cmeta()
             await self._tydom_client.get_devices_data()
             await self._tydom_client.get_scenarii()
-            await asyncio.sleep(300)
+            await asyncio.sleep(600)
 
-    async def refresh_data(self) -> None:
+    async def refresh_data_1s(self) -> None:
+        """Refresh data for devices in list."""
+        while True:
+            await self._tydom_client.poll_devices_data_1s()
+            await asyncio.sleep(1)
+
+    async def refresh_data_5m(self) -> None:
         """Periodically refresh data for devices which don't do push."""
         while True:
-            await self._tydom_client.ping()
-            await asyncio.sleep(5)
+            await self._tydom_client.poll_devices_data_5m()
+            await asyncio.sleep(300)

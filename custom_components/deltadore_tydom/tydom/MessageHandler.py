@@ -379,7 +379,7 @@ class MessageHandler:
                                             + dest
                                             + "&reset=false"
                                         )
-                                        self.tydom_client.add_poll_device_url(url)
+                                        self.tydom_client.add_poll_device_url_5m(url)
                                         LOGGER.debug("Add poll device : %s", url)
                         elif elem["name"] == "energyInstant":
                             device_name[unique_id] = "Tywatt"
@@ -398,7 +398,7 @@ class MessageHandler:
                                             + unit
                                             + "&reset=false"
                                         )
-                                        self.tydom_client.add_poll_device_url(url)
+                                        self.tydom_client.add_poll_device_url_5m(url)
                                         LOGGER.debug("Add poll device : " + url)
                         elif elem["name"] == "energyDistrib":
                             device_name[unique_id] = "Tywatt"
@@ -416,7 +416,7 @@ class MessageHandler:
                                             + "&period=YEAR&periodOffset=0&src="
                                             + src
                                         )
-                                        self.tydom_client.add_poll_device_url(url)
+                                        self.tydom_client.add_poll_device_url_5m(url)
                                         LOGGER.debug("Add poll device : " + url)
 
         LOGGER.debug("Metadata configuration updated")

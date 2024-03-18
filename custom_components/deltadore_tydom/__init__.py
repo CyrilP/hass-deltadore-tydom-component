@@ -63,7 +63,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
            target=tydom_hub.ping(), hass=hass, name="Tydom ping"
         )
         entry.async_create_background_task(
-           target=tydom_hub.refresh_all(), hass=hass, name="Tydom refresh metadata and data"
+           target=tydom_hub.refresh_all(), hass=hass, name="Tydom refresh all metadata and data"
+        )
+        entry.async_create_background_task(
+           target=tydom_hub.refresh_data_1s(), hass=hass, name="Tydom refresh data 1s"
+        )
+        entry.async_create_background_task(
+           target=tydom_hub.refresh_data_5m(), hass=hass, name="Tydom refresh data 5m"
         )
 
     except Exception as err:

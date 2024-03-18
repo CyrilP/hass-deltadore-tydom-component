@@ -280,6 +280,7 @@ class TydomLight(TydomDevice):
             await self._tydom_client.put_devices_data(
                 self._id, self._endpoint, "level", str(brightness)
             )
+        self._tydom_client.add_poll_device_url_1s(f"/devices/{self._id}/endpoints/{self._endpoint}/cdata")
 
     async def turn_off(self) -> None:
         """Tell light to turn off."""
@@ -291,6 +292,7 @@ class TydomLight(TydomDevice):
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "levelCmd", command
         )
+        self._tydom_client.add_poll_device_url_1s(f"/devices/{self._id}/endpoints/{self._endpoint}/cdata")
 
 class TydomAlarm(TydomDevice):
     """represents an alarm."""
@@ -304,11 +306,14 @@ class TydomAlarm(TydomDevice):
     async def alarm_disarm(self, code) -> None:
         """Disarm alarm."""
         await self._tydom_client.put_alarm_cdata(self._id, self._endpoint, code, "OFF", None, self.is_legacy_alarm())
+        # self._tydom_client.add_poll_device_url_1s(f"/devices/{self._id}/endpoints/{self._endpoint}/cdata")
 
     async def alarm_arm_away(self, code=None) -> None:
         """Arm away alarm."""
         await self._tydom_client.put_alarm_cdata(self._id, self._endpoint, code, "ON", self._tydom_client._zone_away, self.is_legacy_alarm())
+        # self._tydom_client.add_poll_device_url_1s(f"/devices/{self._id}/endpoints/{self._endpoint}/cdata")
 
     async def alarm_arm_home(self, code=None) -> None:
         """Arm home alarm."""
         await self._tydom_client.put_alarm_cdata(self._id, self._endpoint, code, "ON", self._tydom_client._zone_home, self.is_legacy_alarm())
+        # self._tydom_client.add_poll_device_url_1s(f"/devices/{self._id}/endpoints/{self._endpoint}/cdata")

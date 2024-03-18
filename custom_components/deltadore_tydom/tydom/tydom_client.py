@@ -77,7 +77,8 @@ class TydomClient:
         self._connection = None
         self.event_callback = event_callback
         # Some devices (like Tywatt) need polling
-        self.poll_device_urls = []
+        self.poll_device_urls_1s = []
+        self.poll_device_urls_5m = []
         self.current_poll_index = 0
 
         if self._remote_mode:
@@ -442,16 +443,6 @@ class TydomClient:
         msg_type = "/refresh/all"
         req = "POST"
         await self.send_message(method=req, msg=msg_type)
-        # Get poll device data
-        nb_poll_devices = len(self.poll_device_urls)
-        if self.current_poll_index < nb_poll_devices - 1:
-            self.current_poll_index = self.current_poll_index + 1
-        else:
-            self.current_poll_index = 0
-        if nb_poll_devices > 0:
-            await self.get_poll_device_data(
-                self.poll_device_urls[self.current_poll_index]
-            )
 
     async def ping(self):
         """Send a ping (pong should be returned)."""
@@ -471,8 +462,16 @@ class TydomClient:
         msg_type = "/devices/data"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
-        # Get poll devices data
-        for url in self.poll_device_urls:
+
+    async def poll_devices_data_1s(self):
+        """Poll devices data."""
+        if self.poll_device_urls_1s:
+            url = self.poll_device_urls_1s.pop()
+            await self.get_poll_device_data(url)
+
+    async def poll_devices_data_5m(self):
+        """Poll devices data."""
+        for url in self.poll_device_urls_5m:
             await self.get_poll_device_data(url)
 
     async def get_configs_file(self):
@@ -519,15 +518,19 @@ class TydomClient:
             await self.send_bytes(a_bytes)
 
     async def get_poll_device_data(self, url):
-        """Poll a device (probably unused)."""
+        """Poll a device."""
         LOGGER.error("poll device data %s", url)
         msg_type = url
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
-    def add_poll_device_url(self, url):
+    def add_poll_device_url_1s(self, url):
         """Add a device for polling (probably unused)."""
-        self.poll_device_urls.append(url)
+        self.poll_device_urls_1s.append(url)
+
+    def add_poll_device_url_5m(self, url):
+        """Add a device for polling (probably unused)."""
+        self.poll_device_urls_5m.append(url)
 
     async def get_moments(self):
         """Get the moments (programs)."""
