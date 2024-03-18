@@ -895,7 +895,7 @@ class HaLight(LightEntity, HAEntity):
 class HaAlarm(AlarmControlPanelEntity, HAEntity):
     """Representation of an Alarm."""
 
-    should_poll = True
+    should_poll = False
     supported_features = 0
     sensor_classes = {
         "networkDefect": BinarySensorDeviceClass.PROBLEM,
@@ -949,15 +949,21 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         if self._device.alarmMode == "MAINTENANCE":
             return STATE_ALARM_DISARMED
 
-        match self._device.alarmState:
+        match self._device.alarmMode:
+            case "MAINTENANCE":
+                return STATE_ALARM_DISARMED
             case "OFF":
                 return STATE_ALARM_DISARMED
             case "ON":
-                match self._device.alarmMode:
-                    case "ON":
-                        return STATE_ALARM_ARMED_AWAY
-                    case "ZONE" | "PART":
-                        return STATE_ALARM_ARMED_HOME
+                if self._device.alarmState == "OFF":
+                    return STATE_ALARM_ARMED_AWAY
+                else:
+                    return STATE_ALARM_TRIGGERED
+            case "ZONE" | "PART":
+                if self._device.alarmState == "OFF":
+                    return STATE_ALARM_ARMED_HOME
+                else:
+                    return STATE_ALARM_TRIGGERED
             case _:
                 return STATE_ALARM_TRIGGERED
 
