@@ -599,7 +599,7 @@ class TydomClient:
         LOGGER.debug("Sending message to tydom (%s %s)", "PUT device data", body)
         if not file_mode:
             await self.send_bytes(a_bytes)
-        
+
         return 0
 
     async def put_alarm_cdata(self, device_id, endpoint_id=None, alarm_pin=None, value=None, zone_id=None, legacy_zones=False):
