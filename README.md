@@ -31,7 +31,7 @@ Platform | Description
 **This integration has been tested with the following hardware.**
 
 - Cover (Up/Down/Stop)
-- Tywatt 5400
+- Tywatt 5400, Tywatt 1000
 - Tyxal+ DFR
 - K-Line DVI (windows, door)
 - Typass ATL (zones temperatures, target temperature, mode (Auto mode is used for antifrost), water/heat power usage) with Tybox 5101
