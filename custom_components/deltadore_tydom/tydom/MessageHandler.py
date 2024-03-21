@@ -518,7 +518,7 @@ class MessageHandler:
                                         type_of_id,
                                     )
 
-                    except Exception as e:
+                    except Exception:
                         LOGGER.exception('Error when parsing msg_cdata')
         return devices
 
