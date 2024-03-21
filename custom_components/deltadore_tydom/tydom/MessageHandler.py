@@ -472,7 +472,55 @@ class MessageHandler:
 
     async def parse_devices_cdata(self, parsed):
         """Parse devices cdata."""
-        LOGGER.debug("parse_devices_data : %s", parsed)
+        LOGGER.debug("parse_devices_cdata : %s", parsed)
+        devices = []
+
+        for i in parsed:
+            for endpoint in i["endpoints"]:
+                if endpoint["error"] == 0 and len(endpoint["cdata"]) > 0:
+                    try:
+                        device_id = i["id"]
+                        endpoint_id = endpoint["id"]
+                        unique_id = str(endpoint_id) + "_" + str(device_id)
+                        name_of_id = self.get_name_from_id(unique_id)
+                        type_of_id = self.get_type_from_id(unique_id)
+
+                        data = {}
+                        for elem in endpoint["cdata"]:
+                            if type_of_id == 'conso':
+
+                                element_name = None
+                                if elem["parameters"].get("dest"):
+                                    element_name = elem["name"] + "_" + elem["parameters"]["dest"]
+                                else:
+                                    continue
+
+                                element_value = elem["values"]["counter"]
+                                data[element_name] = element_value
+
+                                # Create the device
+                                device = await MessageHandler.get_device(
+                                    self.tydom_client,
+                                    type_of_id,
+                                    unique_id,
+                                    device_id,
+                                    name_of_id,
+                                    endpoint_id,
+                                    data,
+                                )
+                                if device is not None:
+                                    devices.append(device)
+                                    LOGGER.debug(
+                                        "Device update (id=%s, endpoint=%s, name=%s, type=%s)",
+                                        device_id,
+                                        endpoint_id,
+                                        name_of_id,
+                                        type_of_id,
+                                    )
+
+                    except Exception as e:
+                        LOGGER.exception('Error when parsing msg_cdata')
+        return devices
 
     # PUT response DIRTY parsing
     def parse_put_response(self, bytes_str, start=6):

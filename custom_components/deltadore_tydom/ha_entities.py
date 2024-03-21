@@ -97,19 +97,26 @@ class HAEntity:
                 and value is not None
                 and attribute not in self._registered_sensors
             ):
-                if attribute in self.filtered_attrs:
+                alt_name = attribute.split('_')[0]
+                if attribute in self.filtered_attrs or alt_name in self.filtered_attrs:
                     continue
                 sensor_class = None
                 if attribute in self.sensor_classes:
                     sensor_class = self.sensor_classes[attribute]
+                elif alt_name in self.sensor_classes:
+                    sensor_class = self.sensor_classes[alt_name]
 
                 state_class = None
                 if attribute in self.state_classes:
                     state_class = self.state_classes[attribute]
+                elif alt_name in self.state_classes:
+                    state_class = self.state_classes[alt_name]
 
                 unit = None
                 if attribute in self.units:
                     unit = self.units[attribute]
+                elif alt_name in self.units:
+                    unit = self.units[alt_name]
 
                 if isinstance(value, bool):
                     sensors.append(
@@ -374,6 +381,7 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyIndexHeatWatt": SensorDeviceClass.ENERGY,
         "energyIndexECSWatt": SensorDeviceClass.ENERGY,
         "energyIndexHeatGas": SensorDeviceClass.ENERGY,
+        "energyIndex": SensorDeviceClass.ENERGY,
         "outTemperature": SensorDeviceClass.TEMPERATURE,
     }
 
@@ -383,6 +391,7 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyIndexECSWatt": SensorStateClass.TOTAL_INCREASING,
         "energyIndexHeatWatt": SensorStateClass.TOTAL_INCREASING,
         "energyIndexHeatGas": SensorStateClass.TOTAL_INCREASING,
+        "energyIndex": SensorStateClass.TOTAL_INCREASING,
     }
 
     units = {
@@ -411,6 +420,7 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyIndexHeatWatt": UnitOfEnergy.WATT_HOUR,
         "energyIndexECSWatt": UnitOfEnergy.WATT_HOUR,
         "energyIndexHeatGas": UnitOfEnergy.WATT_HOUR,
+        "energyIndex": UnitOfEnergy.WATT_HOUR,
         "outTemperature": UnitOfTemperature.CELSIUS,
     }
 
