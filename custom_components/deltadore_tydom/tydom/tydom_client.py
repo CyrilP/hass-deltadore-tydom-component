@@ -519,7 +519,6 @@ class TydomClient:
 
     async def get_poll_device_data(self, url):
         """Poll a device."""
-        LOGGER.error("poll device data %s", url)
         msg_type = url
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
