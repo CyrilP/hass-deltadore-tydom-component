@@ -525,12 +525,12 @@ class TydomClient:
 
     def add_poll_device_url_1s(self, url):
         """Add a device for polling."""
-        if not url in self.poll_device_urls_1s:
+        if url not in self.poll_device_urls_1s:
             self.poll_device_urls_1s.append(url)
 
     def add_poll_device_url_5m(self, url):
         """Add a device for polling."""
-        if not url in self.poll_device_urls_5m:
+        if url not in self.poll_device_urls_5m:
             self.poll_device_urls_5m.append(url)
 
     async def get_moments(self):
