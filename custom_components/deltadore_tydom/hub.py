@@ -311,4 +311,4 @@ class Hub:
         """Periodically refresh data for devices which don't do push."""
         while True:
             await self._tydom_client.poll_devices_data_5m()
-            await asyncio.sleep(300)
+            await asyncio.sleep(1800)
