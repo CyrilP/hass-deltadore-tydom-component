@@ -1,0 +1,1 @@
+docker run --network host --name ha --rm -v $HOME/hass-deltadore-tydom-component/tools/traces.txt:/config/traces.txt -v $HOME/hass-deltadore-tydom-component/custom_components/:/config/custom_components/ -p 8123:8123 homeassistant/home-assistant
