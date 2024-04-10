@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
 from . import hub
-from .const import DOMAIN, CONF_TYDOM_PASSWORD, CONF_ZONES_HOME, CONF_ZONES_AWAY
+from .const import DOMAIN, CONF_TYDOM_PASSWORD, CONF_ZONES_HOME, CONF_ZONES_AWAY, CONF_REFRESH_INTERVAL
 
 # List of platforms to support. There should be a matching .py file for each,
 # eg <cover.py> and <sensor.py>
@@ -41,6 +41,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     pin = None
     if CONF_PIN in entry.data:
         pin = entry.data[CONF_PIN]
+    
+    refresh_interval = "30"
+    if CONF_REFRESH_INTERVAL in entry.data:
+        refresh_interval = entry.data[CONF_REFRESH_INTERVAL]
 
     tydom_hub = hub.Hub(
         hass,
@@ -48,6 +52,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.data[CONF_HOST],
         entry.data[CONF_MAC],
         entry.data[CONF_TYDOM_PASSWORD],
+        refresh_interval,
         zone_home,
         zone_away,
         pin,
@@ -69,7 +74,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
            target=tydom_hub.refresh_data_1s(), hass=hass, name="Tydom refresh data 1s"
         )
         entry.async_create_background_task(
-           target=tydom_hub.refresh_data_5m(), hass=hass, name="Tydom refresh data 5m"
+           target=tydom_hub.refresh_data(), hass=hass, name="Tydom refresh data"
         )
 
     except Exception as err:
@@ -95,4 +100,4 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Update listener."""
     tydom_hub = hass.data[DOMAIN][entry.entry_id]
-    tydom_hub.update_config(entry.data[CONF_ZONES_HOME], entry.data[CONF_ZONES_AWAY])
+    tydom_hub.update_config(entry.data[CONF_REFRESH_INTERVAL], entry.data[CONF_ZONES_HOME], entry.data[CONF_ZONES_AWAY])

@@ -52,6 +52,7 @@ class Hub:
         host: str,
         mac: str,
         password: str,
+        refresh_interval: str,
         zone_home: str,
         zone_away: str,
         alarmpin: str,
@@ -60,6 +61,7 @@ class Hub:
         self._host = host
         self._mac = mac
         self._pass = password
+        self._refresh_interval = int(refresh_interval)*60
         self._zone_home = zone_home
         self._zone_away = zone_away
         self._pin = alarmpin
@@ -91,9 +93,10 @@ class Hub:
 
         self.online = True
 
-    def update_config(self, zone_home, zone_away):
+    def update_config(self, refresh_interval, zone_home, zone_away):
         """Update zone configuration."""
         self._tydom_client.update_config(zone_home, zone_away)
+        self._refresh_interval = int(refresh_interval)*60
         self._zone_home = zone_home
         self._zone_away = zone_away
 
@@ -307,8 +310,12 @@ class Hub:
             await self._tydom_client.poll_devices_data_1s()
             await asyncio.sleep(1)
 
-    async def refresh_data_5m(self) -> None:
+    async def refresh_data(self) -> None:
         """Periodically refresh data for devices which don't do push."""
         while True:
-            await self._tydom_client.poll_devices_data_5m()
-            await asyncio.sleep(1800)
+            if(self._refresh_interval > 0):
+                await self._tydom_client.poll_devices_data_5m()
+                await asyncio.sleep(self._refresh_interval)
+            else:
+                await asyncio.sleep(60)
+
