@@ -655,9 +655,9 @@ class TydomClient:
                     body = (
                         '{"value":"'
                         + str(value)
-                        + ', "part":"['
+                        + ', "part":"'
                         + str(zone_id)
-                        + ']"}'
+                        + '"}'
                     )
                 else:
                     cmd = "zoneCmd"
