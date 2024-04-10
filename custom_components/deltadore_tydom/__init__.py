@@ -41,7 +41,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     pin = None
     if CONF_PIN in entry.data:
         pin = entry.data[CONF_PIN]
-    
+
     refresh_interval = "30"
     if CONF_REFRESH_INTERVAL in entry.data:
         refresh_interval = entry.data[CONF_REFRESH_INTERVAL]

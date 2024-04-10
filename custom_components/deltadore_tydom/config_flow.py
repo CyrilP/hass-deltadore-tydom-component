@@ -75,10 +75,10 @@ async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
 
     if len(data[CONF_PASSWORD]) < 3:
         raise InvalidPassword
-    
+
     try:
         int(data[CONF_REFRESH_INTERVAL])
-    except ValueError: 
+    except ValueError:
         raise InvalidRefreshInterval
 
     if CONF_ZONES_HOME in data and not zones_valid(data[CONF_ZONES_HOME]):
@@ -389,10 +389,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
                 if CONF_ZONES_AWAY in user_input and not zones_valid(user_input[CONF_ZONES_AWAY]):
                     raise InvalidZoneAway
-                
+
                 try:
                     int(user_input[CONF_REFRESH_INTERVAL])
-                except ValueError: 
+                except ValueError:
                     raise InvalidRefreshInterval
 
                 user_input[CONF_HOST] = self.config_entry.data[CONF_HOST]
