@@ -80,6 +80,7 @@ class TydomClient:
         self.poll_device_urls_1s = []
         self.poll_device_urls_5m = []
         self.current_poll_index = 0
+        self.pending_pings = 0
 
         if self._remote_mode:
             LOGGER.info("Configure remote mode (%s)", self._host)
@@ -194,6 +195,7 @@ class TydomClient:
     async def async_connect(self) -> ClientWebSocketResponse:
         """Connect to the Tydom API."""
         global file_lines, file_mode, file_name
+        self.pending_pings = 0
         if file_mode:
             file = open(file_name)
             file_lines = file.readlines()
@@ -255,7 +257,10 @@ class TydomClient:
                     url=f"wss://{self._host}:443/mediation/client?mac={self._mac}&appli=1",
                     headers=http_headers,
                     autoping=True,
-                    heartbeat=2,
+                    heartbeat=2.0,
+                    timeout=10.0,
+                    receive_timeout=5.0,
+                    autoclose=True,
                     proxy=proxy,
                     ssl_context=sslcontext,
                 )
@@ -318,7 +323,7 @@ class TydomClient:
             await asyncio.sleep(1)
             return await self._message_handler.incoming_triage(incoming_bytes_str)
         try:
-            if self._connection.closed:
+            if self._connection.closed or self.pending_pings > 5:
                 await self._connection.close()
                 await asyncio.sleep(10)
                 await self.listen_tydom(await self.async_connect())
@@ -345,6 +350,9 @@ class TydomClient:
         except Exception:
             LOGGER.exception("Unable to handle message")
             return None
+
+    def receive_pong(self):
+        self.pending_pings -= 1
 
     def build_digest_headers(self, nonce):
         """Build the headers of Digest Authentication."""
@@ -449,7 +457,7 @@ class TydomClient:
         msg_type = "/ping"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
-        LOGGER.debug("Ping")
+        self.pending_pings += 1
 
     async def get_devices_meta(self):
         """Get all devices metadata."""

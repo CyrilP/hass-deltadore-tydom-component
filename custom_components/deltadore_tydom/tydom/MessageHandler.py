@@ -135,65 +135,69 @@ class MessageHandler:
         msg_type = None
         first = str(data[:40])
 
-        if data != "":
-            if "/configs/file" in uri_origin:
-                msg_type = "msg_config"
-            elif "/devices/cmeta" in uri_origin:
-                msg_type = "msg_cmetadata"
-            elif "/configs/gateway/api_mode" in uri_origin:
-                msg_type = "msg_api_mode"
-            elif "/groups/file" in uri_origin:
-                msg_type = "msg_groups"
-            elif "/devices/meta" in uri_origin:
-                msg_type = "msg_metadata"
-            elif "/scenarios/file" in uri_origin:
-                msg_type = "msg_scenarios"
-            elif "cdata" in data:
-                msg_type = "msg_cdata"
-            elif "doctype" in first:
-                msg_type = "msg_html"
-            elif "/info" in uri_origin:
-                msg_type = "msg_info"
-            elif "id" in first:
-                msg_type = "msg_data"
+        if "/configs/file" in uri_origin:
+            msg_type = "msg_config"
+        elif "/devices/cmeta" in uri_origin:
+            msg_type = "msg_cmetadata"
+        elif "/configs/gateway/api_mode" in uri_origin:
+            msg_type = "msg_api_mode"
+        elif "/groups/file" in uri_origin:
+            msg_type = "msg_groups"
+        elif "/devices/meta" in uri_origin:
+            msg_type = "msg_metadata"
+        elif "/scenarios/file" in uri_origin:
+            msg_type = "msg_scenarios"
+        elif "/ping" in uri_origin:
+            msg_type = "msg_ping"
+        elif data != "" and "cdata" in data:
+            msg_type = "msg_cdata"
+        elif "doctype" in first:
+            msg_type = "msg_html"
+        elif "/info" in uri_origin:
+            msg_type = "msg_info"
+        elif "id" in first:
+            msg_type = "msg_data"
 
-            if msg_type is None:
-                LOGGER.warning("Unknown message type received %s", data)
-            else:
-                LOGGER.debug("Message received detected as (%s)", msg_type)
-                try:
-                    if msg_type == "msg_config":
-                        parsed = json.loads(data)
-                        return await MessageHandler.parse_config_data(parsed=parsed)
+        if msg_type is None:
+            LOGGER.warning("Unknown message type received %s", data)
+        else:
+            LOGGER.debug("Message received detected as (%s)", msg_type)
+            try:
+                if msg_type == "msg_config":
+                    parsed = json.loads(data)
+                    return await MessageHandler.parse_config_data(parsed=parsed)
 
-                    elif msg_type == "msg_cmetadata":
-                        parsed = json.loads(data)
-                        return await self.parse_cmeta_data(parsed=parsed)
+                elif msg_type == "msg_cmetadata":
+                    parsed = json.loads(data)
+                    return await self.parse_cmeta_data(parsed=parsed)
 
-                    elif msg_type == "msg_data":
-                        parsed = json.loads(data)
-                        return await self.parse_devices_data(parsed=parsed)
+                elif msg_type == "msg_data":
+                    parsed = json.loads(data)
+                    return await self.parse_devices_data(parsed=parsed)
 
-                    elif msg_type == "msg_cdata":
-                        parsed = json.loads(data)
-                        return await self.parse_devices_cdata(parsed=parsed)
+                elif msg_type == "msg_cdata":
+                    parsed = json.loads(data)
+                    return await self.parse_devices_cdata(parsed=parsed)
 
-                    elif msg_type == "msg_metadata":
-                        parsed = json.loads(data)
-                        return await self.parse_devices_metadata(parsed=parsed)
+                elif msg_type == "msg_metadata":
+                    parsed = json.loads(data)
+                    return await self.parse_devices_metadata(parsed=parsed)
 
-                    elif msg_type == "msg_html":
-                        LOGGER.debug("HTML Response ?")
+                elif msg_type == "msg_html":
+                    LOGGER.debug("HTML Response ?")
 
-                    elif msg_type == "msg_info":
-                        parsed = json.loads(data)
-                        return await self.parse_msg_info(parsed)
+                elif msg_type == "msg_info":
+                    parsed = json.loads(data)
+                    return await self.parse_msg_info(parsed)
 
-                except Exception as e:
-                    LOGGER.error("Error on parsing tydom response (%s)", data)
-                    LOGGER.exception("Error on parsing tydom response")
-                    traceback.print_exception(e)
-            LOGGER.debug("Incoming data parsed with success")
+                elif msg_type == "msg_ping":
+                    self.tydom_client.receive_pong()
+
+            except Exception as e:
+                LOGGER.error("Error on parsing tydom response (%s)", data)
+                LOGGER.exception("Error on parsing tydom response")
+                traceback.print_exception(e)
+        LOGGER.debug("Incoming data parsed with success")
 
     async def parse_devices_metadata(self, parsed):
         """Parse metadata."""
