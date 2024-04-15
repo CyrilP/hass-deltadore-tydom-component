@@ -37,7 +37,7 @@ Platform | Description
 - Typass ATL (zones temperatures, target temperature, mode (Auto mode is used for antifrost), water/heat power usage) with Tybox 5101
 - Calybox
 - Tyxal+, Tyxal CSX40
-- TYXIA 6610 (issue with status change)
+- TYXIA 6610
 
 Some other functions may also work or only report attributes.
 
