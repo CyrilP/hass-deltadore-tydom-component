@@ -352,6 +352,7 @@ class TydomClient:
             return None
 
     def receive_pong(self):
+        """Received a pong message, decrease pending ping counts."""
         self.pending_pings -= 1
 
     def build_digest_headers(self, nonce):
