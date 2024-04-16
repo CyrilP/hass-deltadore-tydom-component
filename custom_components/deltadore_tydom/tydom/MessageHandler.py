@@ -147,6 +147,8 @@ class MessageHandler:
             msg_type = "msg_metadata"
         elif "/scenarios/file" in uri_origin:
             msg_type = "msg_scenarios"
+        elif "/devices/install" in http_request_line:
+            msg_type = "msg_pairing"
         elif "/ping" in uri_origin:
             msg_type = "msg_ping"
         elif data != "" and "cdata" in data:
