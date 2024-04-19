@@ -52,12 +52,18 @@ class Hub:
         host: str,
         mac: str,
         password: str,
+        refresh_interval: str,
+        zone_home: str,
+        zone_away: str,
         alarmpin: str,
     ) -> None:
         """Init hub."""
         self._host = host
         self._mac = mac
         self._pass = password
+        self._refresh_interval = int(refresh_interval)*60
+        self._zone_home = zone_home
+        self._zone_away = zone_away
         self._pin = alarmpin
         self._hass = hass
         self._entry = entry
@@ -79,11 +85,20 @@ class Hub:
             mac=self._mac,
             host=self._host,
             password=self._pass,
+            zone_home = self._zone_home,
+            zone_away = self._zone_away,
             alarm_pin=self._pin,
             event_callback=self.handle_event,
         )
 
         self.online = True
+
+    def update_config(self, refresh_interval, zone_home, zone_away):
+        """Update zone configuration."""
+        self._tydom_client.update_config(zone_home, zone_away)
+        self._refresh_interval = int(refresh_interval)*60
+        self._zone_home = zone_home
+        self._zone_away = zone_away
 
     @property
     def hub_id(self) -> str:
@@ -114,7 +129,7 @@ class Hub:
     def ready(self) -> bool:
         """Check if we're ready to work."""
         # and self.add_alarm_callback is not None
-        return self.add_cover_callback is not None and self.add_sensor_callback is not None and self.add_climate_callback is not None and self.add_light_callback is not None and self.add_lock_callback is not None and self.add_update_callback is not None
+        return self.add_cover_callback is not None and self.add_sensor_callback is not None and self.add_climate_callback is not None and self.add_light_callback is not None and self.add_lock_callback is not None and self.add_update_callback is not None and self.add_alarm_callback is not None
 
 
     async def setup(self, connection: ClientWebSocketResponse) -> None:
@@ -146,7 +161,7 @@ class Hub:
             case Tydom():
                 LOGGER.debug("Create Tydom gateway %s", device.device_id)
                 self.devices[device.device_id] = device
-                ha_device = HATydom(device, self._hass, self._entry)
+                ha_device = HATydom(device, self._hass)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_update_callback is not None:
                     self.add_update_callback([ha_device])
@@ -162,7 +177,7 @@ class Hub:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomEnergy():
                 LOGGER.debug("Create conso %s", device.device_id)
-                ha_device = HAEnergy(device, self._hass, self._entry)
+                ha_device = HAEnergy(device, self._hass)
                 self.ha_devices[device.device_id] = ha_device
 
                 if self.add_sensor_callback is not None:
@@ -237,12 +252,12 @@ class Hub:
             case TydomAlarm():
                 LOGGER.debug("Create alarm %s", device.device_id)
                 ha_device = HaAlarm(device, self._hass)
-                if self.add_light_callback is not None:
-                    self.add_light_callback([ha_device])
+                self.ha_devices[device.device_id] = ha_device
+                if self.add_alarm_callback is not None:
+                    self.add_alarm_callback([ha_device])
 
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
-                LOGGER.error("Alarm Not implemented yet.")
             case _:
                 LOGGER.error(
                     "unsupported device type (%s) %s for device %s",
@@ -287,4 +302,20 @@ class Hub:
             await self._tydom_client.get_devices_cmeta()
             await self._tydom_client.get_devices_data()
             await self._tydom_client.get_scenarii()
-            await asyncio.sleep(300)
+            await asyncio.sleep(600)
+
+    async def refresh_data_1s(self) -> None:
+        """Refresh data for devices in list."""
+        while True:
+            await self._tydom_client.poll_devices_data_1s()
+            await asyncio.sleep(1)
+
+    async def refresh_data(self) -> None:
+        """Periodically refresh data for devices which don't do push."""
+        while True:
+            if(self._refresh_interval > 0):
+                await self._tydom_client.poll_devices_data_5m()
+                await asyncio.sleep(self._refresh_interval)
+            else:
+                await asyncio.sleep(60)
+

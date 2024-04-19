@@ -135,65 +135,71 @@ class MessageHandler:
         msg_type = None
         first = str(data[:40])
 
-        if data != "":
-            if "/configs/file" in uri_origin:
-                msg_type = "msg_config"
-            elif "/devices/cmeta" in uri_origin:
-                msg_type = "msg_cmetadata"
-            elif "/configs/gateway/api_mode" in uri_origin:
-                msg_type = "msg_api_mode"
-            elif "/groups/file" in uri_origin:
-                msg_type = "msg_groups"
-            elif "/devices/meta" in uri_origin:
-                msg_type = "msg_metadata"
-            elif "/scenarios/file" in uri_origin:
-                msg_type = "msg_scenarios"
-            elif "cdata" in data:
-                msg_type = "msg_cdata"
-            elif "doctype" in first:
-                msg_type = "msg_html"
-            elif "/info" in uri_origin:
-                msg_type = "msg_info"
-            elif "id" in first:
-                msg_type = "msg_data"
+        if "/configs/file" in uri_origin:
+            msg_type = "msg_config"
+        elif "/devices/cmeta" in uri_origin:
+            msg_type = "msg_cmetadata"
+        elif "/configs/gateway/api_mode" in uri_origin:
+            msg_type = "msg_api_mode"
+        elif "/groups/file" in uri_origin:
+            msg_type = "msg_groups"
+        elif "/devices/meta" in uri_origin:
+            msg_type = "msg_metadata"
+        elif "/scenarios/file" in uri_origin:
+            msg_type = "msg_scenarios"
+        elif "/devices/install" in http_request_line:
+            msg_type = "msg_pairing"
+        elif "/ping" in uri_origin:
+            msg_type = "msg_ping"
+        elif data != "" and "cdata" in data:
+            msg_type = "msg_cdata"
+        elif "doctype" in first:
+            msg_type = "msg_html"
+        elif "/info" in uri_origin:
+            msg_type = "msg_info"
+        elif "id" in first:
+            msg_type = "msg_data"
 
-            if msg_type is None:
-                LOGGER.warning("Unknown message type received %s", data)
-            else:
-                LOGGER.debug("Message received detected as (%s)", msg_type)
-                try:
-                    if msg_type == "msg_config":
-                        parsed = json.loads(data)
-                        return await MessageHandler.parse_config_data(parsed=parsed)
+        if msg_type is None:
+            LOGGER.warning("Unknown message type received %s", data)
+        else:
+            LOGGER.debug("Message received detected as (%s)", msg_type)
+            try:
+                if msg_type == "msg_config":
+                    parsed = json.loads(data)
+                    return await MessageHandler.parse_config_data(parsed=parsed)
 
-                    elif msg_type == "msg_cmetadata":
-                        parsed = json.loads(data)
-                        return await self.parse_cmeta_data(parsed=parsed)
+                elif msg_type == "msg_cmetadata":
+                    parsed = json.loads(data)
+                    return await self.parse_cmeta_data(parsed=parsed)
 
-                    elif msg_type == "msg_data":
-                        parsed = json.loads(data)
-                        return await self.parse_devices_data(parsed=parsed)
+                elif msg_type == "msg_data":
+                    parsed = json.loads(data)
+                    return await self.parse_devices_data(parsed=parsed)
 
-                    elif msg_type == "msg_cdata":
-                        parsed = json.loads(data)
-                        return await self.parse_devices_cdata(parsed=parsed)
+                elif msg_type == "msg_cdata":
+                    parsed = json.loads(data)
+                    return await self.parse_devices_cdata(parsed=parsed)
 
-                    elif msg_type == "msg_metadata":
-                        parsed = json.loads(data)
-                        return await self.parse_devices_metadata(parsed=parsed)
+                elif msg_type == "msg_metadata":
+                    parsed = json.loads(data)
+                    return await self.parse_devices_metadata(parsed=parsed)
 
-                    elif msg_type == "msg_html":
-                        LOGGER.debug("HTML Response ?")
+                elif msg_type == "msg_html":
+                    LOGGER.debug("HTML Response ?")
 
-                    elif msg_type == "msg_info":
-                        parsed = json.loads(data)
-                        return await self.parse_msg_info(parsed)
+                elif msg_type == "msg_info":
+                    parsed = json.loads(data)
+                    return await self.parse_msg_info(parsed)
 
-                except Exception as e:
-                    LOGGER.error("Error on parsing tydom response (%s)", data)
-                    LOGGER.exception("Error on parsing tydom response")
-                    traceback.print_exception(e)
-            LOGGER.debug("Incoming data parsed with success")
+                elif msg_type == "msg_ping":
+                    self.tydom_client.receive_pong()
+
+            except Exception as e:
+                LOGGER.error("Error on parsing tydom response (%s)", data)
+                LOGGER.exception("Error on parsing tydom response")
+                traceback.print_exception(e)
+        LOGGER.debug("Incoming data parsed with success")
 
     async def parse_devices_metadata(self, parsed):
         """Parse metadata."""
@@ -379,7 +385,7 @@ class MessageHandler:
                                             + dest
                                             + "&reset=false"
                                         )
-                                        self.tydom_client.add_poll_device_url(url)
+                                        self.tydom_client.add_poll_device_url_5m(url)
                                         LOGGER.debug("Add poll device : %s", url)
                         elif elem["name"] == "energyInstant":
                             device_name[unique_id] = "Tywatt"
@@ -398,7 +404,7 @@ class MessageHandler:
                                             + unit
                                             + "&reset=false"
                                         )
-                                        self.tydom_client.add_poll_device_url(url)
+                                        self.tydom_client.add_poll_device_url_5m(url)
                                         LOGGER.debug("Add poll device : " + url)
                         elif elem["name"] == "energyDistrib":
                             device_name[unique_id] = "Tywatt"
@@ -416,7 +422,7 @@ class MessageHandler:
                                             + "&period=YEAR&periodOffset=0&src="
                                             + src
                                         )
-                                        self.tydom_client.add_poll_device_url(url)
+                                        self.tydom_client.add_poll_device_url_5m(url)
                                         LOGGER.debug("Add poll device : " + url)
 
         LOGGER.debug("Metadata configuration updated")
@@ -472,7 +478,55 @@ class MessageHandler:
 
     async def parse_devices_cdata(self, parsed):
         """Parse devices cdata."""
-        LOGGER.debug("parse_devices_data : %s", parsed)
+        LOGGER.debug("parse_devices_cdata : %s", parsed)
+        devices = []
+
+        for i in parsed:
+            for endpoint in i["endpoints"]:
+                if endpoint["error"] == 0 and len(endpoint["cdata"]) > 0:
+                    try:
+                        device_id = i["id"]
+                        endpoint_id = endpoint["id"]
+                        unique_id = str(endpoint_id) + "_" + str(device_id)
+                        name_of_id = self.get_name_from_id(unique_id)
+                        type_of_id = self.get_type_from_id(unique_id)
+
+                        data = {}
+                        for elem in endpoint["cdata"]:
+                            if type_of_id == 'conso':
+
+                                element_name = None
+                                if elem["parameters"].get("dest"):
+                                    element_name = elem["name"] + "_" + elem["parameters"]["dest"]
+                                else:
+                                    continue
+
+                                element_value = elem["values"]["counter"]
+                                data[element_name] = element_value
+
+                                # Create the device
+                                device = await MessageHandler.get_device(
+                                    self.tydom_client,
+                                    type_of_id,
+                                    unique_id,
+                                    device_id,
+                                    name_of_id,
+                                    endpoint_id,
+                                    data,
+                                )
+                                if device is not None:
+                                    devices.append(device)
+                                    LOGGER.debug(
+                                        "Device update (id=%s, endpoint=%s, name=%s, type=%s)",
+                                        device_id,
+                                        endpoint_id,
+                                        name_of_id,
+                                        type_of_id,
+                                    )
+
+                    except Exception:
+                        LOGGER.exception('Error when parsing msg_cdata')
+        return devices
 
     # PUT response DIRTY parsing
     def parse_put_response(self, bytes_str, start=6):

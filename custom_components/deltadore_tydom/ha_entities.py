@@ -21,7 +21,6 @@ from homeassistant.const import (
     UnitOfElectricCurrent,
     EntityCategory,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.components.cover import (
     ATTR_POSITION,
@@ -39,6 +38,13 @@ from homeassistant.components.alarm_control_panel import AlarmControlPanelEntity
 from homeassistant.util.percentage import (
     percentage_to_ranged_value,
     ranged_value_to_percentage,
+)
+from homeassistant.components.alarm_control_panel import AlarmControlPanelEntityFeature
+from homeassistant.const import (
+    STATE_ALARM_ARMED_AWAY,
+    STATE_ALARM_ARMED_HOME,
+    STATE_ALARM_DISARMED,
+    STATE_ALARM_TRIGGERED,
 )
 
 from .tydom.tydom_devices import (
@@ -91,19 +97,26 @@ class HAEntity:
                 and value is not None
                 and attribute not in self._registered_sensors
             ):
-                if attribute in self.filtered_attrs:
+                alt_name = attribute.split('_')[0]
+                if attribute in self.filtered_attrs or alt_name in self.filtered_attrs:
                     continue
                 sensor_class = None
                 if attribute in self.sensor_classes:
                     sensor_class = self.sensor_classes[attribute]
+                elif alt_name in self.sensor_classes:
+                    sensor_class = self.sensor_classes[alt_name]
 
                 state_class = None
                 if attribute in self.state_classes:
                     state_class = self.state_classes[attribute]
+                elif alt_name in self.state_classes:
+                    state_class = self.state_classes[alt_name]
 
                 unit = None
                 if attribute in self.units:
                     unit = self.units[attribute]
+                elif alt_name in self.units:
+                    unit = self.units[alt_name]
 
                 if isinstance(value, bool):
                     sensors.append(
@@ -283,7 +296,7 @@ class HATydom(UpdateEntity, HAEntity):
         "TYDOM.dat",
     ]
 
-    def __init__(self, device: Tydom, hass, entry: ConfigEntry) -> None:
+    def __init__(self, device: Tydom, hass) -> None:
         """Initialize HATydom."""
         self.hass = hass
         self._device = device
@@ -368,6 +381,7 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyIndexHeatWatt": SensorDeviceClass.ENERGY,
         "energyIndexECSWatt": SensorDeviceClass.ENERGY,
         "energyIndexHeatGas": SensorDeviceClass.ENERGY,
+        "energyIndex": SensorDeviceClass.ENERGY,
         "outTemperature": SensorDeviceClass.TEMPERATURE,
     }
 
@@ -377,6 +391,7 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyIndexECSWatt": SensorStateClass.TOTAL_INCREASING,
         "energyIndexHeatWatt": SensorStateClass.TOTAL_INCREASING,
         "energyIndexHeatGas": SensorStateClass.TOTAL_INCREASING,
+        "energyIndex": SensorStateClass.TOTAL_INCREASING,
     }
 
     units = {
@@ -405,10 +420,11 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyIndexHeatWatt": UnitOfEnergy.WATT_HOUR,
         "energyIndexECSWatt": UnitOfEnergy.WATT_HOUR,
         "energyIndexHeatGas": UnitOfEnergy.WATT_HOUR,
+        "energyIndex": UnitOfEnergy.WATT_HOUR,
         "outTemperature": UnitOfTemperature.CELSIUS,
     }
 
-    def __init__(self, device: TydomEnergy, hass, entry: ConfigEntry) -> None:
+    def __init__(self, device: TydomEnergy, hass) -> None:
         """Initialize HAEnergy."""
         self.hass = hass
         self._device = device
@@ -604,6 +620,7 @@ class HaClimate(ClimateEntity, HAEntity):
         "ANTI_FROST": HVACMode.AUTO,
         "NORMAL": HVACMode.HEAT,
         "STOP": HVACMode.OFF,
+        "AUTO": HVACMode.AUTO,
     }
 
     def __init__(self, device: TydomBoiler, hass) -> None:
@@ -615,12 +632,19 @@ class HaClimate(ClimateEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_climate"
         self._attr_name = self._device.device_name
         self._enable_turn_on_off_backwards_compatibility = False
+        if hasattr(self._device, "temperature"):
+            self._attr_supported_features = (
+            self._attr_supported_features
+            | ClimateEntityFeature.TARGET_TEMPERATURE)
+
         self._attr_supported_features = (
             self._attr_supported_features
-            | ClimateEntityFeature.TARGET_TEMPERATURE
             | ClimateEntityFeature.TURN_OFF
             | ClimateEntityFeature.TURN_ON
         )
+
+        if  "NORMAL" in self._device._metadata["thermicLevel"] and "AUTO" in self._device._metadata["thermicLevel"]:
+            self.DICT_MODES_HA_TO_DD[HVACMode.HEAT] = "AUTO"
 
         # self._attr_preset_modes = ["NORMAL", "STOP", "ANTI_FROST"]
         self._attr_hvac_modes = [
@@ -630,10 +654,10 @@ class HaClimate(ClimateEntity, HAEntity):
         ]
         self._registered_sensors = []
 
-        if "min" in self._device._metadata["setpoint"]:
+        if hasattr(self._device._metadata, "setpoint") and "min" in self._device._metadata["setpoint"]:
             self._attr_min_temp = self._device._metadata["setpoint"]["min"]
 
-        if "max" in self._device._metadata["setpoint"]:
+        if hasattr(self._device._metadata, "setpoint") and "max" in self._device._metadata["setpoint"]:
             self._attr_max_temp = self._device._metadata["setpoint"]["max"]
 
     @property
@@ -655,18 +679,24 @@ class HaClimate(ClimateEntity, HAEntity):
         if (hasattr(self._device, 'hvacMode')):
             LOGGER.debug("hvac_mode = %s", self.DICT_MODES_DD_TO_HA[self._device.hvacMode])
             return self.DICT_MODES_DD_TO_HA[self._device.hvacMode]
+        elif (hasattr(self._device, 'thermicLevel')):
+            LOGGER.debug("thermicLevel = %s", self.DICT_MODES_DD_TO_HA[self._device.thermicLevel])
+            return self.DICT_MODES_DD_TO_HA[self._device.thermicLevel]
         else:
             return None
 
     @property
     def current_temperature(self) -> float | None:
         """Return the current temperature."""
-        return self._device.temperature
+        if hasattr(self._device, 'temperature'):
+            return self._device.temperature
+        else:
+            return None
 
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature currently set to be reached."""
-        if self._device.authorization == "HEATING":
+        if self._device.authorization == "HEATING" and hasattr(self._device, "setpoint"):
             return self._device.setpoint
         return None
 
@@ -877,14 +907,84 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
 
     should_poll = False
     supported_features = 0
-    code_format = CodeFormat.NUMBER
-    sensor_classes = {}
+    sensor_classes = {
+        "networkDefect": BinarySensorDeviceClass.PROBLEM,
+        "remoteSurveyDefect": BinarySensorDeviceClass.PROBLEM,
+        "simDefect": BinarySensorDeviceClass.PROBLEM,
+        "systAlarmDefect": BinarySensorDeviceClass.PROBLEM,
+        "systBatteryDefect": BinarySensorDeviceClass.PROBLEM,
+        "systSectorDefect": BinarySensorDeviceClass.PROBLEM,
+        "systSupervisionDefect": BinarySensorDeviceClass.PROBLEM,
+        "systTechnicalDefect": BinarySensorDeviceClass.PROBLEM,
+        "unitBatteryDefect": BinarySensorDeviceClass.PROBLEM,
+        "unitInternalDefect": BinarySensorDeviceClass.PROBLEM,
+        "videoLinkDefect": BinarySensorDeviceClass.PROBLEM,
+        "outTemperature": SensorDeviceClass.TEMPERATURE,
+    }
+
+    units = {
+        "outTemperature": UnitOfTemperature.CELSIUS,
+    }
 
     def __init__(self, device: TydomAlarm, hass) -> None:
         """Initialize the sensor."""
         self.hass = hass
         self._device = device
         self._device._ha_device = self
-        self._attr_unique_id = f"{self._device.device_id}_cover"
+        self._attr_unique_id = f"{self._device.device_id}_alarm"
         self._attr_name = self._device.device_name
+        self._attr_code_format = CodeFormat.NUMBER
+        self._attr_code_arm_required = True
         self._registered_sensors = []
+
+        self.supported_features = (
+            self.supported_features
+            | AlarmControlPanelEntityFeature.ARM_AWAY
+            | AlarmControlPanelEntityFeature.ARM_HOME
+        )
+
+    @property
+    def device_info(self):
+        """Return information to link this entity with the correct device."""
+        return {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+        }
+
+    @property
+    def state(self) -> str | None:
+        """Return the state of the device."""
+        # alarmMode :  "OFF", "ON", "TEST", "ZONE", "MAINTENANCE"
+        # alarmState: "OFF", "DELAYED", "ON", "QUIET"
+        if self._device.alarmMode == "MAINTENANCE":
+            return STATE_ALARM_DISARMED
+
+        match self._device.alarmMode:
+            case "MAINTENANCE":
+                return STATE_ALARM_DISARMED
+            case "OFF":
+                return STATE_ALARM_DISARMED
+            case "ON":
+                if self._device.alarmState == "OFF":
+                    return STATE_ALARM_ARMED_AWAY
+                else:
+                    return STATE_ALARM_TRIGGERED
+            case "ZONE" | "PART":
+                if self._device.alarmState == "OFF":
+                    return STATE_ALARM_ARMED_HOME
+                else:
+                    return STATE_ALARM_TRIGGERED
+            case _:
+                return STATE_ALARM_TRIGGERED
+
+    async def async_alarm_disarm(self, code=None) -> None:
+        """Send disarm command."""
+        await self._device.alarm_disarm(code)
+
+    async def async_alarm_arm_away(self, code=None) -> None:
+        """Send arm away command."""
+        await self._device.alarm_arm_away(code)
+
+    async def async_alarm_arm_home(self, code=None) -> None:
+        """Send arm home command."""
+        await self._device.alarm_arm_home(code)
