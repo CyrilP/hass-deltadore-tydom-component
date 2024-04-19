@@ -76,7 +76,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.async_create_background_task(
            target=tydom_hub.refresh_data(), hass=hass, name="Tydom refresh data"
         )
-
+        entry.async_create_background_task(
+           target=tydom_hub.reconnect(), hass=hass, name="Tydom cloud reconnect"
+        )
     except Exception as err:
         raise ConfigEntryNotReady from err
 

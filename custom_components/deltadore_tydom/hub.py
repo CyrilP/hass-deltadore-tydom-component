@@ -319,3 +319,9 @@ class Hub:
             else:
                 await asyncio.sleep(60)
 
+    async def reconnect(self) -> None:
+        """Periodically force reconnection if using cloud mode."""
+        while True:
+            if self._host == "mediation.tydom.com":
+                await self._tydom_client.disconnect()
+            await asyncio.sleep(10800)
