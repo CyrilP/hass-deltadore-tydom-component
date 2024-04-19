@@ -9,6 +9,9 @@
                     "mac": "MAC address",
                     "email": "Email",
                     "password": "Password",
+                    "refresh_interval": "Refresh interval in min",
+                    "zones_away": "Active zones in away alarm mode",
+                    "zones_home": "Active zones in home alarm mode",
                     "pin": "Alarm PIN"
                 }
             },
@@ -20,6 +23,9 @@
                     "mac": "MAC address",
                     "email": "Email",
                     "password": "Password",
+                    "refresh_interval": "Refresh interval in min",
+                    "zones_away": "Active zones in away alarm mode",
+                    "zones_home": "Active zones in home alarm mode",
                     "pin": "Alarm PIN"
                 }
             }
@@ -30,7 +36,9 @@
             "invalid_macaddress": "MAC address is invalid",
             "invalid_email": "Email is invalid",
             "invalid_password": "Password is invalid",
-            "communication_error": "Couldn't connect to Tydom Gateway"
+            "invalid_refresh_interval": "Refresh interval is not valid",
+            "communication_error": "Couldn't connect to Tydom Gateway",
+            "invalid_zone_config": "Zone configuration is invalid. syntax is : zone_id_1,zone_id_2... Example: 1,2,4"
         },
         "abort": {
             "discover_timeout": "Unable to discover devices",
@@ -39,6 +47,23 @@
             "unknown": "Unknown error occurred",
             "cannot_connect": "Unable to connect to the device",
             "already_configured": "Device is already configured"
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Delta Dore Tydom Configuration",
+                "description": "If you need help with the configuration go to: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "data": {
+                    "refresh_interval": "Refresh interval in min",
+                    "zones_away": "Active zones in away alarm mode",
+                    "zones_home": "Active zones in home alarm mode"
+                }
+            }
+        },
+        "error": {
+            "invalid_refresh_interval": "Refresh interval is not valid",
+            "invalid_zone_config": "Zone configuration is invalid. syntax is : zone_id_1,zone_id_2... Example: 1,2,4"
         }
     }
 }

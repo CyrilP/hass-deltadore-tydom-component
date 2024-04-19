@@ -57,6 +57,8 @@ class TydomClient:
         mac: str,
         password: str,
         alarm_pin: str = None,
+        zone_away: str = None,
+        zone_home: str = None,
         host: str = MEDIATION_URL,
         event_callback=None,
     ) -> None:
@@ -68,13 +70,17 @@ class TydomClient:
         self._password = password
         self._mac = mac
         self._host = host
+        self._zone_home = zone_home
+        self._zone_away = zone_away
         self._alarm_pin = alarm_pin
         self._remote_mode = self._host == MEDIATION_URL
         self._connection = None
         self.event_callback = event_callback
         # Some devices (like Tywatt) need polling
-        self.poll_device_urls = []
+        self.poll_device_urls_1s = []
+        self.poll_device_urls_5m = []
         self.current_poll_index = 0
+        self.pending_pings = 0
 
         if self._remote_mode:
             LOGGER.info("Configure remote mode (%s)", self._host)
@@ -88,6 +94,11 @@ class TydomClient:
         self._message_handler = MessageHandler(
             tydom_client=self, cmd_prefix=self._cmd_prefix
         )
+
+    def update_config(self, zone_home, zone_away):
+        """Update zones configuration."""
+        self._zone_home = zone_home
+        self._zone_away = zone_away
 
     @staticmethod
     async def async_get_credentials(
@@ -184,6 +195,7 @@ class TydomClient:
     async def async_connect(self) -> ClientWebSocketResponse:
         """Connect to the Tydom API."""
         global file_lines, file_mode, file_name
+        self.pending_pings = 0
         if file_mode:
             file = open(file_name)
             file_lines = file.readlines()
@@ -231,7 +243,7 @@ class TydomClient:
                 response.close()
 
                 if re_matcher:
-                    LOGGER.info("nonce : %s", re_matcher.group(1))
+                    pass
                 else:
                     raise TydomClientApiClientError("Could't find auth nonce")
 
@@ -245,7 +257,10 @@ class TydomClient:
                     url=f"wss://{self._host}:443/mediation/client?mac={self._mac}&appli=1",
                     headers=http_headers,
                     autoping=True,
-                    heartbeat=2,
+                    heartbeat=2.0,
+                    timeout=10.0,
+                    receive_timeout=5.0,
+                    autoclose=True,
                     proxy=proxy,
                     ssl_context=sslcontext,
                 )
@@ -272,7 +287,7 @@ class TydomClient:
         self._connection = connection
         await self.ping()
         await self.get_info()
-        await self.put_api_mode()
+        # await self.put_api_mode()
         # await self.get_geoloc()
         # await self.get_local_claim()
         # await self.get_devices_meta()
@@ -308,7 +323,7 @@ class TydomClient:
             await asyncio.sleep(1)
             return await self._message_handler.incoming_triage(incoming_bytes_str)
         try:
-            if self._connection.closed:
+            if self._connection.closed or self.pending_pings > 5:
                 await self._connection.close()
                 await asyncio.sleep(10)
                 await self.listen_tydom(await self.async_connect())
@@ -335,6 +350,10 @@ class TydomClient:
         except Exception:
             LOGGER.exception("Unable to handle message")
             return None
+
+    def receive_pong(self):
+        """Received a pong message, decrease pending ping counts."""
+        self.pending_pings -= 1
 
     def build_digest_headers(self, nonce):
         """Build the headers of Digest Authentication."""
@@ -433,23 +452,13 @@ class TydomClient:
         msg_type = "/refresh/all"
         req = "POST"
         await self.send_message(method=req, msg=msg_type)
-        # Get poll device data
-        nb_poll_devices = len(self.poll_device_urls)
-        if self.current_poll_index < nb_poll_devices - 1:
-            self.current_poll_index = self.current_poll_index + 1
-        else:
-            self.current_poll_index = 0
-        if nb_poll_devices > 0:
-            await self.get_poll_device_data(
-                self.poll_device_urls[self.current_poll_index]
-            )
 
     async def ping(self):
         """Send a ping (pong should be returned)."""
         msg_type = "/ping"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
-        LOGGER.debug("Ping")
+        self.pending_pings += 1
 
     async def get_devices_meta(self):
         """Get all devices metadata."""
@@ -462,8 +471,16 @@ class TydomClient:
         msg_type = "/devices/data"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
-        # Get poll devices data
-        for url in self.poll_device_urls:
+
+    async def poll_devices_data_1s(self):
+        """Poll devices data."""
+        if self.poll_device_urls_1s:
+            url = self.poll_device_urls_1s.pop()
+            await self.get_poll_device_data(url)
+
+    async def poll_devices_data_5m(self):
+        """Poll devices data."""
+        for url in self.poll_device_urls_5m:
             await self.get_poll_device_data(url)
 
     async def get_configs_file(self):
@@ -505,18 +522,25 @@ class TydomClient:
             + f"GET /devices/{device_id}/endpoints/{device_id}/data HTTP/1.1\r\nContent-Length: 0\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
         )
         a_bytes = bytes(str_request, "ascii")
-        await self._connection.send(a_bytes)
+        LOGGER.debug("Sending message to tydom (%s %s)", "GET device data", str_request)
+        if not file_mode:
+            await self.send_bytes(a_bytes)
 
     async def get_poll_device_data(self, url):
-        """Poll a device (probably unused)."""
-        LOGGER.error("poll device data %s", url)
+        """Poll a device."""
         msg_type = url
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
-    def add_poll_device_url(self, url):
-        """Add a device for polling (probably unused)."""
-        self.poll_device_urls.append(url)
+    def add_poll_device_url_1s(self, url):
+        """Add a device for polling."""
+        if url not in self.poll_device_urls_1s:
+            self.poll_device_urls_1s.append(url)
+
+    def add_poll_device_url_5m(self, url):
+        """Add a device for polling."""
+        if url not in self.poll_device_urls_5m:
+            self.poll_device_urls_5m.append(url)
 
     async def get_moments(self):
         """Get the moments (programs)."""
@@ -556,7 +580,8 @@ class TydomClient:
         )
         a_bytes = bytes(str_request, "ascii")
         LOGGER.debug("Sending message to tydom (%s %s)", "PUT data", body)
-        await self.send_bytes(a_bytes)
+        if not file_mode:
+            await self.send_bytes(a_bytes)
         return 0
 
     async def put_devices_data(self, device_id, endpoint_id, name, value):
@@ -581,11 +606,24 @@ class TydomClient:
             + "\r\n\r\n"
         )
         a_bytes = bytes(str_request, "ascii")
-        await self.send_bytes(a_bytes)
-        LOGGER.debug("Sending message to tydom (%s %s)", "PUT data", body)
+        LOGGER.debug("Sending message to tydom (%s %s)", "PUT device data", body)
+        if not file_mode:
+            await self.send_bytes(a_bytes)
+
         return 0
 
-    async def put_alarm_cdata(self, device_id, alarm_id=None, value=None, zone_id=None):
+    async def put_alarm_cdata(self, device_id, endpoint_id=None, alarm_pin=None, value=None, zone_id=None, legacy_zones=False):
+        """Configure alarm mode."""
+        if legacy_zones:
+            if zone_id is not None:
+                zones_array = zone_id.split(",")
+                for zone in zones_array:
+                    await self._put_alarm_cdata(device_id, endpoint_id, alarm_pin, value, zone, legacy_zones)
+        else:
+            await self._put_alarm_cdata(device_id, endpoint_id, alarm_pin, value, zone_id, legacy_zones)
+
+
+    async def _put_alarm_cdata(self, device_id, endpoint_id=None, alarm_pin=None, value=None, zone_id=None, legacy_zones=False):
         """Configure alarm mode."""
         # Credits to @mgcrea on github !
         # AWAY # "PUT /devices/{}/endpoints/{}/cdata?name=alarmCmd HTTP/1.1\r\ncontent-length: 29\r\ncontent-type: application/json; charset=utf-8\r\ntransac-id: request_124\r\n\r\n\r\n{"value":"ON","pwd":{}}\r\n\r\n"
@@ -601,37 +639,50 @@ class TydomClient:
         # value
         # pwd
         # zones
-
-        if self._alarm_pin is None:
-            LOGGER.warning("Tydom alarm pin is not set!")
+        pin = None
+        if alarm_pin is None:
+            if self._alarm_pin is None:
+                LOGGER.warning("Tydom alarm pin is not set!")
+            else:
+                pin = self._alarm_pin
+        else:
+            pin = alarm_pin
 
         try:
-            if zone_id is None:
+            if zone_id is None or zone_id == "":
                 cmd = "alarmCmd"
                 body = (
                     '{"value":"'
                     + str(value)
                     + '","pwd":"'
-                    + str(self._alarm_pin)
+                    + str(pin)
                     + '"}'
                 )
             else:
-                cmd = "zoneCmd"
-                body = (
-                    '{"value":"'
-                    + str(value)
-                    + '","pwd":"'
-                    + str(self._alarm_pin)
-                    + '","zones":"['
-                    + str(zone_id)
-                    + ']"}'
-                )
+                if legacy_zones:
+                    cmd = "partCmd"
+                    body = (
+                        '{"value":"'
+                        + str(value)
+                        + ', "part":"'
+                        + str(zone_id)
+                        + '"}'
+                    )
+                else:
+                    cmd = "zoneCmd"
+                    body = (
+                        '{"value":"'
+                        + str(value)
+                        + '","pwd":"'
+                        + str(pin)
+                        + '","zones":"['
+                        + str(zone_id)
+                        + ']"}'
+                    )
 
             str_request = (
                 self._cmd_prefix
-                + "PUT /devices/{device}/endpoints/{alarm}/cdata?name={cmd} HTTP/1.1\r\nContent-Length: ".format(
-                    device=str(device_id), alarm=str(alarm_id), cmd=str(cmd)
-                )
+                + f"PUT /devices/{device_id}/endpoints/{endpoint_id}/cdata?name={cmd} HTTP/1.1\r\nContent-Length: "
                 + str(len(body))
                 + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
                 + body
@@ -642,8 +693,9 @@ class TydomClient:
             LOGGER.debug("Sending message to tydom (%s %s)", "PUT cdata", body)
 
             try:
-                await self._connection.send(a_bytes)
-                return 0
+                if not file_mode:
+                    await self.send_bytes(a_bytes)
+                    return 0
             except BaseException:
                 LOGGER.error("put_alarm_cdata ERROR !", exc_info=True)
                 LOGGER.error(a_bytes)
