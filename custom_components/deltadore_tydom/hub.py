@@ -324,4 +324,4 @@ class Hub:
         while True:
             if self._host == "mediation.tydom.com":
                 await self._tydom_client.disconnect()
-            await asyncio.sleep(10800)
+            await asyncio.sleep(3600)
