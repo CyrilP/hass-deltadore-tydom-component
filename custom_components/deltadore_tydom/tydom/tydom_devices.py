@@ -114,21 +114,21 @@ class TydomShutter(TydomDevice):
     async def slope_open(self) -> None:
         """Tell the cover to tilt open."""
         await self._tydom_client.put_devices_data(
-            self._id, self._endpoint, "positionCmd", "DOWN"
+            self._id, self._endpoint, "slopeCmd", "DOWN"
         )
 
     # FIXME replace command
     async def slope_close(self) -> None:
         """Tell the cover to tilt closed."""
         await self._tydom_client.put_devices_data(
-            self._id, self._endpoint, "positionCmd", "UP"
+            self._id, self._endpoint, "slopeCmd", "UP"
         )
 
     # FIXME replace command
     async def slope_stop(self) -> None:
         """Tell the cover to stop tilt."""
         await self._tydom_client.put_devices_data(
-            self._id, self._endpoint, "positionCmd", "STOP"
+            self._id, self._endpoint, "slopeCmd", "STOP"
         )
 
     # FIXME replace command
