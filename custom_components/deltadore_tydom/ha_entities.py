@@ -481,9 +481,9 @@ class HACover(CoverEntity, HAEntity):
             self.supported_features = (
                 self.supported_features
                 | CoverEntityFeature.SET_TILT_POSITION
-                | CoverEntityFeature.OPEN_TILT
-                | CoverEntityFeature.CLOSE_TILT
-                | CoverEntityFeature.STOP_TILT
+                #| CoverEntityFeature.OPEN_TILT
+                #| CoverEntityFeature.CLOSE_TILT
+                #| CoverEntityFeature.STOP_TILT
             )
 
     @property
