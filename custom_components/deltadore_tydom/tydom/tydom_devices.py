@@ -137,7 +137,7 @@ class TydomShutter(TydomDevice):
         LOGGER.debug("set roller tilt position (device) to : %s", position)
 
         await self._tydom_client.put_devices_data(
-            self._id, self._endpoint, "position", str(position)
+            self._id, self._endpoint, "slope", str(position)
         )
 
 
