@@ -38,6 +38,7 @@ Platform | Description
 - Calybox
 - Tyxal+, Tyxal CSX40
 - TYXIA 6610
+- BSO
 
 Some other functions may also work or only report attributes.
 
