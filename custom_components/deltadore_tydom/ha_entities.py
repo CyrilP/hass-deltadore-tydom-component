@@ -613,7 +613,7 @@ class HaClimate(ClimateEntity, HAEntity):
         HVACMode.COOL: "COOLING",
         HVACMode.HEAT: "NORMAL",
         HVACMode.OFF: "STOP",
-        HVACMode.FAN_ONLY: "VENTILATING", 
+        HVACMode.FAN_ONLY: "VENTILATING",
         HVACMode.DRY: "DRYING"
     }
     DICT_MODES_DD_TO_HA = {
@@ -660,7 +660,7 @@ class HaClimate(ClimateEntity, HAEntity):
             HVACMode.OFF,
             HVACMode.AUTO,
         ]
-        
+
         if ("comfortMode" in self._device._metadata and "COOLING" in self._device._metadata["comfortMode"]["enum_values"]) or ("hvacMode" in self._device._metadata and "COOLING" in self._device._metadata["hvacMode"]["enum_values"]):
             self._attr_hvac_modes.append(HVACMode.COOL)
 
