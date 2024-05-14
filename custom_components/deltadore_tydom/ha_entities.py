@@ -696,10 +696,13 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def hvac_mode(self) -> HVACMode:
         """Return the current operation (e.g. heat, cool, idle)."""
-        if (hasattr(self._device, 'hvacMode')):
+        if hasattr(self._device, 'hvacMode'):
             LOGGER.debug("hvac_mode = %s", self.DICT_MODES_DD_TO_HA[self._device.hvacMode])
             return self.DICT_MODES_DD_TO_HA[self._device.hvacMode]
-        elif (hasattr(self._device, 'thermicLevel')):
+        elif hasattr(self._device, 'authorization'):
+            LOGGER.debug("authorization = %s", self.DICT_MODES_DD_TO_HA[self._device.thermicLevel])
+            return self.DICT_MODES_DD_TO_HA[self._device.authorization]
+        elif hasattr(self._device, 'thermicLevel'):
             LOGGER.debug("thermicLevel = %s", self.DICT_MODES_DD_TO_HA[self._device.thermicLevel])
             return self.DICT_MODES_DD_TO_HA[self._device.thermicLevel]
         else:
