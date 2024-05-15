@@ -608,25 +608,6 @@ class HaClimate(ClimateEntity, HAEntity):
         "temperature": UnitOfTemperature.CELSIUS,
     }
 
-    DICT_MODES_HA_TO_DD = {
-        HVACMode.AUTO: "ANTI_FROST",
-        HVACMode.COOL: "COOLING",
-        HVACMode.HEAT: "NORMAL",
-        HVACMode.OFF: "STOP",
-        HVACMode.FAN_ONLY: "VENTILATING",
-        HVACMode.DRY: "DRYING"
-    }
-    DICT_MODES_DD_TO_HA = {
-        "COOLING": HVACMode.COOL,
-        "ANTI_FROST": HVACMode.AUTO,
-        "NORMAL": HVACMode.HEAT,
-        "HEATING": HVACMode.HEAT,
-        "STOP": HVACMode.OFF,
-        "AUTO": HVACMode.AUTO,
-        "VENTILATING": HVACMode.FAN_ONLY,
-        "DRYING": HVACMode.DRY
-    }
-
     def __init__(self, device: TydomBoiler, hass) -> None:
         """Initialize Climate."""
         super().__init__()
@@ -636,6 +617,32 @@ class HaClimate(ClimateEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_climate"
         self._attr_name = self._device.device_name
         self._enable_turn_on_off_backwards_compatibility = False
+
+        self.dict_modes_ha_to_dd = {
+            HVACMode.COOL: "COOLING",
+            HVACMode.HEAT: "NORMAL",
+            HVACMode.OFF: "STOP",
+            HVACMode.FAN_ONLY: "VENTILATING",
+            HVACMode.DRY: "DRYING"
+        }
+        self.dict_modes_dd_to_ha = {
+            "COOLING": HVACMode.COOL,
+            "ANTI_FROST": HVACMode.AUTO,
+            "NORMAL": HVACMode.HEAT,
+            "HEATING": HVACMode.HEAT,
+            "STOP": HVACMode.OFF,
+            "AUTO": HVACMode.AUTO,
+            "VENTILATING": HVACMode.FAN_ONLY,
+            "DRYING": HVACMode.DRY
+        }
+
+        if "hvacMode" in self._device._metadata and "AUTO" in self._device._metadata["hvacMode"]["enum_values"]:
+                self.dict_modes_ha_to_dd[HVACMode.AUTO] = "AUTO"
+        elif "hvacMode" in self._device._metadata and "ANTI_FROST" in self._device._metadata["hvacMode"]["enum_values"]:
+                self.dict_modes_ha_to_dd[HVACMode.AUTO] = "ANTI_FROST"
+        else:
+            self.dict_modes_ha_to_dd[HVACMode.AUTO] = "AUTO"
+
 
         if hasattr(self._device, "minSetpoint"):
             self._attr_min_temp = self._device.minSetpoint
@@ -651,7 +658,7 @@ class HaClimate(ClimateEntity, HAEntity):
         )
 
         if  "NORMAL" in self._device._metadata["thermicLevel"] and "AUTO" in self._device._metadata["thermicLevel"]:
-            self.DICT_MODES_HA_TO_DD[HVACMode.HEAT] = "AUTO"
+            self.dict_modes_ha_to_dd[HVACMode.HEAT] = "AUTO"
 
         # self._attr_preset_modes = ["NORMAL", "STOP", "ANTI_FROST"]
         self._attr_hvac_modes = [
@@ -695,14 +702,14 @@ class HaClimate(ClimateEntity, HAEntity):
     def hvac_mode(self) -> HVACMode:
         """Return the current operation (e.g. heat, cool, idle)."""
         if hasattr(self._device, 'hvacMode'):
-            LOGGER.debug("hvac_mode = %s", self.DICT_MODES_DD_TO_HA[self._device.hvacMode])
-            return self.DICT_MODES_DD_TO_HA[self._device.hvacMode]
+            LOGGER.debug("hvac_mode = %s", self.dict_modes_dd_to_ha[self._device.hvacMode])
+            return self.dict_modes_dd_to_ha[self._device.hvacMode]
         elif hasattr(self._device, 'authorization'):
-            LOGGER.debug("authorization = %s", self.DICT_MODES_DD_TO_HA[self._device.thermicLevel])
-            return self.DICT_MODES_DD_TO_HA[self._device.authorization]
+            LOGGER.debug("authorization = %s", self.dict_modes_dd_to_ha[self._device.thermicLevel])
+            return self.dict_modes_dd_to_ha[self._device.authorization]
         elif hasattr(self._device, 'thermicLevel'):
-            LOGGER.debug("thermicLevel = %s", self.DICT_MODES_DD_TO_HA[self._device.thermicLevel])
-            return self.DICT_MODES_DD_TO_HA[self._device.thermicLevel]
+            LOGGER.debug("thermicLevel = %s", self.dict_modes_dd_to_ha[self._device.thermicLevel])
+            return self.dict_modes_dd_to_ha[self._device.thermicLevel]
         else:
             return None
 
@@ -742,7 +749,7 @@ class HaClimate(ClimateEntity, HAEntity):
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
-        await self._device.set_hvac_mode(self.DICT_MODES_HA_TO_DD[hvac_mode])
+        await self._device.set_hvac_mode(self.dict_modes_ha_to_dd[hvac_mode])
 
     async def async_set_preset_mode(self, preset_mode):
         """Set new target preset mode."""
