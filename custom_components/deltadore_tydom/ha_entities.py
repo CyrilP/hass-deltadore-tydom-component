@@ -620,6 +620,7 @@ class HaClimate(ClimateEntity, HAEntity):
         "COOLING": HVACMode.COOL,
         "ANTI_FROST": HVACMode.AUTO,
         "NORMAL": HVACMode.HEAT,
+        "HEATING": HVACMode.HEAT,
         "STOP": HVACMode.OFF,
         "AUTO": HVACMode.AUTO,
         "VENTILATING": HVACMode.FAN_ONLY,
@@ -635,10 +636,6 @@ class HaClimate(ClimateEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_climate"
         self._attr_name = self._device.device_name
         self._enable_turn_on_off_backwards_compatibility = False
-        if hasattr(self._device, "temperature"):
-            self._attr_supported_features = (
-            self._attr_supported_features
-            | ClimateEntityFeature.TARGET_TEMPERATURE)
 
         if hasattr(self._device, "minSetpoint"):
             self._attr_min_temp = self._device.minSetpoint
@@ -650,6 +647,7 @@ class HaClimate(ClimateEntity, HAEntity):
             self._attr_supported_features
             | ClimateEntityFeature.TURN_OFF
             | ClimateEntityFeature.TURN_ON
+            | ClimateEntityFeature.TARGET_TEMPERATURE
         )
 
         if  "NORMAL" in self._device._metadata["thermicLevel"] and "AUTO" in self._device._metadata["thermicLevel"]:
@@ -731,16 +729,15 @@ class HaClimate(ClimateEntity, HAEntity):
             elif self._device.hvacMode == "COOLING" and hasattr(self._device, "coolSetpoint"):
                 return self._device.coolSetpoint
 
-        elif hasattr(self._device, 'comfortMode'):
-            if self._device.comfortMode == "HEATING" and hasattr(self._device, "setpoint"):
-                return self._device.setpoint
-            elif self._device.comfortMode == "HEATING" and hasattr(self._device, "heatSetpoint"):
+        elif hasattr(self._device, 'authorization'):
+            if self._device.authorization == "HEATING" and hasattr(self._device, "heatSetpoint"):
                 return self._device.heatSetpoint
-            elif self._device.comfortMode == "COOLING" and hasattr(self._device, "setpoint"):
+            elif self._device.authorization == "HEATING" and hasattr(self._device, "setpoint"):
                 return self._device.setpoint
-            elif self._device.comfortMode == "COOLING" and hasattr(self._device, "coolSetpoint"):
+            elif self._device.authorization == "COOLING" and hasattr(self._device, "coolSetpoint"):
                 return self._device.coolSetpoint
-
+            elif self._device.authorization == "COOLING" and hasattr(self._device, "setpoint"):
+                return self._device.setpoint
         return None
 
     async def async_set_hvac_mode(self, hvac_mode):
