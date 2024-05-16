@@ -608,21 +608,6 @@ class HaClimate(ClimateEntity, HAEntity):
         "temperature": UnitOfTemperature.CELSIUS,
     }
 
-    DICT_MODES_HA_TO_DD = {
-        HVACMode.AUTO: "ANTI_FROST",
-        HVACMode.COOL: None,
-        HVACMode.HEAT: "NORMAL",
-        HVACMode.OFF: "STOP",
-    }
-    DICT_MODES_DD_TO_HA = {
-        # "": HVACMode.AUTO,
-        # "": HVACMode.COOL,
-        "ANTI_FROST": HVACMode.AUTO,
-        "NORMAL": HVACMode.HEAT,
-        "STOP": HVACMode.OFF,
-        "AUTO": HVACMode.AUTO,
-    }
-
     def __init__(self, device: TydomBoiler, hass) -> None:
         """Initialize Climate."""
         super().__init__()
@@ -632,26 +617,61 @@ class HaClimate(ClimateEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_climate"
         self._attr_name = self._device.device_name
         self._enable_turn_on_off_backwards_compatibility = False
-        if hasattr(self._device, "temperature"):
-            self._attr_supported_features = (
-            self._attr_supported_features
-            | ClimateEntityFeature.TARGET_TEMPERATURE)
+
+        self.dict_modes_ha_to_dd = {
+            HVACMode.COOL: "COOLING",
+            HVACMode.HEAT: "NORMAL",
+            HVACMode.OFF: "STOP",
+            HVACMode.FAN_ONLY: "VENTILATING",
+            HVACMode.DRY: "DRYING"
+        }
+        self.dict_modes_dd_to_ha = {
+            "COOLING": HVACMode.COOL,
+            "ANTI_FROST": HVACMode.AUTO,
+            "NORMAL": HVACMode.HEAT,
+            "HEATING": HVACMode.HEAT,
+            "STOP": HVACMode.OFF,
+            "AUTO": HVACMode.AUTO,
+            "VENTILATING": HVACMode.FAN_ONLY,
+            "DRYING": HVACMode.DRY
+        }
+
+        if "hvacMode" in self._device._metadata and "AUTO" in self._device._metadata["hvacMode"]["enum_values"]:
+                self.dict_modes_ha_to_dd[HVACMode.AUTO] = "AUTO"
+        elif "hvacMode" in self._device._metadata and "ANTI_FROST" in self._device._metadata["hvacMode"]["enum_values"]:
+                self.dict_modes_ha_to_dd[HVACMode.AUTO] = "ANTI_FROST"
+        else:
+            self.dict_modes_ha_to_dd[HVACMode.AUTO] = "AUTO"
+
+
+        if hasattr(self._device, "minSetpoint"):
+            self._attr_min_temp = self._device.minSetpoint
+
+        if hasattr(self._device, "maxSetpoint"):
+            self._attr_max_temp = self._device.maxSetpoint
 
         self._attr_supported_features = (
             self._attr_supported_features
             | ClimateEntityFeature.TURN_OFF
             | ClimateEntityFeature.TURN_ON
+            | ClimateEntityFeature.TARGET_TEMPERATURE
         )
 
-        if  "NORMAL" in self._device._metadata["thermicLevel"] and "AUTO" in self._device._metadata["thermicLevel"]:
-            self.DICT_MODES_HA_TO_DD[HVACMode.HEAT] = "AUTO"
+        if  "NORMAL" in self._device._metadata["thermicLevel"] or "AUTO" in self._device._metadata["thermicLevel"]:
+            self.dict_modes_ha_to_dd[HVACMode.HEAT] = "AUTO"
 
         # self._attr_preset_modes = ["NORMAL", "STOP", "ANTI_FROST"]
         self._attr_hvac_modes = [
             HVACMode.OFF,
-            HVACMode.HEAT,
             HVACMode.AUTO,
         ]
+
+        if ("comfortMode" in self._device._metadata and "COOLING" in self._device._metadata["comfortMode"]["enum_values"]) or ("hvacMode" in self._device._metadata and "COOLING" in self._device._metadata["hvacMode"]["enum_values"]):
+            self._attr_hvac_modes.append(HVACMode.COOL)
+
+        if ("comfortMode" in self._device._metadata and "HEATING" in self._device._metadata["comfortMode"]["enum_values"]) or ("hvacMode" in self._device._metadata and "HEATING" in self._device._metadata["hvacMode"]["enum_values"]):
+            self._attr_hvac_modes.append(HVACMode.HEAT)
+
         self._registered_sensors = []
 
         if hasattr(self._device._metadata, "setpoint") and "min" in self._device._metadata["setpoint"]:
@@ -663,10 +683,15 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
-        return {
+        infos = {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
         }
+
+        if hasattr(self._device, "manufacturer"):
+            infos["manufacturer"] = self._device.manufacturer
+
+        return infos
 
     @property
     def temperature_unit(self) -> str:
@@ -676,12 +701,15 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def hvac_mode(self) -> HVACMode:
         """Return the current operation (e.g. heat, cool, idle)."""
-        if (hasattr(self._device, 'hvacMode')):
-            LOGGER.debug("hvac_mode = %s", self.DICT_MODES_DD_TO_HA[self._device.hvacMode])
-            return self.DICT_MODES_DD_TO_HA[self._device.hvacMode]
-        elif (hasattr(self._device, 'thermicLevel')):
-            LOGGER.debug("thermicLevel = %s", self.DICT_MODES_DD_TO_HA[self._device.thermicLevel])
-            return self.DICT_MODES_DD_TO_HA[self._device.thermicLevel]
+        if hasattr(self._device, 'hvacMode'):
+            LOGGER.debug("hvac_mode = %s", self.dict_modes_dd_to_ha[self._device.hvacMode])
+            return self.dict_modes_dd_to_ha[self._device.hvacMode]
+        elif hasattr(self._device, 'authorization'):
+            LOGGER.debug("authorization = %s", self.dict_modes_dd_to_ha[self._device.thermicLevel])
+            return self.dict_modes_dd_to_ha[self._device.authorization]
+        elif hasattr(self._device, 'thermicLevel'):
+            LOGGER.debug("thermicLevel = %s", self.dict_modes_dd_to_ha[self._device.thermicLevel])
+            return self.dict_modes_dd_to_ha[self._device.thermicLevel]
         else:
             return None
 
@@ -690,19 +718,38 @@ class HaClimate(ClimateEntity, HAEntity):
         """Return the current temperature."""
         if hasattr(self._device, 'temperature'):
             return self._device.temperature
+        elif hasattr(self._device, 'ambientTemperature'):
+            return self._device.ambientTemperature
         else:
             return None
 
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature currently set to be reached."""
-        if self._device.authorization == "HEATING" and hasattr(self._device, "setpoint"):
-            return self._device.setpoint
+        if hasattr(self._device, 'hvacMode'):
+            if (self._device.hvacMode == "HEATING" or self._device.hvacMode == "NORMAL") and hasattr(self._device, "setpoint"):
+                return self._device.setpoint
+            elif (self._device.hvacMode == "HEATING" or self._device.hvacMode == "NORMAL") and hasattr(self._device, "heatSetpoint"):
+                return self._device.heatSetpoint
+            elif self._device.hvacMode == "COOLING" and hasattr(self._device, "setpoint"):
+                return self._device.setpoint
+            elif self._device.hvacMode == "COOLING" and hasattr(self._device, "coolSetpoint"):
+                return self._device.coolSetpoint
+
+        elif hasattr(self._device, 'authorization'):
+            if self._device.authorization == "HEATING" and hasattr(self._device, "heatSetpoint"):
+                return self._device.heatSetpoint
+            elif self._device.authorization == "HEATING" and hasattr(self._device, "setpoint"):
+                return self._device.setpoint
+            elif self._device.authorization == "COOLING" and hasattr(self._device, "coolSetpoint"):
+                return self._device.coolSetpoint
+            elif self._device.authorization == "COOLING" and hasattr(self._device, "setpoint"):
+                return self._device.setpoint
         return None
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
-        await self._device.set_hvac_mode(self.DICT_MODES_HA_TO_DD[hvac_mode])
+        await self._device.set_hvac_mode(self.dict_modes_ha_to_dd[hvac_mode])
 
     async def async_set_preset_mode(self, preset_mode):
         """Set new target preset mode."""

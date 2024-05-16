@@ -292,7 +292,7 @@ class MessageHandler:
                 return TydomSmoke(
                     tydom_client, uid, device_id, name, last_usage, endpoint, device_metadata[uid], data
                 )
-            case "boiler" | "sh_hvac" | "electric":
+            case "boiler" | "sh_hvac" | "electric" | "aeraulic":
                 return TydomBoiler(
                     tydom_client, uid, device_id, name, last_usage, endpoint, device_metadata[uid], data
                 )

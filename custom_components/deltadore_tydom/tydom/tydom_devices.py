@@ -208,12 +208,19 @@ class TydomBoiler(TydomDevice):
                     self._id, self._endpoint, "antifrostOn", False
                 )
             else:
-                await self._tydom_client.put_devices_data(
-                    self._id, self._endpoint, "thermicLevel", "COMFORT"
-                )
-                await self._tydom_client.put_devices_data(
-                    self._id, self._endpoint, "comfortMode", "HEATING"
-                )
+                if "COMFORT" in self._metadata["thermicLevel"]["enum_values"]:
+                    await self._tydom_client.put_devices_data(
+                        self._id, self._endpoint, "thermicLevel", "COMFORT"
+                    )
+                elif "HEATING" in self._metadata["thermicLevel"]["enum_values"]:
+                    await self._tydom_client.put_devices_data(
+                        self._id, self._endpoint, "thermicLevel", "HEATING"
+                    )
+
+                if "HEATING" in self._metadata["comfortMode"]["enum_values"]:
+                    await self._tydom_client.put_devices_data(
+                        self._id, self._endpoint, "comfortMode", "HEATING"
+                    )
 
         elif mode == "STOP":
             if hasattr(self, 'hvacMode'):
@@ -236,6 +243,10 @@ class TydomBoiler(TydomDevice):
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "comfortMode", "STOP"
                 )
+        elif mode == "COOLING":
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "comfortMode", "COOLING"
+            )
         else:
             LOGGER.error("Unknown hvac mode: %s", mode)
 
