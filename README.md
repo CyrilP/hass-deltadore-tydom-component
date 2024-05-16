@@ -39,6 +39,7 @@ Platform | Description
 - Tyxal+, Tyxal CSX40
 - TYXIA 6610
 - BSO
+- Naviclim Atlantic 875311
 
 Some other functions may also work or only report attributes.
 
