@@ -569,7 +569,7 @@ class HASmoke(BinarySensorEntity, HAEntity):
         self.hass = hass
         self._device = device
         self._device._ha_device = self
-        self._attr_unique_id = f"{self._device.device_id}_smoke_defect"
+        self._attr_unique_id = f"{self._device.device_id}_smoke"
         self._attr_name = self._device.device_name
         self._state = False
         self._registered_sensors = []
@@ -910,7 +910,7 @@ class HaLight(LightEntity, HAEntity):
         self.hass = hass
         self._device = device
         self._device._ha_device = self
-        self._attr_unique_id = f"{self._device.device_id}_cover"
+        self._attr_unique_id = f"{self._device.device_id}_light"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
         if "level" in self._device._metadata:
