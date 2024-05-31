@@ -143,6 +143,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return await self.async_step_user(import_config)
 
     async def async_step_user(self, user_input=None) -> config_entries.FlowResult:
+        """Handle the initial step."""
         _errors = {}
         if user_input is not None:
             if user_input.get(CONF_CONFIG_MODE) == CONF_MANUAL_MODE:
@@ -168,7 +169,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
     async def async_step_user_cloud(self, user_input=None) -> config_entries.FlowResult:
-        """Handle the initial step."""
+        """Handle the cloud connection step."""
         # This goes through the steps to take the user through the setup process.
         # Using this it is possible to update the UI and prompt for additional
         # information. This example provides a single form (built from `DATA_SCHEMA`),
@@ -282,7 +283,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_user_manual(self, user_input=None) -> config_entries.FlowResult:
-        """Handle the initial step."""
+        """Handle the manual connection step."""
         # This goes through the steps to take the user through the setup process.
         # Using this it is possible to update the UI and prompt for additional
         # information. This example provides a single form (built from `DATA_SCHEMA`),
@@ -432,7 +433,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
     async def async_step_discovery_confirm_manual(self, user_input=None):
-        """Confirm discovery."""
+        """Confirm discovery manual."""
         _errors = {}
         if user_input is not None:
             try:
@@ -504,9 +505,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
             ),
         )
-    
+
     async def async_step_discovery_confirm_cloud(self, user_input=None):
-        """Confirm discovery."""
+        """Confirm discovery cloud."""
         _errors = {}
         if user_input is not None:
             try:
