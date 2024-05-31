@@ -8,6 +8,7 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant.config_entries import OptionsFlow
+from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries, exceptions
@@ -15,7 +16,7 @@ from homeassistant.const import CONF_NAME, CONF_HOST, CONF_MAC, CONF_EMAIL, CONF
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.components import dhcp
 
-from .const import DOMAIN, LOGGER, CONF_TYDOM_PASSWORD, CONF_ZONES_HOME, CONF_ZONES_AWAY, CONF_REFRESH_INTERVAL
+from .const import DOMAIN, LOGGER, CONF_TYDOM_PASSWORD, CONF_ZONES_HOME, CONF_ZONES_AWAY, CONF_REFRESH_INTERVAL, CONF_CONFIG_MODE, CONF_CLOUD_MODE, CONF_MANUAL_MODE
 from . import hub
 from .tydom.tydom_client import (
     TydomClientApiClientCommunicationError,
@@ -56,7 +57,7 @@ def zones_valid(zones) -> bool:
     """Return True if zone config is valid."""
     return re.fullmatch(zones_regex, zones)
 
-async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
+async def validate_input(hass: HomeAssistant, cloud: bool, data: dict) -> dict[str, Any]:
     """Validate the user input allows us to connect.
 
     Data has the keys from DATA_SCHEMA with values provided by the user.
@@ -70,30 +71,36 @@ async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
     if len(data[CONF_MAC]) != 12:
         raise InvalidMacAddress
 
-    if not email_valid(data[CONF_EMAIL]):
-        raise InvalidEmail
-
-    if len(data[CONF_PASSWORD]) < 3:
-        raise InvalidPassword
-
-    try:
-        int(data[CONF_REFRESH_INTERVAL])
-    except ValueError:
-        raise InvalidRefreshInterval
-
     if CONF_ZONES_HOME in data and not zones_valid(data[CONF_ZONES_HOME]):
         raise InvalidZoneHome
 
     if CONF_ZONES_AWAY in data and not zones_valid(data[CONF_ZONES_AWAY]):
         raise InvalidZoneAway
 
-    password = await hub.Hub.get_tydom_credentials(
-        async_create_clientsession(hass, False),
-        data[CONF_EMAIL],
-        data[CONF_PASSWORD],
-        data[CONF_MAC],
-    )
-    data[CONF_TYDOM_PASSWORD] = password
+    if cloud:
+        if not email_valid(data[CONF_EMAIL]):
+            raise InvalidEmail
+
+        if len(data[CONF_PASSWORD]) < 3:
+            raise InvalidPassword
+
+        try:
+            int(data[CONF_REFRESH_INTERVAL])
+        except ValueError:
+            raise InvalidRefreshInterval
+
+        password = await hub.Hub.get_tydom_credentials(
+            async_create_clientsession(hass, False),
+            data[CONF_EMAIL],
+            data[CONF_PASSWORD],
+            data[CONF_MAC],
+        )
+        data[CONF_TYDOM_PASSWORD] = password
+    else:
+        data[CONF_EMAIL] = ""
+        data[CONF_PASSWORD] = ""
+        if len(data[CONF_TYDOM_PASSWORD]) < 3:
+            raise InvalidPassword
 
     zone_home = None
     if CONF_ZONES_HOME in data:
@@ -113,7 +120,7 @@ async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
         CONF_EMAIL: data[CONF_EMAIL],
         CONF_PASSWORD: data[CONF_PASSWORD],
         CONF_REFRESH_INTERVAL: data[CONF_REFRESH_INTERVAL],
-        CONF_TYDOM_PASSWORD: password,
+        CONF_TYDOM_PASSWORD: data[CONF_TYDOM_PASSWORD],
         CONF_ZONES_HOME: zone_home,
         CONF_ZONES_AWAY: zone_away,
         CONF_PIN: pin,
@@ -136,6 +143,31 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return await self.async_step_user(import_config)
 
     async def async_step_user(self, user_input=None) -> config_entries.FlowResult:
+        _errors = {}
+        if user_input is not None:
+            if user_input.get(CONF_CONFIG_MODE) == CONF_MANUAL_MODE:
+                return await self.async_step_user_manual()
+            else:
+                return await self.async_step_user_cloud()
+        else:
+            user_input = user_input or {}
+            return self.async_show_form(
+                step_id="user",
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(CONF_CONFIG_MODE, default=user_input.get(CONF_CONFIG_MODE),): selector.SelectSelector(
+                            selector.SelectSelectorConfig(options=[
+                                    selector.SelectOptionDict(value=CONF_CLOUD_MODE, label=CONF_CLOUD_MODE),
+                                    selector.SelectOptionDict(value=CONF_MANUAL_MODE, label=CONF_MANUAL_MODE)],
+                                translation_key=CONF_CONFIG_MODE
+                            ),
+                        ),
+                    }
+                ),
+                errors=_errors,
+            )
+
+    async def async_step_user_cloud(self, user_input=None) -> config_entries.FlowResult:
         """Handle the initial step."""
         # This goes through the steps to take the user through the setup process.
         # Using this it is possible to update the UI and prompt for additional
@@ -146,12 +178,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         _errors = {}
         default_zone_home = ""
         default_zone_away = ""
+
         if user_input is not None:
             user_input.get(CONF_PIN, "")
             default_zone_home = user_input.get(CONF_ZONES_HOME, None)
             default_zone_away = user_input.get(CONF_ZONES_AWAY, None)
             try:
-                user_input = await validate_input(self.hass, user_input)
+                user_input = await validate_input(self.hass, True, user_input)
                 # Ensure it's working as expected
 
                 tydom_hub = hub.Hub(
@@ -215,6 +248,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 LOGGER.exception("Unexpected exception")
                 _errors["base"] = "unknown"
             else:
+                LOGGER.warn("adding TYDOM entry")
                 await self.async_set_unique_id(user_input[CONF_MAC])
                 self._abort_if_unique_id_configured()
 
@@ -225,7 +259,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         user_input = user_input or {}
 
         return self.async_show_form(
-            step_id="user",
+            step_id="user_cloud",
             data_schema=vol.Schema(
                 {
                     vol.Required(
@@ -237,6 +271,112 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     ): cv.string,
                     vol.Required(
                         CONF_PASSWORD, default=user_input.get(CONF_PASSWORD)
+                    ): cv.string,
+                    vol.Required(CONF_REFRESH_INTERVAL, default="30"): cv.string,
+                    vol.Optional(CONF_ZONES_HOME, default=default_zone_home): str,
+                    vol.Optional(CONF_ZONES_AWAY, default=default_zone_away): str,
+                    vol.Optional(CONF_PIN, default=user_input.get(CONF_PIN, "")): str,
+                }
+            ),
+            errors=_errors,
+        )
+
+    async def async_step_user_manual(self, user_input=None) -> config_entries.FlowResult:
+        """Handle the initial step."""
+        # This goes through the steps to take the user through the setup process.
+        # Using this it is possible to update the UI and prompt for additional
+        # information. This example provides a single form (built from `DATA_SCHEMA`),
+        # and when that has some validated input, it calls `async_create_entry` to
+        # actually create the HA config entry. Note the "title" value is returned by
+        # `validate_input` above.
+        _errors = {}
+        default_zone_home = ""
+        default_zone_away = ""
+        if user_input is not None:
+            user_input.get(CONF_PIN, "")
+            default_zone_home = user_input.get(CONF_ZONES_HOME, None)
+            default_zone_away = user_input.get(CONF_ZONES_AWAY, None)
+            try:
+                user_input = await validate_input(self.hass, False, user_input)
+                # Ensure it's working as expected
+
+                tydom_hub = hub.Hub(
+                    self.hass,
+                    None,
+                    user_input[CONF_HOST],
+                    user_input[CONF_MAC],
+                    user_input[CONF_TYDOM_PASSWORD],
+                    "-1",
+                    None,
+                    None,
+                    None,
+                )
+                await tydom_hub.test_credentials()
+
+                await self.async_set_unique_id(user_input[CONF_MAC])
+                self._abort_if_unique_id_configured()
+            except CannotConnect:
+                _errors["base"] = "cannot_connect"
+            except InvalidHost:
+                # The error string is set here, and should be translated.
+                # This example does not currently cover translations, see the
+                # comments on `DATA_SCHEMA` for further details.
+                # Set the error on the `host` field, not the entire form.
+                _errors[CONF_HOST] = "invalid_host"
+                LOGGER.error("Invalid host: %s", user_input[CONF_HOST])
+            except InvalidMacAddress:
+                _errors[CONF_MAC] = "invalid_macaddress"
+                LOGGER.error("Invalid MAC: %s", user_input[CONF_MAC])
+            except InvalidPassword:
+                _errors[CONF_TYDOM_PASSWORD] = "invalid_password"
+                LOGGER.error("Invalid password")
+            except InvalidRefreshInterval:
+                _errors[CONF_REFRESH_INTERVAL] = "invalid_refresh_interval"
+            except InvalidZoneHome:
+                _errors[CONF_ZONES_HOME] = "invalid_zone_config"
+                default_zone_home = ""
+                LOGGER.error("Invalid Zone HOME: %s", user_input[CONF_ZONES_HOME])
+            except InvalidZoneAway:
+                _errors[CONF_ZONES_AWAY] = "invalid_zone_config"
+                default_zone_away = ""
+                LOGGER.error("Invalid Zone AWAY: %s", user_input[CONF_ZONES_AWAY])
+            except TydomClientApiClientCommunicationError:
+                traceback.print_exc()
+                _errors["base"] = "communication_error"
+                LOGGER.exception("Communication error")
+            except TydomClientApiClientAuthenticationError:
+                traceback.print_exc()
+                _errors["base"] = "authentication_error"
+                LOGGER.exception("Authentication error")
+            except TydomClientApiClientError:
+                traceback.print_exc()
+                _errors["base"] = "unknown"
+                LOGGER.exception("Unknown error")
+
+            except Exception:  # pylint: disable=broad-except
+                traceback.print_exc()
+                LOGGER.exception("Unexpected exception")
+                _errors["base"] = "unknown"
+            else:
+                await self.async_set_unique_id(user_input[CONF_MAC])
+                self._abort_if_unique_id_configured()
+
+                return self.async_create_entry(
+                    title="Tydom-" + user_input[CONF_MAC][6:], data=user_input
+                )
+
+        user_input = user_input or {}
+
+        return self.async_show_form(
+            step_id="user_manual",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_HOST, default=user_input.get(CONF_HOST)
+                    ): cv.string,
+                    vol.Required(CONF_MAC, default=user_input.get(CONF_MAC)): cv.string,
+                    vol.Required(
+                        CONF_TYDOM_PASSWORD, default=user_input.get(CONF_TYDOM_PASSWORD)
                     ): cv.string,
                     vol.Required(CONF_REFRESH_INTERVAL, default="30"): cv.string,
                     vol.Optional(CONF_ZONES_HOME, default=default_zone_home): str,
@@ -267,11 +407,110 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_discovery_confirm(self, user_input=None):
         """Confirm discovery."""
+        _errors = {}
+        if user_input is not None:
+            if user_input.get(CONF_CONFIG_MODE) == CONF_MANUAL_MODE:
+                return await self.async_step_discovery_confirm_manual()
+            else:
+                return await self.async_step_discovery_confirm_cloud()
+        else:
+            user_input = user_input or {}
+            return self.async_show_form(
+                step_id="user",
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(CONF_CONFIG_MODE, default=user_input.get(CONF_CONFIG_MODE),): selector.SelectSelector(
+                            selector.SelectSelectorConfig(options=[
+                                    selector.SelectOptionDict(value=CONF_CLOUD_MODE, label=CONF_CLOUD_MODE),
+                                    selector.SelectOptionDict(value=CONF_MANUAL_MODE, label=CONF_MANUAL_MODE)],
+                                translation_key=CONF_CONFIG_MODE
+                            ),
+                        ),
+                    }
+                ),
+                errors=_errors,
+            )
 
+    async def async_step_discovery_confirm_manual(self, user_input=None):
+        """Confirm discovery."""
         _errors = {}
         if user_input is not None:
             try:
-                user_input = await validate_input(self.hass, user_input)
+                user_input = await validate_input(self.hass, False, user_input)
+                # Ensure it's working as expected
+                tydom_hub = hub.Hub(
+                    self.hass,
+                    None,
+                    user_input[CONF_HOST],
+                    user_input[CONF_MAC],
+                    user_input[CONF_TYDOM_PASSWORD],
+                    "-1",
+                    None,
+                    None,
+                    None,
+                )
+                await tydom_hub.test_credentials()
+
+            except CannotConnect:
+                _errors["base"] = "cannot_connect"
+            except InvalidHost:
+                _errors[CONF_HOST] = "invalid_host"
+            except InvalidMacAddress:
+                _errors[CONF_MAC] = "invalid_macaddress"
+                _errors[CONF_TYDOM_PASSWORD] = "invalid_password"
+            except InvalidRefreshInterval:
+                 _errors[CONF_REFRESH_INTERVAL] = "invalid_refresh_interval"
+            except InvalidZoneHome:
+                _errors[CONF_ZONES_HOME] = "invalid_zone_config"
+            except InvalidZoneAway:
+                _errors[CONF_ZONES_AWAY] = "invalid_zone_config"
+            except TydomClientApiClientCommunicationError:
+                traceback.print_exc()
+                _errors["base"] = "communication_error"
+            except TydomClientApiClientAuthenticationError:
+                traceback.print_exc()
+                _errors["base"] = "authentication_error"
+            except TydomClientApiClientError:
+                traceback.print_exc()
+                _errors["base"] = "unknown"
+
+            except Exception:  # pylint: disable=broad-except
+                traceback.print_exc()
+                LOGGER.exception("Unexpected exception")
+                _errors["base"] = "unknown"
+            else:
+                await self.async_set_unique_id(user_input[CONF_MAC])
+                self._abort_if_unique_id_configured()
+
+                return self.async_create_entry(
+                    title="Tydom-" + user_input[CONF_MAC][6:], data=user_input
+                )
+
+        user_input = user_input or {}
+        return self.async_show_form(
+            step_id="discovery_confirm_manual",
+            description_placeholders={"name": self._name},
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_HOST, default=user_input.get(CONF_HOST, self._discovered_host)): str,
+                    vol.Required(CONF_MAC, default=user_input.get(CONF_MAC, self._discovered_mac)): str,
+                    vol.Required(
+                        CONF_TYDOM_PASSWORD, default=user_input.get(CONF_TYDOM_PASSWORD)
+                    ): cv.string,
+                    vol.Required(CONF_REFRESH_INTERVAL, default=user_input.get(CONF_REFRESH_INTERVAL, "30")): str,
+                    vol.Optional(CONF_ZONES_HOME, default=user_input.get(CONF_ZONES_HOME, "")): str,
+                    vol.Optional(CONF_ZONES_AWAY, default=user_input.get(CONF_ZONES_AWAY, "")): str,
+                    vol.Optional(CONF_PIN, default=user_input.get(CONF_PIN, "")): str,
+                }
+            ),
+        )
+    
+    async def async_step_discovery_confirm_cloud(self, user_input=None):
+        """Confirm discovery."""
+        _errors = {}
+        if user_input is not None:
+            try:
+                user_input = await validate_input(self.hass, True, user_input)
                 # Ensure it's working as expected
                 tydom_hub = hub.Hub(
                     self.hass,
@@ -326,7 +565,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         user_input = user_input or {}
         return self.async_show_form(
-            step_id="discovery_confirm",
+            step_id="discovery_confirm_cloud",
             description_placeholders={"name": self._name},
             data_schema=vol.Schema(
                 {
