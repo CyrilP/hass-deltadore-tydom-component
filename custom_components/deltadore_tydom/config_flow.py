@@ -417,7 +417,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         else:
             user_input = user_input or {}
             return self.async_show_form(
-                step_id="user",
+                step_id="discovery_confirm",
                 data_schema=vol.Schema(
                     {
                         vol.Required(CONF_CONFIG_MODE, default=user_input.get(CONF_CONFIG_MODE),): selector.SelectSelector(
