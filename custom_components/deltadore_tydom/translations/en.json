@@ -1,28 +1,57 @@
 {
     "config": {
         "step": {
-            "user": {
+            "user_manual": {
                 "title": "Delta Dore Tydom Configuration",
                 "description": "If you need help with the configuration go to: https://github.com/CyrilP/hass-deltadore-tydom-component",
                 "data": {
-                    "host": "IP or hostname",
+                    "host": "Tydom or mediation IP/hostname",
                     "mac": "MAC address",
-                    "email": "Email",
-                    "password": "Password",
+                    "password": "Tydom password",
+                    "tydom_password": "Tydom password",
                     "refresh_interval": "Refresh interval in min",
                     "zones_away": "Active zones in away alarm mode",
                     "zones_home": "Active zones in home alarm mode",
                     "pin": "Alarm PIN"
                 }
             },
-            "discovery_confirm": {
+            "user_cloud": {
                 "title": "Delta Dore Tydom Configuration",
                 "description": "If you need help with the configuration go to: https://github.com/CyrilP/hass-deltadore-tydom-component",
                 "data": {
-                    "host": "IP or hostname",
+                    "host": "Tydom or mediation IP/hostname",
                     "mac": "MAC address",
-                    "email": "Email",
-                    "password": "Password",
+                    "email": "Cloud account email",
+                    "password": "Cloud account password",
+                    "tydom_password": "Tydom password",
+                    "refresh_interval": "Refresh interval in min",
+                    "zones_away": "Active zones in away alarm mode",
+                    "zones_home": "Active zones in home alarm mode",
+                    "pin": "Alarm PIN"
+                }
+            },
+            "discovery_confirm_manual": {
+                "title": "Delta Dore Tydom Configuration",
+                "description": "If you need help with the configuration go to: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "data": {
+                    "host": "Tydom or mediation IP/hostname",
+                    "mac": "MAC address",
+                    "email": "Cloud account email",
+                    "tydom_password": "Tydom password",
+                    "refresh_interval": "Refresh interval in min",
+                    "zones_away": "Active zones in away alarm mode",
+                    "zones_home": "Active zones in home alarm mode",
+                    "pin": "Alarm PIN"
+                }
+            },
+            "discovery_confirm_cloud": {
+                "title": "Delta Dore Tydom Configuration",
+                "description": "If you need help with the configuration go to: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "data": {
+                    "host": "Tydom or mediation IP/hostname",
+                    "mac": "MAC address",
+                    "email": "Cloud account email",
+                    "password": "Cloud account password",
                     "refresh_interval": "Refresh interval in min",
                     "zones_away": "Active zones in away alarm mode",
                     "zones_home": "Active zones in home alarm mode",
@@ -64,6 +93,14 @@
         "error": {
             "invalid_refresh_interval": "Refresh interval is not valid",
             "invalid_zone_config": "Zone configuration is invalid. syntax is : zone_id_1,zone_id_2... Example: 1,2,4"
+        }
+    },
+    "selector": {
+        "config_mode": {
+            "options": {
+                "tydom_cloud_account": "Retrieve Tydom credentials using Delta Dore cloud account",
+                "tydom_credentials": "Enter Tydom credentials manually"
+            }
         }
     }
 }

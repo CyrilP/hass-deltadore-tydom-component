@@ -12,3 +12,7 @@ CONF_TYDOM_PASSWORD = "tydom_password"
 CONF_REFRESH_INTERVAL= "refresh_interval"
 CONF_ZONES_HOME = "zones_home"
 CONF_ZONES_AWAY = "zones_away"
+CONF_CONFIG_MODE = "config_mode"
+
+CONF_CLOUD_MODE = "tydom_cloud_account"
+CONF_MANUAL_MODE = "tydom_credentials"
