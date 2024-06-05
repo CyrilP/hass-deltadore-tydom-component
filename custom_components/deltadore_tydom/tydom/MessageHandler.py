@@ -149,6 +149,8 @@ class MessageHandler:
             msg_type = "msg_scenarios"
         elif "/devices/install" in http_request_line:
             msg_type = "msg_pairing"
+        elif "/events" in http_request_line:
+            msg_type = "msg_event"
         elif "/ping" in uri_origin:
             msg_type = "msg_ping"
         elif data != "" and "cdata" in data:
@@ -184,6 +186,10 @@ class MessageHandler:
                 elif msg_type == "msg_metadata":
                     parsed = json.loads(data)
                     return await self.parse_devices_metadata(parsed=parsed)
+
+                elif msg_type == "msg_event":
+                    LOGGER.debug("Event message, refreshing...")
+                    await self.tydom_client.get_devices_data()
 
                 elif msg_type == "msg_html":
                     LOGGER.debug("HTML Response ?")
