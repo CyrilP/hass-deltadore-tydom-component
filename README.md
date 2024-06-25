@@ -40,6 +40,7 @@ Platform | Description
 - TYXIA 6610
 - BSO
 - Naviclim Atlantic 875311
+- RF 6600 FP : partial issue #92
 
 Some other functions may also work or only report attributes.
 
