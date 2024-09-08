@@ -832,7 +832,6 @@ class HaDoor(LockEntity, HAEntity):
         else:
             raise AttributeError("The required attributes 'openState' or 'intrusionDetect' are not available in the device.")
 
-
 class HaGate(CoverEntity, HAEntity):
     """Representation of a Gate."""
 
