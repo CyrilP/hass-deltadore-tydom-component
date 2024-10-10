@@ -281,13 +281,17 @@ class TydomClient:
                 "Something really wrong happened!"
             ) from exception
 
+    async def disconnect(self):
+        """Disconnect from Typom."""
+        await self._connection.close()
+
     async def listen_tydom(self, connection: ClientWebSocketResponse):
         """Listen for Tydom messages."""
         LOGGER.info("Listen for Tydom messages")
         self._connection = connection
         await self.ping()
         await self.get_info()
-        # await self.put_api_mode()
+        await self.put_api_mode()
         # await self.get_geoloc()
         # await self.get_local_claim()
         # await self.get_devices_meta()
