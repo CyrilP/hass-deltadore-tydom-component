@@ -39,12 +39,9 @@ from homeassistant.util.percentage import (
     percentage_to_ranged_value,
     ranged_value_to_percentage,
 )
-from homeassistant.components.alarm_control_panel import AlarmControlPanelEntityFeature
-from homeassistant.const import (
-    STATE_ALARM_ARMED_AWAY,
-    STATE_ALARM_ARMED_HOME,
-    STATE_ALARM_DISARMED,
-    STATE_ALARM_TRIGGERED,
+from homeassistant.components.alarm_control_panel import (
+    AlarmControlPanelEntityFeature,
+    AlarmControlPanelState,
 )
 
 from .tydom.tydom_devices import (
@@ -991,38 +988,38 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         )
 
     @property
+    def alarm_state(self):
+        """Return the alarm state"""
+        # alarmMode :  "OFF", "ON", "TEST", "ZONE", "MAINTENANCE"
+        # alarmState: "OFF", "DELAYED", "ON", "QUIET"
+        if self._device.alarmMode == "MAINTENANCE":
+            return AlarmControlPanelState.DISARMED
+
+        match self._device.alarmMode:
+            case "MAINTENANCE":
+                return AlarmControlPanelState.DISARMED
+            case "OFF":
+                return AlarmControlPanelState.DISARMED
+            case "ON":
+                if self._device.alarmState == "OFF":
+                    return AlarmControlPanelState.ARMED_AWAY
+                else:
+                    return AlarmControlPanelState.TRIGGERED
+            case "ZONE" | "PART":
+                if self._device.alarmState == "OFF":
+                    return AlarmControlPanelState.ARMED_HOME
+                else:
+                    return AlarmControlPanelState.TRIGGERED
+            case _:
+                return AlarmControlPanelState.TRIGGERED
+
+    @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
         return {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
         }
-
-    @property
-    def state(self) -> str | None:
-        """Return the state of the device."""
-        # alarmMode :  "OFF", "ON", "TEST", "ZONE", "MAINTENANCE"
-        # alarmState: "OFF", "DELAYED", "ON", "QUIET"
-        if self._device.alarmMode == "MAINTENANCE":
-            return STATE_ALARM_DISARMED
-
-        match self._device.alarmMode:
-            case "MAINTENANCE":
-                return STATE_ALARM_DISARMED
-            case "OFF":
-                return STATE_ALARM_DISARMED
-            case "ON":
-                if self._device.alarmState == "OFF":
-                    return STATE_ALARM_ARMED_AWAY
-                else:
-                    return STATE_ALARM_TRIGGERED
-            case "ZONE" | "PART":
-                if self._device.alarmState == "OFF":
-                    return STATE_ALARM_ARMED_HOME
-                else:
-                    return STATE_ALARM_TRIGGERED
-            case _:
-                return STATE_ALARM_TRIGGERED
 
     async def async_alarm_disarm(self, code=None) -> None:
         """Send disarm command."""
