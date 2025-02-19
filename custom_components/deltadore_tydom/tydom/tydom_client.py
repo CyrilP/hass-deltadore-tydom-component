@@ -212,7 +212,8 @@ class TydomClient:
         }
 
         # configuration needed for local mode
-        sslcontext = ssl.create_default_context()
+        #- Wrap slow blocking call flagged by HA
+        sslcontext = await asyncio.to_thread(ssl.create_default_context)
         sslcontext.options |= 0x4  # OP_LEGACY_SERVER_CONNECT
         sslcontext.check_hostname = False
         sslcontext.verify_mode = ssl.CERT_NONE
