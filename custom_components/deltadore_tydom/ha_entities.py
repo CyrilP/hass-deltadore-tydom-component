@@ -821,8 +821,13 @@ class HaDoor(LockEntity, HAEntity):
 
     @property
     def is_locked(self) -> bool:
-        """Return if the door is closed."""
-        return self._device.openState == "LOCKED"
+        """Return if the door is locked."""
+        if hasattr(self._device, 'openState'):
+            return self._device.openState == "LOCKED"
+        elif hasattr(self._device, 'intrusionDetect'):
+            return not self._device.intrusionDetect
+        else:
+            raise AttributeError("The required attributes 'openState' or 'intrusionDetect' are not available in the device.")
 
 class HaGate(CoverEntity, HAEntity):
     """Representation of a Gate."""
