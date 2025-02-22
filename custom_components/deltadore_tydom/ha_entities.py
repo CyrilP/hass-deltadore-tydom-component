@@ -990,11 +990,12 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
             self.supported_features
             | AlarmControlPanelEntityFeature.ARM_AWAY
             | AlarmControlPanelEntityFeature.ARM_HOME
+            | AlarmControlPanelEntityFeature.TRIGGER
         )
 
     @property
     def alarm_state(self):
-        """Return the alarm state"""
+        """Return the alarm state."""
         # alarmMode :  "OFF", "ON", "TEST", "ZONE", "MAINTENANCE"
         # alarmState: "OFF", "DELAYED", "ON", "QUIET"
         if self._device.alarmMode == "MAINTENANCE":
@@ -1037,3 +1038,7 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
     async def async_alarm_arm_home(self, code=None) -> None:
         """Send arm home command."""
         await self._device.alarm_arm_home(code)
+
+    async def async_alarm_trigger(self, code=None) -> None:
+        """Send alarm trigger command."""
+        await self._device.alarm_trigger(code)
