@@ -95,6 +95,11 @@ class TydomClient:
             tydom_client=self, cmd_prefix=self._cmd_prefix
         )
 
+    @property
+    def alarm_events_msg(self) -> asyncio.Queue:
+        """Queue of requested alarm events."""
+        return self._message_handler.alarm_events_msg
+
     def update_config(self, zone_home, zone_away):
         """Update zones configuration."""
         self._zone_home = zone_home
@@ -310,7 +315,7 @@ class TydomClient:
         await self.get_scenarii()
 
     async def consume_messages(self):
-        """Read and parse incomming messages."""
+        """Read and parse incoming messages."""
         global file_lines, file_mode, file_index
         if file_mode:
             if (len(file_lines) > file_index):
@@ -331,7 +336,7 @@ class TydomClient:
 
             msg = await self._connection.receive()
             LOGGER.info(
-                "Incomming message - type : %s - message : %s", msg.type, msg.data
+                "Incoming message - type : %s - message : %s", msg.type, msg.data
             )
 
             if msg.type == WSMsgType.CLOSE or msg.type == WSMsgType.CLOSED or msg.type == WSMsgType.CLOSING:
@@ -705,6 +710,26 @@ class TydomClient:
                 LOGGER.error(a_bytes)
         except BaseException:
             LOGGER.error("put_alarm_cdata ERROR !", exc_info=True)
+
+    async def put_ackevents_cdata(self, device_id, endpoint_id=None, alarm_pin=None):
+        """Acknowledge the alarm events."""
+        # PUT /devices/xxxx/endpoints/xxxx/cdata?name=ackEventCmd HTTP/1.1 {"pwd":"xxxxxx"}
+        pwd = alarm_pin or self._alarm_pin
+        if pwd is None:
+            LOGGER.warning("Tydom alarm pin is not set!")
+        await self.put_data(
+            f"/devices/{device_id}/endpoints/{endpoint_id}/cdata?name=ackEventCmd",
+            "pwd",
+            str(pwd)
+        )
+
+    async def get_historic_cdata(self, device_id, endpoint_id, event_type=None):
+        """Get historical events."""
+        # GET /devices/xxxx/endpoints/xxxx/cdata?name=histo&type=ALL&indexStart=0&nbElem=10
+        type_ = event_type or "ALL"
+        # FIXME deal with start and nb elements
+        msg = f"/devices/{device_id}/endpoints/{endpoint_id}/cdata?name=histo&type={type_}&indexStart=0&nbElem=10"
+        await self.send_message("GET", msg)
 
     async def update_firmware(self):
         """Update Tydom firmware."""
