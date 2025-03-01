@@ -902,7 +902,7 @@ class HaLight(LightEntity, HAEntity):
     sensor_classes = {
         "thermic_defect": BinarySensorDeviceClass.PROBLEM,
     }
-    color_mode = set()
+    color_mode = None
     supported_color_modes = set()
 
     BRIGHTNESS_SCALE = (0, 255)
@@ -916,10 +916,10 @@ class HaLight(LightEntity, HAEntity):
         self._attr_name = self._device.device_name
         self._registered_sensors = []
         if "level" in self._device._metadata:
-            self.color_mode.add(ColorMode.BRIGHTNESS)
+            self.color_mode = ColorMode.BRIGHTNESS
             self.supported_color_modes.add(ColorMode.BRIGHTNESS)
         else:
-            self.color_mode.add(ColorMode.ONOFF)
+            self.color_mode = ColorMode.ONOFF
             self.supported_color_modes.add(ColorMode.ONOFF)
 
     @property
