@@ -2,9 +2,11 @@
 
 import asyncio
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from ..const import LOGGER
-from .tydom_client import TydomClient
+
+if TYPE_CHECKING:
+    from .tydom_client import TydomClient
 
 
 class TydomDevice:
