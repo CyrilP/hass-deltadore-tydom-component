@@ -1,6 +1,7 @@
 {
     "name": "Delta Dore Tydom",
     "country": "FR",
+    "hacs": "2.0.1",
     "homeassistant": "2024.11.0",
     "render_readme": true
 }
