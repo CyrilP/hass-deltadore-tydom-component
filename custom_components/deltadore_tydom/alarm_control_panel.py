@@ -5,7 +5,7 @@ from __future__ import annotations
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, SupportsResponse
 from homeassistant.helpers.entity_platform import (
     AddEntitiesCallback,
     async_get_current_platform,
@@ -44,4 +44,5 @@ async def async_setup_entry(
             vol.Optional("event_type"): vol.Any("ALL", "EVENTS", "ON_OFF", "UNACKED_EVENTS"),
         },
         "async_get_events",
+        supports_response=SupportsResponse.ONLY,
     )
