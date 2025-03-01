@@ -994,7 +994,7 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
 
     @property
     def alarm_state(self):
-        """Return the alarm state"""
+        """Return the alarm state."""
         # alarmMode :  "OFF", "ON", "TEST", "ZONE", "MAINTENANCE"
         # alarmState: "OFF", "DELAYED", "ON", "QUIET"
         if self._device.alarmMode == "MAINTENANCE":
