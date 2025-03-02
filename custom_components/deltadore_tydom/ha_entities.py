@@ -654,7 +654,7 @@ class HaClimate(ClimateEntity, HAEntity):
             | ClimateEntityFeature.TARGET_TEMPERATURE
         )
 
-        if  "NORMAL" in self._device._metadata["thermicLevel"] or "AUTO" in self._device._metadata["thermicLevel"]:
+        if hasattr(self._device._metadata, "thermicLevel") and ("NORMAL" in self._device._metadata["thermicLevel"] or "AUTO" in self._device._metadata["thermicLevel"]):
             self.dict_modes_ha_to_dd[HVACMode.HEAT] = "AUTO"
 
         # self._attr_preset_modes = ["NORMAL", "STOP", "ANTI_FROST"]
