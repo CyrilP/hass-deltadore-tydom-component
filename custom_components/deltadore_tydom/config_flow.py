@@ -14,7 +14,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries, exceptions
 from homeassistant.const import CONF_NAME, CONF_HOST, CONF_MAC, CONF_EMAIL, CONF_PASSWORD, CONF_PIN
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.components import dhcp
+from homeassistant.helpers.service_info import dhcp
 
 from .const import DOMAIN, LOGGER, CONF_TYDOM_PASSWORD, CONF_ZONES_HOME, CONF_ZONES_AWAY, CONF_REFRESH_INTERVAL, CONF_CONFIG_MODE, CONF_CLOUD_MODE, CONF_MANUAL_MODE
 from . import hub
