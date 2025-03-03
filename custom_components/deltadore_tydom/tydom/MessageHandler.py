@@ -298,7 +298,7 @@ class MessageHandler:
                 return TydomSmoke(
                     tydom_client, uid, device_id, name, last_usage, endpoint, device_metadata[uid], data
                 )
-            case "boiler" | "sh_hvac" | "electric" | "aeraulic":
+            case "boiler" | "sh_hvac" | "electric" | "aeraulic" | "sh_hvac":
                 return TydomBoiler(
                     tydom_client, uid, device_id, name, last_usage, endpoint, device_metadata[uid], data
                 )
@@ -345,7 +345,10 @@ class MessageHandler:
             ):
                 pass
 
-            if i["last_usage"] == "boiler" or i["last_usage"] == "conso":
+            if (i["last_usage"] == "boiler"
+                or i["last_usage"] == "conso"
+                or i["last_usage"] == "sh_hvac"
+            ):
                 pass
             if i["last_usage"] == "alarm":
                 device_name[device_unique_id] = "Tyxal Alarm"
