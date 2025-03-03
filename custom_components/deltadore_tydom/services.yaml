@@ -1,7 +1,9 @@
 acknowledge_events:
   target:
-    device:
-      integration: deltadore_tydom
+    entity:
+      filter:
+        - integration: deltadore_tydom
+          domain: alarm_control_panel
   fields:
     code:
       selector:
@@ -9,10 +11,12 @@ acknowledge_events:
           type: password
 get_events:
   target:
-    device:
-      integration: deltadore_tydom
+    entity:
+      filter:
+        - integration: deltadore_tydom
+          domain: alarm_control_panel
   fields:
-    type:
+    event_type:
       selector:
         select:
           options:
