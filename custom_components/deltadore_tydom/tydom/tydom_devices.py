@@ -328,3 +328,10 @@ class TydomAlarm(TydomDevice):
         """Arm home alarm."""
         await self._tydom_client.put_alarm_cdata(self._id, self._endpoint, code, "ON", self._tydom_client._zone_home, self.is_legacy_alarm())
         # self._tydom_client.add_poll_device_url_1s(f"/devices/{self._id}/endpoints/{self._endpoint}/cdata")
+
+    async def alarm_trigger(self, code=None) -> None:
+        """Trigger the alarm.
+
+        This will trigger a SOS alarm for 90 seconds.
+        """
+        await self._tydom_client.put_alarm_cdata(self._id, self._endpoint, code, "PANIC", None, self.is_legacy_alarm())
