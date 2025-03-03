@@ -102,5 +102,27 @@
                 "tydom_credentials": "Enter Tydom credentials manually"
             }
         }
+    },
+    "services": {
+        "acknowledge_events": {
+            "name": "Acknowledge defect events",
+            "description": "Acknowledge all defect alarm events.",
+            "fields": {
+                "code": {
+                    "name": "Alarm pin code",
+                    "description": "Alarm pin code"
+                }
+            }
+        },
+        "get_events": {
+            "name": "Get alarm events",
+            "description": "Get alarm events",
+            "fields": {
+                "event_type": {
+                    "name": "Event type",
+                    "description": "Alarm event type"
+                }
+            }
+        }
     }
 }
