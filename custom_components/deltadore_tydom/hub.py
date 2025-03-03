@@ -1,4 +1,5 @@
 """A demonstration 'hub' that connects several devices."""
+
 from __future__ import annotations
 
 import asyncio
@@ -36,6 +37,7 @@ from .ha_entities import (
 
 from .const import LOGGER
 
+
 class Hub:
     """Hub for Delta Dore Tydom."""
 
@@ -61,7 +63,7 @@ class Hub:
         self._host = host
         self._mac = mac
         self._pass = password
-        self._refresh_interval = int(refresh_interval)*60
+        self._refresh_interval = int(refresh_interval) * 60
         self._zone_home = zone_home
         self._zone_away = zone_away
         self._pin = alarmpin
@@ -85,8 +87,8 @@ class Hub:
             mac=self._mac,
             host=self._host,
             password=self._pass,
-            zone_home = self._zone_home,
-            zone_away = self._zone_away,
+            zone_home=self._zone_home,
+            zone_away=self._zone_away,
             alarm_pin=self._pin,
             event_callback=self.handle_event,
         )
@@ -96,7 +98,7 @@ class Hub:
     def update_config(self, refresh_interval, zone_home, zone_away):
         """Update zone configuration."""
         self._tydom_client.update_config(zone_home, zone_away)
-        self._refresh_interval = int(refresh_interval)*60
+        self._refresh_interval = int(refresh_interval) * 60
         self._zone_home = zone_home
         self._zone_away = zone_away
 
@@ -129,12 +131,19 @@ class Hub:
     def ready(self) -> bool:
         """Check if we're ready to work."""
         # and self.add_alarm_callback is not None
-        return self.add_cover_callback is not None and self.add_sensor_callback is not None and self.add_climate_callback is not None and self.add_light_callback is not None and self.add_lock_callback is not None and self.add_update_callback is not None and self.add_alarm_callback is not None
-
+        return (
+            self.add_cover_callback is not None
+            and self.add_sensor_callback is not None
+            and self.add_climate_callback is not None
+            and self.add_light_callback is not None
+            and self.add_lock_callback is not None
+            and self.add_update_callback is not None
+            and self.add_alarm_callback is not None
+        )
 
     async def setup(self, connection: ClientWebSocketResponse) -> None:
         """Listen to tydom events."""
-        # wait for callbacks to become available
+        # wait for callbacks to become available
         while not self.ready():
             await asyncio.sleep(1)
         LOGGER.debug("Listen to tydom events")
@@ -155,7 +164,7 @@ class Hub:
                             self.devices[device.device_id], device
                         )
 
-    async def create_ha_device(self, device):
+    async def create_ha_device(self, device):  # noqa: C901 too complex (34 > 25)
         """Create a new HA device."""
         match device:
             case Tydom():
@@ -313,9 +322,8 @@ class Hub:
     async def refresh_data(self) -> None:
         """Periodically refresh data for devices which don't do push."""
         while True:
-            if(self._refresh_interval > 0):
+            if self._refresh_interval > 0:
                 await self._tydom_client.poll_devices_data_5m()
                 await asyncio.sleep(self._refresh_interval)
             else:
                 await asyncio.sleep(60)
-

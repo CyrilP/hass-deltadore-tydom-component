@@ -1,4 +1,5 @@
 """Config flow for Tydom integration."""
+
 from __future__ import annotations
 import traceback
 import ipaddress
@@ -12,11 +13,28 @@ from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries, exceptions
-from homeassistant.const import CONF_NAME, CONF_HOST, CONF_MAC, CONF_EMAIL, CONF_PASSWORD, CONF_PIN
+from homeassistant.const import (
+    CONF_NAME,
+    CONF_HOST,
+    CONF_MAC,
+    CONF_EMAIL,
+    CONF_PASSWORD,
+    CONF_PIN,
+)
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.components import dhcp
 
-from .const import DOMAIN, LOGGER, CONF_TYDOM_PASSWORD, CONF_ZONES_HOME, CONF_ZONES_AWAY, CONF_REFRESH_INTERVAL, CONF_CONFIG_MODE, CONF_CLOUD_MODE, CONF_MANUAL_MODE
+from .const import (
+    DOMAIN,
+    LOGGER,
+    CONF_TYDOM_PASSWORD,
+    CONF_ZONES_HOME,
+    CONF_ZONES_AWAY,
+    CONF_REFRESH_INTERVAL,
+    CONF_CONFIG_MODE,
+    CONF_CLOUD_MODE,
+    CONF_MANUAL_MODE,
+)
 from . import hub
 from .tydom.tydom_client import (
     TydomClientApiClientCommunicationError,
@@ -37,6 +55,7 @@ DATA_SCHEMA = vol.Schema(
     }
 )
 
+
 def host_valid(host) -> bool:
     """Return True if hostname or IP address is valid."""
     try:
@@ -46,18 +65,26 @@ def host_valid(host) -> bool:
         disallowed = re.compile(r"[^a-zA-Z\d\-]")
         return all(x and not disallowed.search(x) for x in host.split("."))
 
-email_regex = re.compile(r"([A-Za-z0-9]+[.-_])*[A-Za-z0-9]+@[A-Za-z0-9-]+(\.[A-Z|a-z]{2,})+")
+
+email_regex = re.compile(
+    r"([A-Za-z0-9]+[.-_])*[A-Za-z0-9]+@[A-Za-z0-9-]+(\.[A-Z|a-z]{2,})+"
+)
 zones_regex = re.compile(r"^$|^[0-8](,[0-8]){0,7}$")
+
 
 def email_valid(email) -> bool:
     """Return True if email is valid."""
     return re.fullmatch(email_regex, email)
 
+
 def zones_valid(zones) -> bool:
     """Return True if zone config is valid."""
     return re.fullmatch(zones_regex, zones)
 
-async def validate_input(hass: HomeAssistant, cloud: bool, data: dict) -> dict[str, Any]:
+
+async def validate_input(
+    hass: HomeAssistant, cloud: bool, data: dict
+) -> dict[str, Any]:
     """Validate the user input allows us to connect.
 
     Data has the keys from DATA_SCHEMA with values provided by the user.
@@ -156,11 +183,20 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 step_id="user",
                 data_schema=vol.Schema(
                     {
-                        vol.Required(CONF_CONFIG_MODE, default=user_input.get(CONF_CONFIG_MODE),): selector.SelectSelector(
-                            selector.SelectSelectorConfig(options=[
-                                    selector.SelectOptionDict(value=CONF_CLOUD_MODE, label=CONF_CLOUD_MODE),
-                                    selector.SelectOptionDict(value=CONF_MANUAL_MODE, label=CONF_MANUAL_MODE)],
-                                translation_key=CONF_CONFIG_MODE
+                        vol.Required(
+                            CONF_CONFIG_MODE,
+                            default=user_input.get(CONF_CONFIG_MODE),
+                        ): selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=[
+                                    selector.SelectOptionDict(
+                                        value=CONF_CLOUD_MODE, label=CONF_CLOUD_MODE
+                                    ),
+                                    selector.SelectOptionDict(
+                                        value=CONF_MANUAL_MODE, label=CONF_MANUAL_MODE
+                                    ),
+                                ],
+                                translation_key=CONF_CONFIG_MODE,
                             ),
                         ),
                     }
@@ -282,7 +318,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=_errors,
         )
 
-    async def async_step_user_manual(self, user_input=None) -> config_entries.FlowResult:
+    async def async_step_user_manual(
+        self, user_input=None
+    ) -> config_entries.FlowResult:
         """Handle the manual connection step."""
         # This goes through the steps to take the user through the setup process.
         # Using this it is possible to update the UI and prompt for additional
@@ -420,11 +458,20 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 step_id="discovery_confirm",
                 data_schema=vol.Schema(
                     {
-                        vol.Required(CONF_CONFIG_MODE, default=user_input.get(CONF_CONFIG_MODE),): selector.SelectSelector(
-                            selector.SelectSelectorConfig(options=[
-                                    selector.SelectOptionDict(value=CONF_CLOUD_MODE, label=CONF_CLOUD_MODE),
-                                    selector.SelectOptionDict(value=CONF_MANUAL_MODE, label=CONF_MANUAL_MODE)],
-                                translation_key=CONF_CONFIG_MODE
+                        vol.Required(
+                            CONF_CONFIG_MODE,
+                            default=user_input.get(CONF_CONFIG_MODE),
+                        ): selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=[
+                                    selector.SelectOptionDict(
+                                        value=CONF_CLOUD_MODE, label=CONF_CLOUD_MODE
+                                    ),
+                                    selector.SelectOptionDict(
+                                        value=CONF_MANUAL_MODE, label=CONF_MANUAL_MODE
+                                    ),
+                                ],
+                                translation_key=CONF_CONFIG_MODE,
                             ),
                         ),
                     }
@@ -460,7 +507,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _errors[CONF_MAC] = "invalid_macaddress"
                 _errors[CONF_TYDOM_PASSWORD] = "invalid_password"
             except InvalidRefreshInterval:
-                 _errors[CONF_REFRESH_INTERVAL] = "invalid_refresh_interval"
+                _errors[CONF_REFRESH_INTERVAL] = "invalid_refresh_interval"
             except InvalidZoneHome:
                 _errors[CONF_ZONES_HOME] = "invalid_zone_config"
             except InvalidZoneAway:
@@ -493,14 +540,26 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders={"name": self._name},
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_HOST, default=user_input.get(CONF_HOST, self._discovered_host)): str,
-                    vol.Required(CONF_MAC, default=user_input.get(CONF_MAC, self._discovered_mac)): str,
+                    vol.Required(
+                        CONF_HOST,
+                        default=user_input.get(CONF_HOST, self._discovered_host),
+                    ): str,
+                    vol.Required(
+                        CONF_MAC, default=user_input.get(CONF_MAC, self._discovered_mac)
+                    ): str,
                     vol.Required(
                         CONF_TYDOM_PASSWORD, default=user_input.get(CONF_TYDOM_PASSWORD)
                     ): cv.string,
-                    vol.Required(CONF_REFRESH_INTERVAL, default=user_input.get(CONF_REFRESH_INTERVAL, "30")): str,
-                    vol.Optional(CONF_ZONES_HOME, default=user_input.get(CONF_ZONES_HOME, "")): str,
-                    vol.Optional(CONF_ZONES_AWAY, default=user_input.get(CONF_ZONES_AWAY, "")): str,
+                    vol.Required(
+                        CONF_REFRESH_INTERVAL,
+                        default=user_input.get(CONF_REFRESH_INTERVAL, "30"),
+                    ): str,
+                    vol.Optional(
+                        CONF_ZONES_HOME, default=user_input.get(CONF_ZONES_HOME, "")
+                    ): str,
+                    vol.Optional(
+                        CONF_ZONES_AWAY, default=user_input.get(CONF_ZONES_AWAY, "")
+                    ): str,
                     vol.Optional(CONF_PIN, default=user_input.get(CONF_PIN, "")): str,
                 }
             ),
@@ -537,7 +596,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except InvalidPassword:
                 _errors[CONF_PASSWORD] = "invalid_password"
             except InvalidRefreshInterval:
-                 _errors[CONF_REFRESH_INTERVAL] = "invalid_refresh_interval"
+                _errors[CONF_REFRESH_INTERVAL] = "invalid_refresh_interval"
             except InvalidZoneHome:
                 _errors[CONF_ZONES_HOME] = "invalid_zone_config"
             except InvalidZoneAway:
@@ -570,17 +629,29 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders={"name": self._name},
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_HOST, default=user_input.get(CONF_HOST, self._discovered_host)): str,
-                    vol.Required(CONF_MAC, default=user_input.get(CONF_MAC, self._discovered_mac)): str,
+                    vol.Required(
+                        CONF_HOST,
+                        default=user_input.get(CONF_HOST, self._discovered_host),
+                    ): str,
+                    vol.Required(
+                        CONF_MAC, default=user_input.get(CONF_MAC, self._discovered_mac)
+                    ): str,
                     vol.Required(
                         CONF_EMAIL, default=user_input.get(CONF_EMAIL)
                     ): cv.string,
                     vol.Required(
                         CONF_PASSWORD, default=user_input.get(CONF_PASSWORD)
                     ): cv.string,
-                    vol.Required(CONF_REFRESH_INTERVAL, default=user_input.get(CONF_REFRESH_INTERVAL, "30")): str,
-                    vol.Optional(CONF_ZONES_HOME, default=user_input.get(CONF_ZONES_HOME, "")): str,
-                    vol.Optional(CONF_ZONES_AWAY, default=user_input.get(CONF_ZONES_AWAY, "")): str,
+                    vol.Required(
+                        CONF_REFRESH_INTERVAL,
+                        default=user_input.get(CONF_REFRESH_INTERVAL, "30"),
+                    ): str,
+                    vol.Optional(
+                        CONF_ZONES_HOME, default=user_input.get(CONF_ZONES_HOME, "")
+                    ): str,
+                    vol.Optional(
+                        CONF_ZONES_AWAY, default=user_input.get(CONF_ZONES_AWAY, "")
+                    ): str,
                     vol.Optional(CONF_PIN, default=user_input.get(CONF_PIN, "")): str,
                 }
             ),
@@ -602,9 +673,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Initialize options flow."""
         self.config_entry = config_entry
 
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Manage the options."""
         _errors = {}
         default_zone_home = ""
@@ -625,10 +694,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             default_refresh_interval = user_input.get(CONF_REFRESH_INTERVAL, "30")
 
             try:
-                if CONF_ZONES_HOME in user_input and not zones_valid(user_input[CONF_ZONES_HOME]):
+                if CONF_ZONES_HOME in user_input and not zones_valid(
+                    user_input[CONF_ZONES_HOME]
+                ):
                     raise InvalidZoneHome
 
-                if CONF_ZONES_AWAY in user_input and not zones_valid(user_input[CONF_ZONES_AWAY]):
+                if CONF_ZONES_AWAY in user_input and not zones_valid(
+                    user_input[CONF_ZONES_AWAY]
+                ):
                     raise InvalidZoneAway
 
                 try:
@@ -640,13 +713,17 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 user_input[CONF_MAC] = self.config_entry.data[CONF_MAC]
                 user_input[CONF_EMAIL] = self.config_entry.data[CONF_EMAIL]
                 user_input[CONF_PASSWORD] = self.config_entry.data[CONF_PASSWORD]
-                user_input[CONF_TYDOM_PASSWORD] = self.config_entry.data[CONF_TYDOM_PASSWORD]
+                user_input[CONF_TYDOM_PASSWORD] = self.config_entry.data[
+                    CONF_TYDOM_PASSWORD
+                ]
                 user_input[CONF_PIN] = self.config_entry.data[CONF_PIN]
                 user_input[CONF_ZONES_HOME] = default_zone_home
                 user_input[CONF_ZONES_AWAY] = default_zone_away
 
                 self.hass.config_entries.async_update_entry(
-                    self.config_entry, data=user_input, options=self.config_entry.options
+                    self.config_entry,
+                    data=user_input,
+                    options=self.config_entry.options,
                 )
                 return self.async_create_entry(title="", data={})
 
@@ -665,34 +742,51 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             step_id="init",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_REFRESH_INTERVAL, description={"suggested_value": default_refresh_interval}): str,
-                    vol.Optional(CONF_ZONES_HOME, description={"suggested_value": default_zone_home}): str,
-                    vol.Optional(CONF_ZONES_AWAY, description={"suggested_value": default_zone_away}): str,
+                    vol.Required(
+                        CONF_REFRESH_INTERVAL,
+                        description={"suggested_value": default_refresh_interval},
+                    ): str,
+                    vol.Optional(
+                        CONF_ZONES_HOME,
+                        description={"suggested_value": default_zone_home},
+                    ): str,
+                    vol.Optional(
+                        CONF_ZONES_AWAY,
+                        description={"suggested_value": default_zone_away},
+                    ): str,
                 }
             ),
             errors=_errors,
         )
 
+
 class CannotConnect(exceptions.HomeAssistantError):
     """Error to indicate we cannot connect."""
+
 
 class InvalidHost(exceptions.HomeAssistantError):
     """Error to indicate there is an invalid hostname."""
 
+
 class InvalidMacAddress(exceptions.HomeAssistantError):
     """Error to indicate there is an invalid Mac address."""
+
 
 class InvalidEmail(exceptions.HomeAssistantError):
     """Error to indicate there is an invalid Email."""
 
+
 class InvalidPassword(exceptions.HomeAssistantError):
     """Error to indicate there is an invalid Password."""
+
 
 class InvalidZoneHome(exceptions.HomeAssistantError):
     """Error to indicate the Zones Home config is not valid."""
 
+
 class InvalidZoneAway(exceptions.HomeAssistantError):
     """Error to indicate the Zones Away config is not valid."""
+
 
 class InvalidRefreshInterval(exceptions.HomeAssistantError):
     """Error to indicate the refresh interval is not valid."""

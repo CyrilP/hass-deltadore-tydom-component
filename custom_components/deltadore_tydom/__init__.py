@@ -1,4 +1,5 @@
 """The Detailed Delta Dore Tydom Push integration."""
+
 from __future__ import annotations
 
 from homeassistant.const import CONF_HOST, CONF_MAC, CONF_PIN, Platform
@@ -7,7 +8,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
 from . import hub
-from .const import DOMAIN, CONF_TYDOM_PASSWORD, CONF_ZONES_HOME, CONF_ZONES_AWAY, CONF_REFRESH_INTERVAL
+from .const import (
+    DOMAIN,
+    CONF_TYDOM_PASSWORD,
+    CONF_ZONES_HOME,
+    CONF_ZONES_AWAY,
+    CONF_REFRESH_INTERVAL,
+)
 
 # List of platforms to support. There should be a matching .py file for each,
 # eg <cover.py> and <sensor.py>
@@ -65,16 +72,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             target=tydom_hub.setup(connection), hass=hass, name="Tydom"
         )
         entry.async_create_background_task(
-           target=tydom_hub.ping(), hass=hass, name="Tydom ping"
+            target=tydom_hub.ping(), hass=hass, name="Tydom ping"
         )
         entry.async_create_background_task(
-           target=tydom_hub.refresh_all(), hass=hass, name="Tydom refresh all metadata and data"
+            target=tydom_hub.refresh_all(),
+            hass=hass,
+            name="Tydom refresh all metadata and data",
         )
         entry.async_create_background_task(
-           target=tydom_hub.refresh_data_1s(), hass=hass, name="Tydom refresh data 1s"
+            target=tydom_hub.refresh_data_1s(), hass=hass, name="Tydom refresh data 1s"
         )
         entry.async_create_background_task(
-           target=tydom_hub.refresh_data(), hass=hass, name="Tydom refresh data"
+            target=tydom_hub.refresh_data(), hass=hass, name="Tydom refresh data"
         )
 
     except Exception as err:
@@ -97,7 +106,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     return unload_ok
 
+
 async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Update listener."""
     tydom_hub = hass.data[DOMAIN][entry.entry_id]
-    tydom_hub.update_config(entry.data[CONF_REFRESH_INTERVAL], entry.data[CONF_ZONES_HOME], entry.data[CONF_ZONES_AWAY])
+    tydom_hub.update_config(
+        entry.data[CONF_REFRESH_INTERVAL],
+        entry.data[CONF_ZONES_HOME],
+        entry.data[CONF_ZONES_AWAY],
+    )
