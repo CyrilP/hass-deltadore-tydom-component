@@ -1,4 +1,5 @@
 """Tydom message parsing."""
+
 import json
 from http.client import HTTPResponse
 from http.server import BaseHTTPRequestHandler
@@ -30,6 +31,7 @@ device_endpoint = {}
 device_type = {}
 device_metadata = {}
 
+
 class MessageHandler:
     """Handle incomming Tydom messages."""
 
@@ -57,7 +59,7 @@ class MessageHandler:
     @staticmethod
     def get_http_request_line(data) -> str:
         """Extract Http request line."""
-        clean_data = data.replace('\\x02', '')
+        clean_data = data.replace("\\x02", "")
         request_line = ""
         re_matcher = re.match(
             "b'(.*)HTTP/1.1",
@@ -121,9 +123,7 @@ class MessageHandler:
             )
             LOGGER.debug("Incoming payload (%s)", incoming)
             LOGGER.debug("exception : %s", ex)
-            raise Exception(
-                "Something really wrong happened!"
-            ) from ex
+            raise Exception("Something really wrong happened!") from ex
             return None
 
     async def parse_response(self, incoming, uri_origin, http_request_line):
@@ -222,7 +222,9 @@ class MessageHandler:
                     for meta in metadata:
                         if meta == "name":
                             continue
-                        device_metadata[device_unique_id][metadata_name][meta] = metadata[meta]
+                        device_metadata[device_unique_id][metadata_name][meta] = (
+                            metadata[meta]
+                        )
         return []
 
     async def parse_msg_info(self, parsed):
@@ -230,7 +232,16 @@ class MessageHandler:
         LOGGER.debug("parse_msg_info : %s", parsed)
 
         return [
-            Tydom(self.tydom_client, self.tydom_client.id, self.tydom_client.id, self.tydom_client.id, "Tydom Gateway", None, None, parsed)
+            Tydom(
+                self.tydom_client,
+                self.tydom_client.id,
+                self.tydom_client.id,
+                self.tydom_client.id,
+                "Tydom Gateway",
+                None,
+                None,
+                parsed,
+            )
         ]
 
     @staticmethod
@@ -256,17 +267,44 @@ class MessageHandler:
                 return TydomShutter(
                     tydom_client, uid, device_id, name, last_usage, endpoint, None, data
                 )
-            case "window" | "windowFrench" | "windowSliding" | "klineWindowFrench" | "klineWindowSliding":
+            case (
+                "window"
+                | "windowFrench"
+                | "windowSliding"
+                | "klineWindowFrench"
+                | "klineWindowSliding"
+            ):
                 return TydomWindow(
-                    tydom_client, uid, device_id, name, last_usage, endpoint, device_metadata[uid], data
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata[uid],
+                    data,
                 )
             case "belmDoor" | "klineDoor":
                 return TydomDoor(
-                    tydom_client, uid, device_id, name, last_usage, endpoint, device_metadata[uid], data
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata[uid],
+                    data,
                 )
             case "garage_door":
                 return TydomGarage(
-                    tydom_client, uid, device_id, name, last_usage, endpoint, device_metadata[uid], data
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata[uid],
+                    data,
                 )
             case "gate":
                 return TydomGate(
@@ -292,23 +330,56 @@ class MessageHandler:
                 )
             case "conso":
                 return TydomEnergy(
-                    tydom_client, uid, device_id, name, last_usage, endpoint, device_metadata[uid], data
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata[uid],
+                    data,
                 )
             case "sensorDFR":
                 return TydomSmoke(
-                    tydom_client, uid, device_id, name, last_usage, endpoint, device_metadata[uid], data
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata[uid],
+                    data,
                 )
             case "boiler" | "sh_hvac" | "electric" | "aeraulic":
                 return TydomBoiler(
-                    tydom_client, uid, device_id, name, last_usage, endpoint, device_metadata[uid], data
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata[uid],
+                    data,
                 )
             case "alarm":
                 return TydomAlarm(
-                    tydom_client, uid, device_id, name, last_usage, endpoint, device_metadata[uid], data
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata[uid],
+                    data,
                 )
             case _:
                 # TODO generic sensor ?
-                LOGGER.warn("Unknown usage : %s for device_id %s, uid %s", last_usage, device_id, uid)
+                LOGGER.warn(
+                    "Unknown usage : %s for device_id %s, uid %s",
+                    last_usage,
+                    device_id,
+                    uid,
+                )
                 return
 
     @staticmethod
@@ -323,7 +394,9 @@ class MessageHandler:
             # if device is not None:
             #    devices.append(device)
 
-            LOGGER.debug("config_data device parsed : %s - %s", device_unique_id, i["name"])
+            LOGGER.debug(
+                "config_data device parsed : %s - %s", device_unique_id, i["name"]
+            )
 
             device_name[device_unique_id] = i["name"]
             device_type[device_unique_id] = i["last_usage"]
@@ -441,7 +514,6 @@ class MessageHandler:
         for i in parsed:
             for endpoint in i["endpoints"]:
                 if endpoint["error"] == 0 and len(endpoint["data"]) > 0:
-
                     try:
                         device_id = i["id"]
                         endpoint_id = endpoint["id"]
@@ -499,11 +571,12 @@ class MessageHandler:
 
                         data = {}
                         for elem in endpoint["cdata"]:
-                            if type_of_id == 'conso':
-
+                            if type_of_id == "conso":
                                 element_name = None
                                 if elem["parameters"].get("dest"):
-                                    element_name = elem["name"] + "_" + elem["parameters"]["dest"]
+                                    element_name = (
+                                        elem["name"] + "_" + elem["parameters"]["dest"]
+                                    )
                                 else:
                                     continue
 
@@ -531,7 +604,7 @@ class MessageHandler:
                                     )
 
                     except Exception:
-                        LOGGER.exception('Error when parsing msg_cdata')
+                        LOGGER.exception("Error when parsing msg_cdata")
         return devices
 
     # PUT response DIRTY parsing
