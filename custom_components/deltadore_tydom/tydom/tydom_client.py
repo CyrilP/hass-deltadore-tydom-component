@@ -633,6 +633,9 @@ class TydomClient:
         # HTTP/1.1\r\ncontent-length: 30\r\ncontent-type: application/json;
         # charset=utf-8\r\ntransac-id:
         # request_7\r\n\r\n\r\n{"value":"OFF","pwd":"{}"}\r\n\r\n"
+        # PUT /devices/{}/endpoints/{}/cdata?name=alarmCmd
+        #   HTTP/1.1\nContent-Length: 32\nContent-Type: application/json; charset=UTF-8\nTransac-Id: 1739979111409\nUser-Agent: Jakarta Commons-HttpClient/3.1\nHost: mediation.tydom.com:443
+        #   {"pwd":"######","value":"PANIC"}
 
         # variables:
         # id
