@@ -1,0 +1,26 @@
+acknowledge_events:
+  target:
+    device:
+      integration: deltadore_tydom
+  fields:
+    code:
+      selector:
+        text:
+          type: password
+get_events:
+  target:
+    device:
+      integration: deltadore_tydom
+  fields:
+    type:
+      selector:
+        select:
+          options:
+            - label: All events
+              value: ALL
+            - label: Unacknowledge events
+              value: UNACKED_EVENTS
+            - label: De-/Activation events
+              value: ON_OFF
+            - label: Events
+              value: EVENTS

@@ -1037,3 +1037,11 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
     async def async_alarm_arm_home(self, code=None) -> None:
         """Send arm home command."""
         await self._device.alarm_arm_home(code)
+
+    async def async_acknowledge_events(self, code=None) -> None:
+        """Acknowledge alarm events."""
+        await self._device.acknowledge_events(code)
+
+    async def async_get_events(self, type=None) -> list:
+        """Get alarm events."""
+        return await self._device.get_events(type or "UNACKED_EVENTS")

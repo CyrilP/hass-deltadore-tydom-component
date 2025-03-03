@@ -1,4 +1,5 @@
 """Tydom message parsing."""
+import asyncio
 import json
 from http.client import HTTPResponse
 from http.server import BaseHTTPRequestHandler
@@ -37,6 +38,7 @@ class MessageHandler:
         """Initialize MessageHandler."""
         self.tydom_client = tydom_client
         self.cmd_prefix = cmd_prefix
+        self.alarm_events_msg = asyncio.Queue()
 
     @staticmethod
     def get_uri_origin(data) -> str:
@@ -500,7 +502,6 @@ class MessageHandler:
                         data = {}
                         for elem in endpoint["cdata"]:
                             if type_of_id == 'conso':
-
                                 element_name = None
                                 if elem["parameters"].get("dest"):
                                     element_name = elem["name"] + "_" + elem["parameters"]["dest"]
@@ -530,6 +531,16 @@ class MessageHandler:
                                         type_of_id,
                                     )
 
+                            elif type_of_id == 'alarm':
+                                if elem.get('name') == 'histo':
+                                    # Push event in queue
+                                    await self.alarm_events_msg.put({
+                                        'queryParams': elem.get('parameters', {}),
+                                        'event': elem.get('values', {}).get('event', {})
+                                    })
+                                elif elem.get('EOR', False):
+                                    # Push None to notify end of request
+                                    await self.alarm_events_msg.put(None)
                     except Exception:
                         LOGGER.exception('Error when parsing msg_cdata')
         return devices
