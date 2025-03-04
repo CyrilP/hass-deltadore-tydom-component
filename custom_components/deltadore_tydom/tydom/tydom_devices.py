@@ -23,9 +23,9 @@ class TydomDevice:
         device_id: str,
         name: str,
         device_type: str,
-        endpoint: str,
-        metadata: dict,
-        data: dict,
+        endpoint: str | None,
+        metadata: dict | None,
+        data: dict | None,
     ):
         """Initialize a TydomDevice."""
         self._tydom_client = tydom_client
@@ -421,6 +421,7 @@ class TydomAlarm(TydomDevice):
         except TimeoutError:
             LOGGER.warning("Failed to list all alarm events of type '%s'.", event_type)
 
+        LOGGER.debug("Raw messages: %s", msgs)
         formatted_messages = [
             self._format_alarm_event(m["event"])
             for m in msgs

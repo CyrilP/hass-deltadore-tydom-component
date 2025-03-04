@@ -1132,6 +1132,6 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         """Acknowledge alarm events."""
         await self._device.acknowledge_events(code)
 
-    async def async_get_events(self, type=None) -> list:
+    async def async_get_events(self, event_type=None) -> list:
         """Get alarm events."""
-        return await self._device.get_events(type or "UNACKED_EVENTS")
+        return await self._device.get_events(event_type or "UNACKED_EVENTS")
