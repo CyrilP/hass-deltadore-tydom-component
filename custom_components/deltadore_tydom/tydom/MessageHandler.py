@@ -1,7 +1,9 @@
 """Tydom message parsing."""
+
 import asyncio
 import json
-from http.client import HTTPResponse
+from dataclasses import dataclass
+from http.client import HTTPMessage, HTTPResponse, parse_headers
 from http.server import BaseHTTPRequestHandler
 from io import BytesIO
 import traceback
@@ -31,6 +33,7 @@ device_endpoint = {}
 device_type = {}
 device_metadata = {}
 
+
 class MessageHandler:
     """Handle incomming Tydom messages."""
 
@@ -59,7 +62,7 @@ class MessageHandler:
     @staticmethod
     def get_http_request_line(data) -> str:
         """Extract Http request line."""
-        clean_data = data.replace('\\x02', '')
+        clean_data = data.replace("\\x02", "")
         request_line = ""
         re_matcher = re.match(
             "b'(.*)HTTP/1.1",
@@ -123,9 +126,7 @@ class MessageHandler:
             )
             LOGGER.debug("Incoming payload (%s)", incoming)
             LOGGER.debug("exception : %s", ex)
-            raise Exception(
-                "Something really wrong happened!"
-            ) from ex
+            raise Exception("Something really wrong happened!") from ex
             return None
 
     async def parse_response(self, incoming, uri_origin, http_request_line):
@@ -224,7 +225,9 @@ class MessageHandler:
                     for meta in metadata:
                         if meta == "name":
                             continue
-                        device_metadata[device_unique_id][metadata_name][meta] = metadata[meta]
+                        device_metadata[device_unique_id][metadata_name][meta] = (
+                            metadata[meta]
+                        )
         return []
 
     async def parse_msg_info(self, parsed):
@@ -232,13 +235,22 @@ class MessageHandler:
         LOGGER.debug("parse_msg_info : %s", parsed)
 
         return [
-            Tydom(self.tydom_client, self.tydom_client.id, self.tydom_client.id, self.tydom_client.id, "Tydom Gateway", None, None, parsed)
+            Tydom(
+                self.tydom_client,
+                self.tydom_client.id,
+                self.tydom_client.id,
+                self.tydom_client.id,
+                "Tydom Gateway",
+                None,
+                None,
+                parsed,
+            )
         ]
 
     @staticmethod
     async def get_device(
         tydom_client, last_usage, uid, device_id, name, endpoint=None, data=None
-    ) -> TydomDevice:
+    ) -> TydomDevice | None:
         """Get device class from its last usage."""
 
         # FIXME voir: class CoverDeviceClass(StrEnum):
@@ -258,17 +270,44 @@ class MessageHandler:
                 return TydomShutter(
                     tydom_client, uid, device_id, name, last_usage, endpoint, None, data
                 )
-            case "window" | "windowFrench" | "windowSliding" | "klineWindowFrench" | "klineWindowSliding":
+            case (
+                "window"
+                | "windowFrench"
+                | "windowSliding"
+                | "klineWindowFrench"
+                | "klineWindowSliding"
+            ):
                 return TydomWindow(
-                    tydom_client, uid, device_id, name, last_usage, endpoint, device_metadata[uid], data
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata[uid],
+                    data,
                 )
             case "belmDoor" | "klineDoor":
                 return TydomDoor(
-                    tydom_client, uid, device_id, name, last_usage, endpoint, device_metadata[uid], data
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata[uid],
+                    data,
                 )
             case "garage_door":
                 return TydomGarage(
-                    tydom_client, uid, device_id, name, last_usage, endpoint, device_metadata[uid], data
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata[uid],
+                    data,
                 )
             case "gate":
                 return TydomGate(
@@ -294,23 +333,56 @@ class MessageHandler:
                 )
             case "conso":
                 return TydomEnergy(
-                    tydom_client, uid, device_id, name, last_usage, endpoint, device_metadata[uid], data
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata[uid],
+                    data,
                 )
             case "sensorDFR":
                 return TydomSmoke(
-                    tydom_client, uid, device_id, name, last_usage, endpoint, device_metadata[uid], data
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata[uid],
+                    data,
                 )
             case "boiler" | "sh_hvac" | "electric" | "aeraulic":
                 return TydomBoiler(
-                    tydom_client, uid, device_id, name, last_usage, endpoint, device_metadata[uid], data
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata[uid],
+                    data,
                 )
             case "alarm":
                 return TydomAlarm(
-                    tydom_client, uid, device_id, name, last_usage, endpoint, device_metadata[uid], data
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata[uid],
+                    data,
                 )
             case _:
                 # TODO generic sensor ?
-                LOGGER.warn("Unknown usage : %s for device_id %s, uid %s", last_usage, device_id, uid)
+                LOGGER.warn(
+                    "Unknown usage : %s for device_id %s, uid %s",
+                    last_usage,
+                    device_id,
+                    uid,
+                )
                 return
 
     @staticmethod
@@ -325,7 +397,9 @@ class MessageHandler:
             # if device is not None:
             #    devices.append(device)
 
-            LOGGER.debug("config_data device parsed : %s - %s", device_unique_id, i["name"])
+            LOGGER.debug(
+                "config_data device parsed : %s - %s", device_unique_id, i["name"]
+            )
 
             device_name[device_unique_id] = i["name"]
             device_type[device_unique_id] = i["last_usage"]
@@ -443,7 +517,6 @@ class MessageHandler:
         for i in parsed:
             for endpoint in i["endpoints"]:
                 if endpoint["error"] == 0 and len(endpoint["data"]) > 0:
-
                     try:
                         device_id = i["id"]
                         endpoint_id = endpoint["id"]
@@ -501,10 +574,12 @@ class MessageHandler:
 
                         data = {}
                         for elem in endpoint["cdata"]:
-                            if type_of_id == 'conso':
+                            if type_of_id == "conso":
                                 element_name = None
                                 if elem["parameters"].get("dest"):
-                                    element_name = elem["name"] + "_" + elem["parameters"]["dest"]
+                                    element_name = (
+                                        elem["name"] + "_" + elem["parameters"]["dest"]
+                                    )
                                 else:
                                     continue
 
@@ -531,18 +606,22 @@ class MessageHandler:
                                         type_of_id,
                                     )
 
-                            elif type_of_id == 'alarm':
-                                if elem.get('name') == 'histo':
+                            elif type_of_id == "alarm":
+                                if elem.get("name") == "histo":
                                     # Push event in queue
-                                    await self.alarm_events_msg.put({
-                                        'queryParams': elem.get('parameters', {}),
-                                        'event': elem.get('values', {}).get('event', {})
-                                    })
-                                elif elem.get('EOR', False):
+                                    await self.alarm_events_msg.put(
+                                        {
+                                            "queryParams": elem.get("parameters", {}),
+                                            "event": elem.get("values", {}).get(
+                                                "event", {}
+                                            ),
+                                        }
+                                    )
+                                elif elem.get("EOR", False):
                                     # Push None to notify end of request
                                     await self.alarm_events_msg.put(None)
                     except Exception:
-                        LOGGER.exception('Error when parsing msg_cdata')
+                        LOGGER.exception("Error when parsing msg_cdata")
         return devices
 
     # PUT response DIRTY parsing
@@ -567,20 +646,6 @@ class MessageHandler:
 
     # FUNCTIONS
 
-    @staticmethod
-    def response_from_bytes(data):
-        """Get HTTPResponse from bytes."""
-        sock = BytesIOSocket(data)
-        response = HTTPResponse(sock)
-        response.begin()
-        return urllib3.HTTPResponse.from_httplib(response)
-
-    @staticmethod
-    def put_response_from_bytes(data):
-        """Get HTTPResponse from bytes."""
-        request = HTTPRequest(data)
-        return request
-
     def get_type_from_id(self, id):
         """Get device type from id."""
         device_type_detected = ""
@@ -601,28 +666,50 @@ class MessageHandler:
         return name
 
 
-class BytesIOSocket:
-    """BytesIOSocket."""
-
-    def __init__(self, content):
-        """Initialize a BytesIOSocket."""
-        self.handle = BytesIO(content)
-
-    def makefile(self, mode):
-        """Get handle."""
-        return self.handle
-
-
-class HTTPRequest(BaseHTTPRequestHandler):
+@dataclass(frozen=True)
+class HTTPRequest:
     """HTTPRequest."""
 
-    def __init__(self, request_text):
-        """Initialize a HTTPRequest."""
-        self.raw_requestline = request_text
-        self.error_code = self.error_message = None
-        self.parse_request()
+    method: str
+    path: str
+    headers: HTTPMessage
+    body: bytes | None
 
-    def send_error(self, code, message):
-        """Set error code and message."""
-        self.error_code = code
-        self.error_message = message
+
+def parse_request(raw_request: bytes) -> HTTPRequest:
+    """
+    Parse a HTTP request sent through the websocket.
+
+    Args:
+        raw_request: Websocket message
+
+    Returns:
+        The parsed request.
+
+    """
+    # This is inspired by the http.server.BaseHTTPRequestHandler
+    rfile = BytesIO(raw_request)
+    raw_requestline = rfile.readline(65537)
+
+    requestline = str(raw_requestline, "iso-8859-1")
+    requestline = requestline.rstrip("\r\n")
+    words = requestline.split()
+
+    version = words[-1]
+    assert version.startswith("HTTP/")
+
+    command, path = words[:2]
+
+    headers = parse_headers(rfile)
+
+    body = None
+    if (length := headers.get("Content-Length")) is not None:
+        body = rfile.read(int(length))
+    elif headers.get("Transfer-Encoding") == "chunked":
+        # Each chunk is preceded by its size in hexadecimal
+        # See https://en.wikipedia.org/wiki/Chunked_transfer_encoding
+        body = b""
+        while (chunk_size := rfile.readline().strip(b"\r\n")) != b"0":
+            body += rfile.read(int(chunk_size, 16)).strip(b"\r\n")
+
+    return HTTPRequest(command, path, headers, body)
