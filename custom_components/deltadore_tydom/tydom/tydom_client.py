@@ -1,31 +1,33 @@
 """Tydom API Client."""
-import os
+
 import asyncio
-import socket
 import base64
+import os
 import re
-import async_timeout
-import aiohttp
+import socket
 import ssl
+import time
 import traceback
-
 from typing import cast
-from urllib3 import encode_multipart_formdata
-from aiohttp import ClientWebSocketResponse, ClientSession, WSMsgType
+
+import aiohttp
+import async_timeout
+from aiohttp import ClientSession, ClientWebSocketResponse, WSMsgType
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
-
-from .const import (
-    MEDIATION_URL,
-    DELTADORE_AUTH_URL,
-    DELTADORE_AUTH_GRANT_TYPE,
-    DELTADORE_AUTH_CLIENTID,
-    DELTADORE_AUTH_SCOPE,
-    DELTADORE_API_SITES)
-from .MessageHandler import MessageHandler
-
 from requests.auth import HTTPDigestAuth
+from urllib3 import encode_multipart_formdata
 
 from ..const import LOGGER
+from .const import (
+    DELTADORE_API_SITES,
+    DELTADORE_AUTH_CLIENTID,
+    DELTADORE_AUTH_GRANT_TYPE,
+    DELTADORE_AUTH_SCOPE,
+    DELTADORE_AUTH_URL,
+    MEDIATION_URL,
+)
+from .MessageHandler import MessageHandler
+
 
 class TydomClientApiClientError(Exception):
     """Exception to indicate a general API error."""
@@ -46,6 +48,7 @@ file_mode = False
 file_lines = None
 file_index = 0
 file_name = "/config/traces.txt"
+
 
 class TydomClient:
     """Tydom API Client."""
@@ -217,7 +220,7 @@ class TydomClient:
         }
 
         # configuration needed for local mode
-        #- Wrap slow blocking call flagged by HA
+        # - Wrap slow blocking call flagged by HA
         sslcontext = await asyncio.to_thread(ssl.create_default_context)
         sslcontext.options |= 0x4  # OP_LEGACY_SERVER_CONNECT
         sslcontext.check_hostname = False
@@ -318,8 +321,10 @@ class TydomClient:
         """Read and parse incoming messages."""
         global file_lines, file_mode, file_index
         if file_mode:
-            if (len(file_lines) > file_index):
-                incoming = file_lines[file_index].replace("\\r", '\x0d').replace("\\n", "\x0a")
+            if len(file_lines) > file_index:
+                incoming = (
+                    file_lines[file_index].replace("\\r", "\x0d").replace("\\n", "\x0a")
+                )
                 incoming_bytes_str = incoming.encode("utf-8")
                 file_index += 1
                 LOGGER.info("Incomming message - message : %s", incoming_bytes_str)
@@ -339,7 +344,11 @@ class TydomClient:
                 "Incoming message - type : %s - message : %s", msg.type, msg.data
             )
 
-            if msg.type == WSMsgType.CLOSE or msg.type == WSMsgType.CLOSED or msg.type == WSMsgType.CLOSING:
+            if (
+                msg.type == WSMsgType.CLOSE
+                or msg.type == WSMsgType.CLOSED
+                or msg.type == WSMsgType.CLOSING
+            ):
                 LOGGER.debug("Close message type received")
                 return None
             elif msg.type == WSMsgType.ERROR:
@@ -379,7 +388,7 @@ class TydomClient:
         )
         return digest
 
-    async def send_bytes(self, a_bytes : bytes):
+    async def send_bytes(self, a_bytes: bytes):
         """Send bytes to connection, retry if it fails."""
         if self._connection is not None:
             try:
@@ -390,9 +399,7 @@ class TydomClient:
                     self._connection = await self.async_connect()
                     await self._connection.send_bytes(a_bytes)
                 except ConnectionResetError:
-                    LOGGER.warning(
-                        "Cannot send message to Tydom. Connection was lost."
-            )
+                    LOGGER.warning("Cannot send message to Tydom. Connection was lost.")
         else:
             LOGGER.warning(
                 "Cannot send message to Tydom because no connection has been established yet."
@@ -400,12 +407,14 @@ class TydomClient:
 
     async def send_message(self, method, msg):
         """Send Generic message to Tydom."""
+        # Transaction ID is currently the current time in ms
+        transaction_id = str(time.time_ns())[:13]
         message = (
             self._cmd_prefix
             + method
             + " "
             + msg
-            + " HTTP/1.1\r\nContent-Length: 0\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
+            + f" HTTP/1.1\r\nContent-Length: 0\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: {transaction_id}\r\n\r\n"
         )
         a_bytes = bytes(message, "ascii")
         LOGGER.debug(
@@ -415,7 +424,6 @@ class TydomClient:
         )
         if not file_mode:
             await self.send_bytes(a_bytes)
-
 
     # ########################
     # Utils methods
@@ -572,7 +580,7 @@ class TydomClient:
         if value is None:
             body = '{"' + name + '":"null}'
         elif isinstance(value, bool) or isinstance(value, int):
-            body = '{"' + name + '":"' + str(value).lower() + '}'
+            body = '{"' + name + '":"' + str(value).lower() + "}"
         else:
             body = '{"' + name + '":"' + value + '"}'
 
@@ -597,7 +605,7 @@ class TydomClient:
         if value is None:
             body = '[{"name":"' + name + '","value":null}]'
         elif isinstance(value, bool):
-            body = '[{"name":"' + name + '","value":' + str(value).lower() + '}]'
+            body = '[{"name":"' + name + '","value":' + str(value).lower() + "}]"
         else:
             body = '[{"name":"' + name + '","value":"' + value + '"}]'
 
@@ -618,18 +626,37 @@ class TydomClient:
 
         return 0
 
-    async def put_alarm_cdata(self, device_id, endpoint_id=None, alarm_pin=None, value=None, zone_id=None, legacy_zones=False):
+    async def put_alarm_cdata(
+        self,
+        device_id,
+        endpoint_id=None,
+        alarm_pin=None,
+        value=None,
+        zone_id=None,
+        legacy_zones=False,
+    ):
         """Configure alarm mode."""
         if legacy_zones:
             if zone_id is not None:
                 zones_array = zone_id.split(",")
                 for zone in zones_array:
-                    await self._put_alarm_cdata(device_id, endpoint_id, alarm_pin, value, zone, legacy_zones)
+                    await self._put_alarm_cdata(
+                        device_id, endpoint_id, alarm_pin, value, zone, legacy_zones
+                    )
         else:
-            await self._put_alarm_cdata(device_id, endpoint_id, alarm_pin, value, zone_id, legacy_zones)
+            await self._put_alarm_cdata(
+                device_id, endpoint_id, alarm_pin, value, zone_id, legacy_zones
+            )
 
-
-    async def _put_alarm_cdata(self, device_id, endpoint_id=None, alarm_pin=None, value=None, zone_id=None, legacy_zones=False):
+    async def _put_alarm_cdata(
+        self,
+        device_id,
+        endpoint_id=None,
+        alarm_pin=None,
+        value=None,
+        zone_id=None,
+        legacy_zones=False,
+    ):
         """Configure alarm mode."""
         # Credits to @mgcrea on github !
         # AWAY # "PUT /devices/{}/endpoints/{}/cdata?name=alarmCmd HTTP/1.1\r\ncontent-length: 29\r\ncontent-type: application/json; charset=utf-8\r\ntransac-id: request_124\r\n\r\n\r\n{"value":"ON","pwd":{}}\r\n\r\n"
@@ -660,22 +687,12 @@ class TydomClient:
         try:
             if zone_id is None or zone_id == "":
                 cmd = "alarmCmd"
-                body = (
-                    '{"value":"'
-                    + str(value)
-                    + '","pwd":"'
-                    + str(pin)
-                    + '"}'
-                )
+                body = '{"value":"' + str(value) + '","pwd":"' + str(pin) + '"}'
             else:
                 if legacy_zones:
                     cmd = "partCmd"
                     body = (
-                        '{"value":"'
-                        + str(value)
-                        + ', "part":"'
-                        + str(zone_id)
-                        + '"}'
+                        '{"value":"' + str(value) + ', "part":"' + str(zone_id) + '"}'
                     )
                 else:
                     cmd = "zoneCmd"
@@ -720,7 +737,7 @@ class TydomClient:
         await self.put_data(
             f"/devices/{device_id}/endpoints/{endpoint_id}/cdata?name=ackEventCmd",
             "pwd",
-            str(pwd)
+            str(pwd),
         )
 
     async def get_historic_cdata(self, device_id, endpoint_id, event_type=None):
