@@ -252,7 +252,7 @@ class MessageHandler:
         # SHUTTER = "shutter"
         # WINDOW = "window"
         match last_usage:
-            case "shutter" | "klineShutter" | "awning":
+            case "shutter" | "klineShutter" | "awning" | "swingShutter":
                 return TydomShutter(
                     tydom_client, uid, device_id, name, last_usage, endpoint, None, data
                 )
@@ -332,6 +332,7 @@ class MessageHandler:
             if (
                 i["last_usage"] == "shutter"
                 or i["last_usage"] == "klineShutter"
+                or i["last_usage"] == "swingShutter"
                 or i["last_usage"] == "light"
                 or i["last_usage"] == "window"
                 or i["last_usage"] == "windowFrench"
