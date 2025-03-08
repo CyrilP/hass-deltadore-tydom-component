@@ -8,7 +8,7 @@ import socket
 import ssl
 import time
 import traceback
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import aiohttp
 import async_timeout
@@ -27,6 +27,9 @@ from .const import (
     MEDIATION_URL,
 )
 from .MessageHandler import MessageHandler
+
+if TYPE_CHECKING:
+    from .tydom_devices import TydomDevice
 
 
 class TydomClientApiClientError(Exception):
@@ -87,11 +90,11 @@ class TydomClient:
 
         if self._remote_mode:
             LOGGER.info("Configure remote mode (%s)", self._host)
-            self._cmd_prefix = "\x02"
+            self._cmd_prefix = b"\x02"
             self._ping_timeout = 40
         else:
             LOGGER.info("Configure local mode (%s)", self._host)
-            self._cmd_prefix = ""
+            self._cmd_prefix = b""
             self._ping_timeout = None
 
         self._message_handler = MessageHandler(
@@ -317,7 +320,7 @@ class TydomClient:
 
         await self.get_scenarii()
 
-    async def consume_messages(self):
+    async def consume_messages(self) -> list["TydomDevice"] | None:
         """Read and parse incoming messages."""
         global file_lines, file_mode, file_index
         if file_mode:
@@ -332,7 +335,7 @@ class TydomClient:
                 await asyncio.sleep(10)
                 return None
             await asyncio.sleep(1)
-            return await self._message_handler.incoming_triage(incoming_bytes_str)
+            return await self._message_handler.route_response(incoming_bytes_str)
         try:
             if self._connection.closed or self.pending_pings > 5:
                 await self._connection.close()
@@ -360,7 +363,7 @@ class TydomClient:
 
             incoming_bytes_str = cast(bytes, msg.data)
 
-            return await self._message_handler.incoming_triage(incoming_bytes_str)
+            return await self._message_handler.route_response(incoming_bytes_str)
 
         except Exception:
             LOGGER.exception("Unable to handle message")
@@ -410,13 +413,12 @@ class TydomClient:
         # Transaction ID is currently the current time in ms
         transaction_id = str(time.time_ns())[:13]
         message = (
-            self._cmd_prefix
-            + method
+            method
             + " "
             + msg
             + f" HTTP/1.1\r\nContent-Length: 0\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: {transaction_id}\r\n\r\n"
         )
-        a_bytes = bytes(message, "ascii")
+        a_bytes = self._cmd_prefix + bytes(message, "ascii")
         LOGGER.debug(
             "Sending message to tydom (%s %s)",
             method,
@@ -431,7 +433,7 @@ class TydomClient:
 
     @staticmethod
     def generate_random_key():
-        """Generate 16 bytes random key for Sec-WebSocket-Keyand convert it to base64."""
+        """Generate 16 bytes random key for Sec-WebSocket-Key and convert it to base64."""
         return str(base64.b64encode(os.urandom(16)))
 
     # ########################
@@ -531,11 +533,8 @@ class TydomClient:
         """Give order to endpoint."""
         # 10 here is the endpoint = the device (shutter in this case) to open.
         device_id = str(id)
-        str_request = (
-            self._cmd_prefix
-            + f"GET /devices/{device_id}/endpoints/{device_id}/data HTTP/1.1\r\nContent-Length: 0\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
-        )
-        a_bytes = bytes(str_request, "ascii")
+        str_request = f"GET /devices/{device_id}/endpoints/{device_id}/data HTTP/1.1\r\nContent-Length: 0\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
+        a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
         LOGGER.debug("Sending message to tydom (%s %s)", "GET device data", str_request)
         if not file_mode:
             await self.send_bytes(a_bytes)
@@ -579,20 +578,19 @@ class TydomClient:
         body: str
         if value is None:
             body = '{"' + name + '":"null}'
-        elif isinstance(value, bool) or isinstance(value, int):
+        elif isinstance(value, (bool, int)):
             body = '{"' + name + '":"' + str(value).lower() + "}"
         else:
             body = '{"' + name + '":"' + value + '"}'
 
         str_request = (
-            self._cmd_prefix
-            + f"PUT {path} HTTP/1.1\r\nContent-Length: "
+            f"PUT {path} HTTP/1.1\r\nContent-Length: "
             + str(len(body))
             + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
             + body
             + "\r\n\r\n"
         )
-        a_bytes = bytes(str_request, "ascii")
+        a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
         LOGGER.debug("Sending message to tydom (%s %s)", "PUT data", body)
         if not file_mode:
             await self.send_bytes(a_bytes)
@@ -612,14 +610,13 @@ class TydomClient:
         # endpoint_id is the endpoint = the device (shutter in this case) to
         # open.
         str_request = (
-            self._cmd_prefix
-            + f"PUT /devices/{device_id}/endpoints/{endpoint_id}/data HTTP/1.1\r\nContent-Length: "
+            f"PUT /devices/{device_id}/endpoints/{endpoint_id}/data HTTP/1.1\r\nContent-Length: "
             + str(len(body))
             + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
             + body
             + "\r\n\r\n"
         )
-        a_bytes = bytes(str_request, "ascii")
+        a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
         LOGGER.debug("Sending message to tydom (%s %s)", "PUT device data", body)
         if not file_mode:
             await self.send_bytes(a_bytes)
@@ -707,15 +704,14 @@ class TydomClient:
                     )
 
             str_request = (
-                self._cmd_prefix
-                + f"PUT /devices/{device_id}/endpoints/{endpoint_id}/cdata?name={cmd} HTTP/1.1\r\nContent-Length: "
+                f"PUT /devices/{device_id}/endpoints/{endpoint_id}/cdata?name={cmd} HTTP/1.1\r\nContent-Length: "
                 + str(len(body))
                 + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
                 + body
                 + "\r\n\r\n"
             )
 
-            a_bytes = bytes(str_request, "ascii")
+            a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
             LOGGER.debug("Sending message to tydom (%s %s)", "PUT cdata", body)
 
             try:

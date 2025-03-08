@@ -2,30 +2,34 @@
 
 import asyncio
 import json
+import time
 from dataclasses import dataclass
-from http.client import HTTPMessage, HTTPResponse, parse_headers
-from http.server import BaseHTTPRequestHandler
+from http.client import HTTPMessage, LineTooLong
+from http.client import HTTPResponse as CoreHTTPResponse
 from io import BytesIO
-import traceback
-import urllib3
-import re
-
-from .tydom_devices import (
-    Tydom,
-    TydomDevice,
-    TydomEnergy,
-    TydomShutter,
-    TydomSmoke,
-    TydomBoiler,
-    TydomWindow,
-    TydomDoor,
-    TydomGate,
-    TydomGarage,
-    TydomLight,
-    TydomAlarm,
-)
+from typing import TYPE_CHECKING, TypedDict, cast
 
 from ..const import LOGGER
+from .tydom_devices import (
+    Tydom,
+    TydomAlarm,
+    TydomBoiler,
+    TydomDevice,
+    TydomDoor,
+    TydomEnergy,
+    TydomGarage,
+    TydomGate,
+    TydomLight,
+    TydomShutter,
+    TydomSmoke,
+    TydomWindow,
+)
+
+if TYPE_CHECKING:
+    from .tydom_client import TydomClient
+
+_MAX_REPLIES_SIZE = 5
+"""Maximal number of replies to keep track of."""
 
 # Device dict for parsing
 device_name = {}
@@ -34,136 +38,170 @@ device_type = {}
 device_metadata = {}
 
 
-class MessageHandler:
-    """Handle incomming Tydom messages."""
+class Reply(TypedDict):
+    transaction_id: int
+    events: list[dict]
 
-    def __init__(self, tydom_client, cmd_prefix):
+
+class MessageHandler:
+    """Handle incoming Tydom messages."""
+
+    def __init__(self, tydom_client: "TydomClient", cmd_prefix: bytes) -> None:
         """Initialize MessageHandler."""
         self.tydom_client = tydom_client
         self.cmd_prefix = cmd_prefix
-        self.alarm_events_msg = asyncio.Queue()
+        self._cdata_replies: list[Reply] = []
+        self._end_reply_events: dict[int, asyncio.Event] = {}
 
-    @staticmethod
-    def get_uri_origin(data) -> str:
-        """Extract Uri-Origin from Tydom messages if present."""
-        uri_origin = ""
-        re_matcher = re.match(
-            ".*Uri-Origin: ([a-zA-Z0-9\\-._~:/?#\\[\\]@!$&'\\(\\)\\*\\+,;%=]+).*",
-            data,
-        )
+    def get_reply(self, transaction_id: int) -> Reply | None:
+        """Get the reply to a request.
 
-        if re_matcher:
-            # LOGGER.info("///// Uri-Origin : %s", re_matcher.group(1))
-            uri_origin = re_matcher.group(1)
-        # else:
-        # LOGGER.info("///// no match")
-        return uri_origin
+        If the reply is incomplete, this will return None.
 
-    @staticmethod
-    def get_http_request_line(data) -> str:
-        """Extract Http request line."""
-        clean_data = data.replace("\\x02", "")
-        request_line = ""
-        re_matcher = re.match(
-            "b'(.*)HTTP/1.1",
-            clean_data,
-        )
-        if re_matcher:
-            # LOGGER.info("///// PUT : %s", re_matcher.group(1))
-            request_line = re_matcher.group(1)
-        # else:
-        #    LOGGER.info("///// no match")
-        return request_line.strip()
+        Args:
+            transaction_id: The transaction ID of the request.
+        Returns:
+            The reply or None if no reply found.
+        """
+        reply = None
+        if transaction_id in self._end_reply_events:
+            # Refuse to return an incomplete reply
+            LOGGER.debug(
+                "Refusing access to incomplete reply for transaction '%s'.",
+                transaction_id,
+            )
+            return None
 
-    async def incoming_triage(self, bytes_str):
-        """Identify message type and dispatch the result."""
+        for r in self._cdata_replies:
+            if r["transaction_id"] == transaction_id:
+                reply = r
+                break
 
+        if reply is not None:
+            self._cdata_replies.remove(reply)
+
+        return reply
+
+    async def route_response(self, bytes_str: bytes) -> list["TydomDevice"] | None:
+        """
+        Identify message type and dispatch the result.
+
+        Args:
+            bytes_str: Incoming message
+
+        """
         if bytes_str is None:
             return None
 
         incoming = None
-
-        # Find Uri-Origin in header if available
-        uri_origin = MessageHandler.get_uri_origin(str(bytes_str))
-
-        # Find http request line before http response
-        http_request_line = MessageHandler.get_http_request_line(str(bytes_str))
+        stripped_msg = bytes_str.strip(self.cmd_prefix)
 
         try:
-            if http_request_line is not None and len(http_request_line) > 0:
-                LOGGER.debug("%s detected !", http_request_line)
-                try:
-                    try:
-                        incoming = self.parse_put_response(bytes_str)
-                    except BaseException:
-                        # Tywatt response starts at 7
-                        incoming = self.parse_put_response(bytes_str, 7)
-                    return await self.parse_response(
-                        incoming, uri_origin, http_request_line
-                    )
-                except BaseException:
-                    LOGGER.error("Error when parsing tydom message (%s)", bytes_str)
-                    LOGGER.exception("Error when parsing tydom message")
-                    return None
-            elif len(uri_origin) > 0:
-                response = self.response_from_bytes(bytes_str[len(self.cmd_prefix) :])
-                incoming = response.data.decode("utf-8")
-                try:
-                    return await self.parse_response(
-                        incoming, uri_origin, http_request_line
-                    )
-                except BaseException:
-                    LOGGER.error("Error when parsing tydom message (%s)", bytes_str)
-                    return None
-            else:
-                LOGGER.warning("Unknown tydom message type received (%s)", bytes_str)
-                return None
+            if stripped_msg.startswith(b"HTTP/"):
+                parsed_message = parse_response(stripped_msg)
+                # Find Uri-Origin in header if available
+                uri_origin = parsed_message.headers.get("Uri-Origin", "")
 
-        except Exception as ex:
-            LOGGER.exception("exception")
-            LOGGER.error(
-                "Technical error when parsing tydom message (%s) : %s", bytes_str, ex
-            )
-            LOGGER.debug("Incoming payload (%s)", incoming)
-            LOGGER.debug("exception : %s", ex)
-            raise Exception("Something really wrong happened!") from ex
+            else:
+                parsed_message = parse_request(stripped_msg)
+                uri_origin = parsed_message.path
+            transaction_id = parsed_message.headers.get("Transac-Id")
+
+            try:
+                return await self.parse_response(
+                    parsed_message.body,
+                    uri_origin,
+                    parsed_message.headers.get("content-type"),
+                    transaction_id=int(transaction_id) if transaction_id else None,
+                )
+            except BaseException:
+                LOGGER.error("Error when parsing tydom message (%s)", bytes_str)
             return None
 
-    async def parse_response(self, incoming, uri_origin, http_request_line):
+        except Exception as ex:
+            LOGGER.error(
+                "Technical error when parsing tydom message (%s) : %s",
+                bytes_str,
+                ex,
+                exc_info=ex,
+            )
+            LOGGER.debug("Incoming payload (%s)", incoming)
+            raise Exception("Something really wrong happened!") from ex
+
+    def prepare_request(
+        self,
+        method: str,
+        url: str,
+        body: dict | bytes | None = None,
+        headers: dict | None = None,
+        reply_event: asyncio.Event | None = None,
+    ) -> tuple[int, bytes]:
+        headers = headers or {}
+        # Transaction ID is actually the current time in ms
+        transaction_id = headers.get("Transac-Id", str(time.time_ns())[:13])
+        headers["Transac-Id"] = transaction_id
+        if body:
+            if isinstance(body, dict):
+                body = json.dumps(body).encode("ascii")
+                headers["Content-Type"] = "application/json; charset=UTF-8"
+            content_length = headers.get("Content-Length", str(len(body)))
+            headers["Content-Length"] = content_length
+
+        request = bytes(f"{method} {url} HTTP/1.1\r\n", "ascii")
+        if len(headers):
+            for k, v in headers.items():
+                request += bytes(f"{k}: {v}\r\n", "ascii")
+
+        if body:
+            request += b"\r\n"
+            request += cast(bytes, body) + b"\r\n"
+
+        request += b"\r\n"
+
+        if reply_event:
+            self._end_reply_events[transaction_id] = reply_event
+
+        return (transaction_id, request)
+
+    async def parse_response(
+        self,
+        data: bytes | None,
+        uri_origin: str,
+        content_type: str,
+        transaction_id: int | None,
+    ) -> list | None:
         """Parse basic response.
 
-        Typically GET responses + instanciate covers and alarm class for updating data.
+        Typically GET responses + instantiate covers and alarm class for updating data.
         """
-        data = incoming
+        parsed = None
         msg_type = None
-        first = str(data[:40])
 
-        if "/configs/file" in uri_origin:
-            msg_type = "msg_config"
-        elif "/devices/cmeta" in uri_origin:
-            msg_type = "msg_cmetadata"
-        elif "/configs/gateway/api_mode" in uri_origin:
-            msg_type = "msg_api_mode"
-        elif "/groups/file" in uri_origin:
-            msg_type = "msg_groups"
-        elif "/devices/meta" in uri_origin:
-            msg_type = "msg_metadata"
-        elif "/scenarios/file" in uri_origin:
-            msg_type = "msg_scenarios"
-        elif "/devices/install" in http_request_line:
-            msg_type = "msg_pairing"
-        elif "/events" in http_request_line:
-            msg_type = "msg_event"
-        elif "/ping" in uri_origin:
-            msg_type = "msg_ping"
-        elif data != "" and "cdata" in data:
-            msg_type = "msg_cdata"
-        elif "doctype" in first:
-            msg_type = "msg_html"
-        elif "/info" in uri_origin:
-            msg_type = "msg_info"
-        elif "id" in first:
-            msg_type = "msg_data"
+        if data:
+            if content_type == "application/json":
+                parsed = json.loads(data)
+            elif content_type == "text/html":
+                msg_type = "msg_html"
+
+        MSG_MAPPING = {
+            "/configs/file": "msg_config",
+            "/configs/gateway/api_mode": "msg_api_mode",
+            "/devices/cdata": "msg_cdata",
+            "/devices/cmeta": "msg_cmetadata",
+            "/devices/install": "msg_pairing",
+            "/devices/meta": "msg_metadata",
+            "/events": "msg_event",
+            "/groups/file": "msg_groups",
+            "/info": "msg_info",
+            "/ping": "msg_ping",
+            "/scenarios/file": "msg_scenarios",
+        }
+
+        if msg_type is None:
+            msg_type = MSG_MAPPING.get(uri_origin)
+
+            if msg_type is None and data and b"id" in data[:40]:
+                msg_type = "msg_data"
 
         if msg_type is None:
             LOGGER.warning("Unknown message type received %s", data)
@@ -171,23 +209,20 @@ class MessageHandler:
             LOGGER.debug("Message received detected as (%s)", msg_type)
             try:
                 if msg_type == "msg_config":
-                    parsed = json.loads(data)
                     return await MessageHandler.parse_config_data(parsed=parsed)
 
                 elif msg_type == "msg_cmetadata":
-                    parsed = json.loads(data)
                     return await self.parse_cmeta_data(parsed=parsed)
 
                 elif msg_type == "msg_data":
-                    parsed = json.loads(data)
                     return await self.parse_devices_data(parsed=parsed)
 
                 elif msg_type == "msg_cdata":
-                    parsed = json.loads(data)
-                    return await self.parse_devices_cdata(parsed=parsed)
+                    return await self.parse_devices_cdata(
+                        parsed=parsed, transaction_id=transaction_id
+                    )
 
                 elif msg_type == "msg_metadata":
-                    parsed = json.loads(data)
                     return await self.parse_devices_metadata(parsed=parsed)
 
                 elif msg_type == "msg_event":
@@ -198,16 +233,14 @@ class MessageHandler:
                     LOGGER.debug("HTML Response ?")
 
                 elif msg_type == "msg_info":
-                    parsed = json.loads(data)
                     return await self.parse_msg_info(parsed)
 
                 elif msg_type == "msg_ping":
                     self.tydom_client.receive_pong()
 
             except Exception as e:
-                LOGGER.error("Error on parsing tydom response (%s)", data)
+                LOGGER.error("Error on parsing tydom response (%s)", data, exc_info=e)
                 LOGGER.exception("Error on parsing tydom response")
-                traceback.print_exception(e)
         LOGGER.debug("Incoming data parsed with success")
 
     async def parse_devices_metadata(self, parsed):
@@ -389,55 +422,22 @@ class MessageHandler:
     async def parse_config_data(parsed):
         """Parse config data."""
         LOGGER.debug("parse_config_data : %s", parsed)
-        devices = []
         for i in parsed["endpoints"]:
             device_unique_id = str(i["id_endpoint"]) + "_" + str(i["id_device"])
-
-            # device = await MessageHandler.get_device(i["last_usage"], device_unique_id, i["name"], i["id_endpoint"], None)
-            # if device is not None:
-            #    devices.append(device)
 
             LOGGER.debug(
                 "config_data device parsed : %s - %s", device_unique_id, i["name"]
             )
 
             device_name[device_unique_id] = i["name"]
-            device_type[device_unique_id] = i["last_usage"]
+            device_type[device_unique_id] = i["last_usage"] or "unknown"
             device_endpoint[device_unique_id] = i["id_endpoint"]
 
-            if (
-                i["last_usage"] == "shutter"
-                or i["last_usage"] == "klineShutter"
-                or i["last_usage"] == "light"
-                or i["last_usage"] == "window"
-                or i["last_usage"] == "windowFrench"
-                or i["last_usage"] == "windowSliding"
-                or i["last_usage"] == "belmDoor"
-                or i["last_usage"] == "klineDoor"
-                or i["last_usage"] == "klineWindowFrench"
-                or i["last_usage"] == "klineWindowSliding"
-                or i["last_usage"] == "garage_door"
-                or i["last_usage"] == "gate"
-            ):
-                pass
-
-            if i["last_usage"] == "boiler" or i["last_usage"] == "conso":
-                pass
             if i["last_usage"] == "alarm":
                 device_name[device_unique_id] = "Tyxal Alarm"
 
-            if i["last_usage"] == "electric":
-                pass
-
-            if i["last_usage"] == "sensorDFR":
-                pass
-
-            if i["last_usage"] == "":
-                device_type[device_unique_id] = "unknown"
-
         LOGGER.debug("Configuration updated")
-        LOGGER.debug("devices : %s", devices)
-        return devices
+        return []
 
     async def parse_cmeta_data(self, parsed):
         """Parse cmeta data."""
@@ -557,7 +557,7 @@ class MessageHandler:
                         LOGGER.exception("msg_data error in parsing !")
         return devices
 
-    async def parse_devices_cdata(self, parsed):
+    async def parse_devices_cdata(self, parsed, transaction_id: int | None = None):
         """Parse devices cdata."""
         LOGGER.debug("parse_devices_cdata : %s", parsed)
         devices = []
@@ -606,43 +606,41 @@ class MessageHandler:
                                         type_of_id,
                                     )
 
-                            elif type_of_id == "alarm":
-                                if elem.get("name") == "histo":
-                                    # Push event in queue
-                                    await self.alarm_events_msg.put(
-                                        {
-                                            "queryParams": elem.get("parameters", {}),
-                                            "event": elem.get("values", {}).get(
-                                                "event", {}
-                                            ),
-                                        }
+                            elif type_of_id == "alarm" and transaction_id is not None:
+                                reply = None
+                                for r in self._cdata_replies:
+                                    if r["transaction_id"] == transaction_id:
+                                        reply = r
+                                        break
+                                if reply is None:
+                                    reply = Reply(
+                                        transaction_id=transaction_id, events=[]
                                     )
-                                elif elem.get("EOR", False):
-                                    # Push None to notify end of request
-                                    await self.alarm_events_msg.put(None)
+                                    self._cdata_replies.insert(0, reply)
+                                    # Limit the number of tracked replies
+                                    if len(self._cdata_replies) > _MAX_REPLIES_SIZE:
+                                        reply = self._cdata_replies.pop()
+                                        LOGGER.warning(
+                                            "Forget uncomplete request with transaction ID '%s'.",
+                                            reply["transaction_id"],
+                                        )
+                                        self._end_reply_events.pop(
+                                            reply["transaction_id"], None
+                                        )
+
+                                if elem.get("EOR", False):
+                                    # Set the end reply event and forget about it
+                                    if (
+                                        event := self._end_reply_events.pop(
+                                            transaction_id, None
+                                        )
+                                    ) is not None:
+                                        event.set()
+                                else:
+                                    reply["events"].append(elem)
                     except Exception:
                         LOGGER.exception("Error when parsing msg_cdata")
         return devices
-
-    # PUT response DIRTY parsing
-    def parse_put_response(self, bytes_str, start=6):
-        """Parse PUT response."""
-        # TODO : Find a cooler way to parse nicely the PUT HTTP response
-        resp = bytes_str[len(self.cmd_prefix) :].decode("utf-8")
-        fields = resp.split("\r\n")
-        fields = fields[start:]  # ignore the PUT / HTTP/1.1
-        end_parsing = False
-        i = 0
-        output = ""
-        while not end_parsing:
-            field = fields[i]
-            if len(field) == 0 or field == "0":
-                end_parsing = True
-            else:
-                output += field
-                i = i + 2
-        parsed = json.loads(output)
-        return json.dumps(parsed)
 
     # FUNCTIONS
 
@@ -666,6 +664,68 @@ class MessageHandler:
         return name
 
 
+class BytesIOSocket:
+    """BytesIOSocket."""
+
+    def __init__(self, content):
+        """Initialize a BytesIOSocket."""
+        self.handle = BytesIO(content)
+
+    def makefile(self, mode):
+        """Get handle."""
+        return self.handle
+
+
+@dataclass(frozen=True)
+class HTTPResponse:
+    """HTTPResponse."""
+
+    status: int
+    headers: HTTPMessage
+    body: bytes | None
+
+
+def parse_response(raw_message: bytes) -> HTTPResponse:
+    sock = BytesIOSocket(raw_message)
+    response = CoreHTTPResponse(sock)
+    response.begin()
+
+    return HTTPResponse(
+        status=response.status, headers=response.headers, body=response.read()
+    )
+
+
+_MAXLINE = 65536
+
+
+class FakeHTTPRequest(CoreHTTPResponse):
+    def _read_status(self):
+        # This is the only line that is different for a request vs a response
+        # so we fake it.
+        line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+        if len(line) > _MAXLINE:
+            raise LineTooLong("status line")
+        if self.debuglevel > 0:
+            print("reply:", repr(line))
+        if not line:
+            raise ValueError("No request line")
+
+        words = line.rstrip("\r\n").split()
+
+        version = words[-1]
+
+        if not version.startswith("HTTP/"):
+            self._close_conn()
+            raise ValueError(line)
+
+        command, path = words[:2]
+        self.method = command
+        self.path = path
+
+        # Return fake status and reason to keep parsing the message
+        return version, 200, ""
+
+
 @dataclass(frozen=True)
 class HTTPRequest:
     """HTTPRequest."""
@@ -687,29 +747,13 @@ def parse_request(raw_request: bytes) -> HTTPRequest:
         The parsed request.
 
     """
-    # This is inspired by the http.server.BaseHTTPRequestHandler
-    rfile = BytesIO(raw_request)
-    raw_requestline = rfile.readline(65537)
+    sock = BytesIOSocket(raw_request)
+    request = FakeHTTPRequest(sock)
+    request.begin()
 
-    requestline = str(raw_requestline, "iso-8859-1")
-    requestline = requestline.rstrip("\r\n")
-    words = requestline.split()
-
-    version = words[-1]
-    assert version.startswith("HTTP/")
-
-    command, path = words[:2]
-
-    headers = parse_headers(rfile)
-
-    body = None
-    if (length := headers.get("Content-Length")) is not None:
-        body = rfile.read(int(length))
-    elif headers.get("Transfer-Encoding") == "chunked":
-        # Each chunk is preceded by its size in hexadecimal
-        # See https://en.wikipedia.org/wiki/Chunked_transfer_encoding
-        body = b""
-        while (chunk_size := rfile.readline().strip(b"\r\n")) != b"0":
-            body += rfile.read(int(chunk_size, 16)).strip(b"\r\n")
-
-    return HTTPRequest(command, path, headers, body)
+    return HTTPRequest(
+        method=request.method,
+        path=request.path,
+        headers=request.headers,
+        body=request.read(),
+    )
