@@ -397,35 +397,20 @@ class TydomAlarm(TydomDevice):
             if k in keys_list
         }
 
-    async def get_events(self, event_type) -> list[dict[str, Any]]:
+    async def get_events(self, event_type: str | None) -> list[dict[str, Any]]:
         """Get alarm events."""
-        # Empty the events queue
-        while not self._tydom_client.alarm_events_msg.empty():
-            self._tydom_client.alarm_events_msg.get_nowait()
-
-        await self._tydom_client.get_historic_cdata(
+        events = await self._tydom_client.get_historic_cdata(
             self._id, self._endpoint, event_type
         )
 
-        timeout = 10.0  # Wait maximum for 10 seconds between events then timeout
-
-        msgs = []
-        try:
-            while True:
-                msg = await asyncio.wait_for(
-                    self._tydom_client.alarm_events_msg.get(), timeout
-                )
-                if msg is None:
-                    break
-                msgs.append(msgs)
-        except TimeoutError:
-            LOGGER.warning("Failed to list all alarm events of type '%s'.", event_type)
-
-        LOGGER.debug("Raw messages: %s", msgs)
-        formatted_messages = [
-            self._format_alarm_event(m["event"])
-            for m in msgs
-            if m["queryParams"].get("type") == event_type
+        LOGGER.debug("Raw messages: %s", events)
+        # Raw message struct: {
+        #   "name":"histo",
+        #   "parameters":{"type":"<event_type>","nbElem":10,"indexStart":0},
+        #   "values":{"step":0,"nbElemTot":1,"index":0,"event":{...}}
+        # }
+        return [
+            self._format_alarm_event(m["values"]["event"])
+            for m in (events or [])
+            if m.get("values", {}).get("event") is not None
         ]
-
-        return formatted_messages

@@ -736,13 +736,32 @@ class TydomClient:
             str(pwd),
         )
 
-    async def get_historic_cdata(self, device_id, endpoint_id, event_type=None):
+    async def get_historic_cdata(
+        self,
+        device_id: str,
+        endpoint_id: str,
+        event_type: str | None = None,
+        indexStart: int = 0,
+        nbElement: int = 10,
+    ) -> list[dict] | None:
         """Get historical events."""
         # GET /devices/xxxx/endpoints/xxxx/cdata?name=histo&type=ALL&indexStart=0&nbElem=10
         type_ = event_type or "ALL"
-        # FIXME deal with start and nb elements
-        msg = f"/devices/{device_id}/endpoints/{endpoint_id}/cdata?name=histo&type={type_}&indexStart=0&nbElem=10"
-        await self.send_message("GET", msg)
+        url = f"/devices/{device_id}/endpoints/{endpoint_id}/cdata?name=histo&type={type_}&indexStart={indexStart}&nbElem={nbElement}"
+        event = asyncio.Event()
+
+        transaction_id, request = self._message_handler.prepare_request(
+            "GET", url, reply_event=event
+        )
+        await self.send_bytes(request)
+
+        # Wait for the reply
+        timeout = 30.0  # Wait maximum for 30 seconds for the full reply
+        await asyncio.wait_for(event.wait(), timeout)
+
+        reply = self._message_handler.get_reply(transaction_id)
+
+        return reply["events"] if reply else None
 
     async def update_firmware(self):
         """Update Tydom firmware."""
