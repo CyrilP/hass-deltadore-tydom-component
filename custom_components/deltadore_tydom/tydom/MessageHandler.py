@@ -1,6 +1,7 @@
 """Tydom message parsing."""
 
 import asyncio
+import contextlib
 import json
 import time
 from dataclasses import dataclass
@@ -27,6 +28,8 @@ from .tydom_devices import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from .tydom_client import TydomClient
 
 # Device dict for parsing
@@ -74,7 +77,7 @@ class MessageHandler:
                     parsed_message.body,
                     uri_origin,
                     parsed_message.headers.get("content-type"),
-                    transaction_id=int(transaction_id) if transaction_id else None,
+                    transaction_id=transaction_id if transaction_id else None,
                 )
             except BaseException:
                 LOGGER.error("Error when parsing tydom message (%s)", bytes_str)
@@ -180,7 +183,8 @@ class MessageHandler:
 
         if data:
             if content_type == "application/json":
-                parsed = json.loads(data)
+                with contextlib.suppress(json.decoder.JSONDecodeError):
+                    parsed = json.loads(data)
             elif content_type == "text/html":
                 msg_type = partial(no_op, "msg_html")
 
