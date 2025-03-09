@@ -573,7 +573,7 @@ class TydomClient:
         body: str
         if value is None:
             body = '{"' + name + '":"null}'
-        elif isinstance(value, (bool, int)):
+        elif isinstance(value, bool | int):
             body = '{"' + name + '":"' + str(value).lower() + "}"
         else:
             body = '{"' + name + '":"' + value + '"}'

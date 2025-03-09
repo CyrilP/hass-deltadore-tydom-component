@@ -63,12 +63,12 @@ class MessageHandler:
 
         try:
             if stripped_msg.startswith(b"HTTP/"):
-                parsed_message = parse_response(stripped_msg)
+                parsed_message = _parse_response(stripped_msg)
                 # Find Uri-Origin in header if available
                 uri_origin = parsed_message.headers.get("Uri-Origin", "")
 
             else:
-                parsed_message = parse_request(stripped_msg)
+                parsed_message = _parse_request(stripped_msg)
                 uri_origin = parsed_message.path
             transaction_id = parsed_message.headers.get("Transac-Id")
 
@@ -101,6 +101,21 @@ class MessageHandler:
         headers: dict | None = None,
         reply_event: asyncio.Event | None = None,
     ) -> tuple[int, bytes]:
+        """Create request bytes message.
+
+        If body is a dictionary, it should be json serializable.
+
+        Args:
+            method: HTTP method
+            url: HTTP target URL
+            body: [optional] Request body
+            headers: [optional] Request headers
+            reply_event: [optional] Event to wait for the reply completion
+
+        Returns:
+            Tuple (request transaction ID, request bytes message)
+
+        """
         headers = headers or {}
         # Transaction ID is actually the current time in ms
         transaction_id = headers.get("Transac-Id", str(time.time_ns())[:13])
@@ -597,7 +612,7 @@ class MessageHandler:
         return name
 
 
-class BytesIOSocket:
+class _BytesIOSocket:
     """BytesIOSocket."""
 
     def __init__(self, content):
@@ -610,7 +625,7 @@ class BytesIOSocket:
 
 
 @dataclass(frozen=True)
-class HTTPResponse:
+class _HTTPResponse:
     """HTTPResponse."""
 
     status: int
@@ -618,12 +633,12 @@ class HTTPResponse:
     body: bytes | None
 
 
-def parse_response(raw_message: bytes) -> HTTPResponse:
-    sock = BytesIOSocket(raw_message)
+def _parse_response(raw_message: bytes) -> _HTTPResponse:
+    sock = _BytesIOSocket(raw_message)
     response = CoreHTTPResponse(sock)
     response.begin()
 
-    return HTTPResponse(
+    return _HTTPResponse(
         status=response.status, headers=response.headers, body=response.read()
     )
 
@@ -631,7 +646,7 @@ def parse_response(raw_message: bytes) -> HTTPResponse:
 _MAXLINE = 65536
 
 
-class FakeHTTPRequest(CoreHTTPResponse):
+class _FakeHTTPRequest(CoreHTTPResponse):
     def _read_status(self):
         # This is the only line that is different for a request vs a response
         # so we fake it.
@@ -639,7 +654,7 @@ class FakeHTTPRequest(CoreHTTPResponse):
         if len(line) > _MAXLINE:
             raise LineTooLong("status line")
         if self.debuglevel > 0:
-            print("reply:", repr(line))
+            print("reply:", repr(line))  # noqa: T201
         if not line:
             raise ValueError("No request line")
 
@@ -660,7 +675,7 @@ class FakeHTTPRequest(CoreHTTPResponse):
 
 
 @dataclass(frozen=True)
-class HTTPRequest:
+class _HTTPRequest:
     """HTTPRequest."""
 
     method: str
@@ -669,7 +684,7 @@ class HTTPRequest:
     body: bytes | None
 
 
-def parse_request(raw_request: bytes) -> HTTPRequest:
+def _parse_request(raw_request: bytes) -> _HTTPRequest:
     """Parse a HTTP request sent through the websocket.
 
     Args:
@@ -679,11 +694,11 @@ def parse_request(raw_request: bytes) -> HTTPRequest:
         The parsed request.
 
     """
-    sock = BytesIOSocket(raw_request)
-    request = FakeHTTPRequest(sock)
+    sock = _BytesIOSocket(raw_request)
+    request = _FakeHTTPRequest(sock)
     request.begin()
 
-    return HTTPRequest(
+    return _HTTPRequest(
         method=request.method,
         path=request.path,
         headers=request.headers,
