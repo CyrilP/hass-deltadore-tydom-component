@@ -112,7 +112,7 @@ class MessageHandler:
 
         try:
             if stripped_msg.startswith(b"HTTP/"):
-                parsed_message = parse_response(stripped_msg)
+                parsed_message = _parse_response(stripped_msg)
                 # Find Uri-Origin in header if available
                 uri_origin = parsed_message.headers.get("Uri-Origin", "")
 
@@ -735,7 +735,7 @@ class HTTPResponse:
     body: bytes | None
 
 
-def parse_response(raw_message: bytes) -> HTTPResponse:
+def _parse_response(raw_message: bytes) -> HTTPResponse:
     sock = BytesIOSocket(raw_message)
     response = CoreHTTPResponse(sock)
     response.begin()
@@ -748,7 +748,7 @@ def parse_response(raw_message: bytes) -> HTTPResponse:
 _MAXLINE = 65536
 
 
-class FakeHTTPRequest(CoreHTTPResponse):
+class _FakeHTTPRequest(CoreHTTPResponse):
     def _read_status(self):
         # This is the only line that is different for a request vs a response
         # so we fake it.
@@ -756,7 +756,7 @@ class FakeHTTPRequest(CoreHTTPResponse):
         if len(line) > _MAXLINE:
             raise LineTooLong("status line")
         if self.debuglevel > 0:
-            print("reply:", repr(line))
+            print("reply:", repr(line))  # noqa: T201
         if not line:
             raise ValueError("No request line")
 
@@ -798,7 +798,7 @@ def parse_request(raw_request: bytes) -> HTTPRequest:
 
     """
     sock = BytesIOSocket(raw_request)
-    request = FakeHTTPRequest(sock)
+    request = _FakeHTTPRequest(sock)
     request.begin()
 
     return HTTPRequest(

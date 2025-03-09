@@ -184,7 +184,7 @@ class TydomClient:
                 raise TydomClientApiClientAuthenticationError(
                     "Tydom credentials not found"
                 )
-        except asyncio.TimeoutError as exception:
+        except TimeoutError as exception:
             raise TydomClientApiClientCommunicationError(
                 "Timeout error fetching information",
             ) from exception
@@ -274,7 +274,7 @@ class TydomClient:
 
                 return connection
 
-        except asyncio.TimeoutError as exception:
+        except TimeoutError as exception:
             raise TydomClientApiClientCommunicationError(
                 "Timeout error fetching information",
             ) from exception
@@ -432,6 +432,18 @@ class TydomClient:
         body: dict | bytes | None = None,
         headers: dict | None = None,
     ) -> str:
+        """Send request.
+
+        Args:
+            method: Request method
+            url: Request URL
+            body: Request body
+            headers: Request headers
+
+        Returns:
+            The request transaction ID.
+
+        """
         transaction_id, request = self._message_handler.prepare_request(
             method, url, body, headers
         )
@@ -446,6 +458,18 @@ class TydomClient:
         body: dict | bytes | None = None,
         headers: dict | None = None,
     ) -> list[dict] | None:
+        """Send request and wait for its reply.
+
+        Args:
+            method: Request method
+            url: Request URL
+            body: Request body
+            headers: Request headers
+
+        Returns:
+            List of reply events or None
+
+        """
         event = asyncio.Event()
 
         transaction_id, request = self._message_handler.prepare_request(
@@ -611,7 +635,7 @@ class TydomClient:
         body: str
         if value is None:
             body = '{"' + name + '":"null}'
-        elif isinstance(value, (bool, int)):
+        elif isinstance(value, bool | int):
             body = '{"' + name + '":"' + str(value).lower() + "}"
         else:
             body = '{"' + name + '":"' + value + '"}'

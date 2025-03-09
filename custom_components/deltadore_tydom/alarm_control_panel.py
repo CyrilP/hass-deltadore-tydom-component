@@ -41,7 +41,9 @@ async def async_setup_entry(
     platform.async_register_entity_service(
         SERVICE_GET_EVENTS,
         {
-            vol.Optional("event_type"): vol.Any("ALL", "EVENTS", "ON_OFF", "UNACKED_EVENTS"),
+            vol.Optional("event_type"): vol.Any(
+                "ALL", "EVENTS", "ON_OFF", "UNACKED_EVENTS"
+            ),
         },
         "async_get_events",
         supports_response=SupportsResponse.ONLY,
