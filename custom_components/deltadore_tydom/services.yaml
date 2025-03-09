@@ -1,0 +1,28 @@
+acknowledge_events:
+  target:
+    entity:
+      integration: deltadore_tydom
+      domain: alarm_control_panel
+  fields:
+    code:
+      selector:
+        text:
+          type: password
+get_events:
+  target:
+    entity:
+      integration: deltadore_tydom
+      domain: alarm_control_panel
+  fields:
+    event_type:
+      selector:
+        select:
+          options:
+            - label: All events
+              value: ALL
+            - label: Unacknowledge events
+              value: UNACKED_EVENTS
+            - label: De-/Activation events
+              value: ON_OFF
+            - label: Events
+              value: EVENTS

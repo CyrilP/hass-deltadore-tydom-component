@@ -1,10 +1,13 @@
 # https://www.home-assistant.io/integrations/default_config/
 default_config:
 
+homeassistant:
+  debug: true
+
 # https://www.home-assistant.io/integrations/logger/
 logger:
   default: info
   logs:
-    custom_components.deltadore-tydom: debug
+    custom_components.deltadore_tydom: debug
 
 # demo:

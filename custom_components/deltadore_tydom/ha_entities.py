@@ -1,4 +1,5 @@
 """Home assistant entites."""
+
 from typing import Any
 from datetime import date
 import math
@@ -30,11 +31,22 @@ from homeassistant.components.cover import (
     CoverEntityFeature,
 )
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass, SensorEntity
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorStateClass,
+    SensorEntity,
+)
 from homeassistant.components.light import LightEntity, ColorMode, ATTR_BRIGHTNESS
 from homeassistant.components.lock import LockEntity
-from homeassistant.components.update import UpdateEntity, UpdateEntityFeature, UpdateDeviceClass
-from homeassistant.components.alarm_control_panel import AlarmControlPanelEntity, CodeFormat
+from homeassistant.components.update import (
+    UpdateEntity,
+    UpdateEntityFeature,
+    UpdateDeviceClass,
+)
+from homeassistant.components.alarm_control_panel import (
+    AlarmControlPanelEntity,
+    CodeFormat,
+)
 from homeassistant.util.percentage import (
     percentage_to_ranged_value,
     ranged_value_to_percentage,
@@ -60,6 +72,7 @@ from .tydom.tydom_devices import (
 )
 
 from .const import DOMAIN, LOGGER
+
 
 class HAEntity:
     """Generic abstract HA entity."""
@@ -94,7 +107,7 @@ class HAEntity:
                 and value is not None
                 and attribute not in self._registered_sensors
             ):
-                alt_name = attribute.split('_')[0]
+                alt_name = attribute.split("_")[0]
                 if attribute in self.filtered_attrs or alt_name in self.filtered_attrs:
                     continue
                 sensor_class = None
@@ -123,11 +136,19 @@ class HAEntity:
                     )
                 else:
                     sensors.append(
-                        GenericSensor(self._device, sensor_class, state_class, attribute, attribute, unit)
+                        GenericSensor(
+                            self._device,
+                            sensor_class,
+                            state_class,
+                            attribute,
+                            attribute,
+                            unit,
+                        )
                     )
                 self._registered_sensors.append(attribute)
 
         return sensors
+
 
 class GenericSensor(SensorEntity):
     """Representation of a generic sensor."""
@@ -159,7 +180,7 @@ class GenericSensor(SensorEntity):
         state_class: SensorStateClass,
         name: str,
         attribute: str,
-        unit_of_measurement
+        unit_of_measurement,
     ):
         """Initialize the sensor."""
         self._device = device
@@ -199,6 +220,7 @@ class GenericSensor(SensorEntity):
         # The opposite of async_added_to_hass. Remove any registered call backs here.
         self._device.remove_callback(self.async_write_ha_state)
 
+
 class BinarySensorBase(BinarySensorEntity):
     """Base representation of a Sensor."""
 
@@ -222,6 +244,7 @@ class BinarySensorBase(BinarySensorEntity):
         """Entity being removed from hass."""
         # The opposite of async_added_to_hass. Remove any registered call backs here.
         self._device.remove_callback(self.async_write_ha_state)
+
 
 class GenericBinarySensor(BinarySensorBase):
     """Generic representation of a Binary Sensor."""
@@ -253,6 +276,7 @@ class GenericBinarySensor(BinarySensorBase):
         """Return the state of the sensor."""
         return getattr(self._device, self._attribute)
 
+
 class HATydom(UpdateEntity, HAEntity):
     """Representation of a Tydom Gateway."""
 
@@ -267,9 +291,7 @@ class HATydom(UpdateEntity, HAEntity):
     device_class = None
     supported_features = None
 
-    sensor_classes = {
-        "update_available": BinarySensorDeviceClass.UPDATE
-    }
+    sensor_classes = {"update_available": BinarySensorDeviceClass.UPDATE}
 
     filtered_attrs = [
         "absence.json",
@@ -321,7 +343,7 @@ class HATydom(UpdateEntity, HAEntity):
         if self._device is None:
             return None
         # return self._hub.current_firmware
-        if hasattr (self._device, "mainVersionSW"):
+        if hasattr(self._device, "mainVersionSW"):
             return self._device.mainVersionSW
         else:
             return None
@@ -329,7 +351,7 @@ class HATydom(UpdateEntity, HAEntity):
     @property
     def latest_version(self) -> str | None:
         """Latest version available for install."""
-        if self._device is not None and hasattr (self._device, "mainVersionSW"):
+        if self._device is not None and hasattr(self._device, "mainVersionSW"):
             if self._device.updateAvailable:
                 # return version based on today's date for update version
                 return date.today().strftime("%y.%m.%d")
@@ -342,6 +364,7 @@ class HATydom(UpdateEntity, HAEntity):
     ) -> None:
         """Install an update."""
         await self._device.async_trigger_firmware_update()
+
 
 class HAEnergy(SensorEntity, HAEntity):
     """Representation of an Energy sensor."""
@@ -434,13 +457,14 @@ class HAEnergy(SensorEntity, HAEntity):
     def device_info(self):
         """Return information to link this entity with the correct device."""
         sw_version = None
-        if  hasattr(self._device, "softVersion"):
+        if hasattr(self._device, "softVersion"):
             sw_version = self._device.softVersion
         return {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
             "sw_version": sw_version,
         }
+
 
 class HACover(CoverEntity, HAEntity):
     """Representation of a Cover."""
@@ -476,11 +500,10 @@ class HACover(CoverEntity, HAEntity):
             )
         if hasattr(device, "slope"):
             self.supported_features = (
-                self.supported_features
-                | CoverEntityFeature.SET_TILT_POSITION
-                #| CoverEntityFeature.OPEN_TILT
-                #| CoverEntityFeature.CLOSE_TILT
-                #| CoverEntityFeature.STOP_TILT
+                self.supported_features | CoverEntityFeature.SET_TILT_POSITION
+                # | CoverEntityFeature.OPEN_TILT
+                # | CoverEntityFeature.CLOSE_TILT
+                # | CoverEntityFeature.STOP_TILT
             )
 
     @property
@@ -553,6 +576,7 @@ class HACover(CoverEntity, HAEntity):
         """Stop the cover tilt."""
         await self._device.slope_stop()
 
+
 class HASmoke(BinarySensorEntity, HAEntity):
     """Representation of an Smoke sensor."""
 
@@ -572,7 +596,6 @@ class HASmoke(BinarySensorEntity, HAEntity):
         self._registered_sensors = []
         self._attr_device_class = BinarySensorDeviceClass.SMOKE
 
-
     @property
     def is_on(self):
         """Return the state of the sensor."""
@@ -586,6 +609,7 @@ class HASmoke(BinarySensorEntity, HAEntity):
             "name": self._device.device_name,
             "manufacturer": "Delta Dore",
         }
+
 
 class HaClimate(ClimateEntity, HAEntity):
     """A climate entity."""
@@ -620,7 +644,7 @@ class HaClimate(ClimateEntity, HAEntity):
             HVACMode.HEAT: "NORMAL",
             HVACMode.OFF: "STOP",
             HVACMode.FAN_ONLY: "VENTILATING",
-            HVACMode.DRY: "DRYING"
+            HVACMode.DRY: "DRYING",
         }
         self.dict_modes_dd_to_ha = {
             "COOLING": HVACMode.COOL,
@@ -630,16 +654,21 @@ class HaClimate(ClimateEntity, HAEntity):
             "STOP": HVACMode.OFF,
             "AUTO": HVACMode.AUTO,
             "VENTILATING": HVACMode.FAN_ONLY,
-            "DRYING": HVACMode.DRY
+            "DRYING": HVACMode.DRY,
         }
 
-        if "hvacMode" in self._device._metadata and "AUTO" in self._device._metadata["hvacMode"]["enum_values"]:
-                self.dict_modes_ha_to_dd[HVACMode.AUTO] = "AUTO"
-        elif "hvacMode" in self._device._metadata and "ANTI_FROST" in self._device._metadata["hvacMode"]["enum_values"]:
-                self.dict_modes_ha_to_dd[HVACMode.AUTO] = "ANTI_FROST"
+        if (
+            "hvacMode" in self._device._metadata
+            and "AUTO" in self._device._metadata["hvacMode"]["enum_values"]
+        ):
+            self.dict_modes_ha_to_dd[HVACMode.AUTO] = "AUTO"
+        elif (
+            "hvacMode" in self._device._metadata
+            and "ANTI_FROST" in self._device._metadata["hvacMode"]["enum_values"]
+        ):
+            self.dict_modes_ha_to_dd[HVACMode.AUTO] = "ANTI_FROST"
         else:
             self.dict_modes_ha_to_dd[HVACMode.AUTO] = "AUTO"
-
 
         if hasattr(self._device, "minSetpoint"):
             self._attr_min_temp = self._device.minSetpoint
@@ -654,7 +683,10 @@ class HaClimate(ClimateEntity, HAEntity):
             | ClimateEntityFeature.TARGET_TEMPERATURE
         )
 
-        if hasattr(self._device._metadata, "thermicLevel") and ("NORMAL" in self._device._metadata["thermicLevel"] or "AUTO" in self._device._metadata["thermicLevel"]):
+        if hasattr(self._device._metadata, "thermicLevel") and (
+            "NORMAL" in self._device._metadata["thermicLevel"]
+            or "AUTO" in self._device._metadata["thermicLevel"]
+        ):
             self.dict_modes_ha_to_dd[HVACMode.HEAT] = "AUTO"
 
         # self._attr_preset_modes = ["NORMAL", "STOP", "ANTI_FROST"]
@@ -663,18 +695,36 @@ class HaClimate(ClimateEntity, HAEntity):
             HVACMode.AUTO,
         ]
 
-        if ("comfortMode" in self._device._metadata and "COOLING" in self._device._metadata["comfortMode"]["enum_values"]) or ("hvacMode" in self._device._metadata and "COOLING" in self._device._metadata["hvacMode"]["enum_values"]):
+        if (
+            "comfortMode" in self._device._metadata
+            and "COOLING" in self._device._metadata["comfortMode"]["enum_values"]
+        ) or (
+            "hvacMode" in self._device._metadata
+            and "COOLING" in self._device._metadata["hvacMode"]["enum_values"]
+        ):
             self._attr_hvac_modes.append(HVACMode.COOL)
 
-        if ("comfortMode" in self._device._metadata and "HEATING" in self._device._metadata["comfortMode"]["enum_values"]) or ("hvacMode" in self._device._metadata and "HEATING" in self._device._metadata["hvacMode"]["enum_values"]):
+        if (
+            "comfortMode" in self._device._metadata
+            and "HEATING" in self._device._metadata["comfortMode"]["enum_values"]
+        ) or (
+            "hvacMode" in self._device._metadata
+            and "HEATING" in self._device._metadata["hvacMode"]["enum_values"]
+        ):
             self._attr_hvac_modes.append(HVACMode.HEAT)
 
         self._registered_sensors = []
 
-        if hasattr(self._device._metadata, "setpoint") and "min" in self._device._metadata["setpoint"]:
+        if (
+            hasattr(self._device._metadata, "setpoint")
+            and "min" in self._device._metadata["setpoint"]
+        ):
             self._attr_min_temp = self._device._metadata["setpoint"]["min"]
 
-        if hasattr(self._device._metadata, "setpoint") and "max" in self._device._metadata["setpoint"]:
+        if (
+            hasattr(self._device._metadata, "setpoint")
+            and "max" in self._device._metadata["setpoint"]
+        ):
             self._attr_max_temp = self._device._metadata["setpoint"]["max"]
 
     @property
@@ -698,14 +748,21 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def hvac_mode(self) -> HVACMode:
         """Return the current operation (e.g. heat, cool, idle)."""
-        if hasattr(self._device, 'hvacMode'):
-            LOGGER.debug("hvac_mode = %s", self.dict_modes_dd_to_ha[self._device.hvacMode])
+        if hasattr(self._device, "hvacMode"):
+            LOGGER.debug(
+                "hvac_mode = %s", self.dict_modes_dd_to_ha[self._device.hvacMode]
+            )
             return self.dict_modes_dd_to_ha[self._device.hvacMode]
-        elif hasattr(self._device, 'authorization'):
-            LOGGER.debug("authorization = %s", self.dict_modes_dd_to_ha[self._device.thermicLevel])
+        elif hasattr(self._device, "authorization"):
+            LOGGER.debug(
+                "authorization = %s",
+                self.dict_modes_dd_to_ha[self._device.thermicLevel],
+            )
             return self.dict_modes_dd_to_ha[self._device.authorization]
-        elif hasattr(self._device, 'thermicLevel'):
-            LOGGER.debug("thermicLevel = %s", self.dict_modes_dd_to_ha[self._device.thermicLevel])
+        elif hasattr(self._device, "thermicLevel"):
+            LOGGER.debug(
+                "thermicLevel = %s", self.dict_modes_dd_to_ha[self._device.thermicLevel]
+            )
             return self.dict_modes_dd_to_ha[self._device.thermicLevel]
         else:
             return None
@@ -713,9 +770,9 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def current_temperature(self) -> float | None:
         """Return the current temperature."""
-        if hasattr(self._device, 'temperature'):
+        if hasattr(self._device, "temperature"):
             return self._device.temperature
-        elif hasattr(self._device, 'ambientTemperature'):
+        elif hasattr(self._device, "ambientTemperature"):
             return self._device.ambientTemperature
         else:
             return None
@@ -723,24 +780,40 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature currently set to be reached."""
-        if hasattr(self._device, 'hvacMode'):
-            if (self._device.hvacMode == "HEATING" or self._device.hvacMode == "NORMAL") and hasattr(self._device, "setpoint"):
+        if hasattr(self._device, "hvacMode"):
+            if (
+                self._device.hvacMode == "HEATING" or self._device.hvacMode == "NORMAL"
+            ) and hasattr(self._device, "setpoint"):
                 return self._device.setpoint
-            elif (self._device.hvacMode == "HEATING" or self._device.hvacMode == "NORMAL") and hasattr(self._device, "heatSetpoint"):
+            elif (
+                self._device.hvacMode == "HEATING" or self._device.hvacMode == "NORMAL"
+            ) and hasattr(self._device, "heatSetpoint"):
                 return self._device.heatSetpoint
-            elif self._device.hvacMode == "COOLING" and hasattr(self._device, "setpoint"):
+            elif self._device.hvacMode == "COOLING" and hasattr(
+                self._device, "setpoint"
+            ):
                 return self._device.setpoint
-            elif self._device.hvacMode == "COOLING" and hasattr(self._device, "coolSetpoint"):
+            elif self._device.hvacMode == "COOLING" and hasattr(
+                self._device, "coolSetpoint"
+            ):
                 return self._device.coolSetpoint
 
-        elif hasattr(self._device, 'authorization'):
-            if self._device.authorization == "HEATING" and hasattr(self._device, "heatSetpoint"):
+        elif hasattr(self._device, "authorization"):
+            if self._device.authorization == "HEATING" and hasattr(
+                self._device, "heatSetpoint"
+            ):
                 return self._device.heatSetpoint
-            elif self._device.authorization == "HEATING" and hasattr(self._device, "setpoint"):
+            elif self._device.authorization == "HEATING" and hasattr(
+                self._device, "setpoint"
+            ):
                 return self._device.setpoint
-            elif self._device.authorization == "COOLING" and hasattr(self._device, "coolSetpoint"):
+            elif self._device.authorization == "COOLING" and hasattr(
+                self._device, "coolSetpoint"
+            ):
                 return self._device.coolSetpoint
-            elif self._device.authorization == "COOLING" and hasattr(self._device, "setpoint"):
+            elif self._device.authorization == "COOLING" and hasattr(
+                self._device, "setpoint"
+            ):
                 return self._device.setpoint
         return None
 
@@ -755,6 +828,7 @@ class HaClimate(ClimateEntity, HAEntity):
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
         await self._device.set_temperature(str(kwargs.get(ATTR_TEMPERATURE)))
+
 
 class HaWindow(CoverEntity, HAEntity):
     """Representation of a Window."""
@@ -790,6 +864,7 @@ class HaWindow(CoverEntity, HAEntity):
         """Return if the window is closed."""
         return self._device.openState == "LOCKED"
 
+
 class HaDoor(LockEntity, HAEntity):
     """Representation of a Door."""
 
@@ -822,12 +897,15 @@ class HaDoor(LockEntity, HAEntity):
     @property
     def is_locked(self) -> bool:
         """Return if the door is locked."""
-        if hasattr(self._device, 'openState'):
+        if hasattr(self._device, "openState"):
             return self._device.openState == "LOCKED"
-        elif hasattr(self._device, 'intrusionDetect'):
+        elif hasattr(self._device, "intrusionDetect"):
             return not self._device.intrusionDetect
         else:
-            raise AttributeError("The required attributes 'openState' or 'intrusionDetect' are not available in the device.")
+            raise AttributeError(
+                "The required attributes 'openState' or 'intrusionDetect' are not available in the device."
+            )
+
 
 class HaGate(CoverEntity, HAEntity):
     """Representation of a Gate."""
@@ -858,6 +936,7 @@ class HaGate(CoverEntity, HAEntity):
     def is_closed(self) -> bool:
         """Return if the window is closed."""
         return self._device.openState == "LOCKED"
+
 
 class HaGarage(CoverEntity, HAEntity):
     """Representation of a Garage door."""
@@ -894,6 +973,7 @@ class HaGarage(CoverEntity, HAEntity):
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
         await self._device.open()
+
 
 class HaLight(LightEntity, HAEntity):
     """Representation of a Light."""
@@ -944,12 +1024,17 @@ class HaLight(LightEntity, HAEntity):
         """Turn device on."""
         brightness = None
         if ATTR_BRIGHTNESS in kwargs:
-            brightness = math.ceil(ranged_value_to_percentage(self.BRIGHTNESS_SCALE, kwargs[ATTR_BRIGHTNESS]))
+            brightness = math.ceil(
+                ranged_value_to_percentage(
+                    self.BRIGHTNESS_SCALE, kwargs[ATTR_BRIGHTNESS]
+                )
+            )
         await self._device.turn_on(brightness)
 
     async def async_turn_off(self, **kwargs):
         """Turn device off."""
         await self._device.turn_off()
+
 
 class HaAlarm(AlarmControlPanelEntity, HAEntity):
     """Representation of an Alarm."""
@@ -1042,3 +1127,11 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
     async def async_alarm_trigger(self, code=None) -> None:
         """Send alarm trigger command."""
         await self._device.alarm_trigger(code)
+
+    async def async_acknowledge_events(self, code=None) -> None:
+        """Acknowledge alarm events."""
+        await self._device.acknowledge_events(code)
+
+    async def async_get_events(self, event_type=None) -> list:
+        """Get alarm events."""
+        return await self._device.get_events(event_type or "UNACKED_EVENTS")
