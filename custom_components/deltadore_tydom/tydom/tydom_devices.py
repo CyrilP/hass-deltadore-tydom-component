@@ -383,7 +383,7 @@ class TydomAlarm(TydomDevice):
 
     _KEPT_KEYS: ClassVar = {
         "": {"name", "date", "zones", "accessCode", "product"},
-        "product": {"nameCustom", "typeLong"},
+        "product": {"nameCustom", "nameStd", "number", "typeLong"},
         "accessCode": {
             "nameCustom",
         },
