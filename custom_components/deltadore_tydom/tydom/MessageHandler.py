@@ -4,6 +4,7 @@ import asyncio
 import json
 import time
 from dataclasses import dataclass
+from functools import partial
 from http.client import HTTPMessage, LineTooLong
 from http.client import HTTPResponse as CoreHTTPResponse
 from io import BytesIO
@@ -129,82 +130,81 @@ class MessageHandler:
         data: bytes | None,
         uri_origin: str,
         content_type: str | None,
-        transaction_id: int | None,
-    ) -> list | None:
-        """Parse basic response.
+        transaction_id: str | None,
+    ) -> list[TydomDevice] | None:
+        """Parse response.
 
-        Typically GET responses + instantiate covers and alarm class for updating data.
+        Args:
+            data: Response body
+            uri_origin: Response URL
+            content_type: Response content type (can't be trusted)
+            transaction_id: Response transaction ID
+
+        Returns:
+            List of Tydom devices if applicable.
+
         """
-        parsed = None
-        msg_type = None
+
+        async def no_op(message_type: str, *args):
+            LOGGER.debug("%s response", message_type)
+
+        async def event_message(*args):
+            LOGGER.debug("Event message, refreshing...")
+            await self.tydom_client.get_devices_data()
+
+        async def ping_message(*args):
+            self.tydom_client.receive_pong()
+
+        MSG_MAPPING = {
+            "/configs/file": MessageHandler.parse_config_data,
+            "/configs/gateway/api_mode": partial(no_op, "msg_api_mode"),
+            "/devices/cdata": self.parse_devices_cdata,
+            "/devices/cmeta": self.parse_cmeta_data,
+            "/devices/install": partial(no_op, "msg_pairing"),
+            "/devices/meta": self.parse_devices_metadata,
+            "/events": event_message,
+            "/groups/file": partial(no_op, "msg_groups"),
+            "/info": self.parse_msg_info,
+            "/ping": ping_message,
+            "/refresh/all": partial(no_op, "msg_refresh_all"),
+            "/scenarios/file": partial(no_op, "msg_scenarios"),
+        }
+
+        parsed = data
+        msg_type: (
+            Callable[
+                [bytes | dict | None, str | None], Awaitable[list[TydomDevice] | None]
+            ]
+            | None
+        ) = None
 
         if data:
             if content_type == "application/json":
                 parsed = json.loads(data)
             elif content_type == "text/html":
-                msg_type = "msg_html"
-
-        MSG_MAPPING = {
-            "/configs/file": "msg_config",
-            "/configs/gateway/api_mode": "msg_api_mode",
-            "/devices/cdata": "msg_cdata",
-            "/devices/cmeta": "msg_cmetadata",
-            "/devices/install": "msg_pairing",
-            "/devices/meta": "msg_metadata",
-            "/events": "msg_event",
-            "/groups/file": "msg_groups",
-            "/info": "msg_info",
-            "/ping": "msg_ping",
-            "/scenarios/file": "msg_scenarios",
-        }
+                msg_type = partial(no_op, "msg_html")
 
         if msg_type is None:
             msg_type = MSG_MAPPING.get(uri_origin)
 
-            if msg_type is None and data and b"id" in data[:40]:
-                msg_type = "msg_data"
+            if msg_type is None and data:
+                first = data[:40]
+                if b"doctype" in first:  # Content-Type header is not respected
+                    msg_type = partial(no_op, "msg_html")
+                elif b"id" in first:
+                    msg_type = self.parse_devices_data
 
         if msg_type is None:
-            LOGGER.warning("Unknown message type received %s", data)
+            LOGGER.warning("Unknown message type received %s: %s", uri_origin, data)
         else:
-            LOGGER.debug("Message received detected as (%s)", msg_type)
+            LOGGER.debug("Message received from %s", uri_origin)
             try:
-                if msg_type == "msg_config":
-                    return await MessageHandler.parse_config_data(parsed=parsed)
-
-                elif msg_type == "msg_cmetadata":
-                    return await self.parse_cmeta_data(parsed=parsed)
-
-                elif msg_type == "msg_data":
-                    return await self.parse_devices_data(parsed=parsed)
-
-                elif msg_type == "msg_cdata":
-                    return await self.parse_devices_cdata(
-                        parsed=parsed, transaction_id=transaction_id
-                    )
-
-                elif msg_type == "msg_metadata":
-                    return await self.parse_devices_metadata(parsed=parsed)
-
-                elif msg_type == "msg_event":
-                    LOGGER.debug("Event message, refreshing...")
-                    await self.tydom_client.get_devices_data()
-
-                elif msg_type == "msg_html":
-                    LOGGER.debug("HTML Response ?")
-
-                elif msg_type == "msg_info":
-                    return await self.parse_msg_info(parsed)
-
-                elif msg_type == "msg_ping":
-                    self.tydom_client.receive_pong()
-
+                return await msg_type(parsed, transaction_id)
             except Exception as e:
                 LOGGER.error("Error on parsing tydom response (%s)", data, exc_info=e)
-                LOGGER.exception("Error on parsing tydom response")
         LOGGER.debug("Incoming data parsed with success")
 
-    async def parse_devices_metadata(self, parsed):
+    async def parse_devices_metadata(self, parsed, transaction_id):
         """Parse metadata."""
         LOGGER.debug("metadata : %s", parsed)
         for device in parsed:
@@ -224,7 +224,7 @@ class MessageHandler:
                         )
         return []
 
-    async def parse_msg_info(self, parsed):
+    async def parse_msg_info(self, parsed, transaction_id):
         """Parse message info."""
         LOGGER.debug("parse_msg_info : %s", parsed)
 
@@ -380,7 +380,7 @@ class MessageHandler:
                 return
 
     @staticmethod
-    async def parse_config_data(parsed):
+    async def parse_config_data(parsed, transaction_id):
         """Parse config data."""
         LOGGER.debug("parse_config_data : %s", parsed)
         for i in parsed["endpoints"]:
@@ -400,7 +400,7 @@ class MessageHandler:
         LOGGER.debug("Configuration updated")
         return []
 
-    async def parse_cmeta_data(self, parsed):
+    async def parse_cmeta_data(self, parsed, transaction_id):
         """Parse cmeta data."""
         LOGGER.debug("parse_cmeta_data : %s", parsed)
         for i in parsed:
@@ -470,7 +470,7 @@ class MessageHandler:
 
         LOGGER.debug("Metadata configuration updated")
 
-    async def parse_devices_data(self, parsed):
+    async def parse_devices_data(self, parsed, transaction_id):
         """Parse device data."""
         LOGGER.debug("parse_devices_data : %s", parsed)
         devices = []
@@ -518,7 +518,7 @@ class MessageHandler:
                         LOGGER.exception("msg_data error in parsing !")
         return devices
 
-    async def parse_devices_cdata(self, parsed, transaction_id: int | None = None):
+    async def parse_devices_cdata(self, parsed, transaction_id: str | None = None):
         """Parse devices cdata."""
         LOGGER.debug("parse_devices_cdata : %s", parsed)
         devices = []
