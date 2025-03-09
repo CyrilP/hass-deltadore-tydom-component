@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import asyncio
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
+
 from ..const import LOGGER
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from .tydom_client import TydomClient
 
 
@@ -380,22 +381,27 @@ class TydomAlarm(TydomDevice):
         """Acknowledge alarm events."""
         await self._tydom_client.put_ackevents_cdata(self._id, self._endpoint, code)
 
-    _KEPT_KEYS = {
-        "": {"name", "data", "zones", "accessCode", "product"},
+    _KEPT_KEYS: ClassVar = {
+        "": {"name", "date", "zones", "accessCode", "product"},
         "product": {"nameCustom", "typeLong"},
         "accessCode": {
             "nameCustom",
         },
     }
 
-    def _format_alarm_event(self, event: dict, key: str = "") -> dict:
+    def _format_alarm_event(self, event: Any, key: str = "") -> Any:
         """Format raw event."""
-        keys_list = self._KEPT_KEYS.get(key, set(event))
-        return {
-            k: self._format_alarm_event(v, k)
-            for k, v in event.items()
-            if k in keys_list
-        }
+        if isinstance(event, dict):
+            keys_list = self._KEPT_KEYS.get(key, set(event))
+            return {
+                k: self._format_alarm_event(v, k)
+                for k, v in event.items()
+                if k in keys_list
+            }
+        elif isinstance(event, list):
+            return [self._format_alarm_event(i, key) for i in event]
+        else:
+            return event
 
     async def get_events(self, event_type: str | None) -> list[dict[str, Any]]:
         """Get alarm events."""

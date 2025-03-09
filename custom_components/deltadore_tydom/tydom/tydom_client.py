@@ -62,9 +62,9 @@ class TydomClient:
         id: str,
         mac: str,
         password: str,
-        alarm_pin: str = None,
-        zone_away: str = None,
-        zone_home: str = None,
+        alarm_pin: str | None = None,
+        zone_away: str | None = None,
+        zone_home: str | None = None,
         host: str = MEDIATION_URL,
         event_callback=None,
     ) -> None:
@@ -100,11 +100,6 @@ class TydomClient:
         self._message_handler = MessageHandler(
             tydom_client=self, cmd_prefix=self._cmd_prefix
         )
-
-    @property
-    def alarm_events_msg(self) -> asyncio.Queue:
-        """Queue of requested alarm events."""
-        return self._message_handler.alarm_events_msg
 
     def update_config(self, zone_home, zone_away):
         """Update zones configuration."""
@@ -393,6 +388,9 @@ class TydomClient:
 
     async def send_bytes(self, a_bytes: bytes):
         """Send bytes to connection, retry if it fails."""
+        if file_mode:
+            return
+
         if self._connection is not None:
             try:
                 await self._connection.send_bytes(a_bytes)
@@ -426,6 +424,41 @@ class TydomClient:
         )
         if not file_mode:
             await self.send_bytes(a_bytes)
+
+    async def send_request(
+        self,
+        method: str,
+        url: str,
+        body: dict | bytes | None = None,
+        headers: dict | None = None,
+    ) -> str:
+        transaction_id, request = self._message_handler.prepare_request(
+            method, url, body, headers
+        )
+        await self.send_bytes(request)
+
+        return transaction_id
+
+    async def get_reply_to_request(
+        self,
+        method: str,
+        url: str,
+        body: dict | bytes | None = None,
+        headers: dict | None = None,
+    ) -> list[dict] | None:
+        event = asyncio.Event()
+
+        transaction_id, request = self._message_handler.prepare_request(
+            method, url, body, headers, reply_event=event
+        )
+        await self.send_bytes(request)
+
+        # Wait for the reply
+        await event.wait()
+
+        reply = self._message_handler.get_reply(transaction_id)
+
+        return reply["events"] if reply else None
 
     # ########################
     # Utils methods
@@ -748,20 +781,9 @@ class TydomClient:
         # GET /devices/xxxx/endpoints/xxxx/cdata?name=histo&type=ALL&indexStart=0&nbElem=10
         type_ = event_type or "ALL"
         url = f"/devices/{device_id}/endpoints/{endpoint_id}/cdata?name=histo&type={type_}&indexStart={indexStart}&nbElem={nbElement}"
-        event = asyncio.Event()
-
-        transaction_id, request = self._message_handler.prepare_request(
-            "GET", url, reply_event=event
-        )
-        await self.send_bytes(request)
-
-        # Wait for the reply
         timeout = 30.0  # Wait maximum for 30 seconds for the full reply
-        await asyncio.wait_for(event.wait(), timeout)
-
-        reply = self._message_handler.get_reply(transaction_id)
-
-        return reply["events"] if reply else None
+        async with asyncio.timeout(timeout):
+            return await self.get_reply_to_request("GET", url)
 
     async def update_firmware(self):
         """Update Tydom firmware."""

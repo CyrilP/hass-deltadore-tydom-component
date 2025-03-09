@@ -1,6 +1,7 @@
 """Tydom message parsing."""
 
 import asyncio
+import contextlib
 import json
 import time
 from dataclasses import dataclass
@@ -26,6 +27,8 @@ from .tydom_devices import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from .tydom_client import TydomClient
 
 _MAX_REPLIES_SIZE = 5
@@ -39,8 +42,14 @@ device_metadata = {}
 
 
 class Reply(TypedDict):
-    transaction_id: int
+    """cdata request reply."""
+
+    transaction_id: str
+    """Transaction ID."""
     events: list[dict]
+    """Raw reply events."""
+    done: bool
+    """Whether all reply events have been received or not."""
 
 
 class MessageHandler:
@@ -51,26 +60,22 @@ class MessageHandler:
         self.tydom_client = tydom_client
         self.cmd_prefix = cmd_prefix
         self._cdata_replies: list[Reply] = []
-        self._end_reply_events: dict[int, asyncio.Event] = {}
+        self._end_reply_events: dict[str, asyncio.Event] = {}
 
-    def get_reply(self, transaction_id: int) -> Reply | None:
-        """Get the reply to a request.
+    def get_reply(self, transaction_id: str) -> Reply | None:
+        """
+        Get the reply to a request.
 
         If the reply is incomplete, this will return None.
 
         Args:
             transaction_id: The transaction ID of the request.
+
         Returns:
             The reply or None if no reply found.
+
         """
         reply = None
-        if transaction_id in self._end_reply_events:
-            # Refuse to return an incomplete reply
-            LOGGER.debug(
-                "Refusing access to incomplete reply for transaction '%s'.",
-                transaction_id,
-            )
-            return None
 
         for r in self._cdata_replies:
             if r["transaction_id"] == transaction_id:
@@ -78,7 +83,15 @@ class MessageHandler:
                 break
 
         if reply is not None:
-            self._cdata_replies.remove(reply)
+            if reply["done"]:
+                self._cdata_replies.remove(reply)
+            else:
+                LOGGER.debug(
+                    "Try to get partial reply to request %s: %s",
+                    transaction_id,
+                    reply["events"],
+                )
+                reply = None
 
         return reply
 
@@ -112,10 +125,12 @@ class MessageHandler:
                     parsed_message.body,
                     uri_origin,
                     parsed_message.headers.get("content-type"),
-                    transaction_id=int(transaction_id) if transaction_id else None,
+                    transaction_id=transaction_id if transaction_id else None,
                 )
-            except BaseException:
-                LOGGER.error("Error when parsing tydom message (%s)", bytes_str)
+            except BaseException as e:
+                LOGGER.error(
+                    "Error when parsing tydom message (%s)", bytes_str, exc_info=e
+                )
             return None
 
         except Exception as ex:
@@ -135,9 +150,25 @@ class MessageHandler:
         body: dict | bytes | None = None,
         headers: dict | None = None,
         reply_event: asyncio.Event | None = None,
-    ) -> tuple[int, bytes]:
+    ) -> tuple[str, bytes]:
+        """
+        Create request bytes message.
+
+        If body is a dictionary, it should be json serializable.
+
+        Args:
+            method: HTTP method
+            url: HTTP target URL
+            body: [optional] Request body
+            headers: [optional] Request headers
+            reply_event: [optional] Event to wait for the reply completion
+
+        Returns:
+            Tuple (request transaction ID, request bytes message)
+
+        """
         headers = headers or {}
-        # Transaction ID is actually the current time in ms
+        # Transaction ID is the current time in ms
         transaction_id = headers.get("Transac-Id", str(time.time_ns())[:13])
         headers["Transac-Id"] = transaction_id
         if body:
@@ -179,7 +210,9 @@ class MessageHandler:
 
         if data:
             if content_type == "application/json":
-                parsed = json.loads(data)
+                # Content-Type is not reliable; it is use with text/html for example
+                with contextlib.suppress(json.decoder.JSONDecodeError):
+                    parsed = json.loads(data)
             elif content_type == "text/html":
                 msg_type = "msg_html"
 
@@ -614,7 +647,9 @@ class MessageHandler:
                                         break
                                 if reply is None:
                                     reply = Reply(
-                                        transaction_id=transaction_id, events=[]
+                                        transaction_id=transaction_id,
+                                        events=[],
+                                        done=False,
                                     )
                                     self._cdata_replies.insert(0, reply)
                                     # Limit the number of tracked replies
@@ -629,6 +664,10 @@ class MessageHandler:
                                         )
 
                                 if elem.get("EOR", False):
+                                    LOGGER.debug(
+                                        "End of reply for request '%s'.", transaction_id
+                                    )
+                                    reply["done"] = True
                                     # Set the end reply event and forget about it
                                     if (
                                         event := self._end_reply_events.pop(
@@ -637,9 +676,19 @@ class MessageHandler:
                                     ) is not None:
                                         event.set()
                                 else:
+                                    LOGGER.debug(
+                                        "Catching new reply for request '%s'.",
+                                        transaction_id,
+                                    )
                                     reply["events"].append(elem)
-                    except Exception:
-                        LOGGER.exception("Error when parsing msg_cdata")
+                            else:
+                                LOGGER.debug(
+                                    "Ignore cdata message targetting '%s' (%s).",
+                                    name_of_id,
+                                    type_of_id,
+                                )
+                    except Exception as e:
+                        LOGGER.exception("Error when parsing msg_cdata", exc_info=e)
         return devices
 
     # FUNCTIONS
