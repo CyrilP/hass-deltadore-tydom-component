@@ -1,4 +1,5 @@
 """Platform for sensor integration."""
+
 from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
@@ -16,4 +17,3 @@ async def async_setup_entry(
     """Add climate for passed config_entry in HA."""
     hub = hass.data[DOMAIN][config_entry.entry_id]
     hub.add_climate_callback = async_add_entities
-

@@ -1,13 +1,33 @@
 """Support for Tydom classes."""
-from collections.abc import Callable
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, ClassVar
+
 from ..const import LOGGER
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from .tydom_client import TydomClient
+
 
 class TydomDevice:
     """represents a generic device."""
 
     _ha_device = None
 
-    def __init__(self, tydom_client, uid, device_id, name, device_type, endpoint, metadata, data):
+    def __init__(
+        self,
+        tydom_client: TydomClient,
+        uid: str,
+        device_id: str,
+        name: str,
+        device_type: str,
+        endpoint: str | None,
+        metadata: dict | None,
+        data: dict | None,
+    ):
         """Initialize a TydomDevice."""
         self._tydom_client = tydom_client
         self._uid = uid
@@ -63,7 +83,7 @@ class TydomDevice:
             if (attribute == "_uid" or attribute[:1] != "_") and value is not None:
                 setattr(self, attribute, value)
         await self.publish_updates()
-        if hasattr(self,"_ha_device") and self._ha_device is not None:
+        if hasattr(self, "_ha_device") and self._ha_device is not None:
             try:
                 self._ha_device.async_write_ha_state()
             except Exception:
@@ -82,6 +102,7 @@ class Tydom(TydomDevice):
         """Trigger firmware update."""
         LOGGER.debug("Installing firmware update...")
         await self._tydom_client.update_firmware()
+
 
 class TydomShutter(TydomDevice):
     """Represents a shutter."""
@@ -156,7 +177,7 @@ class TydomBoiler(TydomDevice):
         """Set hvac mode (ANTI_FROST/NORMAL/STOP)."""
         LOGGER.debug("setting hvac mode to %s", mode)
         if mode == "ANTI_FROST":
-            if hasattr(self, 'hvacMode'):
+            if hasattr(self, "hvacMode"):
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "setpoint", None
                 )
@@ -169,12 +190,8 @@ class TydomBoiler(TydomDevice):
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "antifrostOn", True
                 )
-                await self._tydom_client.put_data(
-                    "/home/absence", "to", -1
-                )
-                await self._tydom_client.put_data(
-                    "/events/home/absence", "to", -1
-                )
+                await self._tydom_client.put_data("/home/absence", "to", -1)
+                await self._tydom_client.put_data("/events/home/absence", "to", -1)
                 await self._tydom_client.put_data(
                     "/events/home/absence", "actions", "in"
                 )
@@ -186,14 +203,10 @@ class TydomBoiler(TydomDevice):
                     self._id, self._endpoint, "comfortMode", "HEATING"
                 )
         elif mode == "NORMAL":
-            if hasattr(self, 'hvacMode'):
+            if hasattr(self, "hvacMode"):
                 if self.hvacMode == "ANTI_FROST":
-                    await self._tydom_client.put_data(
-                        "/home/absence", "to", 0
-                    )
-                    await self._tydom_client.put_data(
-                        "/events/home/absence", "to", 0
-                    )
+                    await self._tydom_client.put_data("/home/absence", "to", 0)
+                    await self._tydom_client.put_data("/events/home/absence", "to", 0)
                     await self._tydom_client.put_data(
                         "/events/home/absence", "actions", "in"
                     )
@@ -223,7 +236,7 @@ class TydomBoiler(TydomDevice):
                     )
 
         elif mode == "STOP":
-            if hasattr(self, 'hvacMode'):
+            if hasattr(self, "hvacMode"):
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "hvacMode", "STOP"
                 )
@@ -256,14 +269,18 @@ class TydomBoiler(TydomDevice):
             self._id, self._endpoint, "setpoint", temperature
         )
 
+
 class TydomWindow(TydomDevice):
     """represents a window."""
+
 
 class TydomDoor(TydomDevice):
     """represents a door."""
 
+
 class TydomGate(TydomDevice):
     """represents a gate."""
+
 
 class TydomGarage(TydomDevice):
     """represents a garage door."""
@@ -273,6 +290,7 @@ class TydomGarage(TydomDevice):
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "levelCmd", "TOGGLE"
         )
+
 
 class TydomLight(TydomDevice):
     """represents a light."""
@@ -291,7 +309,9 @@ class TydomLight(TydomDevice):
             await self._tydom_client.put_devices_data(
                 self._id, self._endpoint, "level", str(brightness)
             )
-        self._tydom_client.add_poll_device_url_1s(f"/devices/{self._id}/endpoints/{self._endpoint}/cdata")
+        self._tydom_client.add_poll_device_url_1s(
+            f"/devices/{self._id}/endpoints/{self._endpoint}/cdata"
+        )
 
     async def turn_off(self) -> None:
         """Tell light to turn off."""
@@ -303,7 +323,10 @@ class TydomLight(TydomDevice):
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "levelCmd", command
         )
-        self._tydom_client.add_poll_device_url_1s(f"/devices/{self._id}/endpoints/{self._endpoint}/cdata")
+        self._tydom_client.add_poll_device_url_1s(
+            f"/devices/{self._id}/endpoints/{self._endpoint}/cdata"
+        )
+
 
 class TydomAlarm(TydomDevice):
     """represents an alarm."""
@@ -316,17 +339,33 @@ class TydomAlarm(TydomDevice):
 
     async def alarm_disarm(self, code) -> None:
         """Disarm alarm."""
-        await self._tydom_client.put_alarm_cdata(self._id, self._endpoint, code, "OFF", None, self.is_legacy_alarm())
+        await self._tydom_client.put_alarm_cdata(
+            self._id, self._endpoint, code, "OFF", None, self.is_legacy_alarm()
+        )
         # self._tydom_client.add_poll_device_url_1s(f"/devices/{self._id}/endpoints/{self._endpoint}/cdata")
 
     async def alarm_arm_away(self, code=None) -> None:
         """Arm away alarm."""
-        await self._tydom_client.put_alarm_cdata(self._id, self._endpoint, code, "ON", self._tydom_client._zone_away, self.is_legacy_alarm())
+        await self._tydom_client.put_alarm_cdata(
+            self._id,
+            self._endpoint,
+            code,
+            "ON",
+            self._tydom_client._zone_away,
+            self.is_legacy_alarm(),
+        )
         # self._tydom_client.add_poll_device_url_1s(f"/devices/{self._id}/endpoints/{self._endpoint}/cdata")
 
     async def alarm_arm_home(self, code=None) -> None:
         """Arm home alarm."""
-        await self._tydom_client.put_alarm_cdata(self._id, self._endpoint, code, "ON", self._tydom_client._zone_home, self.is_legacy_alarm())
+        await self._tydom_client.put_alarm_cdata(
+            self._id,
+            self._endpoint,
+            code,
+            "ON",
+            self._tydom_client._zone_home,
+            self.is_legacy_alarm(),
+        )
         # self._tydom_client.add_poll_device_url_1s(f"/devices/{self._id}/endpoints/{self._endpoint}/cdata")
 
     async def alarm_trigger(self, code=None) -> None:
@@ -334,4 +373,50 @@ class TydomAlarm(TydomDevice):
 
         This will trigger a SOS alarm for 90 seconds.
         """
-        await self._tydom_client.put_alarm_cdata(self._id, self._endpoint, code, "PANIC", None, self.is_legacy_alarm())
+        await self._tydom_client.put_alarm_cdata(
+            self._id, self._endpoint, code, "PANIC", None, self.is_legacy_alarm()
+        )
+
+    async def acknowledge_events(self, code) -> None:
+        """Acknowledge alarm events."""
+        await self._tydom_client.put_ackevents_cdata(self._id, self._endpoint, code)
+
+    _KEPT_KEYS: ClassVar = {
+        "": {"name", "date", "zones", "accessCode", "product"},
+        "product": {"nameCustom", "nameStd", "number", "typeLong"},
+        "accessCode": {
+            "nameCustom",
+        },
+    }
+
+    def _format_alarm_event(self, event: Any, key: str = "") -> Any:
+        """Format raw event."""
+        if isinstance(event, dict):
+            keys_list = self._KEPT_KEYS.get(key, set(event))
+            return {
+                k: self._format_alarm_event(v, k)
+                for k, v in event.items()
+                if k in keys_list
+            }
+        elif isinstance(event, list):
+            return [self._format_alarm_event(i, key) for i in event]
+        else:
+            return event
+
+    async def get_events(self, event_type: str | None) -> list[dict[str, Any]]:
+        """Get alarm events."""
+        events = await self._tydom_client.get_historic_cdata(
+            self._id, self._endpoint, event_type
+        )
+
+        LOGGER.debug("Raw messages: %s", events)
+        # Raw message struct: {
+        #   "name":"histo",
+        #   "parameters":{"type":"<event_type>","nbElem":10,"indexStart":0},
+        #   "values":{"step":0,"nbElemTot":1,"index":0,"event":{...}}
+        # }
+        return [
+            self._format_alarm_event(m["values"]["event"])
+            for m in (events or [])
+            if m.get("values", {}).get("event") is not None
+        ]

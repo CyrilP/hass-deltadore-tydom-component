@@ -1,31 +1,36 @@
 """Tydom API Client."""
-import os
+
 import asyncio
-import socket
 import base64
+import os
 import re
-import async_timeout
-import aiohttp
+import socket
 import ssl
+import time
 import traceback
+from typing import TYPE_CHECKING, cast
 
-from typing import cast
-from urllib3 import encode_multipart_formdata
-from aiohttp import ClientWebSocketResponse, ClientSession, WSMsgType
+import aiohttp
+import async_timeout
+from aiohttp import ClientSession, ClientWebSocketResponse, WSMsgType
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
-
-from .const import (
-    MEDIATION_URL,
-    DELTADORE_AUTH_URL,
-    DELTADORE_AUTH_GRANT_TYPE,
-    DELTADORE_AUTH_CLIENTID,
-    DELTADORE_AUTH_SCOPE,
-    DELTADORE_API_SITES)
-from .MessageHandler import MessageHandler
-
 from requests.auth import HTTPDigestAuth
+from urllib3 import encode_multipart_formdata
 
 from ..const import LOGGER
+from .const import (
+    DELTADORE_API_SITES,
+    DELTADORE_AUTH_CLIENTID,
+    DELTADORE_AUTH_GRANT_TYPE,
+    DELTADORE_AUTH_SCOPE,
+    DELTADORE_AUTH_URL,
+    MEDIATION_URL,
+)
+from .MessageHandler import MessageHandler
+
+if TYPE_CHECKING:
+    from .tydom_devices import TydomDevice
+
 
 class TydomClientApiClientError(Exception):
     """Exception to indicate a general API error."""
@@ -47,6 +52,7 @@ file_lines = None
 file_index = 0
 file_name = "/config/traces.txt"
 
+
 class TydomClient:
     """Tydom API Client."""
 
@@ -56,9 +62,9 @@ class TydomClient:
         id: str,
         mac: str,
         password: str,
-        alarm_pin: str = None,
-        zone_away: str = None,
-        zone_home: str = None,
+        alarm_pin: str | None = None,
+        zone_away: str | None = None,
+        zone_home: str | None = None,
         host: str = MEDIATION_URL,
         event_callback=None,
     ) -> None:
@@ -84,11 +90,11 @@ class TydomClient:
 
         if self._remote_mode:
             LOGGER.info("Configure remote mode (%s)", self._host)
-            self._cmd_prefix = "\x02"
+            self._cmd_prefix = b"\x02"
             self._ping_timeout = 40
         else:
             LOGGER.info("Configure local mode (%s)", self._host)
-            self._cmd_prefix = ""
+            self._cmd_prefix = b""
             self._ping_timeout = None
 
         self._message_handler = MessageHandler(
@@ -178,7 +184,7 @@ class TydomClient:
                 raise TydomClientApiClientAuthenticationError(
                     "Tydom credentials not found"
                 )
-        except asyncio.TimeoutError as exception:
+        except TimeoutError as exception:
             raise TydomClientApiClientCommunicationError(
                 "Timeout error fetching information",
             ) from exception
@@ -212,7 +218,7 @@ class TydomClient:
         }
 
         # configuration needed for local mode
-        #- Wrap slow blocking call flagged by HA
+        # - Wrap slow blocking call flagged by HA
         sslcontext = await asyncio.to_thread(ssl.create_default_context)
         sslcontext.options |= 0x4  # OP_LEGACY_SERVER_CONNECT
         sslcontext.check_hostname = False
@@ -268,7 +274,7 @@ class TydomClient:
 
                 return connection
 
-        except asyncio.TimeoutError as exception:
+        except TimeoutError as exception:
             raise TydomClientApiClientCommunicationError(
                 "Timeout error fetching information",
             ) from exception
@@ -309,12 +315,14 @@ class TydomClient:
 
         await self.get_scenarii()
 
-    async def consume_messages(self):
-        """Read and parse incomming messages."""
+    async def consume_messages(self) -> list["TydomDevice"] | None:
+        """Read and parse incoming messages."""
         global file_lines, file_mode, file_index
         if file_mode:
-            if (len(file_lines) > file_index):
-                incoming = file_lines[file_index].replace("\\r", '\x0d').replace("\\n", "\x0a")
+            if len(file_lines) > file_index:
+                incoming = (
+                    file_lines[file_index].replace("\\r", "\x0d").replace("\\n", "\x0a")
+                )
                 incoming_bytes_str = incoming.encode("utf-8")
                 file_index += 1
                 LOGGER.info("Incomming message - message : %s", incoming_bytes_str)
@@ -322,7 +330,7 @@ class TydomClient:
                 await asyncio.sleep(10)
                 return None
             await asyncio.sleep(1)
-            return await self._message_handler.incoming_triage(incoming_bytes_str)
+            return await self._message_handler.route_response(incoming_bytes_str)
         try:
             if self._connection.closed or self.pending_pings > 5:
                 await self._connection.close()
@@ -331,10 +339,14 @@ class TydomClient:
 
             msg = await self._connection.receive()
             LOGGER.info(
-                "Incomming message - type : %s - message : %s", msg.type, msg.data
+                "Incoming message - type : %s - message : %s", msg.type, msg.data
             )
 
-            if msg.type == WSMsgType.CLOSE or msg.type == WSMsgType.CLOSED or msg.type == WSMsgType.CLOSING:
+            if (
+                msg.type == WSMsgType.CLOSE
+                or msg.type == WSMsgType.CLOSED
+                or msg.type == WSMsgType.CLOSING
+            ):
                 LOGGER.debug("Close message type received")
                 return None
             elif msg.type == WSMsgType.ERROR:
@@ -346,7 +358,7 @@ class TydomClient:
 
             incoming_bytes_str = cast(bytes, msg.data)
 
-            return await self._message_handler.incoming_triage(incoming_bytes_str)
+            return await self._message_handler.route_response(incoming_bytes_str)
 
         except Exception:
             LOGGER.exception("Unable to handle message")
@@ -374,8 +386,11 @@ class TydomClient:
         )
         return digest
 
-    async def send_bytes(self, a_bytes : bytes):
+    async def send_bytes(self, a_bytes: bytes):
         """Send bytes to connection, retry if it fails."""
+        if file_mode:
+            return
+
         if self._connection is not None:
             try:
                 await self._connection.send_bytes(a_bytes)
@@ -385,9 +400,7 @@ class TydomClient:
                     self._connection = await self.async_connect()
                     await self._connection.send_bytes(a_bytes)
                 except ConnectionResetError:
-                    LOGGER.warning(
-                        "Cannot send message to Tydom. Connection was lost."
-            )
+                    LOGGER.warning("Cannot send message to Tydom. Connection was lost.")
         else:
             LOGGER.warning(
                 "Cannot send message to Tydom because no connection has been established yet."
@@ -395,14 +408,15 @@ class TydomClient:
 
     async def send_message(self, method, msg):
         """Send Generic message to Tydom."""
+        # Transaction ID is currently the current time in ms
+        transaction_id = str(time.time_ns())[:13]
         message = (
-            self._cmd_prefix
-            + method
+            method
             + " "
             + msg
-            + " HTTP/1.1\r\nContent-Length: 0\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
+            + f" HTTP/1.1\r\nContent-Length: 0\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: {transaction_id}\r\n\r\n"
         )
-        a_bytes = bytes(message, "ascii")
+        a_bytes = self._cmd_prefix + bytes(message, "ascii")
         LOGGER.debug(
             "Sending message to tydom (%s %s)",
             method,
@@ -411,6 +425,64 @@ class TydomClient:
         if not file_mode:
             await self.send_bytes(a_bytes)
 
+    async def send_request(
+        self,
+        method: str,
+        url: str,
+        body: dict | bytes | None = None,
+        headers: dict | None = None,
+    ) -> str:
+        """Send request.
+
+        Args:
+            method: Request method
+            url: Request URL
+            body: Request body
+            headers: Request headers
+
+        Returns:
+            The request transaction ID.
+
+        """
+        transaction_id, request = self._message_handler.prepare_request(
+            method, url, body, headers
+        )
+        await self.send_bytes(request)
+
+        return transaction_id
+
+    async def get_reply_to_request(
+        self,
+        method: str,
+        url: str,
+        body: dict | bytes | None = None,
+        headers: dict | None = None,
+    ) -> list[dict] | None:
+        """Send request and wait for its reply.
+
+        Args:
+            method: Request method
+            url: Request URL
+            body: Request body
+            headers: Request headers
+
+        Returns:
+            List of reply events or None
+
+        """
+        event = asyncio.Event()
+
+        transaction_id, request = self._message_handler.prepare_request(
+            method, url, body, headers, reply_event=event
+        )
+        await self.send_bytes(request)
+
+        # Wait for the reply
+        await event.wait()
+
+        reply = self._message_handler.get_reply(transaction_id)
+
+        return reply["events"] if reply else None
 
     # ########################
     # Utils methods
@@ -418,7 +490,7 @@ class TydomClient:
 
     @staticmethod
     def generate_random_key():
-        """Generate 16 bytes random key for Sec-WebSocket-Keyand convert it to base64."""
+        """Generate 16 bytes random key for Sec-WebSocket-Key and convert it to base64."""
         return str(base64.b64encode(os.urandom(16)))
 
     # ########################
@@ -518,11 +590,8 @@ class TydomClient:
         """Give order to endpoint."""
         # 10 here is the endpoint = the device (shutter in this case) to open.
         device_id = str(id)
-        str_request = (
-            self._cmd_prefix
-            + f"GET /devices/{device_id}/endpoints/{device_id}/data HTTP/1.1\r\nContent-Length: 0\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
-        )
-        a_bytes = bytes(str_request, "ascii")
+        str_request = f"GET /devices/{device_id}/endpoints/{device_id}/data HTTP/1.1\r\nContent-Length: 0\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
+        a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
         LOGGER.debug("Sending message to tydom (%s %s)", "GET device data", str_request)
         if not file_mode:
             await self.send_bytes(a_bytes)
@@ -566,20 +635,19 @@ class TydomClient:
         body: str
         if value is None:
             body = '{"' + name + '":"null}'
-        elif isinstance(value, bool) or isinstance(value, int):
-            body = '{"' + name + '":"' + str(value).lower() + '}'
+        elif isinstance(value, bool | int):
+            body = '{"' + name + '":"' + str(value).lower() + "}"
         else:
             body = '{"' + name + '":"' + value + '"}'
 
         str_request = (
-            self._cmd_prefix
-            + f"PUT {path} HTTP/1.1\r\nContent-Length: "
+            f"PUT {path} HTTP/1.1\r\nContent-Length: "
             + str(len(body))
             + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
             + body
             + "\r\n\r\n"
         )
-        a_bytes = bytes(str_request, "ascii")
+        a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
         LOGGER.debug("Sending message to tydom (%s %s)", "PUT data", body)
         if not file_mode:
             await self.send_bytes(a_bytes)
@@ -592,39 +660,57 @@ class TydomClient:
         if value is None:
             body = '[{"name":"' + name + '","value":null}]'
         elif isinstance(value, bool):
-            body = '[{"name":"' + name + '","value":' + str(value).lower() + '}]'
+            body = '[{"name":"' + name + '","value":' + str(value).lower() + "}]"
         else:
             body = '[{"name":"' + name + '","value":"' + value + '"}]'
 
         # endpoint_id is the endpoint = the device (shutter in this case) to
         # open.
         str_request = (
-            self._cmd_prefix
-            + f"PUT /devices/{device_id}/endpoints/{endpoint_id}/data HTTP/1.1\r\nContent-Length: "
+            f"PUT /devices/{device_id}/endpoints/{endpoint_id}/data HTTP/1.1\r\nContent-Length: "
             + str(len(body))
             + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
             + body
             + "\r\n\r\n"
         )
-        a_bytes = bytes(str_request, "ascii")
+        a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
         LOGGER.debug("Sending message to tydom (%s %s)", "PUT device data", body)
         if not file_mode:
             await self.send_bytes(a_bytes)
 
         return 0
 
-    async def put_alarm_cdata(self, device_id, endpoint_id=None, alarm_pin=None, value=None, zone_id=None, legacy_zones=False):
+    async def put_alarm_cdata(
+        self,
+        device_id,
+        endpoint_id=None,
+        alarm_pin=None,
+        value=None,
+        zone_id=None,
+        legacy_zones=False,
+    ):
         """Configure alarm mode."""
         if legacy_zones:
             if zone_id is not None:
                 zones_array = zone_id.split(",")
                 for zone in zones_array:
-                    await self._put_alarm_cdata(device_id, endpoint_id, alarm_pin, value, zone, legacy_zones)
+                    await self._put_alarm_cdata(
+                        device_id, endpoint_id, alarm_pin, value, zone, legacy_zones
+                    )
         else:
-            await self._put_alarm_cdata(device_id, endpoint_id, alarm_pin, value, zone_id, legacy_zones)
+            await self._put_alarm_cdata(
+                device_id, endpoint_id, alarm_pin, value, zone_id, legacy_zones
+            )
 
-
-    async def _put_alarm_cdata(self, device_id, endpoint_id=None, alarm_pin=None, value=None, zone_id=None, legacy_zones=False):
+    async def _put_alarm_cdata(
+        self,
+        device_id,
+        endpoint_id=None,
+        alarm_pin=None,
+        value=None,
+        zone_id=None,
+        legacy_zones=False,
+    ):
         """Configure alarm mode."""
         # Credits to @mgcrea on github !
         # AWAY # "PUT /devices/{}/endpoints/{}/cdata?name=alarmCmd HTTP/1.1\r\ncontent-length: 29\r\ncontent-type: application/json; charset=utf-8\r\ntransac-id: request_124\r\n\r\n\r\n{"value":"ON","pwd":{}}\r\n\r\n"
@@ -655,22 +741,12 @@ class TydomClient:
         try:
             if zone_id is None or zone_id == "":
                 cmd = "alarmCmd"
-                body = (
-                    '{"value":"'
-                    + str(value)
-                    + '","pwd":"'
-                    + str(pin)
-                    + '"}'
-                )
+                body = '{"value":"' + str(value) + '","pwd":"' + str(pin) + '"}'
             else:
                 if legacy_zones:
                     cmd = "partCmd"
                     body = (
-                        '{"value":"'
-                        + str(value)
-                        + ', "part":"'
-                        + str(zone_id)
-                        + '"}'
+                        '{"value":"' + str(value) + ', "part":"' + str(zone_id) + '"}'
                     )
                 else:
                     cmd = "zoneCmd"
@@ -685,15 +761,14 @@ class TydomClient:
                     )
 
             str_request = (
-                self._cmd_prefix
-                + f"PUT /devices/{device_id}/endpoints/{endpoint_id}/cdata?name={cmd} HTTP/1.1\r\nContent-Length: "
+                f"PUT /devices/{device_id}/endpoints/{endpoint_id}/cdata?name={cmd} HTTP/1.1\r\nContent-Length: "
                 + str(len(body))
                 + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
                 + body
                 + "\r\n\r\n"
             )
 
-            a_bytes = bytes(str_request, "ascii")
+            a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
             LOGGER.debug("Sending message to tydom (%s %s)", "PUT cdata", body)
 
             try:
@@ -705,6 +780,34 @@ class TydomClient:
                 LOGGER.error(a_bytes)
         except BaseException:
             LOGGER.error("put_alarm_cdata ERROR !", exc_info=True)
+
+    async def put_ackevents_cdata(self, device_id, endpoint_id=None, alarm_pin=None):
+        """Acknowledge the alarm events."""
+        # PUT /devices/xxxx/endpoints/xxxx/cdata?name=ackEventCmd HTTP/1.1 {"pwd":"xxxxxx"}
+        pwd = alarm_pin or self._alarm_pin
+        if pwd is None:
+            LOGGER.warning("Tydom alarm pin is not set!")
+        await self.put_data(
+            f"/devices/{device_id}/endpoints/{endpoint_id}/cdata?name=ackEventCmd",
+            "pwd",
+            str(pwd),
+        )
+
+    async def get_historic_cdata(
+        self,
+        device_id: str,
+        endpoint_id: str,
+        event_type: str | None = None,
+        indexStart: int = 0,
+        nbElement: int = 10,
+    ) -> list[dict] | None:
+        """Get historical events."""
+        # GET /devices/xxxx/endpoints/xxxx/cdata?name=histo&type=ALL&indexStart=0&nbElem=10
+        type_ = event_type or "ALL"
+        url = f"/devices/{device_id}/endpoints/{endpoint_id}/cdata?name=histo&type={type_}&indexStart={indexStart}&nbElem={nbElement}"
+        timeout = 30.0  # Wait maximum for 30 seconds for the full reply
+        async with asyncio.timeout(timeout):
+            return await self.get_reply_to_request("GET", url)
 
     async def update_firmware(self):
         """Update Tydom firmware."""
