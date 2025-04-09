@@ -22,7 +22,7 @@ from homeassistant.const import (
     CONF_PIN,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.components import dhcp
+from homeassistant.helpers.service_info import dhcp
 
 from .const import (
     DOMAIN,
