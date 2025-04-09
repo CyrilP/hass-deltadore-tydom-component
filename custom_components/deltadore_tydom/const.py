@@ -1,4 +1,5 @@
 """Constants for deltadore_tydom integration."""
+
 from logging import Logger, getLogger
 
 LOGGER: Logger = getLogger(__package__)
@@ -9,7 +10,7 @@ DOMAIN = "deltadore_tydom"
 NAME = "Delta Dore TYDOM"
 
 CONF_TYDOM_PASSWORD = "tydom_password"
-CONF_REFRESH_INTERVAL= "refresh_interval"
+CONF_REFRESH_INTERVAL = "refresh_interval"
 CONF_ZONES_HOME = "zones_home"
 CONF_ZONES_AWAY = "zones_away"
 CONF_CONFIG_MODE = "config_mode"
