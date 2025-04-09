@@ -329,8 +329,6 @@ class MessageHandler:
             device_type[device_unique_id] = i["last_usage"]
             device_endpoint[device_unique_id] = i["id_endpoint"]
 
-            if i["last_usage"] == "boiler" or i["last_usage"] == "conso":
-                pass
             if i["last_usage"] == "alarm":
                 device_name[device_unique_id] = "Tyxal Alarm"
 
