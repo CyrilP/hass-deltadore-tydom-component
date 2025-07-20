@@ -57,6 +57,7 @@ class Hub:
         refresh_interval: str,
         zone_home: str,
         zone_away: str,
+        zone_night: str,
         alarmpin: str,
     ) -> None:
         """Init hub."""
@@ -66,6 +67,7 @@ class Hub:
         self._refresh_interval = int(refresh_interval) * 60
         self._zone_home = zone_home
         self._zone_away = zone_away
+        self._zone_night = zone_night
         self._pin = alarmpin
         self._hass = hass
         self._entry = entry
@@ -89,15 +91,16 @@ class Hub:
             password=self._pass,
             zone_home=self._zone_home,
             zone_away=self._zone_away,
+            zone_night=self._zone_night
             alarm_pin=self._pin,
             event_callback=self.handle_event,
         )
 
         self.online = True
 
-    def update_config(self, refresh_interval, zone_home, zone_away):
+    def update_config(self, refresh_interval, zone_home, zone_away, zone_night):
         """Update zone configuration."""
-        self._tydom_client.update_config(zone_home, zone_away)
+        self._tydom_client.update_config(zone_home, zone_away, zone_night)
         self._refresh_interval = int(refresh_interval) * 60
         self._zone_home = zone_home
         self._zone_away = zone_away

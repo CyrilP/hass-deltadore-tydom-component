@@ -28,8 +28,9 @@ from .const import (
     DOMAIN,
     LOGGER,
     CONF_TYDOM_PASSWORD,
-    CONF_ZONES_HOME,
     CONF_ZONES_AWAY,
+    CONF_ZONES_HOME,
+    CONF_ZONES_NIGHT,
     CONF_REFRESH_INTERVAL,
     CONF_CONFIG_MODE,
     CONF_CLOUD_MODE,
@@ -51,6 +52,7 @@ DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_REFRESH_INTERVAL): cv.string,
         vol.Optional(CONF_ZONES_HOME): cv.string,
         vol.Optional(CONF_ZONES_AWAY): cv.string,
+        vol.Optional(CONF_ZONES_NIGHT): cv.string,
         vol.Optional(CONF_PIN): str,
     }
 )
@@ -98,11 +100,13 @@ async def validate_input(
     if len(data[CONF_MAC]) != 12:
         raise InvalidMacAddress
 
-    if CONF_ZONES_HOME in data and not zones_valid(data[CONF_ZONES_HOME]):
-        raise InvalidZoneHome
-
-    if CONF_ZONES_AWAY in data and not zones_valid(data[CONF_ZONES_AWAY]):
-        raise InvalidZoneAway
+    for zone, error in {
+        (CONF_ZONES_HOME, InvalidZoneHome),
+        (CONF_ZONES_AWAY, InvalidZoneAway),
+        (CONF_ZONES_NIGHT, InvalidZoneNight),
+    }:
+        if zone in data and not zones_valid(data[zone]):
+            raise error
 
     if cloud:
         if not email_valid(data[CONF_EMAIL]):
@@ -129,17 +133,6 @@ async def validate_input(
         if len(data[CONF_TYDOM_PASSWORD]) < 3:
             raise InvalidPassword
 
-    zone_home = None
-    if CONF_ZONES_HOME in data:
-        zone_home = data[CONF_ZONES_HOME]
-    zone_away = None
-    if CONF_ZONES_AWAY in data:
-        zone_away = data[CONF_ZONES_AWAY]
-
-    pin = None
-    if CONF_PIN in data:
-        pin = data[CONF_PIN]
-
     LOGGER.debug("Input is valid.")
     return {
         CONF_HOST: data[CONF_HOST],
@@ -148,9 +141,10 @@ async def validate_input(
         CONF_PASSWORD: data[CONF_PASSWORD],
         CONF_REFRESH_INTERVAL: data[CONF_REFRESH_INTERVAL],
         CONF_TYDOM_PASSWORD: data[CONF_TYDOM_PASSWORD],
-        CONF_ZONES_HOME: zone_home,
-        CONF_ZONES_AWAY: zone_away,
-        CONF_PIN: pin,
+        CONF_ZONES_HOME: data.get(CONF_ZONES_HOME),
+        CONF_ZONES_AWAY: data.get(CONF_ZONES_AWAY),
+        CONF_ZONES_NIGHT: data.get(CONF_ZONES_NIGHT),
+        CONF_PIN: data.get(CONF_PIN),
     }
 
 
@@ -215,11 +209,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         _errors = {}
         default_zone_home = ""
         default_zone_away = ""
+        default_zone_night = ""
 
         if user_input is not None:
             user_input.get(CONF_PIN, "")
             default_zone_home = user_input.get(CONF_ZONES_HOME, None)
             default_zone_away = user_input.get(CONF_ZONES_AWAY, None)
+            default_zone_night = user_input.get(CONF_ZONES_NIGHT, None)
             try:
                 user_input = await validate_input(self.hass, True, user_input)
                 # Ensure it's working as expected
@@ -231,9 +227,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     user_input[CONF_MAC],
                     user_input[CONF_TYDOM_PASSWORD],
                     "-1",
-                    None,
-                    None,
-                    None,
+                    "",
+                    "",
+                    "",
+                    "",
                 )
                 await tydom_hub.test_credentials()
 
@@ -267,6 +264,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _errors[CONF_ZONES_AWAY] = "invalid_zone_config"
                 default_zone_away = ""
                 LOGGER.error("Invalid Zone AWAY: %s", user_input[CONF_ZONES_AWAY])
+            except InvalidZoneNight:
+                _errors[CONF_ZONES_NIGHT] = "invalid_zone_config"
+                default_zone_night = ""
+                LOGGER.error("Invalid Zone NIGHT: %s", user_input[CONF_ZONES_NIGHT])
             except TydomClientApiClientCommunicationError:
                 traceback.print_exc()
                 _errors["base"] = "communication_error"
@@ -312,6 +313,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_REFRESH_INTERVAL, default="30"): cv.string,
                     vol.Optional(CONF_ZONES_HOME, default=default_zone_home): str,
                     vol.Optional(CONF_ZONES_AWAY, default=default_zone_away): str,
+                    vol.Optional(CONF_ZONES_NIGHT, default=default_zone_night): str,
                     vol.Optional(CONF_PIN, default=user_input.get(CONF_PIN, "")): str,
                 }
             ),
@@ -331,10 +333,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         _errors = {}
         default_zone_home = ""
         default_zone_away = ""
+        default_zone_night = ""
         if user_input is not None:
             user_input.get(CONF_PIN, "")
             default_zone_home = user_input.get(CONF_ZONES_HOME, None)
             default_zone_away = user_input.get(CONF_ZONES_AWAY, None)
+            default_zone_night = user_input.get(CONF_ZONES_NIGHT, None)
             try:
                 user_input = await validate_input(self.hass, False, user_input)
                 # Ensure it's working as expected
@@ -346,9 +350,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     user_input[CONF_MAC],
                     user_input[CONF_TYDOM_PASSWORD],
                     "-1",
-                    None,
-                    None,
-                    None,
+                    "",
+                    "",
+                    "",
+                    "",
                 )
                 await tydom_hub.test_credentials()
 
@@ -379,6 +384,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _errors[CONF_ZONES_AWAY] = "invalid_zone_config"
                 default_zone_away = ""
                 LOGGER.error("Invalid Zone AWAY: %s", user_input[CONF_ZONES_AWAY])
+            except InvalidZoneNight:
+                _errors[CONF_ZONES_NIGHT] = "invalid_zone_config"
+                default_zone_night = ""
+                LOGGER.error("Invalid Zone NIGHT: %s", user_input[CONF_ZONES_NIGHT])
             except TydomClientApiClientCommunicationError:
                 traceback.print_exc()
                 _errors["base"] = "communication_error"
@@ -420,6 +429,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_REFRESH_INTERVAL, default="30"): cv.string,
                     vol.Optional(CONF_ZONES_HOME, default=default_zone_home): str,
                     vol.Optional(CONF_ZONES_AWAY, default=default_zone_away): str,
+                    vol.Optional(CONF_ZONES_NIGHT, default=default_zone_night): str,
                     vol.Optional(CONF_PIN, default=user_input.get(CONF_PIN, "")): str,
                 }
             ),
@@ -493,9 +503,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     user_input[CONF_MAC],
                     user_input[CONF_TYDOM_PASSWORD],
                     "-1",
-                    None,
-                    None,
-                    None,
+                    "",
+                    "",
+                    "",
+                    "",
                 )
                 await tydom_hub.test_credentials()
 
@@ -512,6 +523,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _errors[CONF_ZONES_HOME] = "invalid_zone_config"
             except InvalidZoneAway:
                 _errors[CONF_ZONES_AWAY] = "invalid_zone_config"
+            except InvalidZoneNight:
+                _errors[CONF_ZONES_NIGHT] = "invalid_zone_config"
             except TydomClientApiClientCommunicationError:
                 traceback.print_exc()
                 _errors["base"] = "communication_error"
@@ -560,6 +573,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Optional(
                         CONF_ZONES_AWAY, default=user_input.get(CONF_ZONES_AWAY, "")
                     ): str,
+                    vol.Optional(
+                        CONF_ZONES_NIGHT, default=user_input.get(CONF_ZONES_NIGHT, "")
+                    ): str,
                     vol.Optional(CONF_PIN, default=user_input.get(CONF_PIN, "")): str,
                 }
             ),
@@ -579,9 +595,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     user_input[CONF_MAC],
                     user_input[CONF_TYDOM_PASSWORD],
                     "-1",
-                    None,
-                    None,
-                    None,
+                    "",
+                    "",
+                    "",
+                    "",
                 )
                 await tydom_hub.test_credentials()
 
@@ -601,6 +618,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _errors[CONF_ZONES_HOME] = "invalid_zone_config"
             except InvalidZoneAway:
                 _errors[CONF_ZONES_AWAY] = "invalid_zone_config"
+            except InvalidZoneNight:
+                _errors[CONF_ZONES_NIGHT] = "invalid_zone_config"
             except TydomClientApiClientCommunicationError:
                 traceback.print_exc()
                 _errors["base"] = "communication_error"
@@ -652,6 +671,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Optional(
                         CONF_ZONES_AWAY, default=user_input.get(CONF_ZONES_AWAY, "")
                     ): str,
+                    vol.Optional(
+                        CONF_ZONES_NIGHT, default=user_input.get(CONF_ZONES_NIGHT, "")
+                    ): str,
                     vol.Optional(CONF_PIN, default=user_input.get(CONF_PIN, "")): str,
                 }
             ),
@@ -685,12 +707,16 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if CONF_ZONES_AWAY in self.config_entry.data:
             default_zone_away = self.config_entry.data[CONF_ZONES_AWAY]
 
+        if CONF_ZONES_NIGHT in self.config_entry.data:
+            default_zone_night = self.config_entry.data[CONF_ZONES_NIGHT]
+
         if CONF_REFRESH_INTERVAL in self.config_entry.data:
             default_refresh_interval = self.config_entry.data[CONF_REFRESH_INTERVAL]
 
         if user_input is not None:
             default_zone_home = user_input.get(CONF_ZONES_HOME, "")
             default_zone_away = user_input.get(CONF_ZONES_AWAY, "")
+            default_zone_night = user_input.get(CONF_ZONES_NIGHT, "")
             default_refresh_interval = user_input.get(CONF_REFRESH_INTERVAL, "30")
 
             try:
@@ -703,6 +729,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     user_input[CONF_ZONES_AWAY]
                 ):
                     raise InvalidZoneAway
+
+                if CONF_ZONES_NIGHT in user_input and not zones_valid(
+                    user_input[CONF_ZONES_NIGHT]
+                ):
+                    raise InvalidZoneNight
 
                 try:
                     int(user_input[CONF_REFRESH_INTERVAL])
@@ -719,6 +750,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 user_input[CONF_PIN] = self.config_entry.data[CONF_PIN]
                 user_input[CONF_ZONES_HOME] = default_zone_home
                 user_input[CONF_ZONES_AWAY] = default_zone_away
+                user_input[CONF_ZONES_NIGHT] = default_zone_night
 
                 self.hass.config_entries.async_update_entry(
                     self.config_entry,
@@ -737,6 +769,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 _errors[CONF_ZONES_AWAY] = "invalid_zone_config"
                 default_zone_away = ""
                 LOGGER.error("Invalid Zone AWAY: %s", user_input[CONF_ZONES_AWAY])
+            except InvalidZoneNight:
+                _errors[CONF_ZONES_NIGHT] = "invalid_zone_config"
+                default_zone_night = ""
+                LOGGER.error("Invalid Zone NIGHT: %s", user_input[CONF_ZONES_NIGHT])
 
         return self.async_show_form(
             step_id="init",
@@ -786,6 +822,10 @@ class InvalidZoneHome(exceptions.HomeAssistantError):
 
 class InvalidZoneAway(exceptions.HomeAssistantError):
     """Error to indicate the Zones Away config is not valid."""
+
+
+class InvalidZoneNight(exceptions.HomeAssistantError):
+    """Error to indicate the Zones Night config is not valid."""
 
 
 class InvalidRefreshInterval(exceptions.HomeAssistantError):
