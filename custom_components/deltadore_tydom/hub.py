@@ -91,7 +91,7 @@ class Hub:
             password=self._pass,
             zone_home=self._zone_home,
             zone_away=self._zone_away,
-            zone_night=self._zone_night
+            zone_night=self._zone_night,
             alarm_pin=self._pin,
             event_callback=self.handle_event,
         )
