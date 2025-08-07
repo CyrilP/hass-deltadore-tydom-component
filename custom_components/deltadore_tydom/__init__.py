@@ -13,6 +13,7 @@ from .const import (
     CONF_TYDOM_PASSWORD,
     CONF_ZONES_HOME,
     CONF_ZONES_AWAY,
+    CONF_ZONES_NIGHT,
     CONF_REFRESH_INTERVAL,
 )
 
@@ -37,17 +38,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Store an instance of the "connecting" class that does the work of speaking
     # with your actual devices.
-    zone_home = None
-    if CONF_ZONES_HOME in entry.data:
-        zone_home = entry.data[CONF_ZONES_HOME]
+    zone_home = entry.data.get(CONF_ZONES_HOME)
+    zone_away = entry.data.get(CONF_ZONES_AWAY)
+    zone_night = entry.data.get(CONF_ZONES_NIGHT)
 
-    zone_away = None
-    if CONF_ZONES_AWAY in entry.data:
-        zone_away = entry.data[CONF_ZONES_AWAY]
-
-    pin = None
-    if CONF_PIN in entry.data:
-        pin = entry.data[CONF_PIN]
+    pin = entry.data.get(CONF_PIN)
 
     refresh_interval = "30"
     if CONF_REFRESH_INTERVAL in entry.data:
@@ -62,6 +57,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         refresh_interval,
         zone_home,
         zone_away,
+        zone_night,
         pin,
     )
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = tydom_hub
@@ -114,4 +110,5 @@ async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
         entry.data[CONF_REFRESH_INTERVAL],
         entry.data[CONF_ZONES_HOME],
         entry.data[CONF_ZONES_AWAY],
+        entry.data[CONF_ZONES_NIGHT],
     )

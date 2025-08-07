@@ -1075,6 +1075,7 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
             self.supported_features
             | AlarmControlPanelEntityFeature.ARM_AWAY
             | AlarmControlPanelEntityFeature.ARM_HOME
+            | AlarmControlPanelEntityFeature.ARM_NIGHT
             | AlarmControlPanelEntityFeature.TRIGGER
         )
 
@@ -1123,6 +1124,10 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
     async def async_alarm_arm_home(self, code=None) -> None:
         """Send arm home command."""
         await self._device.alarm_arm_home(code)
+
+    async def async_alarm_arm_night(self, code=None) -> None:
+        """Send arm night command."""
+        await self._device.alarm_arm_night(code)
 
     async def async_alarm_trigger(self, code=None) -> None:
         """Send alarm trigger command."""
