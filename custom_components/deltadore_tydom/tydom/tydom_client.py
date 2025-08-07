@@ -65,6 +65,7 @@ class TydomClient:
         alarm_pin: str | None = None,
         zone_away: str | None = None,
         zone_home: str | None = None,
+        zone_night: str | None = None,
         host: str = MEDIATION_URL,
         event_callback=None,
     ) -> None:
@@ -78,6 +79,7 @@ class TydomClient:
         self._host = host
         self._zone_home = zone_home
         self._zone_away = zone_away
+        self._zone_night = zone_night
         self._alarm_pin = alarm_pin
         self._remote_mode = self._host == MEDIATION_URL
         self._connection = None
@@ -101,10 +103,11 @@ class TydomClient:
             tydom_client=self, cmd_prefix=self._cmd_prefix
         )
 
-    def update_config(self, zone_home, zone_away):
+    def update_config(self, zone_home: str, zone_away: str, zone_night: str):
         """Update zones configuration."""
         self._zone_home = zone_home
         self._zone_away = zone_away
+        self._zone_night = zone_night
 
     @staticmethod
     async def async_get_credentials(
