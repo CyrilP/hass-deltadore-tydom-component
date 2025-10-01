@@ -960,7 +960,7 @@ class HaGarage(CoverEntity, HAEntity):
             and "OFF" in self._device._metadata["levelCmd"]["enum_values"]
         ):
             self.supported_features = self.supported_features| CoverEntityFeature.CLOSE
-        
+
         if ("levelCmd" in self._device._metadata
             and "STOP" in self._device._metadata["levelCmd"]["enum_values"]
         ):
