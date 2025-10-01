@@ -956,16 +956,17 @@ class HaGarage(CoverEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
-        if ("levelCmd" in self._device._metadata
+        if (
+            "levelCmd" in self._device._metadata
             and "OFF" in self._device._metadata["levelCmd"]["enum_values"]
         ):
-            self.supported_features = self.supported_features| CoverEntityFeature.CLOSE
+            self.supported_features = self.supported_features | CoverEntityFeature.CLOSE
 
-        if ("levelCmd" in self._device._metadata
+        if (
+            "levelCmd" in self._device._metadata
             and "STOP" in self._device._metadata["levelCmd"]["enum_values"]
         ):
-            self.supported_features = self.supported_features| CoverEntityFeature.STOP
-
+            self.supported_features = self.supported_features | CoverEntityFeature.STOP
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -982,7 +983,8 @@ class HaGarage(CoverEntity, HAEntity):
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
-        if ("levelCmd" in self._device._metadata
+        if (
+            "levelCmd" in self._device._metadata
             and "OFF" in self._device._metadata["levelCmd"]["enum_values"]
         ):
             await self._device.open()
@@ -993,10 +995,10 @@ class HaGarage(CoverEntity, HAEntity):
         """Close the cover."""
         await self._device.close()
 
-
     async def async_stop_cover(self, **kwargs):
         """Stop the cover."""
         await self._device.stop()
+
 
 class HaLight(LightEntity, HAEntity):
     """Representation of a Light."""
