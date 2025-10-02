@@ -37,7 +37,6 @@ from homeassistant.components.sensor import (
     SensorEntity,
 )
 from homeassistant.components.light import LightEntity, ColorMode, ATTR_BRIGHTNESS
-from homeassistant.components.lock import LockEntity
 from homeassistant.components.update import (
     UpdateEntity,
     UpdateEntityFeature,
@@ -865,7 +864,7 @@ class HaWindow(CoverEntity, HAEntity):
         return self._device.openState == "LOCKED"
 
 
-class HaDoor(LockEntity, HAEntity):
+class HaDoor(CoverEntity, HAEntity):
     """Representation of a Door."""
 
     should_poll = False
@@ -895,7 +894,7 @@ class HaDoor(LockEntity, HAEntity):
         }
 
     @property
-    def is_locked(self) -> bool:
+    def is_closed(self) -> bool:
         """Return if the door is locked."""
         if hasattr(self._device, "openState"):
             return self._device.openState == "LOCKED"
