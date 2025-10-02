@@ -865,7 +865,7 @@ class HaWindow(CoverEntity, HAEntity):
         return self._device.openState == "LOCKED"
 
 
-class HaDoor(LockEntity, HAEntity):
+class HaDoor(CoverEntity, HAEntity):
     """Representation of a Door."""
 
     should_poll = False
@@ -895,7 +895,7 @@ class HaDoor(LockEntity, HAEntity):
         }
 
     @property
-    def is_locked(self) -> bool:
+    def is_closed(self) -> bool:
         """Return if the door is locked."""
         if hasattr(self._device, "openState"):
             return self._device.openState == "LOCKED"
