@@ -37,7 +37,6 @@ from homeassistant.components.sensor import (
     SensorEntity,
 )
 from homeassistant.components.light import LightEntity, ColorMode, ATTR_BRIGHTNESS
-from homeassistant.components.lock import LockEntity
 from homeassistant.components.update import (
     UpdateEntity,
     UpdateEntityFeature,
