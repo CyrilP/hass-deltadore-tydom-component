@@ -26,6 +26,7 @@ Platform | Description
 `light` | controls a light.
 `lock` | controls a lock.
 `alarm_control_panel` | controls an alarm.
+`weather` | provides meteorological data
 `update` | firmware update
 
 **This integration has been tested with the following hardware.**
