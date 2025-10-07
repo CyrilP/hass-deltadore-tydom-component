@@ -1258,6 +1258,7 @@ class HaWeather(WeatherEntity, HAEntity):
             "name": self._device.device_name,
         }
 
+
 class HaMoisture(BinarySensorEntity, HAEntity):
     """Representation of an leak detector sensor."""
 

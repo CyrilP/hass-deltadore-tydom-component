@@ -456,7 +456,8 @@ class MessageHandler:
                     data,
                 )
             case "sensorDF":
-                return TydomWater(tydom_client,
+                return TydomWater(
+                    tydom_client,
                     uid,
                     device_id,
                     name,
