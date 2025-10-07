@@ -26,6 +26,7 @@ from .tydom_devices import (
     TydomSmoke,
     TydomWindow,
     TydomWeather,
+    TydomWater,
 )
 
 if TYPE_CHECKING:
@@ -446,6 +447,16 @@ class MessageHandler:
             case "weather":
                 return TydomWeather(
                     tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata[uid],
+                    data,
+                )
+            case "sensorDF":
+                return TydomWater(tydom_client,
                     uid,
                     device_id,
                     name,
