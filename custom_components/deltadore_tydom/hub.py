@@ -20,6 +20,7 @@ from .tydom.tydom_devices import (
     TydomGarage,
     TydomLight,
     TydomAlarm,
+    TydomWeather,
 )
 from .ha_entities import (
     HATydom,
@@ -33,6 +34,7 @@ from .ha_entities import (
     HaGarage,
     HaLight,
     HaAlarm,
+    HaWeather,
 )
 
 from .const import LOGGER
@@ -82,6 +84,7 @@ class Hub:
         self.add_lock_callback = None
         self.add_alarm_callback = None
         self.add_update_callback = None
+        self.add_weather_callback = None
 
         self._tydom_client = TydomClient(
             hass=self._hass,
@@ -142,6 +145,7 @@ class Hub:
             and self.add_lock_callback is not None
             and self.add_update_callback is not None
             and self.add_alarm_callback is not None
+            and self.add_weather_callback is not None
         )
 
     async def setup(self, connection: ClientWebSocketResponse) -> None:
@@ -267,6 +271,15 @@ class Hub:
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_alarm_callback is not None:
                     self.add_alarm_callback([ha_device])
+
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback(ha_device.get_sensors())
+            case TydomWeather():
+                LOGGER.debug("Create weather %s", device.device_id)
+                ha_device = HaWeather(device, self._hass)
+                self.ha_devices[device.device_id] = ha_device
+                if self.add_weather_callback is not None:
+                    self.add_weather_callback([ha_device])
 
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
