@@ -21,6 +21,7 @@ from homeassistant.const import (
     UnitOfPower,
     UnitOfElectricCurrent,
     EntityCategory,
+    PERCENTAGE,
 )
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.components.cover import (
@@ -208,7 +209,12 @@ class GenericSensor(SensorEntity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        return getattr(self._device, self._attribute)
+        value = getattr(self._device, self._attribute)
+        if self._attr_device_class == SensorDeviceClass.BATTERY:
+            min = self._device._metadata[self._attribute]["min"]
+            max = self._device._metadata[self._attribute]["max"]
+            value = ranged_value_to_percentage((min, max), value)
+        return value
 
     @property
     def device_info(self):
@@ -635,10 +641,13 @@ class HaClimate(ClimateEntity, HAEntity):
         "TempSensorShortCut": BinarySensorDeviceClass.PROBLEM,
         "ProductionDefect": BinarySensorDeviceClass.PROBLEM,
         "BatteryCmdDefect": BinarySensorDeviceClass.PROBLEM,
+        "battLevel": SensorDeviceClass.BATTERY,
     }
 
     units = {
         "temperature": UnitOfTemperature.CELSIUS,
+        "ambientTemperature": UnitOfTemperature.CELSIUS,
+        "hygroIn": PERCENTAGE,
     }
 
     def __init__(self, device: TydomBoiler, hass) -> None:
