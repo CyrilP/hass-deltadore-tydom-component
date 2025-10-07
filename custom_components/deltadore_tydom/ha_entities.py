@@ -1178,6 +1178,7 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         """Get alarm events."""
         return await self._device.get_events(event_type or "UNACKED_EVENTS")
 
+
 class HaWeather(WeatherEntity, HAEntity):
     """Representation of a weather entity."""
 
@@ -1202,7 +1203,7 @@ class HaWeather(WeatherEntity, HAEntity):
         "NIGHT_RAIN": ATTR_CONDITION_RAINY,
         "NIGHT_THUNDERSTORM": ATTR_CONDITION_LIGHTNING,
         "NIGHT_SNOW": ATTR_CONDITION_SNOWY,
-        "NIGHT_MIST": ATTR_CONDITION_FOG
+        "NIGHT_MIST": ATTR_CONDITION_FOG,
     }
 
     units = {
@@ -1217,7 +1218,6 @@ class HaWeather(WeatherEntity, HAEntity):
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_weather"
         self._attr_name = self._device.device_name
-        LOGGER.error("weather name = %s",self._attr_name)
         self._registered_sensors = []
         if (
             "dailyPower" in self._device._metadata
@@ -1229,7 +1229,6 @@ class HaWeather(WeatherEntity, HAEntity):
             and "unit" in self._device._metadata["currentPower"]
         ):
             self.units["currentPower"] = self._device._metadata["currentPower"]["unit"]
-
 
     @property
     def native_temperature(self) -> float | None:
