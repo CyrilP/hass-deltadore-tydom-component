@@ -82,6 +82,7 @@ from .tydom.tydom_devices import (
     TydomLight,
     TydomAlarm,
     TydomWeather,
+    TydomWater,
 )
 
 from .const import DOMAIN, LOGGER
@@ -1255,4 +1256,38 @@ class HaWeather(WeatherEntity, HAEntity):
         return {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
+        }
+
+
+class HaMoisture(BinarySensorEntity, HAEntity):
+    """Representation of an leak detector sensor."""
+
+    should_poll = False
+    supported_features = None
+
+    sensor_classes = {"batt_defect": BinarySensorDeviceClass.PROBLEM}
+
+    def __init__(self, device: TydomWater, hass) -> None:
+        """Initialize TydomSmoke."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self
+        self._attr_unique_id = f"{self._device.device_id}_moisture"
+        self._attr_name = self._device.device_name
+        self._state = False
+        self._registered_sensors = []
+        self._attr_device_class = BinarySensorDeviceClass.MOISTURE
+
+    @property
+    def is_on(self):
+        """Return the state of the sensor."""
+        return self._device.techWaterDefect
+
+    @property
+    def device_info(self):
+        """Return information to link this entity with the correct device."""
+        return {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+            "manufacturer": "Delta Dore",
         }
