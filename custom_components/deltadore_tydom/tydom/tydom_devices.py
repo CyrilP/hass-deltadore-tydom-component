@@ -431,3 +431,6 @@ class TydomAlarm(TydomDevice):
             for m in (events or [])
             if m.get("values", {}).get("event") is not None
         ]
+
+class TydomWeather(TydomDevice):
+    """Represents a weather sensor."""

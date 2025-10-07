@@ -28,6 +28,7 @@ PLATFORMS: list[str] = [
     Platform.LIGHT,
     Platform.UPDATE,
     Platform.ALARM_CONTROL_PANEL,
+    Platform.WEATHER,
 ]
 
 
