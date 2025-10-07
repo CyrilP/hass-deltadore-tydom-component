@@ -25,6 +25,7 @@ from .tydom_devices import (
     TydomShutter,
     TydomSmoke,
     TydomWindow,
+    TydomWeather,
 )
 
 if TYPE_CHECKING:
@@ -442,6 +443,17 @@ class MessageHandler:
                     device_metadata[uid],
                     data,
                 )
+            case "weather":
+                return TydomWeather(
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata[uid],
+                    data,
+                )
             case _:
                 # TODO generic sensor ?
                 LOGGER.warn(
@@ -549,46 +561,49 @@ class MessageHandler:
         devices = []
 
         for i in parsed:
-            for endpoint in i["endpoints"]:
-                if endpoint["error"] == 0 and len(endpoint["data"]) > 0:
-                    try:
-                        device_id = i["id"]
-                        endpoint_id = endpoint["id"]
-                        unique_id = str(endpoint_id) + "_" + str(device_id)
-                        name_of_id = self.get_name_from_id(unique_id)
-                        type_of_id = self.get_type_from_id(unique_id)
+            if "endpoints" in i:
+                for endpoint in i["endpoints"]:
+                    if endpoint["error"] == 0 and len(endpoint["data"]) > 0:
+                        try:
+                            device_id = i["id"]
+                            endpoint_id = endpoint["id"]
+                            unique_id = str(endpoint_id) + "_" + str(device_id)
+                            name_of_id = self.get_name_from_id(unique_id)
+                            type_of_id = self.get_type_from_id(unique_id)
 
-                        data = {}
+                            data = {}
 
-                        for elem in endpoint["data"]:
-                            element_name = elem["name"]
-                            element_value = elem["value"]
-                            element_validity = elem["validity"]
+                            for elem in endpoint["data"]:
+                                element_name = elem["name"]
+                                element_value = elem["value"]
+                                element_validity = elem["validity"]
 
-                            if element_validity == "upToDate":
-                                data[element_name] = element_value
+                                if element_validity == "upToDate":
+                                    data[element_name] = element_value
 
-                        # Create the device
-                        device = await MessageHandler.get_device(
-                            self.tydom_client,
-                            type_of_id,
-                            unique_id,
-                            device_id,
-                            name_of_id,
-                            endpoint_id,
-                            data,
-                        )
-                        if device is not None:
-                            devices.append(device)
-                            LOGGER.info(
-                                "Device update (id=%s, endpoint=%s, name=%s, type=%s)",
-                                device_id,
-                                endpoint_id,
-                                name_of_id,
+                            # Create the device
+                            device = await MessageHandler.get_device(
+                                self.tydom_client,
                                 type_of_id,
+                                unique_id,
+                                device_id,
+                                name_of_id,
+                                endpoint_id,
+                                data,
                             )
-                    except Exception:
-                        LOGGER.exception("msg_data error in parsing !")
+                            if device is not None:
+                                devices.append(device)
+                                LOGGER.info(
+                                    "Device update (id=%s, endpoint=%s, name=%s, type=%s)",
+                                    device_id,
+                                    endpoint_id,
+                                    name_of_id,
+                                    type_of_id,
+                                )
+                        except Exception:
+                            LOGGER.exception("msg_data error in parsing !")
+            else:
+                LOGGER.warning("Unsupported message received: %s", parsed)
         return devices
 
     async def parse_devices_cdata(self, parsed, transaction_id: str | None = None):
@@ -710,6 +725,8 @@ class MessageHandler:
         if id in device_name:
             name = device_name[id]
         else:
+            for deviceid in device_name:
+                LOGGER.error("- device %s -> %s", deviceid, device_name[deviceid])
             LOGGER.warning("Unknown device name (%s)", id)
         return name
 
