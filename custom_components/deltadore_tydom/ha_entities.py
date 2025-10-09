@@ -3,6 +3,8 @@
 from typing import Any
 from datetime import date
 import math
+import traceback
+import inspect
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -770,24 +772,32 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def hvac_mode(self) -> HVACMode:
         """Return the current operation (e.g. heat, cool, idle)."""
-        if hasattr(self._device, "hvacMode"):
-            LOGGER.debug(
-                "hvac_mode = %s", self.dict_modes_dd_to_ha[self._device.hvacMode]
-            )
-            return self.dict_modes_dd_to_ha[self._device.hvacMode]
-        elif hasattr(self._device, "authorization"):
-            LOGGER.debug(
-                "authorization = %s",
-                self.dict_modes_dd_to_ha[self._device.thermicLevel],
-            )
-            return self.dict_modes_dd_to_ha[self._device.authorization]
-        elif hasattr(self._device, "thermicLevel"):
-            LOGGER.debug(
-                "thermicLevel = %s", self.dict_modes_dd_to_ha[self._device.thermicLevel]
-            )
-            return self.dict_modes_dd_to_ha[self._device.thermicLevel]
-        else:
-            return None
+        try:
+            if hasattr(self._device, "hvacMode") and self._device.hvacMode is not None:
+                LOGGER.debug(
+                    "hvac_mode = %s", self.dict_modes_dd_to_ha[self._device.hvacMode]
+                )
+                return self.dict_modes_dd_to_ha[self._device.hvacMode]
+            elif hasattr(self._device, "authorization"):
+                LOGGER.debug(
+                    "authorization = %s",
+                    self.dict_modes_dd_to_ha[self._device.thermicLevel],
+                )
+                return self.dict_modes_dd_to_ha[self._device.authorization]
+            elif hasattr(self._device, "thermicLevel"):
+                LOGGER.debug(
+                    "thermicLevel = %s", self.dict_modes_dd_to_ha[self._device.thermicLevel]
+                )
+                return self.dict_modes_dd_to_ha[self._device.thermicLevel]
+            else:
+                return None
+        except:
+            LOGGER.error("*************************************************************************************************************************************")
+            LOGGER.error("device %s", self._device.device_id)
+            LOGGER.error("properties : \n%s", vars(self._device))
+            LOGGER.error(traceback.format_exc())
+            LOGGER.error("*************************************************************************************************************************************")
+            #raise
 
     @property
     def current_temperature(self) -> float | None:
@@ -884,7 +894,14 @@ class HaWindow(CoverEntity, HAEntity):
     @property
     def is_closed(self) -> bool:
         """Return if the window is closed."""
-        return self._device.openState == "LOCKED"
+        if hasattr(self._device, "openState"):
+            return self._device.openState == "LOCKED"
+        elif hasattr(self._device, "intrusionDetect"):
+            return self._device.intrusionDetect == False
+        else:
+            LOGGER.error("Unknown state for device %s", self._device.device_id)
+            return True
+
 
 
 class HaDoor(CoverEntity, HAEntity):
@@ -957,7 +974,16 @@ class HaGate(CoverEntity, HAEntity):
     @property
     def is_closed(self) -> bool:
         """Return if the window is closed."""
-        return self._device.openState == "LOCKED"
+        try:
+            return self._device.openState == "LOCKED"
+        except:
+            LOGGER.error("*************************************************************************************************************************************")
+            LOGGER.error("device %s", self._device.device_id)
+            LOGGER.error("properties : \n%s", vars(self._device))
+            LOGGER.error(traceback.format_exc())
+            LOGGER.error("*************************************************************************************************************************************")
+            raise
+
 
 
 class HaGarage(CoverEntity, HAEntity):
@@ -1001,7 +1027,15 @@ class HaGarage(CoverEntity, HAEntity):
     @property
     def is_closed(self) -> bool:
         """Return if the garage door is closed."""
-        return self._device.level == 0
+        try:
+            return self._device.level == 0
+        except:
+            LOGGER.error("*************************************************************************************************************************************")
+            LOGGER.error("device %s", self._device.device_id)
+            LOGGER.error("properties : \n%s", vars(self._device))
+            LOGGER.error(traceback.format_exc())
+            LOGGER.error("*************************************************************************************************************************************")
+            raise
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
