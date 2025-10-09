@@ -546,6 +546,24 @@ class MessageHandler:
                                         )
                                         self.tydom_client.add_poll_device_url_5m(url)
                                         LOGGER.debug("Add poll device : " + url)
+                        elif elem["name"] == "energyHisto":
+                            device_name[unique_id] = "Tywatt"
+                            device_type[unique_id] = "conso"
+                            for params in elem["parameters"]:
+                                if params["name"] == "src":
+                                    for src in params["enum_values"]:
+                                        url = (
+                                            "/devices/"
+                                            + str(i["id"])
+                                            + "/endpoints/"
+                                            + str(endpoint["id"])
+                                            + "/cdata?name="
+                                            + elem["name"]
+                                            + "&period=YEAR&periodOffset=0&src="
+                                            + src
+                                        )
+                                        self.tydom_client.add_poll_device_url_5m(url)
+                                        LOGGER.debug("Add poll device : " + url)
                         elif elem["name"] == "energyDistrib":
                             device_name[unique_id] = "Tywatt"
                             device_type[unique_id] = "conso"
