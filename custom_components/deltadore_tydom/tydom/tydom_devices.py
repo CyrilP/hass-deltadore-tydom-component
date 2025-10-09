@@ -457,3 +457,6 @@ class TydomWeather(TydomDevice):
 
 class TydomWater(TydomDevice):
     """Represents a water leak sensor."""
+
+class TydomThermo(TydomDevice):
+    """Represents a thermometer."""

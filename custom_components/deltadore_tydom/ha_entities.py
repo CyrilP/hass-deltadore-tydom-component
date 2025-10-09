@@ -4,7 +4,6 @@ from typing import Any
 from datetime import date
 import math
 import traceback
-import inspect
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -85,6 +84,7 @@ from .tydom.tydom_devices import (
     TydomAlarm,
     TydomWeather,
     TydomWater,
+    TydomThermo,
 )
 
 from .const import DOMAIN, LOGGER
@@ -1325,3 +1325,32 @@ class HaMoisture(BinarySensorEntity, HAEntity):
             "name": self._device.device_name,
             "manufacturer": "Delta Dore",
         }
+
+
+class HaThermo(SensorEntity, HAEntity):
+    """Representation of a thermometer."""
+
+    def __init__(self, device: TydomThermo, hass) -> None:
+        """Initialize TydomSmoke."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self
+        self._attr_unique_id = f"{self._device.device_id}_thermos"
+        self._attr_name = self._device.device_name
+        self._state = False
+        self._registered_sensors = ["outTemperature"]
+        self._attr_device_class = SensorDeviceClass.TEMPERATURE
+        self._attr_unit_of_measurement = UnitOfTemperature.CELSIUS
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        return self._device.outTemperature
+
+    @property
+    def device_info(self):
+        """Return information to link this entity with the correct device."""
+        return {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+    }
