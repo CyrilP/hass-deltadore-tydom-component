@@ -944,7 +944,7 @@ class HaGate(CoverEntity, HAEntity):
     """Representation of a Gate."""
 
     should_poll = False
-    supported_features = None
+    supported_features = CoverEntityFeature.OPEN
     device_class = CoverDeviceClass.GATE
     sensor_classes = {}
 
@@ -956,6 +956,17 @@ class HaGate(CoverEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
+        if (
+            "levelCmd" in self._device._metadata
+            and "OFF" in self._device._metadata["levelCmd"]["enum_values"]
+        ):
+            self.supported_features = self.supported_features | CoverEntityFeature.CLOSE
+
+        if (
+            "levelCmd" in self._device._metadata
+            and "STOP" in self._device._metadata["levelCmd"]["enum_values"]
+        ):
+            self.supported_features = self.supported_features | CoverEntityFeature.STOP
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -974,6 +985,35 @@ class HaGate(CoverEntity, HAEntity):
             LOGGER.warning("no attribute 'openState' for device %s", self._device.device_id)
             return None
 
+    async def async_open_cover(self, **kwargs: Any) -> None:
+        """Open the gate."""
+        if (
+            "levelCmd" in self._device._metadata
+            and "ON" in self._device._metadata["levelCmd"]["enum_values"]
+        ):
+            await self._device.open()
+        else:
+            await self._device.toggle()
+
+    async def async_close_cover(self, **kwargs: Any) -> None:
+        """Open the gate."""
+        if (
+            "levelCmd" in self._device._metadata
+            and "OFF" in self._device._metadata["levelCmd"]["enum_values"]
+        ):
+            await self._device.close()
+        else:
+            await self._device.toggle()
+
+    async def async_stop_cover(self, **kwargs: Any) -> None:
+        """Open the gate."""
+        if (
+            "levelCmd" in self._device._metadata
+            and "STOP" in self._device._metadata["levelCmd"]["enum_values"]
+        ):
+            await self._device.stop()
+        else:
+            await self._device.toggle()
 
 class HaGarage(CoverEntity, HAEntity):
     """Representation of a Garage door."""
