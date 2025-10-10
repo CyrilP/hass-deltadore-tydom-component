@@ -639,6 +639,7 @@ class HaClimate(ClimateEntity, HAEntity):
 
     sensor_classes = {
         "temperature": SensorDeviceClass.TEMPERATURE,
+        "outTemperature": SensorDeviceClass.TEMPERATURE,
         "TempSensorDefect": BinarySensorDeviceClass.PROBLEM,
         "TempSensorOpenCirc": BinarySensorDeviceClass.PROBLEM,
         "TempSensorShortCut": BinarySensorDeviceClass.PROBLEM,
@@ -649,6 +650,7 @@ class HaClimate(ClimateEntity, HAEntity):
 
     units = {
         "temperature": UnitOfTemperature.CELSIUS,
+        "outTemperature": UnitOfTemperature.CELSIUS,
         "ambientTemperature": UnitOfTemperature.CELSIUS,
         "hygroIn": PERCENTAGE,
     }
