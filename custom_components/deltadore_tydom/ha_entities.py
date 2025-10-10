@@ -3,7 +3,6 @@
 from typing import Any
 from datetime import date
 import math
-import traceback
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,

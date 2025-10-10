@@ -280,6 +280,7 @@ class TydomDoor(TydomDevice):
 
 class TydomGate(TydomDevice):
     """represents a gate."""
+
     async def open(self) -> None:
         """Tell garage door to open."""
         await self._tydom_client.put_devices_data(
