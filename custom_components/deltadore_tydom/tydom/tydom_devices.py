@@ -305,6 +305,7 @@ class TydomGate(TydomDevice):
             self._id, self._endpoint, "levelCmd", "TOGGLE"
         )
 
+
 class TydomGarage(TydomDevice):
     """represents a garage door."""
 
@@ -480,6 +481,7 @@ class TydomWeather(TydomDevice):
 
 class TydomWater(TydomDevice):
     """Represents a water leak sensor."""
+
 
 class TydomThermo(TydomDevice):
     """Represents a thermometer."""

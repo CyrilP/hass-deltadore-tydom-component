@@ -896,7 +896,6 @@ class HaWindow(CoverEntity, HAEntity):
             return True
 
 
-
 class HaDoor(CoverEntity, HAEntity):
     """Representation of a Door."""
 
@@ -981,7 +980,9 @@ class HaGate(CoverEntity, HAEntity):
         if hasattr(self._device, "openState"):
             return self._device.openState == "LOCKED"
         else:
-            LOGGER.warning("no attribute 'openState' for device %s", self._device.device_id)
+            LOGGER.warning(
+                "no attribute 'openState' for device %s", self._device.device_id
+            )
             return None
 
     async def async_open_cover(self, **kwargs: Any) -> None:
@@ -1013,6 +1014,7 @@ class HaGate(CoverEntity, HAEntity):
             await self._device.stop()
         else:
             await self._device.toggle()
+
 
 class HaGarage(CoverEntity, HAEntity):
     """Representation of a Garage door."""
@@ -1376,4 +1378,4 @@ class HaThermo(SensorEntity, HAEntity):
         return {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
-    }
+        }
