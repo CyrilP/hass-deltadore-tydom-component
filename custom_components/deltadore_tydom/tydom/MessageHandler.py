@@ -604,7 +604,7 @@ class MessageHandler:
         for i in parsed:
             if "endpoints" in i:
                 for endpoint in i["endpoints"]:
-                    if endpoint["error"] == 0 and len(endpoint["data"]) > 0:
+                    if endpoint["error"] == 0 and "data" in endpoint and len(endpoint["data"]) > 0:
                         try:
                             device_id = i["id"]
                             endpoint_id = endpoint["id"]
@@ -666,7 +666,7 @@ class MessageHandler:
                         for elem in endpoint["cdata"]:
                             if type_of_id == "conso":
                                 element_name = None
-                                if elem["parameters"].get("dest"):
+                                if "parameters" in elem and elem["parameters"].get("dest"):
                                     element_name = (
                                         elem["name"] + "_" + elem["parameters"]["dest"]
                                     )

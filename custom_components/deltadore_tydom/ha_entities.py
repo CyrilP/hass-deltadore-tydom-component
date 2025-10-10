@@ -966,18 +966,13 @@ class HaGate(CoverEntity, HAEntity):
         }
 
     @property
-    def is_closed(self) -> bool:
+    def is_closed(self) -> bool | None:
         """Return if the window is closed."""
-        try:
+        if hasattr(self._device, "openState"):
             return self._device.openState == "LOCKED"
-        except:
-            LOGGER.error("*************************************************************************************************************************************")
-            LOGGER.error("device %s", self._device.device_id)
-            LOGGER.error("properties : \n%s", vars(self._device))
-            LOGGER.error(traceback.format_exc())
-            LOGGER.error("*************************************************************************************************************************************")
-            raise
-
+        else:
+            LOGGER.warning("no attribute 'openState' for device %s", self._device.device_id)
+            return None
 
 
 class HaGarage(CoverEntity, HAEntity):
@@ -1019,17 +1014,12 @@ class HaGarage(CoverEntity, HAEntity):
         }
 
     @property
-    def is_closed(self) -> bool:
+    def is_closed(self) -> bool | None:
         """Return if the garage door is closed."""
-        try:
+        if hasattr(self._device, "level"):
             return self._device.level == 0
-        except:
-            LOGGER.error("*************************************************************************************************************************************")
-            LOGGER.error("device %s", self._device.device_id)
-            LOGGER.error("properties : \n%s", vars(self._device))
-            LOGGER.error(traceback.format_exc())
-            LOGGER.error("*************************************************************************************************************************************")
-            raise
+        else:
+            return None
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
