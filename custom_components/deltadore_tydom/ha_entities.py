@@ -1340,7 +1340,7 @@ class HaThermo(SensorEntity, HAEntity):
         self._state = False
         self._registered_sensors = ["outTemperature"]
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
-        self._attr_unit_of_measurement = UnitOfTemperature.CELSIUS
+        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
 
     @property
     def state(self):
