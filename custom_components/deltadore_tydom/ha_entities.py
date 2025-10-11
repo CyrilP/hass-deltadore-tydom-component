@@ -714,6 +714,8 @@ class HaClimate(ClimateEntity, HAEntity):
         # self._attr_preset_modes = ["NORMAL", "STOP", "ANTI_FROST"]
         self._attr_hvac_modes = [
             HVACMode.OFF,
+            HVACMode.HEAT,
+            HVACMode.COOL,
             HVACMode.AUTO,
         ]
 
@@ -768,26 +770,35 @@ class HaClimate(ClimateEntity, HAEntity):
         return UnitOfTemperature.CELSIUS
 
     @property
-    def hvac_mode(self) -> HVACMode:
+    def hvac_mode(self) -> HVACMode | None:
         """Return the current operation (e.g. heat, cool, idle)."""
-        if hasattr(self._device, "hvacMode"):
-            LOGGER.debug(
-                "hvac_mode = %s", self.dict_modes_dd_to_ha[self._device.hvacMode]
-            )
-            return self.dict_modes_dd_to_ha[self._device.hvacMode]
-        elif hasattr(self._device, "authorization"):
-            LOGGER.debug(
-                "authorization = %s",
-                self.dict_modes_dd_to_ha[self._device.thermicLevel],
-            )
-            return self.dict_modes_dd_to_ha[self._device.authorization]
-        elif hasattr(self._device, "thermicLevel"):
-            LOGGER.debug(
-                "thermicLevel = %s", self.dict_modes_dd_to_ha[self._device.thermicLevel]
-            )
-            return self.dict_modes_dd_to_ha[self._device.thermicLevel]
+        mode_tydom = None
+        source = None
+
+        # Priorité au matériel récent
+        if hasattr(self._device, "authorization") and self._device.authorization is not None:
+            mode_tydom = self._device.authorization
+            source = "authorization"
+        # Fallback pour les anciens matériels
+        elif hasattr(self._device, "hvacMode") and self._device.hvacMode is not None:
+            mode_tydom = self._device.hvacMode
+            source = "hvacMode"
+        elif hasattr(self._device, "thermicLevel") and self._device.thermicLevel is not None:
+            mode_tydom = self._device.thermicLevel
+            source = "thermicLevel"
+
+        if mode_tydom:
+            mode_ha = self.dict_modes_dd_to_ha.get(mode_tydom)
+            if mode_ha:
+                LOGGER.debug("hvac_mode found: Tydom='''%s''' (from %s) -> HA='''%s'''", mode_tydom, source, mode_ha)
+                return mode_ha
+            else:
+                LOGGER.warning("Tydom mode '''%s''' (from %s) has no translation in HA dictionary.", mode_tydom, source)
         else:
-            return None
+            LOGGER.debug("No valid Tydom hvac_mode attribute found. Returning OFF.")
+            return HVACMode.OFF
+        
+        return None
 
     @property
     def current_temperature(self) -> float | None:
@@ -802,46 +813,24 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature currently set to be reached."""
-        if hasattr(self._device, "hvacMode"):
-            if (
-                self._device.hvacMode == "HEATING" or self._device.hvacMode == "NORMAL"
-            ) and hasattr(self._device, "setpoint"):
-                return self._device.setpoint
-            elif (
-                self._device.hvacMode == "HEATING" or self._device.hvacMode == "NORMAL"
-            ) and hasattr(self._device, "heatSetpoint"):
-                return self._device.heatSetpoint
-            elif self._device.hvacMode == "COOLING" and hasattr(
-                self._device, "setpoint"
-            ):
-                return self._device.setpoint
-            elif self._device.hvacMode == "COOLING" and hasattr(
-                self._device, "coolSetpoint"
-            ):
-                return self._device.coolSetpoint
-
-        elif hasattr(self._device, "authorization"):
-            if self._device.authorization == "HEATING" and hasattr(
-                self._device, "heatSetpoint"
-            ):
-                return self._device.heatSetpoint
-            elif self._device.authorization == "HEATING" and hasattr(
-                self._device, "setpoint"
-            ):
-                return self._device.setpoint
-            elif self._device.authorization == "COOLING" and hasattr(
-                self._device, "coolSetpoint"
-            ):
-                return self._device.coolSetpoint
-            elif self._device.authorization == "COOLING" and hasattr(
-                self._device, "setpoint"
-            ):
-                return self._device.setpoint
+        if hasattr(self._device, "setpoint"):
+            return self._device.setpoint
         return None
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
-        await self._device.set_hvac_mode(self.dict_modes_ha_to_dd[hvac_mode])
+        # Logique pour le matériel récent (RE2020)
+        if self._device.device_type == "re2020ControlBoiler":
+            tydom_mode = "STOP" # Par défaut
+            if hvac_mode == HVACMode.HEAT:
+                tydom_mode = "HEATING"
+            elif hvac_mode == HVACMode.COOL:
+                tydom_mode = "COOLING"
+            await self._device.set_area_data("authorization", tydom_mode)
+        
+        # Logique existante pour les anciens matériels
+        else:
+            await self._device.set_hvac_mode(self.dict_modes_ha_to_dd.get(hvac_mode))
 
     async def async_set_preset_mode(self, preset_mode):
         """Set new target preset mode."""
@@ -849,8 +838,15 @@ class HaClimate(ClimateEntity, HAEntity):
 
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
-        await self._device.set_temperature(str(kwargs.get(ATTR_TEMPERATURE)))
-
+        temperature = kwargs.get(ATTR_TEMPERATURE)
+        if temperature is not None:
+            # Logique pour le matériel récent (RE2020)
+            if self._device.device_type == "re2020ControlBoiler":
+                await self._device.set_area_data("setpoint", str(temperature))
+            
+            # Logique existante pour les anciens matériels
+            else:
+                await self._device.set_temperature(str(temperature))
 
 class HaWindow(CoverEntity, HAEntity):
     """Representation of a Window."""
