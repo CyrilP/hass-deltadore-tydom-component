@@ -99,6 +99,7 @@ class Hub:
             zone_night=self._zone_night,
             alarm_pin=self._pin,
             event_callback=self.handle_event,
+            hub=self, # LIGNE AJOUTÉE
         )
 
         self.online = True
