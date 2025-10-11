@@ -58,9 +58,10 @@ class Reply(TypedDict):
 class MessageHandler:
     """Handle incoming Tydom messages."""
 
-    def __init__(self, tydom_client: "TydomClient", cmd_prefix: bytes) -> None:
+    def __init__(self, tydom_client: "TydomClient", cmd_prefix: bytes, hub=None) -> None:
         """Initialize MessageHandler."""
         self.tydom_client = tydom_client
+        self.hub = hub # LIGNE AJOUTÉE
         self.cmd_prefix = cmd_prefix
         self._cdata_replies: list[Reply] = []
         self._end_reply_events: dict[str, asyncio.Event] = {}
@@ -198,86 +199,90 @@ class MessageHandler:
         return (transaction_id, request)
 
     async def parse_response(
-        self,
-        data: bytes | None,
-        uri_origin: str,
-        content_type: str | None,
-        transaction_id: str | None,
-    ) -> list[TydomDevice] | None:
-        """
-        Parse response.
+            self,
+            data: bytes | None,
+            uri_origin: str,
+            content_type: str | None,
+            transaction_id: str | None,
+        ) -> list[TydomDevice] | None:
+            """
+            Parse response.
 
-        Args:
-            data: Response body
-            uri_origin: Response URL
-            content_type: Response content type (can't be trusted)
-            transaction_id: Response transaction ID
+            Args:
+                data: Response body
+                uri_origin: Response URL
+                content_type: Response content type (can't be trusted)
+                transaction_id: Response transaction ID
 
-        Returns:
-            List of Tydom devices if applicable.
+            Returns:
+                List of Tydom devices if applicable.
 
-        """
+            """
 
-        async def no_op(message_type: str, *args):
-            LOGGER.debug("%s response", message_type)
+            async def no_op(message_type: str, *args):
+                LOGGER.debug("%s response", message_type)
 
-        async def event_message(*args):
-            LOGGER.debug("Event message, refreshing...")
-            await self.tydom_client.get_devices_data()
+            async def event_message(*args):
+                LOGGER.debug("Event message, refreshing...")
+                await self.tydom_client.get_devices_data()
 
-        async def ping_message(*args):
-            self.tydom_client.receive_pong()
+            async def ping_message(*args):
+                self.tydom_client.receive_pong()
 
-        MSG_MAPPING = {
-            "/configs/file": MessageHandler.parse_config_data,
-            "/configs/gateway/api_mode": partial(no_op, "msg_api_mode"),
-            "/devices/cdata": self.parse_devices_cdata,
-            "/devices/cmeta": self.parse_cmeta_data,
-            "/devices/install": partial(no_op, "msg_pairing"),
-            "/devices/meta": self.parse_devices_metadata,
-            "/events": event_message,
-            "/groups/file": partial(no_op, "msg_groups"),
-            "/info": self.parse_msg_info,
-            "/ping": ping_message,
-            "/refresh/all": partial(no_op, "msg_refresh_all"),
-            "/scenarios/file": partial(no_op, "msg_scenarios"),
-        }
+            MSG_MAPPING = {
+                "/areas/data": self.parse_areas_data,
+                "/configs/file": MessageHandler.parse_config_data,
+                "/configs/gateway/api_mode": partial(no_op, "msg_api_mode"),
+                "/devices/cdata": self.parse_devices_cdata,
+                "/devices/cmeta": self.parse_cmeta_data,
+                "/devices/install": partial(no_op, "msg_pairing"),
+                "/devices/meta": self.parse_devices_metadata,
+                "/events": event_message,
+                "/groups/file": partial(no_op, "msg_groups"),
+                "/info": self.parse_msg_info,
+                "/ping": ping_message,
+                "/refresh/all": partial(no_op, "msg_refresh_all"),
+                "/scenarios/file": partial(no_op, "msg_scenarios"),
+            }
 
-        parsed = data
-        msg_type: (
-            Callable[
-                [bytes | dict | None, str | None], Awaitable[list[TydomDevice] | None]
-            ]
-            | None
-        ) = None
+            parsed = data
+            msg_type: (
+                Callable[
+                    [bytes | dict | None, str | None], Awaitable[list[TydomDevice] | None]
+                ]
+                | None
+            ) = None
 
-        if data:
-            if content_type == "application/json":
-                # Content-Type is not reliable; it is use with text/html for example
-                with contextlib.suppress(json.decoder.JSONDecodeError):
-                    parsed = json.loads(data)
-            elif content_type == "text/html":
-                msg_type = partial(no_op, "msg_html")
-
-        if msg_type is None:
-            msg_type = MSG_MAPPING.get(uri_origin)
-
-            if msg_type is None and data:
-                first = data[:40]
-                if b"doctype" in first:  # Content-Type header is not respected
+            if data:
+                if content_type == "application/json":
+                    with contextlib.suppress(json.decoder.JSONDecodeError):
+                        parsed = json.loads(data)
+                elif content_type == "text/html":
                     msg_type = partial(no_op, "msg_html")
-                elif b"id" in first:
-                    msg_type = self.parse_devices_data
 
-        if msg_type is None:
-            LOGGER.warning("Unknown message type received %s: %s", uri_origin, data)
-        else:
-            LOGGER.debug("Message received from %s", uri_origin)
-            try:
-                return await msg_type(parsed, transaction_id)
-            except Exception as e:
-                LOGGER.error("Error on parsing tydom response (%s)", data, exc_info=e)
-        LOGGER.debug("Incoming data parsed with success")
+            if msg_type is None:
+                for key, value in MSG_MAPPING.items():
+                    if uri_origin.startswith(key):
+                        msg_type = value
+                        LOGGER.debug("Message type found for %s: %s", uri_origin, key)
+                        break
+
+                if msg_type is None and data:
+                    first = data[:40]
+                    if b"doctype" in first:
+                        msg_type = partial(no_op, "msg_html")
+                    elif b"id" in first:
+                        msg_type = self.parse_devices_data
+
+            if msg_type is None:
+                LOGGER.warning("Unknown message type received %s: %s", uri_origin, data)
+            else:
+                LOGGER.debug("Message received from %s", uri_origin)
+                try:
+                    return await msg_type(parsed, transaction_id)
+                except Exception as e:
+                    LOGGER.error("Error on parsing tydom response (%s)", data, exc_info=e)
+            LOGGER.debug("Incoming data parsed with success")
 
     async def parse_devices_metadata(self, parsed, transaction_id):
         """Parse metadata."""
@@ -422,7 +427,7 @@ class MessageHandler:
                     device_metadata[uid],
                     data,
                 )
-            case "boiler" | "sh_hvac" | "electric" | "aeraulic":
+            case "boiler" | "sh_hvac" | "electric" | "aeraulic" | "re2020ControlBoiler":
                 return TydomBoiler(
                     tydom_client,
                     uid,
@@ -592,6 +597,9 @@ class MessageHandler:
 
                                 if element_validity == "upToDate":
                                     data[element_name] = element_value
+                            # Store the area ID if the device is linked to one
+                            if "link" in endpoint and endpoint["link"].get("type") == "area":
+                                data["link_id"] = endpoint["link"].get("id")
 
                             # Create the device
                             device = await MessageHandler.get_device(
@@ -719,6 +727,51 @@ class MessageHandler:
                         LOGGER.exception("Error when parsing msg_cdata", exc_info=e)
         return devices
 
+    async def parse_areas_data(self, parsed, transaction_id):
+        """Parse areas data."""
+        LOGGER.debug("parse_areas_data : %s", parsed)
+        devices = []
+
+        for area in parsed:
+            area_id = area.get("id")
+            
+            # Find which device is linked to this area
+            linked_device_uid = None
+            if self.hub and self.hub.devices: # Vérifie que le hub et sa liste d'appareils existent
+                for uid, device in self.hub.devices.items():
+                    if hasattr(device, 'link_id') and device.link_id == area_id:
+                        linked_device_uid = uid
+                        break
+            
+            if linked_device_uid:
+                device_id = self.hub.devices[linked_device_uid]._id
+                endpoint_id = self.hub.devices[linked_device_uid]._endpoint
+                name_of_id = self.get_name_from_id(linked_device_uid)
+                type_of_id = self.get_type_from_id(linked_device_uid)
+                
+                data = {}
+                for elem in area.get("data", []):
+                    if elem.get("validity") == "upToDate":
+                        data[elem["name"]] = elem["value"]
+                
+                device = await MessageHandler.get_device(
+                    self.tydom_client,
+                    type_of_id,
+                    linked_device_uid,
+                    device_id,
+                    name_of_id,
+                    endpoint_id,
+                    data,
+                )
+                if device is not None:
+                    devices.append(device)
+                    LOGGER.info(
+                        "Area update for device (id=%s, name=%s, area_id=%s)",
+                        device_id,
+                        name_of_id,
+                        area_id,
+                    )
+        return devices
     # FUNCTIONS
 
     def get_type_from_id(self, id):
