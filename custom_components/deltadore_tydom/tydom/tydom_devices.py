@@ -281,6 +281,30 @@ class TydomDoor(TydomDevice):
 class TydomGate(TydomDevice):
     """represents a gate."""
 
+    async def open(self) -> None:
+        """Tell garage door to open."""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "levelCmd", "ON"
+        )
+
+    async def close(self) -> None:
+        """Tell garage door to close."""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "levelCmd", "OFF"
+        )
+
+    async def stop(self) -> None:
+        """Tell garage door to stop."""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "levelCmd", "STOP"
+        )
+
+    async def toggle(self) -> None:
+        """Tell garage door to stop."""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "levelCmd", "TOGGLE"
+        )
+
 
 class TydomGarage(TydomDevice):
     """represents a garage door."""
@@ -457,3 +481,7 @@ class TydomWeather(TydomDevice):
 
 class TydomWater(TydomDevice):
     """Represents a water leak sensor."""
+
+
+class TydomThermo(TydomDevice):
+    """Represents a thermometer."""
