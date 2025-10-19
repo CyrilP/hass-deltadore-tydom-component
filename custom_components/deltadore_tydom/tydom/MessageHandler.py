@@ -27,6 +27,7 @@ from .tydom_devices import (
     TydomWindow,
     TydomWeather,
     TydomWater,
+    TydomThermo,
 )
 
 if TYPE_CHECKING:
@@ -471,6 +472,17 @@ class MessageHandler:
                     device_metadata[uid],
                     data,
                 )
+            case "sensorThermo":
+                return TydomThermo(
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata[uid],
+                    data,
+                )
             case _:
                 # TODO generic sensor ?
                 LOGGER.warn(
@@ -551,6 +563,24 @@ class MessageHandler:
                                         )
                                         self.tydom_client.add_poll_device_url_5m(url)
                                         LOGGER.debug("Add poll device : " + url)
+                        elif elem["name"] == "energyHisto":
+                            device_name[unique_id] = "Tywatt"
+                            device_type[unique_id] = "conso"
+                            for params in elem["parameters"]:
+                                if params["name"] == "src":
+                                    for src in params["enum_values"]:
+                                        url = (
+                                            "/devices/"
+                                            + str(i["id"])
+                                            + "/endpoints/"
+                                            + str(endpoint["id"])
+                                            + "/cdata?name="
+                                            + elem["name"]
+                                            + "&period=YEAR&periodOffset=0&src="
+                                            + src
+                                        )
+                                        self.tydom_client.add_poll_device_url_5m(url)
+                                        LOGGER.debug("Add poll device : " + url)
                         elif elem["name"] == "energyDistrib":
                             device_name[unique_id] = "Tywatt"
                             device_type[unique_id] = "conso"
@@ -580,7 +610,11 @@ class MessageHandler:
         for i in parsed:
             if "endpoints" in i:
                 for endpoint in i["endpoints"]:
-                    if endpoint["error"] == 0 and len(endpoint["data"]) > 0:
+                    if (
+                        endpoint["error"] == 0
+                        and "data" in endpoint
+                        and len(endpoint["data"]) > 0
+                    ):
                         try:
                             device_id = i["id"]
                             endpoint_id = endpoint["id"]
@@ -645,7 +679,9 @@ class MessageHandler:
                         for elem in endpoint["cdata"]:
                             if type_of_id == "conso":
                                 element_name = None
-                                if elem["parameters"].get("dest"):
+                                if "parameters" in elem and elem["parameters"].get(
+                                    "dest"
+                                ):
                                     element_name = (
                                         elem["name"] + "_" + elem["parameters"]["dest"]
                                     )

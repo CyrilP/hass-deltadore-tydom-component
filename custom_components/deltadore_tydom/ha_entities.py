@@ -83,6 +83,7 @@ from .tydom.tydom_devices import (
     TydomAlarm,
     TydomWeather,
     TydomWater,
+    TydomThermo,
 )
 
 from .const import DOMAIN, LOGGER
@@ -637,6 +638,7 @@ class HaClimate(ClimateEntity, HAEntity):
 
     sensor_classes = {
         "temperature": SensorDeviceClass.TEMPERATURE,
+        "outTemperature": SensorDeviceClass.TEMPERATURE,
         "TempSensorDefect": BinarySensorDeviceClass.PROBLEM,
         "TempSensorOpenCirc": BinarySensorDeviceClass.PROBLEM,
         "TempSensorShortCut": BinarySensorDeviceClass.PROBLEM,
@@ -647,6 +649,7 @@ class HaClimate(ClimateEntity, HAEntity):
 
     units = {
         "temperature": UnitOfTemperature.CELSIUS,
+        "outTemperature": UnitOfTemperature.CELSIUS,
         "ambientTemperature": UnitOfTemperature.CELSIUS,
         "hygroIn": PERCENTAGE,
     }
@@ -790,14 +793,23 @@ class HaClimate(ClimateEntity, HAEntity):
         if mode_tydom:
             mode_ha = self.dict_modes_dd_to_ha.get(mode_tydom)
             if mode_ha:
-                LOGGER.debug("hvac_mode found: Tydom='''%s''' (from %s) -> HA='''%s'''", mode_tydom, source, mode_ha)
+                LOGGER.debug(
+                    "hvac_mode found: Tydom='%s' (from %s) -> HA='%s'",
+                    mode_tydom,
+                    source,
+                    mode_ha,
+                )
                 return mode_ha
             else:
-                LOGGER.warning("Tydom mode '''%s''' (from %s) has no translation in HA dictionary.", mode_tydom, source)
+                LOGGER.warning(
+                    "Tydom mode '%s' (from %s) has no translation in HA dictionary.",
+                    mode_tydom,
+                    source,
+                )
         else:
             LOGGER.debug("No valid Tydom hvac_mode attribute found. Returning OFF.")
             return HVACMode.OFF
-        
+
         return None
 
     @property
@@ -880,7 +892,13 @@ class HaWindow(CoverEntity, HAEntity):
     @property
     def is_closed(self) -> bool:
         """Return if the window is closed."""
-        return self._device.openState == "LOCKED"
+        if hasattr(self._device, "openState"):
+            return self._device.openState == "LOCKED"
+        elif hasattr(self._device, "intrusionDetect"):
+            return not self._device.intrusionDetect
+        else:
+            LOGGER.error("Unknown state for device %s", self._device.device_id)
+            return True
 
 
 class HaDoor(CoverEntity, HAEntity):
@@ -929,7 +947,7 @@ class HaGate(CoverEntity, HAEntity):
     """Representation of a Gate."""
 
     should_poll = False
-    supported_features = None
+    supported_features = CoverEntityFeature.OPEN
     device_class = CoverDeviceClass.GATE
     sensor_classes = {}
 
@@ -941,6 +959,17 @@ class HaGate(CoverEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
+        if (
+            "levelCmd" in self._device._metadata
+            and "OFF" in self._device._metadata["levelCmd"]["enum_values"]
+        ):
+            self.supported_features = self.supported_features | CoverEntityFeature.CLOSE
+
+        if (
+            "levelCmd" in self._device._metadata
+            and "STOP" in self._device._metadata["levelCmd"]["enum_values"]
+        ):
+            self.supported_features = self.supported_features | CoverEntityFeature.STOP
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -951,9 +980,45 @@ class HaGate(CoverEntity, HAEntity):
         }
 
     @property
-    def is_closed(self) -> bool:
+    def is_closed(self) -> bool | None:
         """Return if the window is closed."""
-        return self._device.openState == "LOCKED"
+        if hasattr(self._device, "openState"):
+            return self._device.openState == "LOCKED"
+        else:
+            LOGGER.warning(
+                "no attribute 'openState' for device %s", self._device.device_id
+            )
+            return None
+
+    async def async_open_cover(self, **kwargs: Any) -> None:
+        """Open the gate."""
+        if (
+            "levelCmd" in self._device._metadata
+            and "ON" in self._device._metadata["levelCmd"]["enum_values"]
+        ):
+            await self._device.open()
+        else:
+            await self._device.toggle()
+
+    async def async_close_cover(self, **kwargs: Any) -> None:
+        """Open the gate."""
+        if (
+            "levelCmd" in self._device._metadata
+            and "OFF" in self._device._metadata["levelCmd"]["enum_values"]
+        ):
+            await self._device.close()
+        else:
+            await self._device.toggle()
+
+    async def async_stop_cover(self, **kwargs: Any) -> None:
+        """Open the gate."""
+        if (
+            "levelCmd" in self._device._metadata
+            and "STOP" in self._device._metadata["levelCmd"]["enum_values"]
+        ):
+            await self._device.stop()
+        else:
+            await self._device.toggle()
 
 
 class HaGarage(CoverEntity, HAEntity):
@@ -995,9 +1060,12 @@ class HaGarage(CoverEntity, HAEntity):
         }
 
     @property
-    def is_closed(self) -> bool:
+    def is_closed(self) -> bool | None:
         """Return if the garage door is closed."""
-        return self._device.level == 0
+        if hasattr(self._device, "level"):
+            return self._device.level == 0
+        else:
+            return None
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
@@ -1286,4 +1354,33 @@ class HaMoisture(BinarySensorEntity, HAEntity):
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
             "manufacturer": "Delta Dore",
+        }
+
+
+class HaThermo(SensorEntity, HAEntity):
+    """Representation of a thermometer."""
+
+    def __init__(self, device: TydomThermo, hass) -> None:
+        """Initialize TydomSmoke."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self
+        self._attr_unique_id = f"{self._device.device_id}_thermos"
+        self._attr_name = self._device.device_name
+        self._state = False
+        self._registered_sensors = ["outTemperature"]
+        self._attr_device_class = SensorDeviceClass.TEMPERATURE
+        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        return self._device.outTemperature
+
+    @property
+    def device_info(self):
+        """Return information to link this entity with the correct device."""
+        return {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
         }

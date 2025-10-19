@@ -22,6 +22,7 @@ from .tydom.tydom_devices import (
     TydomAlarm,
     TydomWeather,
     TydomWater,
+    TydomThermo,
 )
 from .ha_entities import (
     HATydom,
@@ -37,6 +38,7 @@ from .ha_entities import (
     HaAlarm,
     HaWeather,
     HaMoisture,
+    HaThermo,
 )
 
 from .const import LOGGER
@@ -289,6 +291,15 @@ class Hub:
             case TydomWater():
                 LOGGER.debug("Create moisture %s", device.device_id)
                 ha_device = HaMoisture(device, self._hass)
+                self.ha_devices[device.device_id] = ha_device
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback([ha_device])
+
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback(ha_device.get_sensors())
+            case TydomThermo():
+                LOGGER.debug("Create thermo %s", device.device_id)
+                ha_device = HaThermo(device, self._hass)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback([ha_device])
