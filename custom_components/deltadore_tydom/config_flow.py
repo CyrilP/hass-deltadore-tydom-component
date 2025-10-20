@@ -691,9 +691,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Option flow to configure zones at any time."""
 
-
     @property
     def config_entry(self):
+        """Config entry."""
         return self.hass.config_entries.async_get_entry(self.handler)
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
