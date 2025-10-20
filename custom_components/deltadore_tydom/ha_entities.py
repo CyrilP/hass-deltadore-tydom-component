@@ -665,7 +665,7 @@ class HaClimate(ClimateEntity, HAEntity):
         self._enable_turn_on_off_backwards_compatibility = False
 
         self._attr_hvac_mode = HVACMode.OFF
-        
+
         self.dict_modes_ha_to_dd = {
             HVACMode.COOL: "COOLING",
             HVACMode.HEAT: "NORMAL",
