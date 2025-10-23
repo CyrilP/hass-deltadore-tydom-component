@@ -521,8 +521,6 @@ class MessageHandler:
                         unique_id = str(endpoint_id) + "_" + str(device_id)
 
                         if elem["name"] == "energyIndex":
-                            device_name[unique_id] = "Tywatt"
-                            device_type[unique_id] = "conso"
                             for params in elem["parameters"]:
                                 if params["name"] == "dest":
                                     for dest in params["enum_values"]:
@@ -540,8 +538,6 @@ class MessageHandler:
                                         self.tydom_client.add_poll_device_url_5m(url)
                                         LOGGER.debug("Add poll device : %s", url)
                         elif elem["name"] == "energyInstant":
-                            device_name[unique_id] = "Tywatt"
-                            device_type[unique_id] = "conso"
                             for params in elem["parameters"]:
                                 if params["name"] == "unit":
                                     for unit in params["enum_values"]:
@@ -559,8 +555,6 @@ class MessageHandler:
                                         self.tydom_client.add_poll_device_url_5m(url)
                                         LOGGER.debug("Add poll device : " + url)
                         elif elem["name"] == "energyHisto":
-                            device_name[unique_id] = "Tywatt"
-                            device_type[unique_id] = "conso"
                             for params in elem["parameters"]:
                                 if params["name"] == "src":
                                     for src in params["enum_values"]:
@@ -577,8 +571,6 @@ class MessageHandler:
                                         self.tydom_client.add_poll_device_url_5m(url)
                                         LOGGER.debug("Add poll device : " + url)
                         elif elem["name"] == "energyDistrib":
-                            device_name[unique_id] = "Tywatt"
-                            device_type[unique_id] = "conso"
                             for params in elem["parameters"]:
                                 if params["name"] == "src":
                                     for src in params["enum_values"]:
@@ -668,8 +660,14 @@ class MessageHandler:
                         type_of_id = self.get_type_from_id(unique_id)
 
                         data = {}
+
+                        LOGGER.error("**** CDATA device_id %s", device_id)
+                        LOGGER.error("**** CDATA endpoint_id %s", endpoint_id)
+                        LOGGER.error("**** CDATA name_of_id %s", name_of_id)
+                        LOGGER.error("**** CDATA type %s", type_of_id)
                         for elem in endpoint["cdata"]:
                             if type_of_id == "conso":
+                                LOGGER.error("**** CDATA elements %s", elem)
                                 element_name = None
                                 if "parameters" in elem and elem["parameters"].get(
                                     "dest"
@@ -677,11 +675,22 @@ class MessageHandler:
                                     element_name = (
                                         elem["name"] + "_" + elem["parameters"]["dest"]
                                     )
+                                    element_value = elem["values"]["counter"]
+                                    data[element_name] = element_value
+                                elif "parameters" in elem and elem["parameters"].get(
+                                    "period"
+                                ):
+                                    for data in elem["values"].keys():
+                                        if data.isupper():
+                                            element_name = (
+                                                elem["name"] + "_" + data
+                                            )
+                                            LOGGER.error("**** CDATA element_name %s", element_name)
+                                            data[element_name] = elem["values"][data]
                                 else:
                                     continue
 
-                                element_value = elem["values"]["counter"]
-                                data[element_name] = element_value
+                                LOGGER.error("**** CDATA data %s", data)
 
                                 # Create the device
                                 device = await MessageHandler.get_device(
@@ -693,8 +702,10 @@ class MessageHandler:
                                     endpoint_id,
                                     data,
                                 )
+                                LOGGER.error("**** CDATA device %s", device)
                                 if device is not None:
                                     devices.append(device)
+                                    LOGGER.error("**** CDATA Device update %s", element_name)
                                     LOGGER.debug(
                                         "Device update (id=%s, endpoint=%s, name=%s, type=%s)",
                                         device_id,
