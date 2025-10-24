@@ -680,13 +680,13 @@ class MessageHandler:
                                 elif "parameters" in elem and elem["parameters"].get(
                                     "period"
                                 ):
-                                    for data in elem["values"].keys():
-                                        if data.isupper():
+                                    for key in elem["values"].keys():
+                                        if key.isupper():
                                             element_name = (
-                                                elem["name"] + "_" + data
+                                                elem["name"] + "_" + key
                                             )
                                             LOGGER.error("**** CDATA element_name %s", element_name)
-                                            data[element_name] = elem["values"][data]
+                                            data[element_name] = elem["values"][key]
                                 else:
                                     continue
 
