@@ -516,10 +516,6 @@ class MessageHandler:
             for endpoint in i["endpoints"]:
                 if len(endpoint["cmetadata"]) > 0:
                     for elem in endpoint["cmetadata"]:
-                        device_id = i["id"]
-                        endpoint_id = endpoint["id"]
-                        unique_id = str(endpoint_id) + "_" + str(device_id)
-
                         if elem["name"] == "energyIndex":
                             for params in elem["parameters"]:
                                 if params["name"] == "dest":
