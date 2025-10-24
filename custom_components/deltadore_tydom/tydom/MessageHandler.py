@@ -673,9 +673,7 @@ class MessageHandler:
                                 ):
                                     for key in elem["values"]:
                                         if key.isupper():
-                                            element_name = (
-                                                elem["name"] + "_" + key
-                                            )
+                                            element_name = elem["name"] + "_" + key
                                             data[element_name] = elem["values"][key]
                                 else:
                                     continue
