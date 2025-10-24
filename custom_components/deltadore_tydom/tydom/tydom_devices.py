@@ -269,6 +269,13 @@ class TydomBoiler(TydomDevice):
             self._id, self._endpoint, "setpoint", temperature
         )
 
+    async def set_area_data(self, name, value):
+        """Set data for the linked area."""
+        if hasattr(self, 'link_id'):
+            LOGGER.debug("setting area data for %s to %s on area %s", name, value, self.link_id)
+            await self._tydom_client.put_areas_data(self.link_id, name, value)
+
+
 
 class TydomWindow(TydomDevice):
     """represents a window."""
