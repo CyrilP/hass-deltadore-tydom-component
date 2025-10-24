@@ -661,13 +661,8 @@ class MessageHandler:
 
                         data = {}
 
-                        LOGGER.error("**** CDATA device_id %s", device_id)
-                        LOGGER.error("**** CDATA endpoint_id %s", endpoint_id)
-                        LOGGER.error("**** CDATA name_of_id %s", name_of_id)
-                        LOGGER.error("**** CDATA type %s", type_of_id)
                         for elem in endpoint["cdata"]:
                             if type_of_id == "conso":
-                                LOGGER.error("**** CDATA elements %s", elem)
                                 element_name = None
                                 if "parameters" in elem and elem["parameters"].get(
                                     "dest"
@@ -685,12 +680,9 @@ class MessageHandler:
                                             element_name = (
                                                 elem["name"] + "_" + key
                                             )
-                                            LOGGER.error("**** CDATA element_name %s", element_name)
                                             data[element_name] = elem["values"][key]
                                 else:
                                     continue
-
-                                LOGGER.error("**** CDATA data %s", data)
 
                                 # Create the device
                                 device = await MessageHandler.get_device(
@@ -702,10 +694,9 @@ class MessageHandler:
                                     endpoint_id,
                                     data,
                                 )
-                                LOGGER.error("**** CDATA device %s", device)
+
                                 if device is not None:
                                     devices.append(device)
-                                    LOGGER.error("**** CDATA Device update %s", element_name)
                                     LOGGER.debug(
                                         "Device update (id=%s, endpoint=%s, name=%s, type=%s)",
                                         device_id,
