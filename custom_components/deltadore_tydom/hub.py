@@ -89,6 +89,7 @@ class Hub:
         self.add_alarm_callback = None
         self.add_update_callback = None
         self.add_weather_callback = None
+        self.add_binary_sensor_callback = None
 
         self._tydom_client = TydomClient(
             hass=self._hass,
@@ -228,11 +229,31 @@ class Hub:
                 LOGGER.debug("Create window %s", device.device_id)
                 ha_device = HaWindow(device, self._hass)
                 self.ha_devices[device.device_id] = ha_device
-                if self.add_cover_callback is not None:
-                    self.add_cover_callback([ha_device])
-
-                if self.add_sensor_callback is not None:
+                
+                # Décision automatique selon les attributs du device
+                if any(hasattr(device, a) for a in ["position", "positionCmd", "level", "levelCmd"]):
+                    LOGGER.debug("Window %s has motor control → adding as cover", device.device_id)
+                    if self.add_cover_callback:
+                        self.add_cover_callback([ha_device])
+                else:
+                    LOGGER.debug("Window %s is passive → adding as binary_sensor", device.device_id)
+                    if self.add_binary_sensor_callback:
+                        self.add_binary_sensor_callback([ha_device])
+                
+                if self.add_sensor_callback:
                     self.add_sensor_callback(ha_device.get_sensors())
+#                LOGGER.debug("Create window %s", device.device_id)
+#                ha_device = HaWindow(device, self._hass)
+#                self.ha_devices[device.device_id] = ha_device
+#                # On ne l'ajoute plus comme cover !
+#                # if self.add_cover_callback is not None:
+#                #     self.add_cover_callback([ha_device])
+#                # On le route vers la plateforme binary_sensor
+#                if self.add_binary_sensor_callback is not None:
+#                    self.add_binary_sensor_callback([ha_device])
+#                # on garde les capteurs associés
+#                if self.add_sensor_callback is not None:
+#                    self.add_sensor_callback(ha_device.get_sensors())
             case TydomDoor():
                 LOGGER.debug("Create door %s", device.device_id)
                 ha_device = HaDoor(device, self._hass)
