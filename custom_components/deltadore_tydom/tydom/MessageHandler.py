@@ -556,8 +556,8 @@ class MessageHandler:
                                         LOGGER.debug("Add poll device : " + url)
                         elif elem["name"] == "energyHisto":
                             for params in elem["parameters"]:
-                                if params["name"] == "src":
-                                    for src in params["enum_values"]:
+                                if params["name"] == "dest":
+                                    for dest in params["enum_values"]:
                                         url = (
                                             "/devices/"
                                             + str(i["id"])
@@ -565,8 +565,8 @@ class MessageHandler:
                                             + str(endpoint["id"])
                                             + "/cdata?name="
                                             + elem["name"]
-                                            + "&period=YEAR&periodOffset=0&src="
-                                            + src
+                                            + "&period=YEAR&periodOffset=0&dest="
+                                            + dest
                                         )
                                         self.tydom_client.add_poll_device_url_5m(url)
                                         LOGGER.debug("Add poll device : " + url)
@@ -675,7 +675,7 @@ class MessageHandler:
                                 elif "parameters" in elem and elem["parameters"].get(
                                     "period"
                                 ):
-                                    for key in elem["values"].keys():
+                                    for key in elem["values"]:
                                         if key.isupper():
                                             element_name = (
                                                 elem["name"] + "_" + key
