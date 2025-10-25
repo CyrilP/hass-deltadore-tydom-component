@@ -258,10 +258,18 @@ class Hub:
                 LOGGER.debug("Create door %s", device.device_id)
                 ha_device = HaDoor(device, self._hass)
                 self.ha_devices[device.device_id] = ha_device
-                if self.add_cover_callback is not None:
-                    self.add_cover_callback([ha_device])
 
-                if self.add_sensor_callback is not None:
+                # Décision automatique selon les attributs du device
+                if any(hasattr(device, a) for a in ["position", "positionCmd", "level", "levelCmd"]):
+                    LOGGER.debug("Door %s has motor control → adding as cover", device.device_id)
+                    if self.add_cover_callback:
+                        self.add_cover_callback([ha_device])
+                else:
+                    LOGGER.debug("Door %s is passive → adding as binary_sensor", device.device_id)
+                    if self.add_binary_sensor_callback:
+                        self.add_binary_sensor_callback([ha_device])
+
+                if self.add_sensor_callback:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomGate():
                 LOGGER.debug("Create gate %s", device.device_id)
