@@ -341,12 +341,21 @@ class TydomLight(TydomDevice):
         """Tell light to turn on."""
         if brightness is None:
             command = "TOGGLE"
-            if "ON" in self._metadata["levelCmd"]["enum_values"]:
-                command = "ON"
+            if (
+                "levelCmd" in self._metadata
+                and "enum_values" in self._metadata["levelCmd"]
+            ):
+                if "ON" in self._metadata["levelCmd"]["enum_values"]:
+                    command = "ON"
 
-            await self._tydom_client.put_devices_data(
-                self._id, self._endpoint, "levelCmd", command
-            )
+                await self._tydom_client.put_devices_data(
+                    self._id, self._endpoint, "levelCmd", command
+                )
+            else:
+                await self._tydom_client.put_devices_data(
+                    self._id, self._endpoint, "level", "100"
+                )
+
         else:
             await self._tydom_client.put_devices_data(
                 self._id, self._endpoint, "level", str(brightness)
@@ -359,12 +368,18 @@ class TydomLight(TydomDevice):
         """Tell light to turn off."""
 
         command = "TOGGLE"
-        if "OFF" in self._metadata["levelCmd"]["enum_values"]:
-            command = "OFF"
+        if "levelCmd" in self._metadata and "enum_values" in self._metadata["levelCmd"]:
+            if "OFF" in self._metadata["levelCmd"]["enum_values"]:
+                command = "OFF"
 
-        await self._tydom_client.put_devices_data(
-            self._id, self._endpoint, "levelCmd", command
-        )
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "levelCmd", command
+            )
+        else:
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "level", "0"
+            )
+
         self._tydom_client.add_poll_device_url_1s(
             f"/devices/{self._id}/endpoints/{self._endpoint}/cdata"
         )
