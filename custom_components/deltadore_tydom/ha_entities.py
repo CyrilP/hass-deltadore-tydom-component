@@ -841,7 +841,7 @@ class HaClimate(ClimateEntity, HAEntity):
             elif hvac_mode == HVACMode.COOL:
                 tydom_mode = "COOLING"
             await self._device.set_area_data("authorization", tydom_mode)
-        
+
         # Logique existante pour les anciens matériels
         else:
             await self._device.set_hvac_mode(self.dict_modes_ha_to_dd.get(hvac_mode))
@@ -857,7 +857,7 @@ class HaClimate(ClimateEntity, HAEntity):
             # Logique pour le matériel récent (RE2020)
             if self._device.device_type == "re2020ControlBoiler":
                 await self._device.set_area_data("setpoint", str(temperature))
-            
+
             # Logique existante pour les anciens matériels
             else:
                 await self._device.set_temperature(str(temperature))
