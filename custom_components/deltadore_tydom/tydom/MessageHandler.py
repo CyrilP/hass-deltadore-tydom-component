@@ -770,7 +770,7 @@ class MessageHandler:
 
         for area in parsed:
             area_id = area.get("id")
-            
+
             # Find which device is linked to this area
             linked_device_uid = None
             if self.hub and self.hub.devices: # Vérifie que le hub et sa liste d'appareils existent
