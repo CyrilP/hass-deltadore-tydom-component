@@ -701,6 +701,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         _errors = {}
         default_zone_home = ""
         default_zone_away = ""
+        default_zone_night = ""
         default_refresh_interval = "30"
         if CONF_ZONES_HOME in self.config_entry.data:
             default_zone_home = self.config_entry.data[CONF_ZONES_HOME]
@@ -790,6 +791,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     vol.Optional(
                         CONF_ZONES_AWAY,
                         description={"suggested_value": default_zone_away},
+                    ): str,
+                    vol.Optional(CONF_ZONES_NIGHT, 
+                        description={"suggested_value": default_zone_night}
                     ): str,
                 }
             ),

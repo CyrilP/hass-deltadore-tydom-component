@@ -12,6 +12,7 @@
                     "refresh_interval": "Refresh interval in min",
                     "zones_away": "Active zones in away alarm mode",
                     "zones_home": "Active zones in home alarm mode",
+                    "zones_night": "Active zones in night alarm mode",
                     "pin": "Alarm PIN"
                 }
             },
@@ -27,6 +28,7 @@
                     "refresh_interval": "Refresh interval in min",
                     "zones_away": "Active zones in away alarm mode",
                     "zones_home": "Active zones in home alarm mode",
+                    "zones_night": "Active zones in night alarm mode",
                     "pin": "Alarm PIN"
                 }
             },
@@ -41,6 +43,7 @@
                     "refresh_interval": "Refresh interval in min",
                     "zones_away": "Active zones in away alarm mode",
                     "zones_home": "Active zones in home alarm mode",
+                    "zones_night": "Active zones in night alarm mode",
                     "pin": "Alarm PIN"
                 }
             },
@@ -55,6 +58,7 @@
                     "refresh_interval": "Refresh interval in min",
                     "zones_away": "Active zones in away alarm mode",
                     "zones_home": "Active zones in home alarm mode",
+                    "zones_night": "Active zones in night alarm mode",
                     "pin": "Alarm PIN"
                 }
             }
