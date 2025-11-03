@@ -778,18 +778,18 @@ class MessageHandler:
                     if hasattr(device, 'link_id') and device.link_id == area_id:
                         linked_device_uid = uid
                         break
-            
+
             if linked_device_uid:
                 device_id = self.hub.devices[linked_device_uid]._id
                 endpoint_id = self.hub.devices[linked_device_uid]._endpoint
                 name_of_id = self.get_name_from_id(linked_device_uid)
                 type_of_id = self.get_type_from_id(linked_device_uid)
-                
+
                 data = {}
                 for elem in area.get("data", []):
                     if elem.get("validity") == "upToDate":
                         data[elem["name"]] = elem["value"]
-                
+
                 device = await MessageHandler.get_device(
                     self.tydom_client,
                     type_of_id,
