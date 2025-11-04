@@ -379,6 +379,37 @@ class TydomAlarm(TydomDevice):
             return True
         return False
 
+    def get_alarm_mode_from_zones(self) -> None:
+        """Identify active alarm mode."""
+        away = self._tydom_client.zone_away
+        home = self._tydom_client.zone_home
+        night = self._tydom_client.zone_night
+        zones_away = []
+        zones_home = []
+        zones_night = []
+        if away:
+            zones_away = away.split(",")
+        if home:
+            zones_home = home.split(",")
+        if night:
+            zones_night = night.split(",")
+        active_zones = []
+        for i in range(1, 9):
+            if (
+                hasattr(self, "part" + str(i) + "State")
+                and getattr(self, self, "part" + str(i) + "State") == "ON"
+            ) or (
+                hasattr(self, "zone" + str(i) + "State")
+                and getattr(self, self, "zone" + str(i) + "State") == "ON"
+            ):
+                active_zones.append(str(i))
+        if sorted(zones_home) == sorted(active_zones):
+            return "home"
+        if sorted(zones_away) == sorted(active_zones):
+            return "away"
+        if sorted(zones_night) == sorted(active_zones):
+            return "night"
+
     async def alarm_disarm(self, code) -> None:
         """Disarm alarm."""
         await self._tydom_client.put_alarm_cdata(

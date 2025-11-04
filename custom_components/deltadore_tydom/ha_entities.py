@@ -1205,7 +1205,16 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
                     return AlarmControlPanelState.TRIGGERED
             case "ZONE" | "PART":
                 if self._device.alarmState == "OFF":
-                    return AlarmControlPanelState.ARMED_HOME
+                    alarmMode = self._device.get_alarm_mode_from_zones()
+                    match alarmMode:
+                        case "home":
+                            return AlarmControlPanelState.ARMED_HOME
+                        case "away":
+                            return AlarmControlPanelState.ARMED_AWAY
+                        case "night":
+                            return AlarmControlPanelState.ARMED_NIGHT
+                        case _:
+                            return AlarmControlPanelState.ARMED_HOME
                 else:
                     return AlarmControlPanelState.TRIGGERED
             case _:

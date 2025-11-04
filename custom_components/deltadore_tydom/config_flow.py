@@ -792,8 +792,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         CONF_ZONES_AWAY,
                         description={"suggested_value": default_zone_away},
                     ): str,
-                    vol.Optional(CONF_ZONES_NIGHT, 
-                        description={"suggested_value": default_zone_night}
+                    vol.Optional(
+                        CONF_ZONES_NIGHT,
+                        description={"suggested_value": default_zone_night},
                     ): str,
                 }
             ),
