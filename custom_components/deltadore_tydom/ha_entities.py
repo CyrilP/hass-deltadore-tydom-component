@@ -906,11 +906,11 @@ class HaWindowBinary(BinarySensorEntity, HAEntity):
     _attr_device_class = BinarySensorDeviceClass.WINDOW
 
     def __init__(self, device: TydomWindow, hass) -> None:
-       """Initialize the binary sensor for a Tydom window."""
+        """Initialize the binary sensor for a Tydom window."""
         self.hass = hass
         self._device = device
         self._device._ha_device = self
-        self._attr_unique_id = f"{self._device.device_id}_window_binary"
+        self._attr_unique_id = f"{self._device.device_id}"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
 
@@ -925,12 +925,12 @@ class HaWindowBinary(BinarySensorEntity, HAEntity):
     @property
     def is_on(self) -> bool:
         """Return True if the window is open, False if closed or locked."""
-        if hasattr(self._device, "openState"):
-            # ex. "LOCKED", "OPEN_FRENCH", "OPEN_HOPPER", ...
-            return self._device.openState != "LOCKED"
-        if hasattr(self._device, "intrusionDetect"):
-            return bool(self._device.intrusionDetect)
+        raw = getattr(self._device, "openState", None)
+        if isinstance(raw, str):
+            raw_l = raw.lower()
+            return raw_l not in ("closed", "locked")
         return False
+
 
 class HaDoor(CoverEntity, HAEntity):
     """Representation of a Door."""
@@ -987,11 +987,8 @@ class HaDoorBinary(BinarySensorEntity, HAEntity):
         self.hass = hass
         self._device = device
         self._device._ha_device = self
-
         self._attr_unique_id = f"{self._device.device_id}"
-
         self._attr_name = self._device.device_name
-
         self._registered_sensors = []
 
     @property
@@ -1008,13 +1005,9 @@ class HaDoorBinary(BinarySensorEntity, HAEntity):
         raw = getattr(self._device, "openState", None)
         if isinstance(raw, str):
             raw_l = raw.lower()
-            # ouvert
-            if raw_l not in ("closed", "locked"):
-                return True
-            # fermé
-            return False
-
+            return raw_l not in ("closed", "locked")
         return False
+
 
 class HaGate(CoverEntity, HAEntity):
     """Representation of a Gate."""
