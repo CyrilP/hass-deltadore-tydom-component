@@ -896,12 +896,17 @@ class HaWindow(CoverEntity, HAEntity):
             return True
 
 class HaWindowBinary(BinarySensorEntity, HAEntity):
-    """Binary sensor (window): ON = open, OFF = closed."""
+    """Binary sensor for a Tydom window.
+
+    Exposes ON when the window is open (any open mode),
+    and OFF when closed/locked.
+    """
 
     should_poll = False
     _attr_device_class = BinarySensorDeviceClass.WINDOW
 
     def __init__(self, device: TydomWindow, hass) -> None:
+       """Initialize the binary sensor for a Tydom window."""
         self.hass = hass
         self._device = device
         self._device._ha_device = self
@@ -911,6 +916,7 @@ class HaWindowBinary(BinarySensorEntity, HAEntity):
 
     @property
     def device_info(self) -> DeviceInfo:
+        """Return device metadata for Home Assistant."""
         return {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
@@ -918,10 +924,7 @@ class HaWindowBinary(BinarySensorEntity, HAEntity):
 
     @property
     def is_on(self) -> bool:
-        """
-        True (ON) = la fenêtre est ouverte (peu importe le type d’ouverture).
-        False (OFF) = fermée/LOCKED.
-        """
+        """Return True if the window is open, False if closed or locked."""
         if hasattr(self._device, "openState"):
             # ex. "LOCKED", "OPEN_FRENCH", "OPEN_HOPPER", ...
             return self._device.openState != "LOCKED"
@@ -971,12 +974,16 @@ class HaDoor(CoverEntity, HAEntity):
             )
 
 class HaDoorBinary(BinarySensorEntity, HAEntity):
-    """Binary sensor (door): ON = open, OFF = closed."""
+    """Binary sensor for a Tydom door.
+
+    Exposes ON when the door is open, OFF when closed/locked.
+    """
 
     should_poll = False
     _attr_device_class = BinarySensorDeviceClass.DOOR
 
     def __init__(self, device: TydomDoor, hass) -> None:
+        """Initialize the binary sensor for a Tydom door."""
         self.hass = hass
         self._device = device
         self._device._ha_device = self
@@ -989,6 +996,7 @@ class HaDoorBinary(BinarySensorEntity, HAEntity):
 
     @property
     def device_info(self) -> DeviceInfo:
+        """Return device metadata for Home Assistant."""
         return {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
@@ -996,6 +1004,7 @@ class HaDoorBinary(BinarySensorEntity, HAEntity):
 
     @property
     def is_on(self) -> bool:
+        """Return True if the door is open, False if closed or locked."""
         raw = getattr(self._device, "openState", None)
         if isinstance(raw, str):
             raw_l = raw.lower()
