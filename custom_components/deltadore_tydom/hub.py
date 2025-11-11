@@ -227,66 +227,47 @@ class Hub:
                     self.add_sensor_callback(ha_device.get_sensors())
             case TydomWindow():
                 LOGGER.debug("Create window %s", device.device_id)
-                ha_device = HaWindow(device, self._hass)
-                self.ha_devices[device.device_id] = ha_device
-
-                # Décision automatique selon les attributs du device
+                # 1) Toujours créer le binaire 'ouvert/fermé'
+                from .ha_entities import HaWindowBinary, HaWindow
+                ha_bin = HaWindowBinary(device, self._hass)
+                if self.add_binary_sensor_callback:
+                    self.add_binary_sensor_callback([ha_bin])
+                # 2) Ajouter une cover SEULEMENT si le device a du contrôle (position/level)
                 if any(
                     hasattr(device, a)
                     for a in ["position", "positionCmd", "level", "levelCmd"]
                 ):
-                    LOGGER.debug(
-                        "Window %s has motor control → adding as cover",
-                        device.device_id,
-                    )
+                    LOGGER.debug("Window %s has motor control → add cover", device.device_id)
+                    ha_cover = HaWindow(device, self._hass)
                     if self.add_cover_callback:
-                        self.add_cover_callback([ha_device])
+                        self.add_cover_callback([ha_cover])
+                    self.ha_devices[device.device_id] = ha_cover
                 else:
-                    LOGGER.debug(
-                        "Window %s is passive → adding as binary_sensor",
-                        device.device_id,
-                    )
-                    if self.add_binary_sensor_callback:
-                        self.add_binary_sensor_callback([ha_device])
-
+                    self.ha_devices[device.device_id] = ha_bin
                 if self.add_sensor_callback:
-                    self.add_sensor_callback(ha_device.get_sensors())
-            #                LOGGER.debug("Create window %s", device.device_id)
-            #                ha_device = HaWindow(device, self._hass)
-            #                self.ha_devices[device.device_id] = ha_device
-            #                # On ne l'ajoute plus comme cover !
-            #                # if self.add_cover_callback is not None:
-            #                #     self.add_cover_callback([ha_device])
-            #                # On le route vers la plateforme binary_sensor
-            #                if self.add_binary_sensor_callback is not None:
-            #                    self.add_binary_sensor_callback([ha_device])
-            #                # on garde les capteurs associés
-            #                if self.add_sensor_callback is not None:
-            #                    self.add_sensor_callback(ha_device.get_sensors())
+                    self.add_sensor_callback(ha_bin.get_sensors())
             case TydomDoor():
                 LOGGER.debug("Create door %s", device.device_id)
-                ha_device = HaDoor(device, self._hass)
-                self.ha_devices[device.device_id] = ha_device
-
-                # Décision automatique selon les attributs du device
+                # Import des deux classes
+                from .ha_entities import HaDoorBinary, HaDoor
+                # 1. Toujours créer le capteur binaire (alarme)
+                ha_bin = HaDoorBinary(device, self._hass)
+                if self.add_binary_sensor_callback:
+                    self.add_binary_sensor_callback([ha_bin])
+                # 2. Créer la cover seulement si motorisée
                 if any(
                     hasattr(device, a)
                     for a in ["position", "positionCmd", "level", "levelCmd"]
                 ):
-                    LOGGER.debug(
-                        "Door %s has motor control → adding as cover", device.device_id
-                    )
+                    LOGGER.debug("Door %s has motor control → adding as cover", device.device_id)
+                    ha_cover = HaDoor(device, self._hass)
                     if self.add_cover_callback:
-                        self.add_cover_callback([ha_device])
+                        self.add_cover_callback([ha_cover])
+                    self.ha_devices[device.device_id] = ha_cover
                 else:
-                    LOGGER.debug(
-                        "Door %s is passive → adding as binary_sensor", device.device_id
-                    )
-                    if self.add_binary_sensor_callback:
-                        self.add_binary_sensor_callback([ha_device])
-
+                    self.ha_devices[device.device_id] = ha_bin
                 if self.add_sensor_callback:
-                    self.add_sensor_callback(ha_device.get_sensors())
+                    self.add_sensor_callback(ha_bin.get_sensors())
             case TydomGate():
                 LOGGER.debug("Create gate %s", device.device_id)
                 ha_device = HaGate(device, self._hass)
