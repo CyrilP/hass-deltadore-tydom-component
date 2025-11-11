@@ -30,8 +30,6 @@ from .ha_entities import (
     HAEnergy,
     HASmoke,
     HaClimate,
-    HaWindow,
-    HaDoor,
     HaGate,
     HaGarage,
     HaLight,
