@@ -895,6 +895,39 @@ class HaWindow(CoverEntity, HAEntity):
             LOGGER.error("Unknown state for device %s", self._device.device_id)
             return True
 
+class HaWindowBinary(BinarySensorEntity, HAEntity):
+    """Binary sensor (window): ON = open, OFF = closed."""
+
+    should_poll = False
+    _attr_device_class = BinarySensorDeviceClass.WINDOW
+
+    def __init__(self, device: TydomWindow, hass) -> None:
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self
+        self._attr_unique_id = f"{self._device.device_id}_window_binary"
+        self._attr_name = self._device.device_name
+        self._registered_sensors = []
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+        }
+
+    @property
+    def is_on(self) -> bool:
+        """
+        True (ON) = la fenêtre est ouverte (peu importe le type d’ouverture).
+        False (OFF) = fermée/LOCKED.
+        """
+        if hasattr(self._device, "openState"):
+            # ex. "LOCKED", "OPEN_FRENCH", "OPEN_HOPPER", ...
+            return self._device.openState != "LOCKED"
+        if hasattr(self._device, "intrusionDetect"):
+            return bool(self._device.intrusionDetect)
+        return False
 
 class HaDoor(CoverEntity, HAEntity):
     """Representation of a Door."""
@@ -937,6 +970,42 @@ class HaDoor(CoverEntity, HAEntity):
                 "The required attributes 'openState' or 'intrusionDetect' are not available in the device."
             )
 
+class HaDoorBinary(BinarySensorEntity, HAEntity):
+    """Binary sensor (door): ON = open, OFF = closed."""
+
+    should_poll = False
+    _attr_device_class = BinarySensorDeviceClass.DOOR
+
+    def __init__(self, device: TydomDoor, hass) -> None:
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self
+
+        self._attr_unique_id = f"{self._device.device_id}"
+
+        self._attr_name = self._device.device_name
+
+        self._registered_sensors = []
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+        }
+
+    @property
+    def is_on(self) -> bool:
+        raw = getattr(self._device, "openState", None)
+        if isinstance(raw, str):
+            raw_l = raw.lower()
+            # ouvert
+            if raw_l not in ("closed", "locked"):
+                return True
+            # fermé
+            return False
+
+        return False
 
 class HaGate(CoverEntity, HAEntity):
     """Representation of a Gate."""
