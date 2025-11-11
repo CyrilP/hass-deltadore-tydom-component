@@ -68,6 +68,7 @@ class TydomClient:
         zone_night: str | None = None,
         host: str = MEDIATION_URL,
         event_callback=None,
+        hub=None,
     ) -> None:
         """Initialize client."""
         LOGGER.debug("Initializing TydomClient Class")
@@ -84,6 +85,7 @@ class TydomClient:
         self._remote_mode = self._host == MEDIATION_URL
         self._connection = None
         self.event_callback = event_callback
+        self.hub = hub # LIGNE AJOUTÉE
         # Some devices (like Tywatt) need polling
         self.poll_device_urls_1s = []
         self.poll_device_urls_5m = []
@@ -100,7 +102,7 @@ class TydomClient:
             self._ping_timeout = None
 
         self._message_handler = MessageHandler(
-            tydom_client=self, cmd_prefix=self._cmd_prefix
+            tydom_client=self, cmd_prefix=self._cmd_prefix, hub=self.hub
         )
 
     def update_config(self, zone_home: str, zone_away: str, zone_night: str):
@@ -681,6 +683,30 @@ class TydomClient:
         if not file_mode:
             await self.send_bytes(a_bytes)
 
+        return 0
+
+    async def put_areas_data(self, area_id, name, value):
+        """Give order (name + value) to a specific area."""
+        path = f"/areas/{area_id}/data"
+        body: str
+        if value is None:
+            body = '[{"name":"' + name + '","value":null}]'
+        elif isinstance(value, bool):
+            body = '[{"name":"' + name + '","value":' + str(value).lower() + "}]"
+        else:
+            body = '[{"name":"' + name + '","value":"' + value + '"}]'
+
+        str_request = (
+            f"PUT {path} HTTP/1.1\r\nContent-Length: "
+            + str(len(body))
+            + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
+            + body
+            + "\r\n\r\n"
+        )
+        a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
+        LOGGER.debug("Sending message to tydom (%s %s)", "PUT area data", body)
+        if not file_mode:
+            await self.send_bytes(a_bytes)
         return 0
 
     async def put_alarm_cdata(
