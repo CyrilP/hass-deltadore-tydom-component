@@ -6,6 +6,7 @@ import math
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
+    BinarySensorEntityDescription,
 )
 
 from homeassistant.components.climate import (
@@ -35,6 +36,7 @@ from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorStateClass,
     SensorEntity,
+    SensorEntityDescription,
 )
 from homeassistant.components.light import LightEntity, ColorMode, ATTR_BRIGHTNESS
 from homeassistant.components.update import (
@@ -97,6 +99,45 @@ class HAEntity:
     filtered_attrs: list[str] = []
     _device: Any = None
     _registered_sensors: list[str] = []
+    hass: Any = None
+
+    def _get_hub(self):
+        """Get the hub instance from hass data."""
+        if self.hass is None:
+            return None
+        if DOMAIN not in self.hass.data:
+            return None
+        # Get the first hub entry (assuming single hub per instance)
+        hubs = self.hass.data[DOMAIN]
+        if not hubs:
+            return None
+        # Return the first hub (entry_id is the key)
+        return next(iter(hubs.values()))
+
+    def _get_tydom_gateway_device_id(self) -> str | None:
+        """Get the Tydom gateway device_id to use as via_device_id."""
+        hub_instance = self._get_hub()
+        if hub_instance is None:
+            return None
+        # Look for the Tydom gateway device in hub devices
+        if hasattr(hub_instance, "devices"):
+            for device_id, device in hub_instance.devices.items():
+                if isinstance(device, Tydom):
+                    return device.device_id
+        # Also check ha_devices
+        if hasattr(hub_instance, "ha_devices"):
+            for device_id, ha_device in hub_instance.ha_devices.items():
+                if isinstance(ha_device, HATydom):
+                    return ha_device._device.device_id
+        return None
+
+    def _enrich_device_info(self, info: DeviceInfo) -> DeviceInfo:
+        """Enrich device info with via_device link to gateway."""
+        gateway_device_id = self._get_tydom_gateway_device_id()
+        if gateway_device_id is not None and self._device is not None:
+            if gateway_device_id != self._device.device_id:
+                info["via_device"] = (DOMAIN, gateway_device_id)
+        return info
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
@@ -110,9 +151,26 @@ class HAEntity:
 
     @property
     def available(self) -> bool:
-        """Return True if roller and hub is available."""
-        # FIXME
-        # return self._device.online and self._device.hub.online
+        """Return True if device and hub are available."""
+        if self._device is None:
+            return False
+        hub = self._get_hub()
+        if hub is None:
+            return False
+        # Check hub online status
+        if not getattr(hub, "online", False):
+            return False
+        # Check if tydom_client is available
+        if hasattr(hub, "_tydom_client"):
+            tydom_client = hub._tydom_client
+            # Check if client has a connection attribute
+            if hasattr(tydom_client, "_connection"):
+                connection = getattr(tydom_client, "_connection", None)
+                if connection is not None:
+                    # Check if websocket is closed
+                    if hasattr(connection, "closed"):
+                        if connection.closed:
+                            return False
         return True
 
     def get_sensors(self):
@@ -235,11 +293,47 @@ class GenericSensor(SensorEntity):
         self._attr_unique_id = f"{self._device.device_id}_{name}"
         self._attr_name = name
         self._attribute = attribute
+        # Create entity description with translation key
+        entity_description = SensorEntityDescription(
+            key=attribute,
+            name=name,
+            device_class=device_class,
+            state_class=state_class,
+            native_unit_of_measurement=unit_of_measurement,
+            translation_key=f"sensor_{attribute}" if attribute else None,
+        )
+        self.entity_description = entity_description
         self._attr_device_class = device_class
         self._attr_state_class = state_class
         self._attr_native_unit_of_measurement = unit_of_measurement
         if name in self.diagnostic_attrs:
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def _get_hub(self):
+        """Get the hub instance from hass data."""
+        if not hasattr(self, "hass") or self.hass is None:
+            return None
+        if DOMAIN not in self.hass.data:
+            return None
+        hubs = self.hass.data[DOMAIN]
+        if not hubs:
+            return None
+        return next(iter(hubs.values()))
+
+    def _get_tydom_gateway_device_id(self) -> str | None:
+        """Get the Tydom gateway device_id to use as via_device_id."""
+        hub_instance = self._get_hub()
+        if hub_instance is None:
+            return None
+        if hasattr(hub_instance, "devices"):
+            for device_id, device in hub_instance.devices.items():
+                if isinstance(device, Tydom):
+                    return device.device_id
+        if hasattr(hub_instance, "ha_devices"):
+            for device_id, ha_device in hub_instance.ha_devices.items():
+                if isinstance(ha_device, HATydom):
+                    return ha_device._device.device_id
+        return None
 
     @property
     def native_value(self):
@@ -280,13 +374,35 @@ class GenericSensor(SensorEntity):
             if product_name is not None:
                 info["model"] = str(product_name)
 
+        # Link device to Tydom gateway via via_device
+        gateway_device_id = self._get_tydom_gateway_device_id()
+        if gateway_device_id is not None and gateway_device_id != self._device.device_id:
+            info["via_device"] = (DOMAIN, gateway_device_id)
+
         return info
 
     @property
     def available(self) -> bool:
         """Return True if hub is available."""
-        # FIXME
-        # return self._device.online
+        if self._device is None:
+            return False
+        # Use the same availability logic as HAEntity
+        if hasattr(self, "hass") and self.hass is not None:
+            from .const import DOMAIN
+            if DOMAIN in self.hass.data:
+                hubs = self.hass.data[DOMAIN]
+                if hubs:
+                    hub = next(iter(hubs.values()))
+                    if not getattr(hub, "online", False):
+                        return False
+                    # Check tydom_client connection
+                    if hasattr(hub, "_tydom_client"):
+                        tydom_client = hub._tydom_client
+                        if hasattr(tydom_client, "_connection"):
+                            connection = getattr(tydom_client, "_connection", None)
+                            if connection is not None and hasattr(connection, "closed"):
+                                if connection.closed:
+                                    return False
         return True
 
     async def async_added_to_hass(self):
@@ -304,15 +420,60 @@ class BinarySensorBase(BinarySensorEntity):
     """Base representation of a Sensor."""
 
     _attr_should_poll = False
+    hass: Any = None
 
     def __init__(self, device: TydomDevice):
         """Initialize the sensor."""
         self._device = device
 
+    def _get_hub(self):
+        """Get the hub instance from hass data."""
+        if not hasattr(self, "hass") or self.hass is None:
+            return None
+        if DOMAIN not in self.hass.data:
+            return None
+        hubs = self.hass.data[DOMAIN]
+        if not hubs:
+            return None
+        return next(iter(hubs.values()))
+
+    def _get_tydom_gateway_device_id(self) -> str | None:
+        """Get the Tydom gateway device_id to use as via_device_id."""
+        hub_instance = self._get_hub()
+        if hub_instance is None:
+            return None
+        if hasattr(hub_instance, "devices"):
+            for device_id, device in hub_instance.devices.items():
+                if isinstance(device, Tydom):
+                    return device.device_id
+        if hasattr(hub_instance, "ha_devices"):
+            for device_id, ha_device in hub_instance.ha_devices.items():
+                if isinstance(ha_device, HATydom):
+                    return ha_device._device.device_id
+        return None
+
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
-        return {"identifiers": {(DOMAIN, self._device.device_id)}}
+        info: DeviceInfo = {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+        }
+        # Try to get manufacturer and model
+        if hasattr(self._device, "manufacturer"):
+            manufacturer = getattr(self._device, "manufacturer", None)
+            if manufacturer is not None:
+                info["manufacturer"] = str(manufacturer)
+        if "manufacturer" not in info:
+            info["manufacturer"] = "Delta Dore"
+        if hasattr(self._device, "productName"):
+            product_name = getattr(self._device, "productName", None)
+            if product_name is not None:
+                info["model"] = str(product_name)
+        # Link to gateway if available
+        gateway_device_id = self._get_tydom_gateway_device_id()
+        if gateway_device_id is not None and gateway_device_id != self._device.device_id:
+            info["via_device"] = (DOMAIN, gateway_device_id)
+        return info
 
     async def async_added_to_hass(self):
         """Run when this Entity has been added to HA."""
@@ -342,13 +503,64 @@ class GenericBinarySensor(BinarySensorBase):
         self._attr_unique_id = f"{self._device.device_id}_{name}"
         self._attr_name = name
         self._attribute = attribute
+        # Create entity description with translation key
+        entity_description = BinarySensorEntityDescription(
+            key=attribute,
+            name=name,
+            device_class=device_class,
+            translation_key=f"binary_sensor_{attribute}" if attribute else None,
+        )
+        self.entity_description = entity_description
         self._attr_device_class = device_class
+
+    def _get_hub(self):
+        """Get the hub instance from hass data."""
+        if not hasattr(self, "hass") or self.hass is None:
+            return None
+        if DOMAIN not in self.hass.data:
+            return None
+        hubs = self.hass.data[DOMAIN]
+        if not hubs:
+            return None
+        return next(iter(hubs.values()))
+
+    def _get_tydom_gateway_device_id(self) -> str | None:
+        """Get the Tydom gateway device_id to use as via_device_id."""
+        hub_instance = self._get_hub()
+        if hub_instance is None:
+            return None
+        if hasattr(hub_instance, "devices"):
+            for device_id, device in hub_instance.devices.items():
+                if isinstance(device, Tydom):
+                    return device.device_id
+        if hasattr(hub_instance, "ha_devices"):
+            for device_id, ha_device in hub_instance.ha_devices.items():
+                if isinstance(ha_device, HATydom):
+                    return ha_device._device.device_id
+        return None
 
     @property
     def available(self) -> bool:
         """Return True if hub is available."""
-        # FIXME
-        # return self._device.online
+        if self._device is None:
+            return False
+        # Use the same availability logic as HAEntity
+        if hasattr(self, "hass") and self.hass is not None:
+            from .const import DOMAIN
+            if DOMAIN in self.hass.data:
+                hubs = self.hass.data[DOMAIN]
+                if hubs:
+                    hub = next(iter(hubs.values()))
+                    if not getattr(hub, "online", False):
+                        return False
+                    # Check tydom_client connection
+                    if hasattr(hub, "_tydom_client"):
+                        tydom_client = hub._tydom_client
+                        if hasattr(tydom_client, "_connection"):
+                            connection = getattr(tydom_client, "_connection", None)
+                            if connection is not None and hasattr(connection, "closed"):
+                                if connection.closed:
+                                    return False
         return True
 
     # The value of this sensor.
@@ -422,6 +634,7 @@ class HATydom(UpdateEntity, HAEntity):
             info["sw_version"] = str(self._device.mainVersionSW)
         if "model" in device_info:
             info["model"] = device_info["model"]
+        # Gateway doesn't need via_device (it's the root device)
         return info
 
     @property
@@ -498,12 +711,19 @@ class HAEnergy(SensorEntity, HAEntity):
     }
 
     state_classes = {
+        # Total increasing for energy counters
         "energyIndexTi1": SensorStateClass.TOTAL_INCREASING,
         "energyTotIndexWatt": SensorStateClass.TOTAL_INCREASING,
         "energyIndexECSWatt": SensorStateClass.TOTAL_INCREASING,
         "energyIndexHeatWatt": SensorStateClass.TOTAL_INCREASING,
         "energyIndexHeatGas": SensorStateClass.TOTAL_INCREASING,
         "energyIndex": SensorStateClass.TOTAL_INCREASING,
+        # Measurement for instant values
+        "energyInstantTotElec": SensorStateClass.MEASUREMENT,
+        "energyInstantTotElecP": SensorStateClass.MEASUREMENT,
+        "energyInstantTi1P": SensorStateClass.MEASUREMENT,
+        "energyInstantTi1I": SensorStateClass.MEASUREMENT,
+        "outTemperature": SensorStateClass.MEASUREMENT,
     }
 
     units = {
@@ -560,7 +780,7 @@ class HAEnergy(SensorEntity, HAEntity):
             sw_version = getattr(self._device, "softVersion", None)
             if sw_version is not None:
                 info["sw_version"] = str(sw_version)
-        return info
+        return self._enrich_device_info(info)
 
 
 class HACover(CoverEntity, HAEntity):
@@ -617,7 +837,7 @@ class HACover(CoverEntity, HAEntity):
         }
         if "model" in device_info:
             info["model"] = device_info["model"]
-        return info
+        return self._enrich_device_info(info)
 
     @property
     def current_cover_position(self) -> int | None:
@@ -726,7 +946,7 @@ class HASmoke(BinarySensorEntity, HAEntity):
         }
         if "model" in device_info:
             info["model"] = device_info["model"]
-        return info
+        return self._enrich_device_info(info)
 
 
 class HaClimate(ClimateEntity, HAEntity):
@@ -745,6 +965,13 @@ class HaClimate(ClimateEntity, HAEntity):
         "ProductionDefect": BinarySensorDeviceClass.PROBLEM,
         "BatteryCmdDefect": BinarySensorDeviceClass.PROBLEM,
         "battLevel": SensorDeviceClass.BATTERY,
+    }
+
+    state_classes = {
+        "temperature": SensorStateClass.MEASUREMENT,
+        "outTemperature": SensorStateClass.MEASUREMENT,
+        "ambientTemperature": SensorStateClass.MEASUREMENT,
+        "battLevel": SensorStateClass.MEASUREMENT,
     }
 
     units = {
@@ -887,7 +1114,7 @@ class HaClimate(ClimateEntity, HAEntity):
         }
         if "model" in device_info:
             infos["model"] = device_info["model"]
-        return infos
+        return self._enrich_device_info(infos)
 
     @property
     def temperature_unit(self) -> str:
@@ -1031,7 +1258,7 @@ class HaWindow(CoverEntity, HAEntity):
         }
         if "model" in device_info:
             info["model"] = device_info["model"]
-        return info
+        return self._enrich_device_info(info)
 
     @property
     def is_closed(self) -> bool:
@@ -1082,7 +1309,7 @@ class HaDoor(CoverEntity, HAEntity):
         }
         if "model" in device_info:
             info["model"] = device_info["model"]
-        return info
+        return self._enrich_device_info(info)
 
     @property
     def is_closed(self) -> bool:

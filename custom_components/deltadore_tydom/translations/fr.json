@@ -60,6 +60,10 @@
                     "zones_night": "Zones actives en mode alarme nuit (séparées par des virgules, ex. : 1,2,4)",
                     "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)"
                 }
+            },
+            "reauth_confirm": {
+                "title": "Ré-authentification Delta Dore Tydom",
+                "description": "Les identifiants de {name} ont expiré ou sont invalides. Veuillez les mettre à jour."
             }
         },
         "error": {
@@ -80,7 +84,9 @@
             "unknown": "Une erreur inconnue s'est produite",
             "cannot_connect": "Impossible de se connecter à l'appareil",
             "already_configured": "L'appareil est déjà configuré",
-            "config_entry_not_found": "Entrée de configuration introuvable"
+            "config_entry_not_found": "Entrée de configuration introuvable",
+            "reauth_entry_not_found": "Entrée de ré-authentification introuvable",
+            "reauth_successful": "Ré-authentification réussie"
         }
     },
     "options": {

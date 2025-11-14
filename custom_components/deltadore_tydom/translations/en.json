@@ -60,6 +60,10 @@
                     "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
                     "pin": "Alarm PIN (optional, required for alarm control)"
                 }
+            },
+            "reauth_confirm": {
+                "title": "Re-authenticate Delta Dore Tydom",
+                "description": "The credentials for {name} have expired or are invalid. Please update them."
             }
         },
         "error": {
@@ -70,6 +74,7 @@
             "invalid_password": "Password is invalid",
             "invalid_refresh_interval": "Refresh interval is not valid",
             "communication_error": "Couldn't connect to Tydom Gateway",
+            "authentication_error": "Authentication error",
             "invalid_zone_config": "Zone configuration is invalid. syntax is : zone_id_1,zone_id_2... Example: 1,2,4"
         },
         "abort": {
@@ -78,7 +83,9 @@
             "all_configured": "All device are already configured",
             "unknown": "Unknown error occurred",
             "cannot_connect": "Unable to connect to the device",
-            "already_configured": "Device is already configured"
+            "already_configured": "Device is already configured",
+            "reauth_entry_not_found": "Re-authentication entry not found",
+            "reauth_successful": "Re-authentication successful"
         }
     },
     "options": {

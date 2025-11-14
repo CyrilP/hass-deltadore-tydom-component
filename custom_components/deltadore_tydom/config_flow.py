@@ -8,7 +8,7 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.config_entries import OptionsFlow
+from homeassistant.config_entries import OptionsFlow, ConfigEntry
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 import homeassistant.helpers.config_validation as cv
@@ -684,6 +684,120 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ),
         )
 
+    async def async_step_reauth(self, user_input=None):
+        """Handle reauth upon an API authentication error."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(self, user_input=None):
+        """Handle reauth confirmation."""
+        errors = {}
+        existing_entry = self._get_reauth_entry()
+        if existing_entry is None:
+            return self.async_abort(reason="reauth_entry_not_found")
+
+        if user_input is not None:
+            try:
+                # Determine if cloud or manual mode
+                cloud_mode = CONF_EMAIL in existing_entry.data and existing_entry.data[CONF_EMAIL]
+                
+                if cloud_mode:
+                    # Cloud mode reauth
+                    data = {
+                        CONF_HOST: user_input.get(CONF_HOST, existing_entry.data[CONF_HOST]),
+                        CONF_MAC: existing_entry.data[CONF_MAC],
+                        CONF_EMAIL: user_input[CONF_EMAIL],
+                        CONF_PASSWORD: user_input[CONF_PASSWORD],
+                        CONF_REFRESH_INTERVAL: existing_entry.data.get(CONF_REFRESH_INTERVAL, "30"),
+                        CONF_ZONES_HOME: existing_entry.data.get(CONF_ZONES_HOME, ""),
+                        CONF_ZONES_AWAY: existing_entry.data.get(CONF_ZONES_AWAY, ""),
+                        CONF_ZONES_NIGHT: existing_entry.data.get(CONF_ZONES_NIGHT, ""),
+                        CONF_PIN: existing_entry.data.get(CONF_PIN, ""),
+                    }
+                    validated_data = await validate_input(self.hass, True, data)
+                else:
+                    # Manual mode reauth
+                    data = {
+                        CONF_HOST: user_input.get(CONF_HOST, existing_entry.data[CONF_HOST]),
+                        CONF_MAC: existing_entry.data[CONF_MAC],
+                        CONF_TYDOM_PASSWORD: user_input[CONF_TYDOM_PASSWORD],
+                        CONF_REFRESH_INTERVAL: existing_entry.data.get(CONF_REFRESH_INTERVAL, "30"),
+                        CONF_ZONES_HOME: existing_entry.data.get(CONF_ZONES_HOME, ""),
+                        CONF_ZONES_AWAY: existing_entry.data.get(CONF_ZONES_AWAY, ""),
+                        CONF_ZONES_NIGHT: existing_entry.data.get(CONF_ZONES_NIGHT, ""),
+                        CONF_PIN: existing_entry.data.get(CONF_PIN, ""),
+                    }
+                    validated_data = await validate_input(self.hass, False, data)
+
+                # Test credentials
+                tydom_hub = hub.Hub(
+                    self.hass,
+                    None,  # type: ignore[arg-type]
+                    validated_data[CONF_HOST],
+                    validated_data[CONF_MAC],
+                    validated_data[CONF_TYDOM_PASSWORD],
+                    "-1",
+                    "",
+                    "",
+                    "",
+                    "",
+                )
+                await tydom_hub.test_credentials()
+
+                # Update entry
+                self.hass.config_entries.async_update_entry(
+                    existing_entry, data=validated_data
+                )
+                await self.hass.config_entries.async_reload(existing_entry.entry_id)
+                return self.async_abort(reason="reauth_successful")
+
+            except TydomClientApiClientAuthenticationError:
+                errors["base"] = "authentication_error"
+                LOGGER.exception("Authentication error during reauth")
+            except TydomClientApiClientCommunicationError:
+                errors["base"] = "communication_error"
+                LOGGER.exception("Communication error during reauth")
+            except InvalidPassword:
+                if cloud_mode:
+                    errors[CONF_PASSWORD] = "invalid_password"
+                else:
+                    errors[CONF_TYDOM_PASSWORD] = "invalid_password"
+            except InvalidHost:
+                errors[CONF_HOST] = "invalid_host"
+            except Exception:
+                errors["base"] = "unknown"
+                LOGGER.exception("Unexpected error during reauth")
+
+        # Show form
+        if cloud_mode:
+            schema = vol.Schema(
+                {
+                    vol.Required(CONF_EMAIL, default=existing_entry.data.get(CONF_EMAIL, "")): str,
+                    vol.Required(CONF_PASSWORD): str,
+                    vol.Optional(CONF_HOST, default=existing_entry.data.get(CONF_HOST, "")): str,
+                }
+            )
+        else:
+            schema = vol.Schema(
+                {
+                    vol.Required(CONF_TYDOM_PASSWORD): str,
+                    vol.Optional(CONF_HOST, default=existing_entry.data.get(CONF_HOST, "")): str,
+                }
+            )
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={"name": existing_entry.title},
+        )
+
+    def _get_reauth_entry(self) -> ConfigEntry | None:
+        """Get the entry being re-authenticated."""
+        if "entry_id" not in self.context:
+            return None
+        entry_id = self.context["entry_id"]
+        return self.hass.config_entries.async_get_entry(entry_id)
+
     @staticmethod
     @callback
     def async_get_options_flow(
@@ -730,62 +844,63 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             default_refresh_interval = user_input.get(CONF_REFRESH_INTERVAL, "30")
 
             try:
-                if CONF_ZONES_HOME in user_input and not zones_valid(
-                    user_input[CONF_ZONES_HOME]
-                ):
-                    raise InvalidZoneHome
+                # Validate zones
+                if CONF_ZONES_HOME in user_input and user_input[CONF_ZONES_HOME]:
+                    if not zones_valid(user_input[CONF_ZONES_HOME]):
+                        raise InvalidZoneHome
 
-                if CONF_ZONES_AWAY in user_input and not zones_valid(
-                    user_input[CONF_ZONES_AWAY]
-                ):
-                    raise InvalidZoneAway
+                if CONF_ZONES_AWAY in user_input and user_input[CONF_ZONES_AWAY]:
+                    if not zones_valid(user_input[CONF_ZONES_AWAY]):
+                        raise InvalidZoneAway
 
-                if CONF_ZONES_NIGHT in user_input and not zones_valid(
-                    user_input[CONF_ZONES_NIGHT]
-                ):
-                    raise InvalidZoneNight
+                if CONF_ZONES_NIGHT in user_input and user_input[CONF_ZONES_NIGHT]:
+                    if not zones_valid(user_input[CONF_ZONES_NIGHT]):
+                        raise InvalidZoneNight
 
+                # Validate refresh interval
                 try:
-                    int(user_input[CONF_REFRESH_INTERVAL])
-                except ValueError:
+                    interval = int(user_input[CONF_REFRESH_INTERVAL])
+                    if interval < 0:
+                        raise InvalidRefreshInterval
+                except (ValueError, TypeError):
                     raise InvalidRefreshInterval
 
                 if self.config_entry is None:
                     return self.async_abort(reason="config_entry_not_found")
 
-                user_input[CONF_HOST] = self.config_entry.data[CONF_HOST]
-                user_input[CONF_MAC] = self.config_entry.data[CONF_MAC]
-                user_input[CONF_EMAIL] = self.config_entry.data[CONF_EMAIL]
-                user_input[CONF_PASSWORD] = self.config_entry.data[CONF_PASSWORD]
-                user_input[CONF_TYDOM_PASSWORD] = self.config_entry.data[
-                    CONF_TYDOM_PASSWORD
-                ]
-                user_input[CONF_PIN] = self.config_entry.data[CONF_PIN]
-                user_input[CONF_ZONES_HOME] = default_zone_home
-                user_input[CONF_ZONES_AWAY] = default_zone_away
-                user_input[CONF_ZONES_NIGHT] = default_zone_night
+                # Prepare updated data
+                updated_data = self.config_entry.data.copy()
+                updated_data[CONF_ZONES_HOME] = default_zone_home
+                updated_data[CONF_ZONES_AWAY] = default_zone_away
+                updated_data[CONF_ZONES_NIGHT] = default_zone_night
+                updated_data[CONF_REFRESH_INTERVAL] = default_refresh_interval
 
+                # Update entry
                 self.hass.config_entries.async_update_entry(
                     self.config_entry,
-                    data=user_input,
+                    data=updated_data,
                     options=self.config_entry.options,
                 )
                 return self.async_create_entry(title="", data={})
 
             except InvalidRefreshInterval:
                 _errors[CONF_REFRESH_INTERVAL] = "invalid_refresh_interval"
+                LOGGER.warning("Invalid refresh interval: %s", user_input.get(CONF_REFRESH_INTERVAL))
             except InvalidZoneHome:
                 _errors[CONF_ZONES_HOME] = "invalid_zone_config"
                 default_zone_home = ""
-                LOGGER.error("Invalid Zone HOME: %s", user_input[CONF_ZONES_HOME])
+                LOGGER.warning("Invalid Zone HOME: %s", user_input.get(CONF_ZONES_HOME))
             except InvalidZoneAway:
                 _errors[CONF_ZONES_AWAY] = "invalid_zone_config"
                 default_zone_away = ""
-                LOGGER.error("Invalid Zone AWAY: %s", user_input[CONF_ZONES_AWAY])
+                LOGGER.warning("Invalid Zone AWAY: %s", user_input.get(CONF_ZONES_AWAY))
             except InvalidZoneNight:
                 _errors[CONF_ZONES_NIGHT] = "invalid_zone_config"
                 default_zone_night = ""
-                LOGGER.error("Invalid Zone NIGHT: %s", user_input[CONF_ZONES_NIGHT])
+                LOGGER.warning("Invalid Zone NIGHT: %s", user_input.get(CONF_ZONES_NIGHT))
+            except Exception:
+                _errors["base"] = "unknown"
+                LOGGER.exception("Unexpected error in options flow")
 
         return self.async_show_form(
             step_id="init",
