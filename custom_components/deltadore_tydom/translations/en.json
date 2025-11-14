@@ -3,59 +3,62 @@
         "step": {
             "user_manual": {
                 "title": "Delta Dore Tydom Configuration",
-                "description": "If you need help with the configuration go to: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "Configure your Tydom gateway using manual credentials. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
                 "data": {
                     "host": "Tydom or mediation IP/hostname",
-                    "mac": "MAC address",
+                    "mac": "MAC address (12 characters, no separators)",
                     "password": "Tydom password",
                     "tydom_password": "Tydom password",
-                    "refresh_interval": "Refresh interval in min",
-                    "zones_away": "Active zones in away alarm mode",
-                    "zones_home": "Active zones in home alarm mode",
-                    "pin": "Alarm PIN"
+                    "refresh_interval": "Refresh interval in minutes (default: 30)",
+                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
+                    "pin": "Alarm PIN (optional, required for alarm control)"
                 }
             },
             "user_cloud": {
                 "title": "Delta Dore Tydom Configuration",
-                "description": "If you need help with the configuration go to: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "Configure your Tydom gateway using your Delta Dore cloud account. The Tydom password will be retrieved automatically. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
                 "data": {
-                    "host": "Tydom or mediation IP/hostname",
-                    "mac": "MAC address",
-                    "email": "Cloud account email",
-                    "password": "Cloud account password",
-                    "tydom_password": "Tydom password",
-                    "refresh_interval": "Refresh interval in min",
-                    "zones_away": "Active zones in away alarm mode",
-                    "zones_home": "Active zones in home alarm mode",
-                    "pin": "Alarm PIN"
+                    "host": "Tydom or mediation IP/hostname (use 'mediation.tydom.com' for cloud mode)",
+                    "mac": "MAC address (12 characters, no separators)",
+                    "email": "Delta Dore cloud account email",
+                    "password": "Delta Dore cloud account password",
+                    "tydom_password": "Tydom password (retrieved automatically)",
+                    "refresh_interval": "Refresh interval in minutes (default: 30)",
+                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
+                    "pin": "Alarm PIN (optional, required for alarm control)"
                 }
             },
             "discovery_confirm_manual": {
                 "title": "Delta Dore Tydom Configuration",
-                "description": "If you need help with the configuration go to: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "A Tydom gateway was discovered. Configure it using manual credentials. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
                 "data": {
                     "host": "Tydom or mediation IP/hostname",
-                    "mac": "MAC address",
-                    "email": "Cloud account email",
+                    "mac": "MAC address (12 characters, no separators)",
                     "tydom_password": "Tydom password",
-                    "refresh_interval": "Refresh interval in min",
-                    "zones_away": "Active zones in away alarm mode",
-                    "zones_home": "Active zones in home alarm mode",
-                    "pin": "Alarm PIN"
+                    "refresh_interval": "Refresh interval in minutes (default: 30)",
+                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
+                    "pin": "Alarm PIN (optional, required for alarm control)"
                 }
             },
             "discovery_confirm_cloud": {
                 "title": "Delta Dore Tydom Configuration",
-                "description": "If you need help with the configuration go to: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "A Tydom gateway was discovered. Configure it using your Delta Dore cloud account. The Tydom password will be retrieved automatically. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
                 "data": {
-                    "host": "Tydom or mediation IP/hostname",
-                    "mac": "MAC address",
-                    "email": "Cloud account email",
-                    "password": "Cloud account password",
-                    "refresh_interval": "Refresh interval in min",
-                    "zones_away": "Active zones in away alarm mode",
-                    "zones_home": "Active zones in home alarm mode",
-                    "pin": "Alarm PIN"
+                    "host": "Tydom or mediation IP/hostname (use 'mediation.tydom.com' for cloud mode)",
+                    "mac": "MAC address (12 characters, no separators)",
+                    "email": "Delta Dore cloud account email",
+                    "password": "Delta Dore cloud account password",
+                    "refresh_interval": "Refresh interval in minutes (default: 30)",
+                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
+                    "pin": "Alarm PIN (optional, required for alarm control)"
                 }
             }
         },
@@ -82,11 +85,12 @@
         "step": {
             "init": {
                 "title": "Delta Dore Tydom Configuration",
-                "description": "If you need help with the configuration go to: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "Update your Tydom integration settings. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
                 "data": {
-                    "refresh_interval": "Refresh interval in min",
-                    "zones_away": "Active zones in away alarm mode",
-                    "zones_home": "Active zones in home alarm mode"
+                    "refresh_interval": "Refresh interval in minutes (default: 30)",
+                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)"
                 }
             }
         },

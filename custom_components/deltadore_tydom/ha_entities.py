@@ -201,6 +201,7 @@ class GenericSensor(SensorEntity):
     """Representation of a generic sensor."""
 
     _attr_should_poll = False
+    _attr_has_entity_name = True
     diagnostic_attrs = [
         "config",
         "supervisionMode",
@@ -327,6 +328,8 @@ class BinarySensorBase(BinarySensorEntity):
 class GenericBinarySensor(BinarySensorBase):
     """Generic representation of a Binary Sensor."""
 
+    _attr_has_entity_name = True
+
     def __init__(
         self,
         device: TydomDevice,
@@ -369,6 +372,7 @@ class HATydom(UpdateEntity, HAEntity):
     _attr_should_poll = False
     _attr_device_class: UpdateDeviceClass | None = None
     _attr_supported_features: UpdateEntityFeature | None = None
+    _attr_icon = "mdi:update"
 
     sensor_classes = {"update_available": BinarySensorDeviceClass.UPDATE}
 
@@ -456,13 +460,14 @@ class HATydom(UpdateEntity, HAEntity):
 class HAEnergy(SensorEntity, HAEntity):
     """Representation of an Energy sensor."""
 
-    _attr_has_entity_name = False
+    _attr_has_entity_name = True
     _attr_entity_category = None
     entity_description: str
 
     _attr_should_poll = False
     _attr_device_class: SensorDeviceClass | None = None
     _attr_supported_features: int | None = None
+    _attr_icon = "mdi:lightning-bolt"
 
     sensor_classes = {
         "energyInstantTotElec": SensorDeviceClass.CURRENT,
@@ -564,6 +569,8 @@ class HACover(CoverEntity, HAEntity):
     _attr_should_poll = False
     _attr_supported_features: CoverEntityFeature = CoverEntityFeature(0)
     _attr_device_class = CoverDeviceClass.SHUTTER
+    _attr_icon = "mdi:window-shutter"
+    _attr_has_entity_name = True
 
     sensor_classes = {
         "batt_defect": BinarySensorDeviceClass.PROBLEM,
@@ -685,6 +692,8 @@ class HASmoke(BinarySensorEntity, HAEntity):
 
     _attr_should_poll = False
     _attr_supported_features: int | None = None
+    _attr_icon = "mdi:smoke-detector"
+    _attr_has_entity_name = True
 
     sensor_classes = {"batt_defect": BinarySensorDeviceClass.PROBLEM}
 
@@ -724,6 +733,8 @@ class HaClimate(ClimateEntity, HAEntity):
     """A climate entity."""
 
     _attr_should_poll = False
+    _attr_icon = "mdi:thermostat"
+    _attr_has_entity_name = True
 
     sensor_classes = {
         "temperature": SensorDeviceClass.TEMPERATURE,
@@ -991,6 +1002,8 @@ class HaWindow(CoverEntity, HAEntity):
     _attr_should_poll = False
     _attr_supported_features: CoverEntityFeature | None = None
     _attr_device_class = CoverDeviceClass.WINDOW
+    _attr_icon = "mdi:window-open"
+    _attr_has_entity_name = True
 
     sensor_classes = {
         "battDefect": BinarySensorDeviceClass.PROBLEM,
@@ -1040,6 +1053,8 @@ class HaDoor(CoverEntity, HAEntity):
     _attr_should_poll = False
     _attr_supported_features: CoverEntityFeature | None = None
     _attr_device_class = CoverDeviceClass.DOOR
+    _attr_icon = "mdi:door"
+    _attr_has_entity_name = True
     sensor_classes = {
         "battDefect": BinarySensorDeviceClass.PROBLEM,
         "calibrationDefect": BinarySensorDeviceClass.PROBLEM,
@@ -1090,6 +1105,8 @@ class HaGate(CoverEntity, HAEntity):
     _attr_should_poll = False
     _attr_supported_features: CoverEntityFeature = CoverEntityFeature.OPEN
     _attr_device_class = CoverDeviceClass.GATE
+    _attr_icon = "mdi:gate"
+    _attr_has_entity_name = True
     sensor_classes = {}
 
     def __init__(self, device: TydomGate, hass) -> None:
@@ -1180,6 +1197,8 @@ class HaGarage(CoverEntity, HAEntity):
     _attr_should_poll = False
     _attr_supported_features: CoverEntityFeature = CoverEntityFeature.OPEN
     _attr_device_class = CoverDeviceClass.GARAGE
+    _attr_icon = "mdi:garage"
+    _attr_has_entity_name = True
     sensor_classes = {
         "thermic_defect": BinarySensorDeviceClass.PROBLEM,
     }
@@ -1253,6 +1272,8 @@ class HaLight(LightEntity, HAEntity):
     """Representation of a Light."""
 
     _attr_should_poll = False
+    _attr_icon = "mdi:lightbulb"
+    _attr_has_entity_name = True
     sensor_classes = {
         "thermic_defect": BinarySensorDeviceClass.PROBLEM,
     }
@@ -1335,6 +1356,8 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
 
     _attr_should_poll = False
     _attr_supported_features = AlarmControlPanelEntityFeature(0)
+    _attr_icon = "mdi:shield-home"
+    _attr_has_entity_name = True
     sensor_classes = {
         "networkDefect": BinarySensorDeviceClass.PROBLEM,
         "remoteSurveyDefect": BinarySensorDeviceClass.PROBLEM,
@@ -1445,6 +1468,8 @@ class HaWeather(WeatherEntity, HAEntity):
     """Representation of a weather entity."""
 
     _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_icon = "mdi:weather-partly-cloudy"
+    _attr_has_entity_name = True
 
     tydom_ha_condition = {
         "UNAVAILABLE": None,
@@ -1531,6 +1556,8 @@ class HaMoisture(BinarySensorEntity, HAEntity):
 
     _attr_should_poll = False
     _attr_supported_features: int | None = None
+    _attr_icon = "mdi:water"
+    _attr_has_entity_name = True
 
     sensor_classes = {"batt_defect": BinarySensorDeviceClass.PROBLEM}
 
@@ -1568,6 +1595,9 @@ class HaMoisture(BinarySensorEntity, HAEntity):
 
 class HaThermo(SensorEntity, HAEntity):
     """Representation of a thermometer."""
+
+    _attr_icon = "mdi:thermometer"
+    _attr_has_entity_name = True
 
     def __init__(self, device: TydomThermo, hass) -> None:
         """Initialize TydomSmoke."""
@@ -1608,6 +1638,7 @@ class HASensor(SensorEntity, HAEntity):
     """Representation of a generic sensor for unknown device types."""
 
     _attr_should_poll = False
+    _attr_has_entity_name = True
 
     def __init__(self, device: TydomDevice, hass) -> None:
         """Initialize HASensor."""
