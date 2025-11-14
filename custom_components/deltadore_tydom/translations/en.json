@@ -152,7 +152,27 @@
     },
     "entity": {
         "scene": {
-            "name": "Scene"
+            "name": "Scene",
+            "state_attributes": {
+                "scenario_id": {
+                    "name": "Scenario ID"
+                },
+                "scenario_type": {
+                    "name": "Scenario type"
+                },
+                "picto": {
+                    "name": "Pictogram"
+                },
+                "rule_id": {
+                    "name": "Rule ID"
+                },
+                "affected_groups": {
+                    "name": "Affected groups"
+                },
+                "affected_endpoints": {
+                    "name": "Affected endpoints"
+                }
+            }
         },
         "switch": {
             "name": "Switch"

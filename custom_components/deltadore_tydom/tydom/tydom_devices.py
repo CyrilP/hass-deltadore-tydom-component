@@ -42,9 +42,11 @@ class TydomDevice:
                 if isinstance(data[key], dict):
                     LOGGER.debug("type of %s : %s", key, type(data[key]))
                     LOGGER.debug("%s => %s", key, data[key])
+                    setattr(self, key, data[key])
                 elif isinstance(data[key], list):
                     LOGGER.debug("type of %s : %s", key, type(data[key]))
                     LOGGER.debug("%s => %s", key, data[key])
+                    setattr(self, key, data[key])
                 else:
                     setattr(self, key, data[key])
 

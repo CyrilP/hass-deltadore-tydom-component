@@ -153,7 +153,27 @@
     },
     "entity": {
         "scene": {
-            "name": "Scénario"
+            "name": "Scénario",
+            "state_attributes": {
+                "scenario_id": {
+                    "name": "ID du scénario"
+                },
+                "scenario_type": {
+                    "name": "Type de scénario"
+                },
+                "picto": {
+                    "name": "Pictogramme"
+                },
+                "rule_id": {
+                    "name": "ID de la règle"
+                },
+                "affected_groups": {
+                    "name": "Groupes affectés"
+                },
+                "affected_endpoints": {
+                    "name": "Endpoints affectés"
+                }
+            }
         },
         "switch": {
             "name": "Interrupteur"

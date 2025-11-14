@@ -97,6 +97,7 @@ from .tydom.tydom_devices import (
 )
 
 from .const import DOMAIN, LOGGER
+from .tydom.MessageHandler import device_name
 
 
 class HAEntity:
@@ -2040,7 +2041,32 @@ class HAScene(Scene, HAEntity):
 
     _attr_should_poll = False
     _attr_has_entity_name = True
-    _attr_icon = "mdi:palette"
+
+    # Mapping des pictos Tydom vers les icônes Material Design
+    PICTO_ICON_MAPPING = {
+        "light": "mdi:lightbulb",
+        "lights": "mdi:lightbulb-group",
+        "shutter": "mdi:window-shutter",
+        "shutters": "mdi:window-shutter",
+        "heating": "mdi:radiator",
+        "thermostat": "mdi:thermostat",
+        "alarm": "mdi:shield-home",
+        "alarm_off": "mdi:shield-off",
+        "alarm_on": "mdi:shield",
+        "door": "mdi:door",
+        "window": "mdi:window-open",
+        "garage": "mdi:garage",
+        "gate": "mdi:gate",
+        "scene": "mdi:palette",
+        "scenario": "mdi:palette",
+        "home": "mdi:home",
+        "away": "mdi:home-export",
+        "night": "mdi:weather-night",
+        "day": "mdi:weather-sunny",
+        "comfort": "mdi:sofa",
+        "eco": "mdi:leaf",
+        "vacation": "mdi:airplane",
+    }
 
     def __init__(self, device: TydomScene, hass) -> None:
         """Initialize HAScene."""
@@ -2049,6 +2075,113 @@ class HAScene(Scene, HAEntity):
         self._device._ha_device = self  # type: ignore[assignment]
         self._attr_unique_id = f"{self._device.device_id}_scene"
         self._attr_name = self._device.device_name
+
+    @property
+    def icon(self) -> str:
+        """Return the icon for the scene based on picto."""
+        picto = getattr(self._device, "picto", None)
+        if not picto:
+            return "mdi:palette"
+
+        # Si le picto est déjà au format mdi:*, l'utiliser directement
+        if isinstance(picto, str) and picto.startswith("mdi:"):
+            return picto
+
+        # Convertir en minuscules pour la recherche
+        picto_lower = picto.lower().strip()
+
+        # Chercher dans le mapping
+        if picto_lower in self.PICTO_ICON_MAPPING:
+            return self.PICTO_ICON_MAPPING[picto_lower]
+
+        # Fallback vers l'icône par défaut
+        return "mdi:palette"
+
+    def _format_affected_items(
+        self, items: list[dict] | None, item_type: str = "group"
+    ) -> str:
+        """Format grpAct or epAct into a readable string."""
+        if not items or not isinstance(items, list):
+            return ""
+
+        formatted_items = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+
+            item_id = None
+            if item_type == "group":
+                item_id = item.get("id")
+            elif item_type == "endpoint":
+                # Pour epAct, on peut avoir devId ou epId
+                item_id = item.get("epId") or item.get("devId")
+
+            if item_id is not None:
+                # Essayer de résoudre le nom depuis device_name
+                # Pour les groupes, l'ID peut être directement dans device_name
+                # Pour les endpoints, c'est généralement "epId_deviceId"
+                name = None
+                if str(item_id) in device_name:
+                    name = device_name[str(item_id)]
+                else:
+                    # Pour les endpoints, essayer avec le format "epId_deviceId"
+                    if item_type == "endpoint":
+                        dev_id = item.get("devId")
+                        if dev_id:
+                            unique_id = f"{item_id}_{dev_id}"
+                            if unique_id in device_name:
+                                name = device_name[unique_id]
+
+                if name:
+                    formatted_items.append(name)
+                else:
+                    # Fallback : utiliser l'ID
+                    formatted_items.append(f"{item_type.capitalize()} {item_id}")
+
+        return ", ".join(formatted_items) if formatted_items else ""
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra state attributes for the scene."""
+        attrs: dict[str, Any] = {}
+
+        # Scenario ID
+        scenario_id = getattr(self._device, "scene_id", None) or getattr(
+            self._device, "_id", None
+        )
+        if scenario_id is not None:
+            attrs["scenario_id"] = str(scenario_id)
+
+        # Scenario type
+        scenario_type = getattr(self._device, "type", None)
+        if scenario_type:
+            attrs["scenario_type"] = scenario_type
+
+        # Picto
+        picto = getattr(self._device, "picto", None)
+        if picto:
+            attrs["picto"] = picto
+
+        # Rule ID
+        rule_id = getattr(self._device, "rule_id", None)
+        if rule_id:
+            attrs["rule_id"] = str(rule_id)
+
+        # Affected groups (grpAct)
+        grp_act = getattr(self._device, "grpAct", None)
+        if grp_act:
+            affected_groups = self._format_affected_items(grp_act, "group")
+            if affected_groups:
+                attrs["affected_groups"] = affected_groups
+
+        # Affected endpoints (epAct)
+        ep_act = getattr(self._device, "epAct", None)
+        if ep_act:
+            affected_endpoints = self._format_affected_items(ep_act, "endpoint")
+            if affected_endpoints:
+                attrs["affected_endpoints"] = affected_endpoints
+
+        return attrs
 
     @property
     def device_info(self) -> DeviceInfo:
