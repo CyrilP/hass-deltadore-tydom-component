@@ -373,10 +373,10 @@ class HATydom(UpdateEntity, HAEntity):
         """Latest version available for install."""
         if self._device is not None and hasattr(self._device, "mainVersionSW"):
             if self._device.updateAvailable:
-                # return version based on today's date for update version
-                return date.today().strftime("%y.%m.%d")
+                # If update is available, return current version as latest
+                # (actual update version is not provided by the API)
+                return self._device.mainVersionSW
             return self._device.mainVersionSW
-        # FIXME : return correct version on update
         return None
 
     async def async_install(
@@ -1378,4 +1378,39 @@ class HaThermo(SensorEntity, HAEntity):
         return {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
+        }
+
+
+class HASensor(SensorEntity, HAEntity):
+    """Representation of a generic sensor for unknown device types."""
+
+    should_poll = False
+
+    def __init__(self, device: TydomDevice, hass) -> None:
+        """Initialize HASensor."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self
+        self._attr_unique_id = f"{self._device.device_id}_sensor"
+        self._attr_name = self._device.device_name
+        self._registered_sensors = []
+
+    @property
+    def native_value(self):
+        """Return the native value of the sensor."""
+        # Try to get a meaningful value from the device
+        # Look for common attributes
+        for attr in ["level", "position", "temperature", "value", "state"]:
+            if hasattr(self._device, attr):
+                return getattr(self._device, attr)
+        # If no value found, return None (unknown state)
+        return None
+
+    @property
+    def device_info(self):
+        """Return information to link this entity with the correct device."""
+        return {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+            "manufacturer": "Delta Dore",
         }
