@@ -638,6 +638,13 @@ class TydomClient:
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
+    async def activate_scenario(self, scenario_id: str | int):
+        """Activate a scenario."""
+        # PUT /scenarios/{id}
+        msg_type = f"/scenarios/{scenario_id}"
+        req = "PUT"
+        await self.send_message(method=req, msg=msg_type)
+
     async def get_groups(self):
         """Get the groups."""
         msg_type = "/groups/file"

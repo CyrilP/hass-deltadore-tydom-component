@@ -135,5 +135,25 @@
                 }
             }
         }
+    },
+    "entity": {
+        "scene": {
+            "name": "Scene"
+        },
+        "switch": {
+            "name": "Switch"
+        },
+        "button": {
+            "name": "Button"
+        },
+        "number": {
+            "name": "Number"
+        },
+        "select": {
+            "name": "Select"
+        },
+        "event": {
+            "name": "Event"
+        }
     }
 }

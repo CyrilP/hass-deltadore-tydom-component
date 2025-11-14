@@ -136,6 +136,26 @@
                 }
             }
         }
+    },
+    "entity": {
+        "scene": {
+            "name": "Scénario"
+        },
+        "switch": {
+            "name": "Interrupteur"
+        },
+        "button": {
+            "name": "Bouton"
+        },
+        "number": {
+            "name": "Nombre"
+        },
+        "select": {
+            "name": "Sélection"
+        },
+        "event": {
+            "name": "Événement"
+        }
     }
 }
 

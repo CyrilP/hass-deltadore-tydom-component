@@ -523,3 +523,14 @@ class TydomWater(TydomDevice):
 
 class TydomThermo(TydomDevice):
     """Represents a thermometer."""
+
+
+class TydomScene(TydomDevice):
+    """Represents a scene/scenario."""
+
+    async def activate(self) -> None:
+        """Activate the scene."""
+        LOGGER.debug("Activating scene %s", self.device_id)
+        # Scenarios are activated via PUT /scenarios/{id}
+        scene_id = getattr(self, "scene_id", None) or self._id
+        await self._tydom_client.activate_scenario(scene_id)

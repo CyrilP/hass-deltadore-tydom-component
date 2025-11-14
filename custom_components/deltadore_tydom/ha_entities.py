@@ -1,6 +1,7 @@
 """Home assistant entites."""
 
 from typing import Any
+import inspect
 import math
 
 from homeassistant.components.binary_sensor import (
@@ -13,6 +14,7 @@ from homeassistant.components.climate import (
     ClimateEntity,
     ClimateEntityFeature,
     HVACMode,
+    PRESET_NONE,
 )
 from homeassistant.const import (
     ATTR_TEMPERATURE,
@@ -68,6 +70,12 @@ from homeassistant.components.weather import (
     ATTR_CONDITION_SNOWY,
     ATTR_CONDITION_SUNNY,
 )
+from homeassistant.components.scene import Scene
+from homeassistant.components.switch import SwitchEntity
+from homeassistant.components.button import ButtonEntity
+from homeassistant.components.number import NumberEntity
+from homeassistant.components.select import SelectEntity
+from homeassistant.components.event import EventEntity
 
 from .tydom.tydom_devices import (
     Tydom,
@@ -85,6 +93,7 @@ from .tydom.tydom_devices import (
     TydomWeather,
     TydomWater,
     TydomThermo,
+    TydomScene,
 )
 
 from .const import DOMAIN, LOGGER
@@ -252,6 +261,30 @@ class HAEntity:
             if product_name is not None:
                 info["model"] = str(product_name)
 
+        # Récupérer la version hardware si disponible
+        if hasattr(self._device, "mainVersionHW"):
+            hw_version = getattr(self._device, "mainVersionHW", None)
+            if hw_version is not None:
+                info["hw_version"] = str(hw_version)
+        elif hasattr(self._device, "keyVersionHW"):
+            hw_version = getattr(self._device, "keyVersionHW", None)
+            if hw_version is not None:
+                info["hw_version"] = str(hw_version)
+
+        # Récupérer la version software si disponible
+        if hasattr(self._device, "mainVersionSW"):
+            sw_version = getattr(self._device, "mainVersionSW", None)
+            if sw_version is not None:
+                info["sw_version"] = str(sw_version)
+        elif hasattr(self._device, "keyVersionSW"):
+            sw_version = getattr(self._device, "keyVersionSW", None)
+            if sw_version is not None:
+                info["sw_version"] = str(sw_version)
+        elif hasattr(self._device, "softVersion"):
+            sw_version = getattr(self._device, "softVersion", None)
+            if sw_version is not None:
+                info["sw_version"] = str(sw_version)
+
         return info
 
 
@@ -351,28 +384,54 @@ class GenericSensor(SensorEntity):
             value = ranged_value_to_percentage((min, max), value)
         return value
 
-    @property
-    def device_info(self):
-        """Return information to link this entity with the correct device."""
-        info: DeviceInfo = {
-            "identifiers": {(DOMAIN, self._device.device_id)},
-        }
-
-        # Récupérer le fabricant depuis les attributs du device
+    def _get_device_info_dict(self) -> dict[str, str]:
+        """Get device info as dict (helper for GenericSensor)."""
+        info: dict[str, str] = {}
         if hasattr(self._device, "manufacturer"):
             manufacturer = getattr(self._device, "manufacturer", None)
             if manufacturer is not None:
                 info["manufacturer"] = str(manufacturer)
-
-        # Fallback sur "Delta Dore" si le fabricant n'est pas disponible
         if "manufacturer" not in info:
             info["manufacturer"] = "Delta Dore"
-
-        # Récupérer le modèle depuis productName
         if hasattr(self._device, "productName"):
             product_name = getattr(self._device, "productName", None)
             if product_name is not None:
                 info["model"] = str(product_name)
+        if hasattr(self._device, "mainVersionHW"):
+            hw_version = getattr(self._device, "mainVersionHW", None)
+            if hw_version is not None:
+                info["hw_version"] = str(hw_version)
+        if hasattr(self._device, "mainVersionSW"):
+            sw_version = getattr(self._device, "mainVersionSW", None)
+            if sw_version is not None:
+                info["sw_version"] = str(sw_version)
+        return info
+
+    @property
+    def device_info(self):
+        """Return information to link this entity with the correct device."""
+        device_info_dict = self._get_device_info_dict()
+        info: DeviceInfo = {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+        }
+
+        # Add manufacturer
+        if "manufacturer" in device_info_dict:
+            info["manufacturer"] = device_info_dict["manufacturer"]
+        else:
+            info["manufacturer"] = "Delta Dore"
+
+        # Add model
+        if "model" in device_info_dict:
+            info["model"] = device_info_dict["model"]
+
+        # Add hardware version
+        if "hw_version" in device_info_dict:
+            info["hw_version"] = device_info_dict["hw_version"]
+
+        # Add software version
+        if "sw_version" in device_info_dict:
+            info["sw_version"] = device_info_dict["sw_version"]
 
         # Link device to Tydom gateway via via_device
         gateway_device_id = self._get_tydom_gateway_device_id()
@@ -1051,7 +1110,36 @@ class HaClimate(ClimateEntity, HAEntity):
         ):
             self.dict_modes_ha_to_dd[HVACMode.HEAT] = "AUTO"
 
-        # self._attr_preset_modes = ["NORMAL", "STOP", "ANTI_FROST"]
+        # Initialize preset modes
+        self._attr_preset_modes = []
+        # Add presets based on available modes
+        if (
+            self._device._metadata is not None
+            and "comfortMode" in self._device._metadata
+            and "enum_values" in self._device._metadata["comfortMode"]
+        ):
+            for mode in self._device._metadata["comfortMode"]["enum_values"]:
+                if mode not in ["HEATING", "COOLING", "STOP"]:
+                    self._attr_preset_modes.append(mode)
+        elif (
+            self._device._metadata is not None
+            and "thermicLevel" in self._device._metadata
+            and "enum_values" in self._device._metadata["thermicLevel"]
+        ):
+            for mode in self._device._metadata["thermicLevel"]["enum_values"]:
+                if mode not in ["STOP", "AUTO"]:
+                    self._attr_preset_modes.append(mode)
+        
+        # Add common presets if available
+        if not self._attr_preset_modes:
+            # Default presets if none found in metadata
+            if hasattr(self._device, "comfortMode") or hasattr(self._device, "thermicLevel"):
+                self._attr_preset_modes = ["NORMAL", "ECO", "COMFORT"]
+        
+        # Add PRESET_NONE if we have presets
+        if self._attr_preset_modes:
+            self._attr_supported_features |= ClimateEntityFeature.PRESET_MODE
+        
         self._attr_hvac_modes = [
             HVACMode.OFF,
             HVACMode.AUTO,
@@ -1213,10 +1301,41 @@ class HaClimate(ClimateEntity, HAEntity):
         """Set new target hvac mode."""
         await self._device.set_hvac_mode(self.dict_modes_ha_to_dd[hvac_mode])
 
+    @property
+    def preset_mode(self) -> str | None:
+        """Return the current preset mode."""
+        if hasattr(self._device, "comfortMode"):
+            comfort_mode = getattr(self._device, "comfortMode", None)
+            if comfort_mode is not None and comfort_mode in self._attr_preset_modes:
+                return comfort_mode
+        if hasattr(self._device, "thermicLevel"):
+            thermic_level = getattr(self._device, "thermicLevel", None)
+            if thermic_level is not None and thermic_level in self._attr_preset_modes:
+                return thermic_level
+        return PRESET_NONE if self._attr_preset_modes else None
+
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new target preset mode."""
-        if hasattr(self._device, "set_preset_mode"):
-            await self._device.set_preset_mode(preset_mode)
+        if preset_mode == PRESET_NONE:
+            return
+        # Try to set comfortMode first
+        if (
+            self._device._metadata is not None
+            and "comfortMode" in self._device._metadata
+            and preset_mode in self._device._metadata["comfortMode"].get("enum_values", [])
+        ):
+            await self._device._tydom_client.put_devices_data(
+                self._device._id, self._device._endpoint, "comfortMode", preset_mode
+            )
+        # Otherwise try thermicLevel
+        elif (
+            self._device._metadata is not None
+            and "thermicLevel" in self._device._metadata
+            and preset_mode in self._device._metadata["thermicLevel"].get("enum_values", [])
+        ):
+            await self._device._tydom_client.put_devices_data(
+                self._device._id, self._device._endpoint, "thermicLevel", preset_mode
+            )
 
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
@@ -1899,3 +2018,301 @@ class HASensor(SensorEntity, HAEntity):
         if "model" in device_info:
             info["model"] = device_info["model"]
         return info
+
+
+class HAScene(Scene, HAEntity):
+    """Representation of a Tydom Scene."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:palette"
+
+    def __init__(self, device: TydomScene, hass) -> None:
+        """Initialize HAScene."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self  # type: ignore[assignment]
+        self._attr_unique_id = f"{self._device.device_id}_scene"
+        self._attr_name = self._device.device_name
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return information to link this entity with the correct device."""
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
+        }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return self._enrich_device_info(info)
+
+    async def async_activate(self, **kwargs: Any) -> None:
+        """Activate the scene."""
+        await self._device.activate()
+
+
+class HASwitch(SwitchEntity, HAEntity):
+    """Representation of a Tydom Switch."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:toggle-switch"
+
+    def __init__(self, device: TydomDevice, hass) -> None:
+        """Initialize HASwitch."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self  # type: ignore[assignment]
+        self._attr_unique_id = f"{self._device.device_id}_switch"
+        self._attr_name = self._device.device_name
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return information to link this entity with the correct device."""
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
+        }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return self._enrich_device_info(info)
+
+    @property
+    def is_on(self) -> bool:
+        """Return true if switch is on."""
+        # Check for common on/off attributes
+        if hasattr(self._device, "level"):
+            level = getattr(self._device, "level", None)
+            return bool(level != 0 if level is not None else False)
+        if hasattr(self._device, "on"):
+            return bool(getattr(self._device, "on", False))
+        if hasattr(self._device, "state"):
+            state = getattr(self._device, "state", None)
+            return state == "ON" if state is not None else False
+        return False
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn the switch on."""
+        if hasattr(self._device, "turn_on"):
+            await self._device.turn_on()
+        elif hasattr(self._device, "set_level"):
+            await self._device.set_level(100)
+        else:
+            # Generic approach: try to set level to 100 or on to true
+            if hasattr(self._device, "level"):
+                await self._device._tydom_client.put_devices_data(
+                    self._device._id, self._device._endpoint, "level", "100"
+                )
+            elif hasattr(self._device, "on"):
+                await self._device._tydom_client.put_devices_data(
+                    self._device._id, self._device._endpoint, "on", "true"
+                )
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn the switch off."""
+        if hasattr(self._device, "turn_off"):
+            await self._device.turn_off()
+        elif hasattr(self._device, "set_level"):
+            await self._device.set_level(0)
+        else:
+            # Generic approach: try to set level to 0 or on to false
+            if hasattr(self._device, "level"):
+                await self._device._tydom_client.put_devices_data(
+                    self._device._id, self._device._endpoint, "level", "0"
+                )
+            elif hasattr(self._device, "on"):
+                await self._device._tydom_client.put_devices_data(
+                    self._device._id, self._device._endpoint, "on", "false"
+                )
+
+
+class HAButton(ButtonEntity, HAEntity):
+    """Representation of a Tydom Button."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:button-cursor"
+
+    def __init__(self, device: TydomDevice, hass, action_name: str, action_method: str) -> None:
+        """Initialize HAButton."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self  # type: ignore[assignment]
+        self._action_name = action_name
+        self._action_method = action_method
+        self._attr_unique_id = f"{self._device.device_id}_button_{action_name}"
+        self._attr_name = f"{action_name}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return information to link this entity with the correct device."""
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
+        }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return self._enrich_device_info(info)
+
+    async def async_press(self) -> None:
+        """Handle the button press."""
+        # Execute the action method on the device
+        if hasattr(self._device, self._action_method):
+            method = getattr(self._device, self._action_method)
+            if callable(method):
+                if inspect.iscoroutinefunction(method):
+                    await method()
+                else:
+                    method()
+        else:
+            # Generic approach: send a command
+            await self._device._tydom_client.put_devices_data(
+                self._device._id, self._device._endpoint, self._action_method, "ON"
+            )
+
+
+class HANumber(NumberEntity, HAEntity):
+    """Representation of a Tydom Number."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        device: TydomDevice,
+        hass,
+        attribute_name: str,
+        min_value: float | None = None,
+        max_value: float | None = None,
+        step: float | None = None,
+        unit: str | None = None,
+    ) -> None:
+        """Initialize HANumber."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self  # type: ignore[assignment]
+        self._attribute_name = attribute_name
+        self._attr_unique_id = f"{self._device.device_id}_number_{attribute_name}"
+        self._attr_name = attribute_name
+        if min_value is not None:
+            self._attr_native_min_value = min_value
+        if max_value is not None:
+            self._attr_native_max_value = max_value
+        self._attr_native_step = step or 1.0
+        self._attr_native_unit_of_measurement = unit
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return information to link this entity with the correct device."""
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
+        }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return self._enrich_device_info(info)
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the current value."""
+        value = getattr(self._device, self._attribute_name, None)
+        if value is not None:
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return None
+        return None
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Set the value."""
+        await self._device._tydom_client.put_devices_data(
+            self._device._id, self._device._endpoint, self._attribute_name, str(value)
+        )
+
+
+class HASelect(SelectEntity, HAEntity):
+    """Representation of a Tydom Select."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        device: TydomDevice,
+        hass,
+        attribute_name: str,
+        options: list[str],
+    ) -> None:
+        """Initialize HASelect."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self  # type: ignore[assignment]
+        self._attribute_name = attribute_name
+        self._attr_unique_id = f"{self._device.device_id}_select_{attribute_name}"
+        self._attr_name = attribute_name
+        self._attr_options = options
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return information to link this entity with the correct device."""
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
+        }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return self._enrich_device_info(info)
+
+    @property
+    def current_option(self) -> str | None:
+        """Return the current selected option."""
+        value = getattr(self._device, self._attribute_name, None)
+        if value is not None and str(value) in self._attr_options:
+            return str(value)
+        return None
+
+    async def async_select_option(self, option: str) -> None:
+        """Change the selected option."""
+        await self._device._tydom_client.put_devices_data(
+            self._device._id, self._device._endpoint, self._attribute_name, option
+        )
+
+
+class HAEvent(EventEntity, HAEntity):
+    """Representation of a Tydom Event."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+
+    def __init__(self, device: TydomDevice, hass, event_type: str) -> None:
+        """Initialize HAEvent."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self  # type: ignore[assignment]
+        self._event_type = event_type
+        self._attr_unique_id = f"{self._device.device_id}_event_{event_type}"
+        self._attr_name = event_type
+        self._attr_event_types = [event_type]
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return information to link this entity with the correct device."""
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
+        }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return self._enrich_device_info(info)

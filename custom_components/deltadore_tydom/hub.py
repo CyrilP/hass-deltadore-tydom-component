@@ -24,6 +24,7 @@ from .tydom.tydom_devices import (
     TydomWater,
     TydomThermo,
     TydomDevice,
+    TydomScene,
 )
 from .ha_entities import (
     HATydom,
@@ -41,6 +42,12 @@ from .ha_entities import (
     HaMoisture,
     HaThermo,
     HASensor,
+    HAScene,
+    HASwitch,
+    HAButton,
+    HANumber,
+    HASelect,
+    HAEvent,
 )
 
 from .const import LOGGER
@@ -92,6 +99,12 @@ class Hub:
         self.add_update_callback = None
         self.add_weather_callback = None
         self.add_binary_sensor_callback = None
+        self.add_scene_callback = None
+        self.add_switch_callback = None
+        self.add_button_callback = None
+        self.add_number_callback = None
+        self.add_select_callback = None
+        self.add_event_callback = None
 
         self._tydom_client = TydomClient(
             hass=self._hass,
@@ -154,6 +167,12 @@ class Hub:
             and self.add_update_callback is not None
             and self.add_alarm_callback is not None
             and self.add_weather_callback is not None
+            and self.add_scene_callback is not None
+            and self.add_switch_callback is not None
+            and self.add_button_callback is not None
+            and self.add_number_callback is not None
+            and self.add_select_callback is not None
+            and self.add_event_callback is not None
         )
 
     async def setup(self, connection: ClientWebSocketResponse) -> None:
@@ -373,6 +392,12 @@ class Hub:
 
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
+            case TydomScene():
+                LOGGER.debug("Create scene %s", device.device_id)
+                ha_device = HAScene(device, self._hass)
+                self.ha_devices[device.device_id] = ha_device
+                if self.add_scene_callback is not None:
+                    self.add_scene_callback([ha_device])
             case TydomDevice():
                 LOGGER.debug("Create generic sensor %s", device.device_id)
                 ha_device = HASensor(device, self._hass)
@@ -381,6 +406,31 @@ class Hub:
                     self.add_sensor_callback([ha_device])
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
+                
+                # Try to detect if device should also be a switch
+                # Check for on/off capabilities that aren't already handled
+                if device.device_type not in ["light", "cover", "alarm"]:
+                    has_on_off = (
+                        hasattr(device, "level")
+                        or hasattr(device, "on")
+                        or hasattr(device, "state")
+                    )
+                    # Check if device has levelCmd or onCmd in metadata (writable)
+                    has_control = False
+                    if device._metadata is not None:
+                        for key in device._metadata:
+                            if key.endswith("Cmd") or key in ["level", "on", "state"]:
+                                has_control = True
+                                break
+                    
+                    if has_on_off and has_control:
+                        LOGGER.debug(
+                            "Device %s has on/off capabilities, creating switch",
+                            device.device_id,
+                        )
+                        switch_device = HASwitch(device, self._hass)
+                        if self.add_switch_callback is not None:
+                            self.add_switch_callback([switch_device])
             case _:
                 LOGGER.error(
                     "unsupported device type (%s) %s for device %s",
@@ -439,6 +489,7 @@ class Hub:
             await self._tydom_client.get_devices_cmeta()
             await self._tydom_client.get_devices_data()
             await self._tydom_client.get_scenarii()
+            await self._tydom_client.get_moments()
             await asyncio.sleep(600)
 
     async def refresh_data_1s(self) -> None:

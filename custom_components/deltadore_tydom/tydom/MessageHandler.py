@@ -28,6 +28,7 @@ from .tydom_devices import (
     TydomWeather,
     TydomWater,
     TydomThermo,
+    TydomScene,
 )
 
 if TYPE_CHECKING:
@@ -237,11 +238,12 @@ class MessageHandler:
             "/devices/install": partial(no_op, "msg_pairing"),
             "/devices/meta": self.parse_devices_metadata,
             "/events": event_message,
-            "/groups/file": partial(no_op, "msg_groups"),
+            "/groups/file": self.parse_groups_file,
             "/info": self.parse_msg_info,
             "/ping": ping_message,
             "/refresh/all": partial(no_op, "msg_refresh_all"),
-            "/scenarios/file": partial(no_op, "msg_scenarios"),
+            "/scenarios/file": self.parse_scenarios_file,
+            "/moments/file": self.parse_moments_file,
         }
 
         parsed = data
@@ -828,6 +830,71 @@ class MessageHandler:
                     except Exception as e:
                         LOGGER.exception("Error when parsing msg_cdata", exc_info=e)
         return devices
+
+    async def parse_scenarios_file(self, parsed, transaction_id):
+        """Parse scenarios file."""
+        LOGGER.debug("parse_scenarios_file : %s", parsed)
+        devices = []
+        
+        if not parsed or not isinstance(parsed, dict):
+            return devices
+            
+        scenarios = parsed.get("scn", [])
+        if not isinstance(scenarios, list):
+            return devices
+            
+        for scenario in scenarios:
+            if not isinstance(scenario, dict):
+                continue
+                
+            scenario_id = scenario.get("id")
+            scenario_name = scenario.get("name", f"Scenario {scenario_id}")
+            
+            if scenario_id is None:
+                continue
+                
+            # Create unique ID for scene
+            unique_id = f"scene_{scenario_id}"
+            
+            # Store scene info in device_name and device_type for consistency
+            device_name[unique_id] = scenario_name
+            device_type[unique_id] = "scene"
+            
+            # Create TydomScene device
+            scene_device = TydomScene(
+                self.tydom_client,
+                unique_id,
+                str(scenario_id),
+                scenario_name,
+                "scene",
+                None,
+                None,
+                {"scene_id": scenario_id, **scenario},
+            )
+            devices.append(scene_device)
+            LOGGER.debug("Created scene: %s (id: %s)", scenario_name, scenario_id)
+            
+        return devices
+
+    async def parse_groups_file(self, parsed, transaction_id):
+        """Parse groups file."""
+        LOGGER.debug("parse_groups_file : %s", parsed)
+        # Groups are currently not exposed as entities, but we parse them for future use
+        # Store groups data in a way that can be accessed later if needed
+        if parsed and isinstance(parsed, dict):
+            groups = parsed.get("groups", [])
+            LOGGER.debug("Found %d groups", len(groups) if isinstance(groups, list) else 0)
+        return []
+
+    async def parse_moments_file(self, parsed, transaction_id):
+        """Parse moments file."""
+        LOGGER.debug("parse_moments_file : %s", parsed)
+        # Moments (programs/schedules) are currently not exposed as entities
+        # but we parse them for future use (could be exposed as schedules or time-based automations)
+        if parsed and isinstance(parsed, dict):
+            moments = parsed.get("moments", [])
+            LOGGER.debug("Found %d moments/programs", len(moments) if isinstance(moments, list) else 0)
+        return []
 
     # FUNCTIONS
 
