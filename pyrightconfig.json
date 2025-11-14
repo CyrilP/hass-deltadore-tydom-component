@@ -1,0 +1,10 @@
+{
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "basic",
+  "venvPath": "/opt/homebrew",
+  "venv": "lib/python3.13/site-packages",
+  "extraPaths": [
+    "/opt/homebrew/lib/python3.13/site-packages"
+  ]
+}
+

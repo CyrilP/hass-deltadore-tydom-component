@@ -30,6 +30,12 @@ PLATFORMS: list[str] = [
     Platform.ALARM_CONTROL_PANEL,
     Platform.WEATHER,
     Platform.BINARY_SENSOR,
+    Platform.SCENE,
+    Platform.SWITCH,
+    Platform.BUTTON,
+    Platform.NUMBER,
+    Platform.SELECT,
+    Platform.EVENT,
 ]
 
 
@@ -40,11 +46,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Store an instance of the "connecting" class that does the work of speaking
     # with your actual devices.
-    zone_home = entry.data.get(CONF_ZONES_HOME)
-    zone_away = entry.data.get(CONF_ZONES_AWAY)
-    zone_night = entry.data.get(CONF_ZONES_NIGHT)
+    zone_home = entry.data.get(CONF_ZONES_HOME) or ""
+    zone_away = entry.data.get(CONF_ZONES_AWAY) or ""
+    zone_night = entry.data.get(CONF_ZONES_NIGHT) or ""
 
-    pin = entry.data.get(CONF_PIN)
+    pin = entry.data.get(CONF_PIN) or ""
 
     refresh_interval = "30"
     if CONF_REFRESH_INTERVAL in entry.data:
@@ -57,10 +63,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.data[CONF_MAC],
         entry.data[CONF_TYDOM_PASSWORD],
         refresh_interval,
-        zone_home,
-        zone_away,
-        zone_night,
-        pin,
+        str(zone_home),
+        str(zone_away),
+        str(zone_night),
+        str(pin),
     )
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = tydom_hub
 

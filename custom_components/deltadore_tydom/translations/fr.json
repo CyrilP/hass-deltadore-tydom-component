@@ -1,0 +1,277 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Configuration Delta Dore Tydom",
+                "description": "Choisissez le mode de configuration. Le mode cloud récupère automatiquement les identifiants Tydom à partir de votre compte Delta Dore. Le mode manuel nécessite que vous saisissiez directement le mot de passe Tydom.",
+                "data": {
+                    "config_mode": "Mode de configuration"
+                }
+            },
+            "user_manual": {
+                "title": "Configuration Delta Dore Tydom",
+                "description": "Configurez votre passerelle Tydom en utilisant des identifiants manuels. Si vous avez besoin d'aide, consultez : https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "data": {
+                    "host": "IP/hostname du Tydom ou de la médiation",
+                    "mac": "Adresse MAC (12 caractères, sans séparateurs)",
+                    "password": "Mot de passe Tydom",
+                    "tydom_password": "Mot de passe Tydom",
+                    "refresh_interval": "Intervalle de rafraîchissement en minutes (par défaut : 30)",
+                    "zones_away": "Zones actives en mode alarme absent (séparées par des virgules, ex. : 1,2,4)",
+                    "zones_home": "Zones actives en mode alarme présent (séparées par des virgules, ex. : 1,2,4)",
+                    "zones_night": "Zones actives en mode alarme nuit (séparées par des virgules, ex. : 1,2,4)",
+                    "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)"
+                }
+            },
+            "user_cloud": {
+                "title": "Configuration Delta Dore Tydom",
+                "description": "Configurez votre passerelle Tydom en utilisant votre compte cloud Delta Dore. Le mot de passe Tydom sera récupéré automatiquement. Si vous avez besoin d'aide, consultez : https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "data": {
+                    "host": "IP/hostname du Tydom ou de la médiation (utilisez 'mediation.tydom.com' pour le mode cloud)",
+                    "mac": "Adresse MAC (12 caractères, sans séparateurs)",
+                    "email": "Email du compte cloud Delta Dore",
+                    "password": "Mot de passe du compte cloud Delta Dore",
+                    "tydom_password": "Mot de passe Tydom (récupéré automatiquement)",
+                    "refresh_interval": "Intervalle de rafraîchissement en minutes (par défaut : 30)",
+                    "zones_away": "Zones actives en mode alarme absent (séparées par des virgules, ex. : 1,2,4)",
+                    "zones_home": "Zones actives en mode alarme présent (séparées par des virgules, ex. : 1,2,4)",
+                    "zones_night": "Zones actives en mode alarme nuit (séparées par des virgules, ex. : 1,2,4)",
+                    "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)"
+                }
+            },
+            "discovery_confirm": {
+                "title": "Configuration Delta Dore Tydom",
+                "description": "Une passerelle Tydom a été découverte ({name}). Choisissez le mode de configuration.",
+                "data": {
+                    "config_mode": "Mode de configuration"
+                }
+            },
+            "discovery_confirm_manual": {
+                "title": "Configuration Delta Dore Tydom",
+                "description": "Une passerelle Tydom a été découverte ({name}). Configurez-la en utilisant des identifiants manuels. Si vous avez besoin d'aide, consultez : https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "data": {
+                    "host": "IP/hostname du Tydom ou de la médiation",
+                    "mac": "Adresse MAC (12 caractères, sans séparateurs)",
+                    "tydom_password": "Mot de passe Tydom",
+                    "refresh_interval": "Intervalle de rafraîchissement en minutes (par défaut : 30)",
+                    "zones_away": "Zones actives en mode alarme absent (séparées par des virgules, ex. : 1,2,4)",
+                    "zones_home": "Zones actives en mode alarme présent (séparées par des virgules, ex. : 1,2,4)",
+                    "zones_night": "Zones actives en mode alarme nuit (séparées par des virgules, ex. : 1,2,4)",
+                    "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)"
+                }
+            },
+            "discovery_confirm_cloud": {
+                "title": "Configuration Delta Dore Tydom",
+                "description": "Une passerelle Tydom a été découverte ({name}). Configurez-la en utilisant votre compte cloud Delta Dore. Le mot de passe Tydom sera récupéré automatiquement. Si vous avez besoin d'aide, consultez : https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "data": {
+                    "host": "IP/hostname du Tydom ou de la médiation (utilisez 'mediation.tydom.com' pour le mode cloud)",
+                    "mac": "Adresse MAC (12 caractères, sans séparateurs)",
+                    "email": "Email du compte cloud Delta Dore",
+                    "password": "Mot de passe du compte cloud Delta Dore",
+                    "refresh_interval": "Intervalle de rafraîchissement en minutes (par défaut : 30)",
+                    "zones_away": "Zones actives en mode alarme absent (séparées par des virgules, ex. : 1,2,4)",
+                    "zones_home": "Zones actives en mode alarme présent (séparées par des virgules, ex. : 1,2,4)",
+                    "zones_night": "Zones actives en mode alarme nuit (séparées par des virgules, ex. : 1,2,4)",
+                    "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)"
+                }
+            },
+            "reauth_confirm": {
+                "title": "Ré-authentification Delta Dore Tydom",
+                "description": "Les identifiants de {name} ont expiré ou sont invalides. Veuillez les mettre à jour."
+            }
+        },
+        "error": {
+            "already_configured": "L'appareil est déjà configuré",
+            "invalid_host": "Le hostname ou l'adresse IP est invalide",
+            "invalid_macaddress": "L'adresse MAC est invalide",
+            "invalid_email": "L'email est invalide",
+            "invalid_password": "Le mot de passe est invalide",
+            "invalid_refresh_interval": "L'intervalle de rafraîchissement n'est pas valide",
+            "communication_error": "Impossible de se connecter à la passerelle Tydom",
+            "authentication_error": "Erreur d'authentification",
+            "invalid_zone_config": "La configuration des zones est invalide. Syntaxe : zone_id_1,zone_id_2... Exemple : 1,2,4"
+        },
+        "abort": {
+            "discover_timeout": "Impossible de découvrir les appareils",
+            "no_bridges": "Aucun appareil découvert",
+            "all_configured": "Tous les appareils sont déjà configurés",
+            "unknown": "Une erreur inconnue s'est produite",
+            "cannot_connect": "Impossible de se connecter à l'appareil",
+            "already_configured": "L'appareil est déjà configuré",
+            "config_entry_not_found": "Entrée de configuration introuvable",
+            "reauth_entry_not_found": "Entrée de ré-authentification introuvable",
+            "reauth_successful": "Ré-authentification réussie"
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Configuration Delta Dore Tydom",
+                "description": "Mettez à jour les paramètres de votre intégration Tydom. Si vous avez besoin d'aide, consultez : https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "data": {
+                    "refresh_interval": "Intervalle de rafraîchissement en minutes (par défaut : 30)",
+                    "zones_away": "Zones actives en mode alarme absent (séparées par des virgules, ex. : 1,2,4)",
+                    "zones_home": "Zones actives en mode alarme présent (séparées par des virgules, ex. : 1,2,4)",
+                    "zones_night": "Zones actives en mode alarme nuit (séparées par des virgules, ex. : 1,2,4)"
+                }
+            }
+        },
+        "error": {
+            "invalid_refresh_interval": "L'intervalle de rafraîchissement n'est pas valide",
+            "invalid_zone_config": "La configuration des zones est invalide. Syntaxe : zone_id_1,zone_id_2... Exemple : 1,2,4"
+        }
+    },
+    "selector": {
+        "config_mode": {
+            "options": {
+                "tydom_cloud_account": "Récupérer les identifiants Tydom en utilisant le compte cloud Delta Dore",
+                "tydom_credentials": "Saisir manuellement les identifiants Tydom"
+            }
+        }
+    },
+    "services": {
+        "acknowledge_events": {
+            "name": "Acquitter les événements de défaut",
+            "description": "Acquitter tous les événements d'alarme de défaut.",
+            "fields": {
+                "code": {
+                    "name": "Code PIN de l'alarme",
+                    "description": "Code PIN de l'alarme"
+                }
+            }
+        },
+        "get_events": {
+            "name": "Obtenir les événements d'alarme",
+            "description": "Obtenir les événements d'alarme",
+            "fields": {
+                "event_type": {
+                    "name": "Type d'événement",
+                    "description": "Type d'événement d'alarme"
+                }
+            }
+        }
+    },
+    "entity": {
+        "scene": {
+            "name": "Scénario",
+            "state_attributes": {
+                "scenario_id": {
+                    "name": "ID du scénario"
+                },
+                "scenario_type": {
+                    "name": "Type de scénario"
+                },
+                "picto": {
+                    "name": "Pictogramme"
+                },
+                "rule_id": {
+                    "name": "ID de la règle"
+                },
+                "affected_groups": {
+                    "name": "Groupes affectés"
+                },
+                "affected_endpoints": {
+                    "name": "Endpoints affectés"
+                }
+            }
+        },
+        "switch": {
+            "name": "Interrupteur"
+        },
+        "button": {
+            "name": "Bouton"
+        },
+        "number": {
+            "name": "Nombre"
+        },
+        "select": {
+            "name": "Sélection"
+        },
+        "event": {
+            "name": "Événement"
+        },
+        "sensor": {
+            "temperature": {
+                "name": "Température"
+            },
+            "outtemperature": {
+                "name": "Température extérieure"
+            },
+            "ambienttemperature": {
+                "name": "Température ambiante"
+            },
+            "battlevel": {
+                "name": "Niveau de batterie"
+            },
+            "level": {
+                "name": "Niveau"
+            },
+            "position": {
+                "name": "Position"
+            },
+            "hygroin": {
+                "name": "Humidité"
+            },
+            "energy": {
+                "name": "Énergie"
+            },
+            "power": {
+                "name": "Puissance"
+            },
+            "current": {
+                "name": "Courant"
+            },
+            "value": {
+                "name": "Valeur"
+            },
+            "state": {
+                "name": "État"
+            },
+            "config": {
+                "name": "Configuration"
+            },
+            "supervisionmode": {
+                "name": "Mode de supervision"
+            },
+            "productname": {
+                "name": "Nom du produit"
+            },
+            "mac": {
+                "name": "Adresse MAC"
+            },
+            "softversion": {
+                "name": "Version logicielle"
+            },
+            "mainversionhw": {
+                "name": "Version matérielle principale"
+            },
+            "keyversionhw": {
+                "name": "Version matérielle clé"
+            }
+        },
+        "binary_sensor": {
+            "tempsensordefect": {
+                "name": "Défaut capteur température"
+            },
+            "tempsensoropencirc": {
+                "name": "Circuit ouvert capteur température"
+            },
+            "tempsensorshortcut": {
+                "name": "Court-circuit capteur température"
+            },
+            "productiondefect": {
+                "name": "Défaut de production"
+            },
+            "batterycmddefect": {
+                "name": "Défaut batterie commande"
+            },
+            "thermic_defect": {
+                "name": "Défaut thermique"
+            },
+            "update_available": {
+                "name": "Mise à jour disponible"
+            }
+        }
+    }
+}
+

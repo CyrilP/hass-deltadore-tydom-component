@@ -23,6 +23,8 @@ from .tydom.tydom_devices import (
     TydomWeather,
     TydomWater,
     TydomThermo,
+    TydomDevice,
+    TydomScene,
 )
 from .ha_entities import (
     HATydom,
@@ -39,6 +41,9 @@ from .ha_entities import (
     HaWeather,
     HaMoisture,
     HaThermo,
+    HASensor,
+    HAScene,
+    HASwitch,
 )
 
 from .const import LOGGER
@@ -90,6 +95,12 @@ class Hub:
         self.add_update_callback = None
         self.add_weather_callback = None
         self.add_binary_sensor_callback = None
+        self.add_scene_callback = None
+        self.add_switch_callback = None
+        self.add_button_callback = None
+        self.add_number_callback = None
+        self.add_select_callback = None
+        self.add_event_callback = None
 
         self._tydom_client = TydomClient(
             hass=self._hass,
@@ -112,6 +123,7 @@ class Hub:
         self._refresh_interval = int(refresh_interval) * 60
         self._zone_home = zone_home
         self._zone_away = zone_away
+        self._zone_night = zone_night
 
     @property
     def hub_id(self) -> str:
@@ -151,6 +163,12 @@ class Hub:
             and self.add_update_callback is not None
             and self.add_alarm_callback is not None
             and self.add_weather_callback is not None
+            and self.add_scene_callback is not None
+            and self.add_switch_callback is not None
+            and self.add_button_callback is not None
+            and self.add_number_callback is not None
+            and self.add_select_callback is not None
+            and self.add_event_callback is not None
         )
 
     async def setup(self, connection: ClientWebSocketResponse) -> None:
@@ -167,6 +185,26 @@ class Hub:
                         self.devices[device.device_id] = device
                         await self.create_ha_device(device)
                     else:
+                        # Check for collision: same device_id but different device
+                        stored_device = self.devices[device.device_id]
+                        if (
+                            stored_device is not device
+                            and (
+                                stored_device.device_name != device.device_name
+                                or stored_device.device_type != device.device_type
+                            )
+                        ):
+                            LOGGER.warning(
+                                "Collision d'identifiant détectée dans hub : "
+                                "device_id=%s existe déjà avec name=%s, type=%s. "
+                                "Nouvel appareil : name=%s, type=%s. "
+                                "Mise à jour de l'appareil existant.",
+                                device.device_id,
+                                stored_device.device_name,
+                                stored_device.device_type,
+                                device.device_name,
+                                device.device_type,
+                            )
                         LOGGER.debug(
                             "update device %s : %s",
                             device.device_id,
@@ -350,6 +388,45 @@ class Hub:
 
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
+            case TydomScene():
+                LOGGER.debug("Create scene %s", device.device_id)
+                ha_device = HAScene(device, self._hass)
+                self.ha_devices[device.device_id] = ha_device
+                if self.add_scene_callback is not None:
+                    self.add_scene_callback([ha_device])
+            case TydomDevice():
+                LOGGER.debug("Create generic sensor %s", device.device_id)
+                ha_device = HASensor(device, self._hass)
+                self.ha_devices[device.device_id] = ha_device
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback([ha_device])
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback(ha_device.get_sensors())
+
+                # Try to detect if device should also be a switch
+                # Check for on/off capabilities that aren't already handled
+                if device.device_type not in ["light", "cover", "alarm"]:
+                    has_on_off = (
+                        hasattr(device, "level")
+                        or hasattr(device, "on")
+                        or hasattr(device, "state")
+                    )
+                    # Check if device has levelCmd or onCmd in metadata (writable)
+                    has_control = False
+                    if device._metadata is not None:
+                        for key in device._metadata:
+                            if key.endswith("Cmd") or key in ["level", "on", "state"]:
+                                has_control = True
+                                break
+
+                    if has_on_off and has_control:
+                        LOGGER.debug(
+                            "Device %s has on/off capabilities, creating switch",
+                            device.device_id,
+                        )
+                        switch_device = HASwitch(device, self._hass)
+                        if self.add_switch_callback is not None:
+                            self.add_switch_callback([switch_device])
             case _:
                 LOGGER.error(
                     "unsupported device type (%s) %s for device %s",
@@ -367,11 +444,25 @@ class Hub:
             new_sensors = ha_device.get_sensors()
             if len(new_sensors) > 0 and self.add_sensor_callback is not None:
                 # add new sensors
+                LOGGER.debug(
+                    "Ajout de %d nouveau(x) capteur(s) pour le device %s: %s",
+                    len(new_sensors),
+                    device.device_id,
+                    [s._attr_name for s in new_sensors],
+                )
                 self.add_sensor_callback(new_sensors)
             # ha_device.publish_updates()
             # ha_device.update()
+        except KeyError as e:
+            LOGGER.warning(
+                "Device %s non trouvé dans ha_devices lors de la mise à jour: %s",
+                device.device_id,
+                e,
+            )
         except Exception:
-            LOGGER.exception("update failed")
+            LOGGER.exception(
+                "Erreur lors de la mise à jour du device %s", device.device_id
+            )
 
     async def ping(self) -> None:
         """Periodically send pings."""
@@ -394,6 +485,7 @@ class Hub:
             await self._tydom_client.get_devices_cmeta()
             await self._tydom_client.get_devices_data()
             await self._tydom_client.get_scenarii()
+            await self._tydom_client.get_moments()
             await asyncio.sleep(600)
 
     async def refresh_data_1s(self) -> None:
