@@ -322,19 +322,6 @@ class MessageHandler:
         tydom_client, last_usage, uid, device_id, name, endpoint=None, data=None
     ) -> TydomDevice | None:
         """Get device class from its last usage."""
-
-        # FIXME voir: class CoverDeviceClass(StrEnum):
-        # Refer to the cover dev docs for device class descriptions
-        # AWNING = "awning"
-        # BLIND = "blind"
-        # CURTAIN = "curtain"
-        # DAMPER = "damper"
-        # DOOR = "door"
-        # GARAGE = "garage"
-        # GATE = "gate"
-        # SHADE = "shade"
-        # SHUTTER = "shutter"
-        # WINDOW = "window"
         match last_usage:
             case "shutter" | "klineShutter" | "awning" | "swingShutter":
                 return TydomShutter(
@@ -479,14 +466,22 @@ class MessageHandler:
                     data,
                 )
             case _:
-                # TODO generic sensor ?
-                LOGGER.warn(
-                    "Unknown usage : %s for device_id %s, uid %s",
+                LOGGER.info(
+                    "Unknown usage : %s for device_id %s, uid %s - creating generic sensor",
                     last_usage,
                     device_id,
                     uid,
                 )
-                return
+                return TydomDevice(
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata.get(uid),
+                    data,
+                )
 
     @staticmethod
     async def parse_config_data(parsed, transaction_id):
@@ -589,24 +584,81 @@ class MessageHandler:
         """Parse device data."""
         LOGGER.debug("parse_devices_data : %s", parsed)
         devices = []
+        seen_unique_ids = {}  # Track unique_ids to detect collisions
 
         for i in parsed:
             if "endpoints" in i:
+                device_id = i["id"]
                 for endpoint in i["endpoints"]:
-                    if (
-                        endpoint["error"] == 0
-                        and "data" in endpoint
-                        and len(endpoint["data"]) > 0
-                    ):
-                        try:
-                            device_id = i["id"]
-                            endpoint_id = endpoint["id"]
-                            unique_id = str(endpoint_id) + "_" + str(device_id)
-                            name_of_id = self.get_name_from_id(unique_id)
-                            type_of_id = self.get_type_from_id(unique_id)
+                    endpoint_id = endpoint["id"]
+                    unique_id = str(endpoint_id) + "_" + str(device_id)
+                    
+                    # Check for collisions
+                    if unique_id in seen_unique_ids:
+                        LOGGER.warning(
+                            "Collision d'identifiant détectée : unique_id=%s déjà vu "
+                            "(device_id=%s, endpoint_id=%s). "
+                            "Appareil précédent : device_id=%s, endpoint_id=%s",
+                            unique_id,
+                            device_id,
+                            endpoint_id,
+                            seen_unique_ids[unique_id]["device_id"],
+                            seen_unique_ids[unique_id]["endpoint_id"],
+                        )
+                    
+                    # Get device name and type first to check if device is registered
+                    name_of_id = self.get_name_from_id(unique_id)
+                    type_of_id = self.get_type_from_id(unique_id)
+                    
+                    # Check if device is registered in configuration
+                    if not name_of_id or name_of_id == "":
+                        LOGGER.warning(
+                            "Endpoint ignoré (appareil non enregistré dans la configuration) : "
+                            "device_id=%s, endpoint_id=%s, unique_id=%s",
+                            device_id,
+                            endpoint_id,
+                            unique_id,
+                        )
+                        continue
+                    
+                    if not type_of_id or type_of_id == "":
+                        LOGGER.warning(
+                            "Endpoint ignoré (type d'appareil inconnu) : "
+                            "device_id=%s, endpoint_id=%s, unique_id=%s, name=%s",
+                            device_id,
+                            endpoint_id,
+                            unique_id,
+                            name_of_id,
+                        )
+                        continue
+                    
+                    # Check for errors or missing data, but still try to create device
+                    has_error = endpoint.get("error", 0) != 0
+                    has_data = "data" in endpoint and len(endpoint.get("data", [])) > 0
+                    
+                    if has_error:
+                        LOGGER.warning(
+                            "Endpoint avec erreur (création quand même) : "
+                            "device_id=%s, endpoint_id=%s, error=%s",
+                            device_id,
+                            endpoint_id,
+                            endpoint.get("error"),
+                        )
+                    
+                    if not has_data:
+                        LOGGER.warning(
+                            "Endpoint sans données valides (création avec état par défaut) : "
+                            "device_id=%s, endpoint_id=%s, name=%s",
+                            device_id,
+                            endpoint_id,
+                            name_of_id,
+                        )
+                    
+                    try:
+                        data = {}
 
-                            data = {}
-
+                        # Only process data if available and valid
+                        if has_data and not has_error:
                             for elem in endpoint["data"]:
                                 element_name = elem["name"]
                                 element_value = elem["value"]
@@ -615,18 +667,23 @@ class MessageHandler:
                                 if element_validity == "upToDate":
                                     data[element_name] = element_value
 
-                            # Create the device
-                            device = await MessageHandler.get_device(
-                                self.tydom_client,
-                                type_of_id,
-                                unique_id,
-                                device_id,
-                                name_of_id,
-                                endpoint_id,
-                                data,
-                            )
-                            if device is not None:
-                                devices.append(device)
+                        # Create the device (even without data)
+                        device = await MessageHandler.get_device(
+                            self.tydom_client,
+                            type_of_id,
+                            unique_id,
+                            device_id,
+                            name_of_id,
+                            endpoint_id,
+                            data if data else None,
+                        )
+                        if device is not None:
+                            devices.append(device)
+                            seen_unique_ids[unique_id] = {
+                                "device_id": device_id,
+                                "endpoint_id": endpoint_id,
+                            }
+                            if has_data and not has_error:
                                 LOGGER.info(
                                     "Device update (id=%s, endpoint=%s, name=%s, type=%s)",
                                     device_id,
@@ -634,8 +691,29 @@ class MessageHandler:
                                     name_of_id,
                                     type_of_id,
                                 )
-                        except Exception:
-                            LOGGER.exception("msg_data error in parsing !")
+                            else:
+                                LOGGER.info(
+                                    "Device créé sans données (id=%s, endpoint=%s, name=%s, type=%s)",
+                                    device_id,
+                                    endpoint_id,
+                                    name_of_id,
+                                    type_of_id,
+                                )
+                        else:
+                            LOGGER.warning(
+                                "Device non créé (get_device retourné None) : "
+                                "device_id=%s, endpoint_id=%s, name=%s, type=%s",
+                                device_id,
+                                endpoint_id,
+                                name_of_id,
+                                type_of_id,
+                            )
+                    except Exception:
+                        LOGGER.exception(
+                            "msg_data error in parsing ! device_id=%s, endpoint_id=%s",
+                            device_id,
+                            endpoint_id,
+                        )
             else:
                 LOGGER.warning("Unsupported message received: %s", parsed)
         return devices

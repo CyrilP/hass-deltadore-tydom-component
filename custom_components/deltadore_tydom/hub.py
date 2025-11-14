@@ -39,6 +39,7 @@ from .ha_entities import (
     HaWeather,
     HaMoisture,
     HaThermo,
+    HASensor,
 )
 
 from .const import LOGGER
@@ -112,6 +113,7 @@ class Hub:
         self._refresh_interval = int(refresh_interval) * 60
         self._zone_home = zone_home
         self._zone_away = zone_away
+        self._zone_night = zone_night
 
     @property
     def hub_id(self) -> str:
@@ -167,6 +169,26 @@ class Hub:
                         self.devices[device.device_id] = device
                         await self.create_ha_device(device)
                     else:
+                        # Check for collision: same device_id but different device
+                        stored_device = self.devices[device.device_id]
+                        if (
+                            stored_device is not device
+                            and (
+                                stored_device.device_name != device.device_name
+                                or stored_device.device_type != device.device_type
+                            )
+                        ):
+                            LOGGER.warning(
+                                "Collision d'identifiant détectée dans hub : "
+                                "device_id=%s existe déjà avec name=%s, type=%s. "
+                                "Nouvel appareil : name=%s, type=%s. "
+                                "Mise à jour de l'appareil existant.",
+                                device.device_id,
+                                stored_device.device_name,
+                                stored_device.device_type,
+                                device.device_name,
+                                device.device_type,
+                            )
                         LOGGER.debug(
                             "update device %s : %s",
                             device.device_id,
@@ -348,6 +370,14 @@ class Hub:
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback([ha_device])
 
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback(ha_device.get_sensors())
+            case TydomDevice():
+                LOGGER.debug("Create generic sensor %s", device.device_id)
+                ha_device = HASensor(device, self._hass)
+                self.ha_devices[device.device_id] = ha_device
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback([ha_device])
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
             case _:
