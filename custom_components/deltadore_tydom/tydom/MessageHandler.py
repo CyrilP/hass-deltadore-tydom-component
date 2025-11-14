@@ -44,6 +44,7 @@ device_name = {}
 device_endpoint = {}
 device_type = {}
 device_metadata = {}
+scenario_metadata = {}  # Store scenario metadata from /configs/file
 
 
 class Reply(TypedDict):
@@ -503,6 +504,23 @@ class MessageHandler:
             if i["last_usage"] == "alarm":
                 device_name[device_unique_id] = "Tyxal Alarm"
 
+        # Parse scenarios metadata from /configs/file
+        if "scenarios" in parsed and isinstance(parsed["scenarios"], list):
+            for scenario in parsed["scenarios"]:
+                if isinstance(scenario, dict) and "id" in scenario:
+                    scenario_id = scenario["id"]
+                    scenario_metadata[scenario_id] = {
+                        "name": scenario.get("name", f"Scenario {scenario_id}"),
+                        "type": scenario.get("type", "NORMAL"),
+                        "picto": scenario.get("picto", ""),
+                        "rule_id": scenario.get("rule_id", ""),
+                    }
+                    LOGGER.debug(
+                        "Stored scenario metadata: id=%s, name=%s",
+                        scenario_id,
+                        scenario_metadata[scenario_id]["name"],
+                    )
+
         LOGGER.debug("Configuration updated")
         return []
 
@@ -848,10 +866,16 @@ class MessageHandler:
                 continue
                 
             scenario_id = scenario.get("id")
-            scenario_name = scenario.get("name", f"Scenario {scenario_id}")
             
             if scenario_id is None:
                 continue
+            
+            # Get scenario metadata from configs/file (stored in scenario_metadata dict)
+            scenario_meta = scenario_metadata.get(scenario_id, {})
+            scenario_name = scenario_meta.get("name", f"Scenario {scenario_id}")
+            scenario_type = scenario_meta.get("type", "NORMAL")
+            scenario_picto = scenario_meta.get("picto", "")
+            scenario_rule_id = scenario_meta.get("rule_id", "")
                 
             # Create unique ID for scene
             unique_id = f"scene_{scenario_id}"
@@ -859,6 +883,16 @@ class MessageHandler:
             # Store scene info in device_name and device_type for consistency
             device_name[unique_id] = scenario_name
             device_type[unique_id] = "scene"
+            
+            # Merge scenario data with metadata
+            scenario_data = {
+                "scene_id": scenario_id,
+                "name": scenario_name,
+                "type": scenario_type,
+                "picto": scenario_picto,
+                "rule_id": scenario_rule_id,
+                **scenario,  # Include grpAct, epAct, etc. from scenarios/file
+            }
             
             # Create TydomScene device
             scene_device = TydomScene(
@@ -869,10 +903,16 @@ class MessageHandler:
                 "scene",
                 None,
                 None,
-                {"scene_id": scenario_id, **scenario},
+                scenario_data,
             )
             devices.append(scene_device)
-            LOGGER.debug("Created scene: %s (id: %s)", scenario_name, scenario_id)
+            LOGGER.debug(
+                "Created scene: %s (id: %s, type: %s, picto: %s)",
+                scenario_name,
+                scenario_id,
+                scenario_type,
+                scenario_picto,
+            )
             
         return devices
 
