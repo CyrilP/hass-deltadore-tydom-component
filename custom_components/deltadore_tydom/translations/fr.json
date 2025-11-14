@@ -1,6 +1,13 @@
 {
     "config": {
         "step": {
+            "user": {
+                "title": "Configuration Delta Dore Tydom",
+                "description": "Choisissez le mode de configuration. Le mode cloud récupère automatiquement les identifiants Tydom à partir de votre compte Delta Dore. Le mode manuel nécessite que vous saisissiez directement le mot de passe Tydom.",
+                "data": {
+                    "config_mode": "Mode de configuration"
+                }
+            },
             "user_manual": {
                 "title": "Configuration Delta Dore Tydom",
                 "description": "Configurez votre passerelle Tydom en utilisant des identifiants manuels. Si vous avez besoin d'aide, consultez : https://github.com/CyrilP/hass-deltadore-tydom-component",
@@ -32,9 +39,16 @@
                     "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)"
                 }
             },
+            "discovery_confirm": {
+                "title": "Configuration Delta Dore Tydom",
+                "description": "Une passerelle Tydom a été découverte ({name}). Choisissez le mode de configuration.",
+                "data": {
+                    "config_mode": "Mode de configuration"
+                }
+            },
             "discovery_confirm_manual": {
                 "title": "Configuration Delta Dore Tydom",
-                "description": "Une passerelle Tydom a été découverte. Configurez-la en utilisant des identifiants manuels. Si vous avez besoin d'aide, consultez : https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "Une passerelle Tydom a été découverte ({name}). Configurez-la en utilisant des identifiants manuels. Si vous avez besoin d'aide, consultez : https://github.com/CyrilP/hass-deltadore-tydom-component",
                 "data": {
                     "host": "IP/hostname du Tydom ou de la médiation",
                     "mac": "Adresse MAC (12 caractères, sans séparateurs)",
@@ -48,7 +62,7 @@
             },
             "discovery_confirm_cloud": {
                 "title": "Configuration Delta Dore Tydom",
-                "description": "Une passerelle Tydom a été découverte. Configurez-la en utilisant votre compte cloud Delta Dore. Le mot de passe Tydom sera récupéré automatiquement. Si vous avez besoin d'aide, consultez : https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "Une passerelle Tydom a été découverte ({name}). Configurez-la en utilisant votre compte cloud Delta Dore. Le mot de passe Tydom sera récupéré automatiquement. Si vous avez besoin d'aide, consultez : https://github.com/CyrilP/hass-deltadore-tydom-component",
                 "data": {
                     "host": "IP/hostname du Tydom ou de la médiation (utilisez 'mediation.tydom.com' pour le mode cloud)",
                     "mac": "Adresse MAC (12 caractères, sans séparateurs)",
@@ -155,6 +169,88 @@
         },
         "event": {
             "name": "Événement"
+        },
+        "sensor": {
+            "temperature": {
+                "name": "Température"
+            },
+            "outtemperature": {
+                "name": "Température extérieure"
+            },
+            "ambienttemperature": {
+                "name": "Température ambiante"
+            },
+            "battlevel": {
+                "name": "Niveau de batterie"
+            },
+            "level": {
+                "name": "Niveau"
+            },
+            "position": {
+                "name": "Position"
+            },
+            "hygroin": {
+                "name": "Humidité"
+            },
+            "energy": {
+                "name": "Énergie"
+            },
+            "power": {
+                "name": "Puissance"
+            },
+            "current": {
+                "name": "Courant"
+            },
+            "value": {
+                "name": "Valeur"
+            },
+            "state": {
+                "name": "État"
+            },
+            "config": {
+                "name": "Configuration"
+            },
+            "supervisionmode": {
+                "name": "Mode de supervision"
+            },
+            "productname": {
+                "name": "Nom du produit"
+            },
+            "mac": {
+                "name": "Adresse MAC"
+            },
+            "softversion": {
+                "name": "Version logicielle"
+            },
+            "mainversionhw": {
+                "name": "Version matérielle principale"
+            },
+            "keyversionhw": {
+                "name": "Version matérielle clé"
+            }
+        },
+        "binary_sensor": {
+            "tempsensordefect": {
+                "name": "Défaut capteur température"
+            },
+            "tempsensoropencirc": {
+                "name": "Circuit ouvert capteur température"
+            },
+            "tempsensorshortcut": {
+                "name": "Court-circuit capteur température"
+            },
+            "productiondefect": {
+                "name": "Défaut de production"
+            },
+            "batterycmddefect": {
+                "name": "Défaut batterie commande"
+            },
+            "thermic_defect": {
+                "name": "Défaut thermique"
+            },
+            "update_available": {
+                "name": "Mise à jour disponible"
+            }
         }
     }
 }

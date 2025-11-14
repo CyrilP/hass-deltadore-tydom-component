@@ -118,9 +118,13 @@ async def validate_input(
         if len(data[CONF_PASSWORD]) < 3:
             raise InvalidPassword
 
+        # Convert to string if it's an int (from NumberSelector)
+        if isinstance(data[CONF_REFRESH_INTERVAL], int):
+            data[CONF_REFRESH_INTERVAL] = str(data[CONF_REFRESH_INTERVAL])
+        
         try:
             int(data[CONF_REFRESH_INTERVAL])
-        except ValueError:
+        except (ValueError, TypeError):
             raise InvalidRefreshInterval
 
         password = await hub.Hub.get_tydom_credentials(
@@ -135,6 +139,15 @@ async def validate_input(
         data[CONF_PASSWORD] = ""
         if CONF_TYDOM_PASSWORD not in data or len(data.get(CONF_TYDOM_PASSWORD, "")) < 3:
             raise InvalidPassword
+        
+        # Convert to string if it's an int (from NumberSelector)
+        if isinstance(data[CONF_REFRESH_INTERVAL], int):
+            data[CONF_REFRESH_INTERVAL] = str(data[CONF_REFRESH_INTERVAL])
+        
+        try:
+            int(data[CONF_REFRESH_INTERVAL])
+        except (ValueError, TypeError):
+            raise InvalidRefreshInterval
 
     LOGGER.debug("Input is valid.")
     return {
@@ -306,19 +319,79 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 {
                     vol.Required(
                         CONF_HOST, default=user_input.get(CONF_HOST)
-                    ): cv.string,
-                    vol.Required(CONF_MAC, default=user_input.get(CONF_MAC)): cv.string,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Required(
+                        CONF_MAC, default=user_input.get(CONF_MAC)
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Required(
                         CONF_EMAIL, default=user_input.get(CONF_EMAIL)
-                    ): cv.string,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.EMAIL,
+                            autocomplete="username",
+                        )
+                    ),
                     vol.Required(
                         CONF_PASSWORD, default=user_input.get(CONF_PASSWORD)
-                    ): cv.string,
-                    vol.Required(CONF_REFRESH_INTERVAL, default="30"): cv.string,
-                    vol.Optional(CONF_ZONES_HOME, default=default_zone_home): str,
-                    vol.Optional(CONF_ZONES_AWAY, default=default_zone_away): str,
-                    vol.Optional(CONF_ZONES_NIGHT, default=default_zone_night): str,
-                    vol.Optional(CONF_PIN, default=user_input.get(CONF_PIN, "")): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="current-password",
+                        )
+                    ),
+                    vol.Required(
+                        CONF_REFRESH_INTERVAL, default="30"
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=1,
+                            max=1440,
+                            step=1,
+                            unit_of_measurement="minutes",
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_ZONES_HOME, default=default_zone_home
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_ZONES_AWAY, default=default_zone_away
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_ZONES_NIGHT, default=default_zone_night
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_PIN, default=user_input.get(CONF_PIN, "")
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="off",
+                        )
+                    ),
                 }
             ),
             errors=_errors,
@@ -425,16 +498,71 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 {
                     vol.Required(
                         CONF_HOST, default=user_input.get(CONF_HOST)
-                    ): cv.string,
-                    vol.Required(CONF_MAC, default=user_input.get(CONF_MAC)): cv.string,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Required(
+                        CONF_MAC, default=user_input.get(CONF_MAC)
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Required(
                         CONF_TYDOM_PASSWORD, default=user_input.get(CONF_TYDOM_PASSWORD)
-                    ): cv.string,
-                    vol.Required(CONF_REFRESH_INTERVAL, default="30"): cv.string,
-                    vol.Optional(CONF_ZONES_HOME, default=default_zone_home): str,
-                    vol.Optional(CONF_ZONES_AWAY, default=default_zone_away): str,
-                    vol.Optional(CONF_ZONES_NIGHT, default=default_zone_night): str,
-                    vol.Optional(CONF_PIN, default=user_input.get(CONF_PIN, "")): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Required(
+                        CONF_REFRESH_INTERVAL, default="30"
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=1,
+                            max=1440,
+                            step=1,
+                            unit_of_measurement="minutes",
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_ZONES_HOME, default=default_zone_home
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_ZONES_AWAY, default=default_zone_away
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_ZONES_NIGHT, default=default_zone_night
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_PIN, default=user_input.get(CONF_PIN, "")
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="off",
+                        )
+                    ),
                 }
             ),
             errors=_errors,
@@ -560,27 +688,72 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(
                         CONF_HOST,
                         default=user_input.get(CONF_HOST, self._discovered_host),
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Required(
                         CONF_MAC, default=user_input.get(CONF_MAC, self._discovered_mac)
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Required(
                         CONF_TYDOM_PASSWORD, default=user_input.get(CONF_TYDOM_PASSWORD)
-                    ): cv.string,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Required(
                         CONF_REFRESH_INTERVAL,
                         default=user_input.get(CONF_REFRESH_INTERVAL, "30"),
-                    ): str,
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=1,
+                            max=1440,
+                            step=1,
+                            unit_of_measurement="minutes",
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
                     vol.Optional(
                         CONF_ZONES_HOME, default=user_input.get(CONF_ZONES_HOME, "")
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Optional(
                         CONF_ZONES_AWAY, default=user_input.get(CONF_ZONES_AWAY, "")
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Optional(
                         CONF_ZONES_NIGHT, default=user_input.get(CONF_ZONES_NIGHT, "")
-                    ): str,
-                    vol.Optional(CONF_PIN, default=user_input.get(CONF_PIN, "")): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_PIN, default=user_input.get(CONF_PIN, "")
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="off",
+                        )
+                    ),
                 }
             ),
         )
@@ -656,30 +829,80 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(
                         CONF_HOST,
                         default=user_input.get(CONF_HOST, self._discovered_host),
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Required(
                         CONF_MAC, default=user_input.get(CONF_MAC, self._discovered_mac)
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Required(
                         CONF_EMAIL, default=user_input.get(CONF_EMAIL)
-                    ): cv.string,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.EMAIL,
+                            autocomplete="username",
+                        )
+                    ),
                     vol.Required(
                         CONF_PASSWORD, default=user_input.get(CONF_PASSWORD)
-                    ): cv.string,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="current-password",
+                        )
+                    ),
                     vol.Required(
                         CONF_REFRESH_INTERVAL,
                         default=user_input.get(CONF_REFRESH_INTERVAL, "30"),
-                    ): str,
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=1,
+                            max=1440,
+                            step=1,
+                            unit_of_measurement="minutes",
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
                     vol.Optional(
                         CONF_ZONES_HOME, default=user_input.get(CONF_ZONES_HOME, "")
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Optional(
                         CONF_ZONES_AWAY, default=user_input.get(CONF_ZONES_AWAY, "")
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Optional(
                         CONF_ZONES_NIGHT, default=user_input.get(CONF_ZONES_NIGHT, "")
-                    ): str,
-                    vol.Optional(CONF_PIN, default=user_input.get(CONF_PIN, "")): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_PIN, default=user_input.get(CONF_PIN, "")
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="off",
+                        )
+                    ),
                 }
             ),
         )
@@ -771,16 +994,47 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if cloud_mode:
             schema = vol.Schema(
                 {
-                    vol.Required(CONF_EMAIL, default=existing_entry.data.get(CONF_EMAIL, "")): str,
-                    vol.Required(CONF_PASSWORD): str,
-                    vol.Optional(CONF_HOST, default=existing_entry.data.get(CONF_HOST, "")): str,
+                    vol.Required(
+                        CONF_EMAIL, default=existing_entry.data.get(CONF_EMAIL, "")
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.EMAIL,
+                            autocomplete="username",
+                        )
+                    ),
+                    vol.Required(CONF_PASSWORD): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="current-password",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_HOST, default=existing_entry.data.get(CONF_HOST, "")
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                 }
             )
         else:
             schema = vol.Schema(
                 {
-                    vol.Required(CONF_TYDOM_PASSWORD): str,
-                    vol.Optional(CONF_HOST, default=existing_entry.data.get(CONF_HOST, "")): str,
+                    vol.Required(CONF_TYDOM_PASSWORD): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_HOST, default=existing_entry.data.get(CONF_HOST, "")
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                 }
             )
 
@@ -858,6 +1112,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         raise InvalidZoneNight
 
                 # Validate refresh interval
+                # Convert to string if it's an int (from NumberSelector)
+                if isinstance(user_input[CONF_REFRESH_INTERVAL], int):
+                    user_input[CONF_REFRESH_INTERVAL] = str(user_input[CONF_REFRESH_INTERVAL])
+                    default_refresh_interval = user_input[CONF_REFRESH_INTERVAL]
+                
                 try:
                     interval = int(user_input[CONF_REFRESH_INTERVAL])
                     if interval < 0:
@@ -909,19 +1168,42 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     vol.Required(
                         CONF_REFRESH_INTERVAL,
                         description={"suggested_value": default_refresh_interval},
-                    ): str,
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=1,
+                            max=1440,
+                            step=1,
+                            unit_of_measurement="minutes",
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
                     vol.Optional(
                         CONF_ZONES_HOME,
                         description={"suggested_value": default_zone_home},
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Optional(
                         CONF_ZONES_AWAY,
                         description={"suggested_value": default_zone_away},
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Optional(
                         CONF_ZONES_NIGHT,
                         description={"suggested_value": default_zone_night},
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                 }
             ),
             errors=_errors,

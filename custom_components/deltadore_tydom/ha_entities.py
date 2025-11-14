@@ -415,6 +415,14 @@ class GenericSensor(SensorEntity):
             "identifiers": {(DOMAIN, self._device.device_id)},
         }
 
+        # Add name if available
+        if hasattr(self._device, "device_name") and self._device.device_name:
+            info["name"] = self._device.device_name
+        elif "model" in device_info_dict:
+            info["name"] = device_info_dict["model"]
+        else:
+            info["name"] = f"Tydom Device {self._device.device_id[-6:]}"
+
         # Add manufacturer
         if "manufacturer" in device_info_dict:
             info["manufacturer"] = device_info_dict["manufacturer"]
@@ -517,6 +525,13 @@ class BinarySensorBase(BinarySensorEntity):
         info: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
         }
+        # Add name if available
+        if hasattr(self._device, "device_name") and self._device.device_name:
+            info["name"] = self._device.device_name
+        elif hasattr(self._device, "productName") and self._device.productName:
+            info["name"] = str(self._device.productName)
+        else:
+            info["name"] = f"Tydom Device {self._device.device_id[-6:]}"
         # Try to get manufacturer and model
         if hasattr(self._device, "manufacturer"):
             manufacturer = getattr(self._device, "manufacturer", None)
@@ -686,7 +701,7 @@ class HATydom(UpdateEntity, HAEntity):
         device_info = self._get_device_info()
         info: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self._device.device_id,
+            "name": self._device.device_name if hasattr(self._device, "device_name") and self._device.device_name else f"Tydom Gateway {self._device.device_id[-6:]}",
             "manufacturer": device_info["manufacturer"],
         }
         if hasattr(self._device, "mainVersionSW") and self._device.mainVersionSW is not None:

@@ -1,6 +1,13 @@
 {
     "config": {
         "step": {
+            "user": {
+                "title": "Delta Dore Tydom Configuration",
+                "description": "Choose the configuration mode. Cloud mode automatically retrieves Tydom credentials from your Delta Dore account. Manual mode requires you to enter the Tydom password directly.",
+                "data": {
+                    "config_mode": "Configuration mode"
+                }
+            },
             "user_manual": {
                 "title": "Delta Dore Tydom Configuration",
                 "description": "Configure your Tydom gateway using manual credentials. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
@@ -32,9 +39,16 @@
                     "pin": "Alarm PIN (optional, required for alarm control)"
                 }
             },
+            "discovery_confirm": {
+                "title": "Delta Dore Tydom Configuration",
+                "description": "A Tydom gateway was discovered ({name}). Choose the configuration mode.",
+                "data": {
+                    "config_mode": "Configuration mode"
+                }
+            },
             "discovery_confirm_manual": {
                 "title": "Delta Dore Tydom Configuration",
-                "description": "A Tydom gateway was discovered. Configure it using manual credentials. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "A Tydom gateway was discovered ({name}). Configure it using manual credentials. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
                 "data": {
                     "host": "Tydom or mediation IP/hostname",
                     "mac": "MAC address (12 characters, no separators)",
@@ -48,7 +62,7 @@
             },
             "discovery_confirm_cloud": {
                 "title": "Delta Dore Tydom Configuration",
-                "description": "A Tydom gateway was discovered. Configure it using your Delta Dore cloud account. The Tydom password will be retrieved automatically. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "A Tydom gateway was discovered ({name}). Configure it using your Delta Dore cloud account. The Tydom password will be retrieved automatically. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
                 "data": {
                     "host": "Tydom or mediation IP/hostname (use 'mediation.tydom.com' for cloud mode)",
                     "mac": "MAC address (12 characters, no separators)",
@@ -154,6 +168,88 @@
         },
         "event": {
             "name": "Event"
+        },
+        "sensor": {
+            "temperature": {
+                "name": "Temperature"
+            },
+            "outtemperature": {
+                "name": "Outdoor temperature"
+            },
+            "ambienttemperature": {
+                "name": "Ambient temperature"
+            },
+            "battlevel": {
+                "name": "Battery level"
+            },
+            "level": {
+                "name": "Level"
+            },
+            "position": {
+                "name": "Position"
+            },
+            "hygroin": {
+                "name": "Humidity"
+            },
+            "energy": {
+                "name": "Energy"
+            },
+            "power": {
+                "name": "Power"
+            },
+            "current": {
+                "name": "Current"
+            },
+            "value": {
+                "name": "Value"
+            },
+            "state": {
+                "name": "State"
+            },
+            "config": {
+                "name": "Configuration"
+            },
+            "supervisionmode": {
+                "name": "Supervision mode"
+            },
+            "productname": {
+                "name": "Product name"
+            },
+            "mac": {
+                "name": "MAC address"
+            },
+            "softversion": {
+                "name": "Software version"
+            },
+            "mainversionhw": {
+                "name": "Main hardware version"
+            },
+            "keyversionhw": {
+                "name": "Key hardware version"
+            }
+        },
+        "binary_sensor": {
+            "tempsensordefect": {
+                "name": "Temperature sensor defect"
+            },
+            "tempsensoropencirc": {
+                "name": "Temperature sensor open circuit"
+            },
+            "tempsensorshortcut": {
+                "name": "Temperature sensor short circuit"
+            },
+            "productiondefect": {
+                "name": "Production defect"
+            },
+            "batterycmddefect": {
+                "name": "Battery command defect"
+            },
+            "thermic_defect": {
+                "name": "Thermic defect"
+            },
+            "update_available": {
+                "name": "Update available"
+            }
         }
     }
 }
