@@ -592,7 +592,7 @@ class MessageHandler:
                 for endpoint in i["endpoints"]:
                     endpoint_id = endpoint["id"]
                     unique_id = str(endpoint_id) + "_" + str(device_id)
-                    
+
                     # Check for collisions
                     if unique_id in seen_unique_ids:
                         LOGGER.warning(
@@ -605,11 +605,11 @@ class MessageHandler:
                             seen_unique_ids[unique_id]["device_id"],
                             seen_unique_ids[unique_id]["endpoint_id"],
                         )
-                    
+
                     # Get device name and type first to check if device is registered
                     name_of_id = self.get_name_from_id(unique_id)
                     type_of_id = self.get_type_from_id(unique_id)
-                    
+
                     # Check if device is registered in configuration
                     if not name_of_id or name_of_id == "":
                         LOGGER.warning(
@@ -620,7 +620,7 @@ class MessageHandler:
                             unique_id,
                         )
                         continue
-                    
+
                     if not type_of_id or type_of_id == "":
                         LOGGER.warning(
                             "Endpoint ignoré (type d'appareil inconnu) : "
@@ -631,11 +631,11 @@ class MessageHandler:
                             name_of_id,
                         )
                         continue
-                    
+
                     # Check for errors or missing data, but still try to create device
                     has_error = endpoint.get("error", 0) != 0
                     has_data = "data" in endpoint and len(endpoint.get("data", [])) > 0
-                    
+
                     if has_error:
                         LOGGER.warning(
                             "Endpoint avec erreur (création quand même) : "
@@ -644,7 +644,7 @@ class MessageHandler:
                             endpoint_id,
                             endpoint.get("error"),
                         )
-                    
+
                     if not has_data:
                         LOGGER.warning(
                             "Endpoint sans données valides (création avec état par défaut) : "
@@ -653,7 +653,7 @@ class MessageHandler:
                             endpoint_id,
                             name_of_id,
                         )
-                    
+
                     try:
                         data = {}
 

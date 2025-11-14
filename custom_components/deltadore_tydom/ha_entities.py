@@ -1,7 +1,6 @@
 """Home assistant entites."""
 
 from typing import Any
-from datetime import date
 import math
 
 from homeassistant.components.binary_sensor import (
@@ -171,23 +170,23 @@ class HAEntity:
     def _get_device_info(self) -> dict[str, str]:
         """Get manufacturer and model from device attributes."""
         info: dict[str, str] = {}
-        
+
         # Récupérer le fabricant depuis les attributs du device
         if hasattr(self._device, "manufacturer"):
             manufacturer = getattr(self._device, "manufacturer", None)
             if manufacturer is not None:
                 info["manufacturer"] = str(manufacturer)
-        
+
         # Fallback sur "Delta Dore" si le fabricant n'est pas disponible
         if "manufacturer" not in info:
             info["manufacturer"] = "Delta Dore"
-        
+
         # Récupérer le modèle depuis productName
         if hasattr(self._device, "productName"):
             product_name = getattr(self._device, "productName", None)
             if product_name is not None:
                 info["model"] = str(product_name)
-        
+
         return info
 
 
@@ -254,23 +253,23 @@ class GenericSensor(SensorEntity):
         info: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
         }
-        
+
         # Récupérer le fabricant depuis les attributs du device
         if hasattr(self._device, "manufacturer"):
             manufacturer = getattr(self._device, "manufacturer", None)
             if manufacturer is not None:
                 info["manufacturer"] = str(manufacturer)
-        
+
         # Fallback sur "Delta Dore" si le fabricant n'est pas disponible
         if "manufacturer" not in info:
             info["manufacturer"] = "Delta Dore"
-        
+
         # Récupérer le modèle depuis productName
         if hasattr(self._device, "productName"):
             product_name = getattr(self._device, "productName", None)
             if product_name is not None:
                 info["model"] = str(product_name)
-        
+
         return info
 
     @property

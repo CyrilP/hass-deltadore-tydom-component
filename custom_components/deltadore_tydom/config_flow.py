@@ -701,7 +701,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         _errors = {}
         if self.config_entry is None:
             return self.async_abort(reason="config_entry_not_found")
-        
+
         default_zone_home = ""
         default_zone_away = ""
         default_zone_night = ""
@@ -747,7 +747,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
                 if self.config_entry is None:
                     return self.async_abort(reason="config_entry_not_found")
-                
+
                 user_input[CONF_HOST] = self.config_entry.data[CONF_HOST]
                 user_input[CONF_MAC] = self.config_entry.data[CONF_MAC]
                 user_input[CONF_EMAIL] = self.config_entry.data[CONF_EMAIL]
