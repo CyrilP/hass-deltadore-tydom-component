@@ -853,37 +853,37 @@ class MessageHandler:
         """Parse scenarios file."""
         LOGGER.debug("parse_scenarios_file : %s", parsed)
         devices = []
-        
+
         if not parsed or not isinstance(parsed, dict):
             return devices
-            
+
         scenarios = parsed.get("scn", [])
         if not isinstance(scenarios, list):
             return devices
-            
+
         for scenario in scenarios:
             if not isinstance(scenario, dict):
                 continue
-                
+
             scenario_id = scenario.get("id")
-            
+
             if scenario_id is None:
                 continue
-            
+
             # Get scenario metadata from configs/file (stored in scenario_metadata dict)
             scenario_meta = scenario_metadata.get(scenario_id, {})
             scenario_name = scenario_meta.get("name", f"Scenario {scenario_id}")
             scenario_type = scenario_meta.get("type", "NORMAL")
             scenario_picto = scenario_meta.get("picto", "")
             scenario_rule_id = scenario_meta.get("rule_id", "")
-                
+
             # Create unique ID for scene
             unique_id = f"scene_{scenario_id}"
-            
+
             # Store scene info in device_name and device_type for consistency
             device_name[unique_id] = scenario_name
             device_type[unique_id] = "scene"
-            
+
             # Merge scenario data with metadata
             scenario_data = {
                 "scene_id": scenario_id,
@@ -893,7 +893,7 @@ class MessageHandler:
                 "rule_id": scenario_rule_id,
                 **scenario,  # Include grpAct, epAct, etc. from scenarios/file
             }
-            
+
             # Create TydomScene device
             scene_device = TydomScene(
                 self.tydom_client,
@@ -913,7 +913,7 @@ class MessageHandler:
                 scenario_type,
                 scenario_picto,
             )
-            
+
         return devices
 
     async def parse_groups_file(self, parsed, transaction_id):

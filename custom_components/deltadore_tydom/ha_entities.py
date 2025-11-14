@@ -1145,17 +1145,17 @@ class HaClimate(ClimateEntity, HAEntity):
             for mode in self._device._metadata["thermicLevel"]["enum_values"]:
                 if mode not in ["STOP", "AUTO"]:
                     self._attr_preset_modes.append(mode)
-        
+
         # Add common presets if available
         if not self._attr_preset_modes:
             # Default presets if none found in metadata
             if hasattr(self._device, "comfortMode") or hasattr(self._device, "thermicLevel"):
                 self._attr_preset_modes = ["NORMAL", "ECO", "COMFORT"]
-        
+
         # Add PRESET_NONE if we have presets
         if self._attr_preset_modes:
             self._attr_supported_features |= ClimateEntityFeature.PRESET_MODE
-        
+
         self._attr_hvac_modes = [
             HVACMode.OFF,
             HVACMode.AUTO,
@@ -2041,7 +2041,7 @@ class HAScene(Scene, HAEntity):
 
     _attr_should_poll = False
     _attr_has_entity_name = True
-    
+
     # Filtrer les attributs bruts pour ne garder que les versions formatées
     filtered_attrs = ["grpAct", "epAct", "scene_id", "type", "picto", "rule_id"]
 

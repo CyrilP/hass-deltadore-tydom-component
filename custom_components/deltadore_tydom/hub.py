@@ -44,10 +44,6 @@ from .ha_entities import (
     HASensor,
     HAScene,
     HASwitch,
-    HAButton,
-    HANumber,
-    HASelect,
-    HAEvent,
 )
 
 from .const import LOGGER
@@ -406,7 +402,7 @@ class Hub:
                     self.add_sensor_callback([ha_device])
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback(ha_device.get_sensors())
-                
+
                 # Try to detect if device should also be a switch
                 # Check for on/off capabilities that aren't already handled
                 if device.device_type not in ["light", "cover", "alarm"]:
@@ -422,7 +418,7 @@ class Hub:
                             if key.endswith("Cmd") or key in ["level", "on", "state"]:
                                 has_control = True
                                 break
-                    
+
                     if has_on_off and has_control:
                         LOGGER.debug(
                             "Device %s has on/off capabilities, creating switch",

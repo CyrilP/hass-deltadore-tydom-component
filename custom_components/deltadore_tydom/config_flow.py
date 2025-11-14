@@ -121,7 +121,7 @@ async def validate_input(
         # Convert to string if it's an int (from NumberSelector)
         if isinstance(data[CONF_REFRESH_INTERVAL], int):
             data[CONF_REFRESH_INTERVAL] = str(data[CONF_REFRESH_INTERVAL])
-        
+
         try:
             int(data[CONF_REFRESH_INTERVAL])
         except (ValueError, TypeError):
@@ -137,13 +137,16 @@ async def validate_input(
     else:
         data[CONF_EMAIL] = ""
         data[CONF_PASSWORD] = ""
-        if CONF_TYDOM_PASSWORD not in data or len(data.get(CONF_TYDOM_PASSWORD, "")) < 3:
+        if (
+            CONF_TYDOM_PASSWORD not in data
+            or len(data.get(CONF_TYDOM_PASSWORD, "")) < 3
+        ):
             raise InvalidPassword
-        
+
         # Convert to string if it's an int (from NumberSelector)
         if isinstance(data[CONF_REFRESH_INTERVAL], int):
             data[CONF_REFRESH_INTERVAL] = str(data[CONF_REFRESH_INTERVAL])
-        
+
         try:
             int(data[CONF_REFRESH_INTERVAL])
         except (ValueError, TypeError):
@@ -921,16 +924,23 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 # Determine if cloud or manual mode
-                cloud_mode = CONF_EMAIL in existing_entry.data and existing_entry.data[CONF_EMAIL]
-                
+                cloud_mode = (
+                    CONF_EMAIL in existing_entry.data
+                    and existing_entry.data[CONF_EMAIL]
+                )
+
                 if cloud_mode:
                     # Cloud mode reauth
                     data = {
-                        CONF_HOST: user_input.get(CONF_HOST, existing_entry.data[CONF_HOST]),
+                        CONF_HOST: user_input.get(
+                            CONF_HOST, existing_entry.data[CONF_HOST]
+                        ),
                         CONF_MAC: existing_entry.data[CONF_MAC],
                         CONF_EMAIL: user_input[CONF_EMAIL],
                         CONF_PASSWORD: user_input[CONF_PASSWORD],
-                        CONF_REFRESH_INTERVAL: existing_entry.data.get(CONF_REFRESH_INTERVAL, "30"),
+                        CONF_REFRESH_INTERVAL: existing_entry.data.get(
+                            CONF_REFRESH_INTERVAL, "30"
+                        ),
                         CONF_ZONES_HOME: existing_entry.data.get(CONF_ZONES_HOME, ""),
                         CONF_ZONES_AWAY: existing_entry.data.get(CONF_ZONES_AWAY, ""),
                         CONF_ZONES_NIGHT: existing_entry.data.get(CONF_ZONES_NIGHT, ""),
@@ -940,10 +950,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 else:
                     # Manual mode reauth
                     data = {
-                        CONF_HOST: user_input.get(CONF_HOST, existing_entry.data[CONF_HOST]),
+                        CONF_HOST: user_input.get(
+                            CONF_HOST, existing_entry.data[CONF_HOST]
+                        ),
                         CONF_MAC: existing_entry.data[CONF_MAC],
                         CONF_TYDOM_PASSWORD: user_input[CONF_TYDOM_PASSWORD],
-                        CONF_REFRESH_INTERVAL: existing_entry.data.get(CONF_REFRESH_INTERVAL, "30"),
+                        CONF_REFRESH_INTERVAL: existing_entry.data.get(
+                            CONF_REFRESH_INTERVAL, "30"
+                        ),
                         CONF_ZONES_HOME: existing_entry.data.get(CONF_ZONES_HOME, ""),
                         CONF_ZONES_AWAY: existing_entry.data.get(CONF_ZONES_AWAY, ""),
                         CONF_ZONES_NIGHT: existing_entry.data.get(CONF_ZONES_NIGHT, ""),
@@ -1114,9 +1128,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 # Validate refresh interval
                 # Convert to string if it's an int (from NumberSelector)
                 if isinstance(user_input[CONF_REFRESH_INTERVAL], int):
-                    user_input[CONF_REFRESH_INTERVAL] = str(user_input[CONF_REFRESH_INTERVAL])
+                    user_input[CONF_REFRESH_INTERVAL] = str(
+                        user_input[CONF_REFRESH_INTERVAL]
+                    )
                     default_refresh_interval = user_input[CONF_REFRESH_INTERVAL]
-                
+
                 try:
                     interval = int(user_input[CONF_REFRESH_INTERVAL])
                     if interval < 0:
@@ -1144,7 +1160,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
             except InvalidRefreshInterval:
                 _errors[CONF_REFRESH_INTERVAL] = "invalid_refresh_interval"
-                LOGGER.warning("Invalid refresh interval: %s", user_input.get(CONF_REFRESH_INTERVAL))
+                LOGGER.warning(
+                    "Invalid refresh interval: %s",
+                    user_input.get(CONF_REFRESH_INTERVAL),
+                )
             except InvalidZoneHome:
                 _errors[CONF_ZONES_HOME] = "invalid_zone_config"
                 default_zone_home = ""
@@ -1156,7 +1175,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             except InvalidZoneNight:
                 _errors[CONF_ZONES_NIGHT] = "invalid_zone_config"
                 default_zone_night = ""
-                LOGGER.warning("Invalid Zone NIGHT: %s", user_input.get(CONF_ZONES_NIGHT))
+                LOGGER.warning(
+                    "Invalid Zone NIGHT: %s", user_input.get(CONF_ZONES_NIGHT)
+                )
             except Exception:
                 _errors["base"] = "unknown"
                 LOGGER.exception("Unexpected error in options flow")
