@@ -530,6 +530,47 @@ class TydomThermo(TydomDevice):
 class TydomScene(TydomDevice):
     """Represents a scene/scenario."""
 
+    def __init__(
+        self,
+        tydom_client: TydomClient,
+        uid: str,
+        device_id: str,
+        name: str,
+        device_type: str,
+        endpoint: str | None,
+        metadata: dict | None,
+        data: dict | None,
+    ):
+        """Initialize a TydomScene with special handling for epAct and grpAct."""
+        # Stocker epAct et grpAct comme attributs privés pour éviter l'exposition automatique
+        if data is not None:
+            # Faire une copie pour ne pas modifier le dictionnaire original
+            data_copy = data.copy()
+            grp_act = data_copy.pop("grpAct", None)
+            ep_act = data_copy.pop("epAct", None)
+            super().__init__(
+                tydom_client, uid, device_id, name, device_type, endpoint, metadata, data_copy
+            )
+            # Stocker comme attributs privés (commençant par _)
+            if grp_act is not None:
+                self._grp_act = grp_act
+            if ep_act is not None:
+                self._ep_act = ep_act
+        else:
+            super().__init__(
+                tydom_client, uid, device_id, name, device_type, endpoint, metadata, data
+            )
+
+    @property
+    def grpAct(self):
+        """Get grpAct as a property to maintain compatibility."""
+        return getattr(self, "_grp_act", None)
+
+    @property
+    def epAct(self):
+        """Get epAct as a property to maintain compatibility."""
+        return getattr(self, "_ep_act", None)
+
     async def activate(self) -> None:
         """Activate the scene."""
         LOGGER.debug("Activating scene %s", self.device_id)

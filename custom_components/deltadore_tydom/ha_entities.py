@@ -2041,6 +2041,9 @@ class HAScene(Scene, HAEntity):
 
     _attr_should_poll = False
     _attr_has_entity_name = True
+    
+    # Filtrer les attributs bruts pour ne garder que les versions formatées
+    filtered_attrs = ["grpAct", "epAct", "scene_id", "type", "picto", "rule_id"]
 
     # Mapping des pictos Tydom vers les icônes Material Design
     PICTO_ICON_MAPPING = {
@@ -2131,12 +2134,46 @@ class HAScene(Scene, HAEntity):
                             unique_id = f"{item_id}_{dev_id}"
                             if unique_id in device_name:
                                 name = device_name[unique_id]
+                            # Si pas trouvé, essayer juste avec epId
+                            elif str(item_id) in device_name:
+                                name = device_name[str(item_id)]
 
                 if name:
-                    formatted_items.append(name)
+                    # Ajouter les informations d'état si disponibles
+                    state_info = item.get("state", [])
+                    if state_info and isinstance(state_info, list):
+                        state_parts = []
+                        for state_item in state_info:
+                            if isinstance(state_item, dict):
+                                state_name = state_item.get("name", "")
+                                state_value = state_item.get("value", "")
+                                if state_name and state_value:
+                                    state_parts.append(f"{state_name}={state_value}")
+                        if state_parts:
+                            formatted_items.append(f"{name} ({', '.join(state_parts)})")
+                        else:
+                            formatted_items.append(name)
+                    else:
+                        formatted_items.append(name)
                 else:
-                    # Fallback : utiliser l'ID
-                    formatted_items.append(f"{item_type.capitalize()} {item_id}")
+                    # Fallback : utiliser l'ID avec les infos d'état
+                    state_info = item.get("state", [])
+                    if state_info and isinstance(state_info, list):
+                        state_parts = []
+                        for state_item in state_info:
+                            if isinstance(state_item, dict):
+                                state_name = state_item.get("name", "")
+                                state_value = state_item.get("value", "")
+                                if state_name and state_value:
+                                    state_parts.append(f"{state_name}={state_value}")
+                        if state_parts:
+                            formatted_items.append(
+                                f"{item_type.capitalize()} {item_id} ({', '.join(state_parts)})"
+                            )
+                        else:
+                            formatted_items.append(f"{item_type.capitalize()} {item_id}")
+                    else:
+                        formatted_items.append(f"{item_type.capitalize()} {item_id}")
 
         return ", ".join(formatted_items) if formatted_items else ""
 
