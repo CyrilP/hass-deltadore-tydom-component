@@ -164,6 +164,13 @@ class HAEntity:
                         )
                     )
                 self._registered_sensors.append(attribute)
+                LOGGER.debug(
+                    "Nouveau capteur créé: %s.%s (type: %s, valeur: %s)",
+                    self._device.device_id,
+                    attribute,
+                    "binary" if isinstance(value, bool) else "sensor",
+                    value,
+                )
 
         return sensors
 
@@ -234,11 +241,13 @@ class GenericSensor(SensorEntity):
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
-    def state(self):
-        """Return the state of the sensor."""
-        value = getattr(self._device, self._attribute)
+    def native_value(self):
+        """Return the native value of the sensor."""
+        # Utiliser getattr avec une valeur par défaut pour éviter AttributeError
+        value = getattr(self._device, self._attribute, None)
         if (
-            self._attr_device_class == SensorDeviceClass.BATTERY
+            value is not None
+            and self._attr_device_class == SensorDeviceClass.BATTERY
             and self._device._metadata is not None
             and self._attribute in self._device._metadata
         ):
@@ -343,7 +352,8 @@ class GenericBinarySensor(BinarySensorBase):
     @property
     def is_on(self):
         """Return the state of the sensor."""
-        return getattr(self._device, self._attribute)
+        # Utiliser getattr avec une valeur par défaut pour éviter AttributeError
+        return getattr(self._device, self._attribute, False)
 
 
 class HATydom(UpdateEntity, HAEntity):

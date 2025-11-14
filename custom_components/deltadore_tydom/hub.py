@@ -398,11 +398,25 @@ class Hub:
             new_sensors = ha_device.get_sensors()
             if len(new_sensors) > 0 and self.add_sensor_callback is not None:
                 # add new sensors
+                LOGGER.debug(
+                    "Ajout de %d nouveau(x) capteur(s) pour le device %s: %s",
+                    len(new_sensors),
+                    device.device_id,
+                    [s._attr_name for s in new_sensors],
+                )
                 self.add_sensor_callback(new_sensors)
             # ha_device.publish_updates()
             # ha_device.update()
+        except KeyError as e:
+            LOGGER.warning(
+                "Device %s non trouvé dans ha_devices lors de la mise à jour: %s",
+                device.device_id,
+                e,
+            )
         except Exception:
-            LOGGER.exception("update failed")
+            LOGGER.exception(
+                "Erreur lors de la mise à jour du device %s", device.device_id
+            )
 
     async def ping(self) -> None:
         """Periodically send pings."""

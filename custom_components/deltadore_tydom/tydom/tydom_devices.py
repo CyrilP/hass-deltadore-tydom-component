@@ -80,8 +80,12 @@ class TydomDevice:
         """Update the device values from another device."""
         LOGGER.debug("Update device %s", device.device_id)
         for attribute, value in device.__dict__.items():
-            if (attribute == "_uid" or attribute[:1] != "_") and value is not None:
-                setattr(self, attribute, value)
+            # Mettre à jour tous les attributs publics, même s'ils sont None
+            # Cela permet de mettre à jour correctement les valeurs qui passent à None
+            if attribute == "_uid" or attribute[:1] != "_":
+                # Ne pas mettre à jour les attributs internes comme _tydom_client, _callbacks, etc.
+                if attribute not in ["_tydom_client", "_callbacks", "_ha_device", "_metadata"]:
+                    setattr(self, attribute, value)
         await self.publish_updates()
         if hasattr(self, "_ha_device") and self._ha_device is not None:
             try:
