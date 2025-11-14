@@ -61,7 +61,7 @@ DATA_SCHEMA = vol.Schema(
 def host_valid(host) -> bool:
     """Return True if hostname or IP address is valid."""
     try:
-        if ipaddress.ip_address(host).version == (4 or 6):
+        if ipaddress.ip_address(host).version in (4, 6):
             return True
     except ValueError:
         disallowed = re.compile(r"[^a-zA-Z\d\-]")
@@ -130,7 +130,7 @@ async def validate_input(
     else:
         data[CONF_EMAIL] = ""
         data[CONF_PASSWORD] = ""
-        if len(data[CONF_TYDOM_PASSWORD]) < 3:
+        if CONF_TYDOM_PASSWORD not in data or len(data.get(CONF_TYDOM_PASSWORD, "")) < 3:
             raise InvalidPassword
 
     LOGGER.debug("Input is valid.")
@@ -212,7 +212,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         default_zone_night = ""
 
         if user_input is not None:
-            user_input.get(CONF_PIN, "")
             default_zone_home = user_input.get(CONF_ZONES_HOME, None)
             default_zone_away = user_input.get(CONF_ZONES_AWAY, None)
             default_zone_night = user_input.get(CONF_ZONES_NIGHT, None)
@@ -286,7 +285,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 LOGGER.exception("Unexpected exception")
                 _errors["base"] = "unknown"
             else:
-                LOGGER.warn("adding TYDOM entry")
+                LOGGER.warning("adding TYDOM entry")
                 await self.async_set_unique_id(user_input[CONF_MAC])
                 self._abort_if_unique_id_configured()
 
@@ -335,7 +334,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         default_zone_away = ""
         default_zone_night = ""
         if user_input is not None:
-            user_input.get(CONF_PIN, "")
             default_zone_home = user_input.get(CONF_ZONES_HOME, None)
             default_zone_away = user_input.get(CONF_ZONES_AWAY, None)
             default_zone_night = user_input.get(CONF_ZONES_NIGHT, None)
@@ -701,6 +699,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         _errors = {}
         default_zone_home = ""
         default_zone_away = ""
+        default_zone_night = ""
         default_refresh_interval = "30"
         if CONF_ZONES_HOME in self.config_entry.data:
             default_zone_home = self.config_entry.data[CONF_ZONES_HOME]
@@ -790,6 +789,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     vol.Optional(
                         CONF_ZONES_AWAY,
                         description={"suggested_value": default_zone_away},
+                    ): str,
+                    vol.Optional(
+                        CONF_ZONES_NIGHT,
+                        description={"suggested_value": default_zone_night},
                     ): str,
                 }
             ),

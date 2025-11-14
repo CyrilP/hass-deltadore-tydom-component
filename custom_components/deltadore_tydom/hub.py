@@ -23,6 +23,7 @@ from .tydom.tydom_devices import (
     TydomWeather,
     TydomWater,
     TydomThermo,
+    TydomDevice,
 )
 from .ha_entities import (
     HATydom,

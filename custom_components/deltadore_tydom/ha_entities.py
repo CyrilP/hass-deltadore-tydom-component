@@ -212,7 +212,11 @@ class GenericSensor(SensorEntity):
     def state(self):
         """Return the state of the sensor."""
         value = getattr(self._device, self._attribute)
-        if self._attr_device_class == SensorDeviceClass.BATTERY:
+        if (
+            self._attr_device_class == SensorDeviceClass.BATTERY
+            and self._device._metadata is not None
+            and self._attribute in self._device._metadata
+        ):
             min = self._device._metadata[self._attribute]["min"]
             max = self._device._metadata[self._attribute]["max"]
             value = ranged_value_to_percentage((min, max), value)
@@ -683,12 +687,14 @@ class HaClimate(ClimateEntity, HAEntity):
         }
 
         if (
-            "hvacMode" in self._device._metadata
+            self._device._metadata is not None
+            and "hvacMode" in self._device._metadata
             and "AUTO" in self._device._metadata["hvacMode"]["enum_values"]
         ):
             self.dict_modes_ha_to_dd[HVACMode.AUTO] = "AUTO"
         elif (
-            "hvacMode" in self._device._metadata
+            self._device._metadata is not None
+            and "hvacMode" in self._device._metadata
             and "ANTI_FROST" in self._device._metadata["hvacMode"]["enum_values"]
         ):
             self.dict_modes_ha_to_dd[HVACMode.AUTO] = "ANTI_FROST"
@@ -708,9 +714,13 @@ class HaClimate(ClimateEntity, HAEntity):
             | ClimateEntityFeature.TARGET_TEMPERATURE
         )
 
-        if hasattr(self._device._metadata, "thermicLevel") and (
-            "NORMAL" in self._device._metadata["thermicLevel"]
-            or "AUTO" in self._device._metadata["thermicLevel"]
+        if (
+            self._device._metadata is not None
+            and "thermicLevel" in self._device._metadata
+            and (
+                "NORMAL" in self._device._metadata["thermicLevel"]
+                or "AUTO" in self._device._metadata["thermicLevel"]
+            )
         ):
             self.dict_modes_ha_to_dd[HVACMode.HEAT] = "AUTO"
 
@@ -721,33 +731,47 @@ class HaClimate(ClimateEntity, HAEntity):
         ]
 
         if (
-            "comfortMode" in self._device._metadata
-            and "COOLING" in self._device._metadata["comfortMode"]["enum_values"]
-        ) or (
-            "hvacMode" in self._device._metadata
-            and "COOLING" in self._device._metadata["hvacMode"]["enum_values"]
+            self._device._metadata is not None
+            and (
+                (
+                    "comfortMode" in self._device._metadata
+                    and "COOLING" in self._device._metadata["comfortMode"]["enum_values"]
+                )
+                or (
+                    "hvacMode" in self._device._metadata
+                    and "COOLING" in self._device._metadata["hvacMode"]["enum_values"]
+                )
+            )
         ):
             self._attr_hvac_modes.append(HVACMode.COOL)
 
         if (
-            "comfortMode" in self._device._metadata
-            and "HEATING" in self._device._metadata["comfortMode"]["enum_values"]
-        ) or (
-            "hvacMode" in self._device._metadata
-            and "HEATING" in self._device._metadata["hvacMode"]["enum_values"]
+            self._device._metadata is not None
+            and (
+                (
+                    "comfortMode" in self._device._metadata
+                    and "HEATING" in self._device._metadata["comfortMode"]["enum_values"]
+                )
+                or (
+                    "hvacMode" in self._device._metadata
+                    and "HEATING" in self._device._metadata["hvacMode"]["enum_values"]
+                )
+            )
         ):
             self._attr_hvac_modes.append(HVACMode.HEAT)
 
         self._registered_sensors = []
 
         if (
-            hasattr(self._device._metadata, "setpoint")
+            self._device._metadata is not None
+            and "setpoint" in self._device._metadata
             and "min" in self._device._metadata["setpoint"]
         ):
             self._attr_min_temp = self._device._metadata["setpoint"]["min"]
 
         if (
-            hasattr(self._device._metadata, "setpoint")
+            self._device._metadata is not None
+            and "setpoint" in self._device._metadata
             and "max" in self._device._metadata["setpoint"]
         ):
             self._attr_max_temp = self._device._metadata["setpoint"]["max"]
@@ -955,13 +979,15 @@ class HaGate(CoverEntity, HAEntity):
         self._attr_name = self._device.device_name
         self._registered_sensors = []
         if (
-            "levelCmd" in self._device._metadata
+            self._device._metadata is not None
+            and "levelCmd" in self._device._metadata
             and "OFF" in self._device._metadata["levelCmd"]["enum_values"]
         ):
             self.supported_features = self.supported_features | CoverEntityFeature.CLOSE
 
         if (
-            "levelCmd" in self._device._metadata
+            self._device._metadata is not None
+            and "levelCmd" in self._device._metadata
             and "STOP" in self._device._metadata["levelCmd"]["enum_values"]
         ):
             self.supported_features = self.supported_features | CoverEntityFeature.STOP
@@ -988,7 +1014,8 @@ class HaGate(CoverEntity, HAEntity):
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the gate."""
         if (
-            "levelCmd" in self._device._metadata
+            self._device._metadata is not None
+            and "levelCmd" in self._device._metadata
             and "ON" in self._device._metadata["levelCmd"]["enum_values"]
         ):
             await self._device.open()
@@ -998,7 +1025,8 @@ class HaGate(CoverEntity, HAEntity):
     async def async_close_cover(self, **kwargs: Any) -> None:
         """Open the gate."""
         if (
-            "levelCmd" in self._device._metadata
+            self._device._metadata is not None
+            and "levelCmd" in self._device._metadata
             and "OFF" in self._device._metadata["levelCmd"]["enum_values"]
         ):
             await self._device.close()
@@ -1008,7 +1036,8 @@ class HaGate(CoverEntity, HAEntity):
     async def async_stop_cover(self, **kwargs: Any) -> None:
         """Open the gate."""
         if (
-            "levelCmd" in self._device._metadata
+            self._device._metadata is not None
+            and "levelCmd" in self._device._metadata
             and "STOP" in self._device._metadata["levelCmd"]["enum_values"]
         ):
             await self._device.stop()
@@ -1035,13 +1064,15 @@ class HaGarage(CoverEntity, HAEntity):
         self._attr_name = self._device.device_name
         self._registered_sensors = []
         if (
-            "levelCmd" in self._device._metadata
+            self._device._metadata is not None
+            and "levelCmd" in self._device._metadata
             and "OFF" in self._device._metadata["levelCmd"]["enum_values"]
         ):
             self.supported_features = self.supported_features | CoverEntityFeature.CLOSE
 
         if (
-            "levelCmd" in self._device._metadata
+            self._device._metadata is not None
+            and "levelCmd" in self._device._metadata
             and "STOP" in self._device._metadata["levelCmd"]["enum_values"]
         ):
             self.supported_features = self.supported_features | CoverEntityFeature.STOP
@@ -1065,7 +1096,8 @@ class HaGarage(CoverEntity, HAEntity):
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
         if (
-            "levelCmd" in self._device._metadata
+            self._device._metadata is not None
+            and "levelCmd" in self._device._metadata
             and "OFF" in self._device._metadata["levelCmd"]["enum_values"]
         ):
             await self._device.open()
@@ -1101,7 +1133,10 @@ class HaLight(LightEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_light"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
-        if "level" in self._device._metadata:
+        if (
+            self._device._metadata is not None
+            and "level" in self._device._metadata
+        ):
             self.color_mode = ColorMode.BRIGHTNESS
             self.supported_color_modes.add(ColorMode.BRIGHTNESS)
         else:
@@ -1289,12 +1324,14 @@ class HaWeather(WeatherEntity, HAEntity):
         self._attr_name = self._device.device_name
         self._registered_sensors = []
         if (
-            "dailyPower" in self._device._metadata
+            self._device._metadata is not None
+            and "dailyPower" in self._device._metadata
             and "unit" in self._device._metadata["dailyPower"]
         ):
             self.units["dailyPower"] = self._device._metadata["dailyPower"]["unit"]
         if (
-            "currentPower" in self._device._metadata
+            self._device._metadata is not None
+            and "currentPower" in self._device._metadata
             and "unit" in self._device._metadata["currentPower"]
         ):
             self.units["currentPower"] = self._device._metadata["currentPower"]["unit"]
