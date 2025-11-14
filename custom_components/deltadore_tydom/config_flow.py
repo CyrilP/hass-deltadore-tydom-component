@@ -63,9 +63,11 @@ def host_valid(host) -> bool:
     try:
         if ipaddress.ip_address(host).version in (4, 6):
             return True
+        return False
     except ValueError:
         disallowed = re.compile(r"[^a-zA-Z\d\-]")
-        return all(x and not disallowed.search(x) for x in host.split("."))
+        parts = host.split(".")
+        return bool(parts and all(x and not disallowed.search(x) for x in parts))
 
 
 email_regex = re.compile(
@@ -76,12 +78,12 @@ zones_regex = re.compile(r"^$|^[0-8](,[0-8]){0,7}$")
 
 def email_valid(email) -> bool:
     """Return True if email is valid."""
-    return re.fullmatch(email_regex, email)
+    return re.fullmatch(email_regex, email) is not None
 
 
 def zones_valid(zones) -> bool:
     """Return True if zone config is valid."""
-    return re.fullmatch(zones_regex, zones)
+    return re.fullmatch(zones_regex, zones) is not None
 
 
 async def validate_input(
@@ -158,6 +160,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize config flow."""
         self._discovered_host = None
         self._discovered_mac = None
+        self._name_value: str | None = None
 
     async def async_step_import(self, import_config):
         """Import a config entry from configuration.yaml."""
@@ -173,7 +176,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_user_cloud()
         else:
             user_input = user_input or {}
-            return self.async_show_form(
+            return self.async_show_form(  # type: ignore[return-value]
                 step_id="user",
                 data_schema=vol.Schema(
                     {
@@ -221,7 +224,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 tydom_hub = hub.Hub(
                     self.hass,
-                    None,
+                    None,  # type: ignore[arg-type]
                     user_input[CONF_HOST],
                     user_input[CONF_MAC],
                     user_input[CONF_TYDOM_PASSWORD],
@@ -289,13 +292,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 await self.async_set_unique_id(user_input[CONF_MAC])
                 self._abort_if_unique_id_configured()
 
-                return self.async_create_entry(
+                return self.async_create_entry(  # type: ignore[return-value]
                     title="Tydom-" + user_input[CONF_MAC][6:], data=user_input
                 )
 
         user_input = user_input or {}
 
-        return self.async_show_form(
+        return self.async_show_form(  # type: ignore[return-value]
             step_id="user_cloud",
             data_schema=vol.Schema(
                 {
@@ -343,7 +346,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 tydom_hub = hub.Hub(
                     self.hass,
-                    None,
+                    None,  # type: ignore[arg-type]
                     user_input[CONF_HOST],
                     user_input[CONF_MAC],
                     user_input[CONF_TYDOM_PASSWORD],
@@ -407,13 +410,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 await self.async_set_unique_id(user_input[CONF_MAC])
                 self._abort_if_unique_id_configured()
 
-                return self.async_create_entry(
+                return self.async_create_entry(  # type: ignore[return-value]
                     title="Tydom-" + user_input[CONF_MAC][6:], data=user_input
                 )
 
         user_input = user_input or {}
 
-        return self.async_show_form(
+        return self.async_show_form(  # type: ignore[return-value]
             step_id="user_manual",
             data_schema=vol.Schema(
                 {
@@ -436,12 +439,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @property
     def _name(self) -> str | None:
-        return self.context.get(CONF_NAME)
+        return self._name_value or self.context.get(CONF_NAME)
 
     @_name.setter
     def _name(self, value: str) -> None:
-        self.context[CONF_NAME] = value
-        self.context["title_placeholders"] = {"name": self._name}
+        self._name_value = value
 
     async def async_step_dhcp(self, discovery_info: dhcp.DhcpServiceInfo):
         """Handle the discovery from dhcp."""
@@ -496,7 +498,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # Ensure it's working as expected
                 tydom_hub = hub.Hub(
                     self.hass,
-                    None,
+                    None,  # type: ignore[arg-type]
                     user_input[CONF_HOST],
                     user_input[CONF_MAC],
                     user_input[CONF_TYDOM_PASSWORD],
@@ -548,7 +550,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         user_input = user_input or {}
         return self.async_show_form(
             step_id="discovery_confirm_manual",
-            description_placeholders={"name": self._name},
+            description_placeholders={"name": self._name or ""},
             data_schema=vol.Schema(
                 {
                     vol.Required(
@@ -588,7 +590,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # Ensure it's working as expected
                 tydom_hub = hub.Hub(
                     self.hass,
-                    None,
+                    None,  # type: ignore[arg-type]
                     user_input[CONF_HOST],
                     user_input[CONF_MAC],
                     user_input[CONF_TYDOM_PASSWORD],
@@ -643,7 +645,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         user_input = user_input or {}
         return self.async_show_form(
             step_id="discovery_confirm_cloud",
-            description_placeholders={"name": self._name},
+            description_placeholders={"name": self._name or ""},
             data_schema=vol.Schema(
                 {
                     vol.Required(
@@ -697,6 +699,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Manage the options."""
         _errors = {}
+        if self.config_entry is None:
+            return self.async_abort(reason="config_entry_not_found")
+        
         default_zone_home = ""
         default_zone_away = ""
         default_zone_night = ""
@@ -740,6 +745,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 except ValueError:
                     raise InvalidRefreshInterval
 
+                if self.config_entry is None:
+                    return self.async_abort(reason="config_entry_not_found")
+                
                 user_input[CONF_HOST] = self.config_entry.data[CONF_HOST]
                 user_input[CONF_MAC] = self.config_entry.data[CONF_MAC]
                 user_input[CONF_EMAIL] = self.config_entry.data[CONF_EMAIL]

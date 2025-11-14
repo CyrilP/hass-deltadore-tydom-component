@@ -196,7 +196,7 @@ class TydomClient:
                 "Error fetching information",
             ) from exception
         except Exception as exception:  # pylint: disable=broad-except
-            traceback.print_exception
+            traceback.print_exception(type(exception), exception, exception.__traceback__)
             raise TydomClientApiClientError(
                 "Something really wrong happened!"
             ) from exception

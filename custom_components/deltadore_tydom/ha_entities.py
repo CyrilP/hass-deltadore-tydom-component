@@ -92,18 +92,22 @@ from .const import DOMAIN, LOGGER
 class HAEntity:
     """Generic abstract HA entity."""
 
-    sensor_classes = {}
-    state_classes = {}
-    units = {}
-    filtered_attrs = {}
+    sensor_classes: dict[str, Any] = {}
+    state_classes: dict[str, Any] = {}
+    units: dict[str, Any] = {}
+    filtered_attrs: list[str] = []
+    _device: Any = None
+    _registered_sensors: list[str] = []
 
     async def async_added_to_hass(self) -> None:
         """Run when this Entity has been added to HA."""
-        self._device.register_callback(self.async_write_ha_state)
+        if self._device is not None:
+            self._device.register_callback(self.async_write_ha_state)  # type: ignore[attr-defined]
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass."""
-        self._device.remove_callback(self.async_write_ha_state)
+        if self._device is not None:
+            self._device.remove_callback(self.async_write_ha_state)  # type: ignore[attr-defined]
 
     @property
     def available(self) -> bool:
@@ -164,11 +168,33 @@ class HAEntity:
 
         return sensors
 
+    def _get_device_info(self) -> dict[str, str]:
+        """Get manufacturer and model from device attributes."""
+        info: dict[str, str] = {}
+        
+        # Récupérer le fabricant depuis les attributs du device
+        if hasattr(self._device, "manufacturer"):
+            manufacturer = getattr(self._device, "manufacturer", None)
+            if manufacturer is not None:
+                info["manufacturer"] = str(manufacturer)
+        
+        # Fallback sur "Delta Dore" si le fabricant n'est pas disponible
+        if "manufacturer" not in info:
+            info["manufacturer"] = "Delta Dore"
+        
+        # Récupérer le modèle depuis productName
+        if hasattr(self._device, "productName"):
+            product_name = getattr(self._device, "productName", None)
+            if product_name is not None:
+                info["model"] = str(product_name)
+        
+        return info
+
 
 class GenericSensor(SensorEntity):
     """Representation of a generic sensor."""
 
-    should_poll = False
+    _attr_should_poll = False
     diagnostic_attrs = [
         "config",
         "supervisionMode",
@@ -191,11 +217,11 @@ class GenericSensor(SensorEntity):
     def __init__(
         self,
         device: TydomDevice,
-        device_class: SensorDeviceClass,
-        state_class: SensorStateClass,
+        device_class: SensorDeviceClass | None,
+        state_class: SensorStateClass | None,
         name: str,
         attribute: str,
-        unit_of_measurement,
+        unit_of_measurement: str | None,
     ):
         """Initialize the sensor."""
         self._device = device
@@ -225,7 +251,27 @@ class GenericSensor(SensorEntity):
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
-        return {"identifiers": {(DOMAIN, self._device.device_id)}}
+        info: DeviceInfo = {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+        }
+        
+        # Récupérer le fabricant depuis les attributs du device
+        if hasattr(self._device, "manufacturer"):
+            manufacturer = getattr(self._device, "manufacturer", None)
+            if manufacturer is not None:
+                info["manufacturer"] = str(manufacturer)
+        
+        # Fallback sur "Delta Dore" si le fabricant n'est pas disponible
+        if "manufacturer" not in info:
+            info["manufacturer"] = "Delta Dore"
+        
+        # Récupérer le modèle depuis productName
+        if hasattr(self._device, "productName"):
+            product_name = getattr(self._device, "productName", None)
+            if product_name is not None:
+                info["model"] = str(product_name)
+        
+        return info
 
     @property
     def available(self) -> bool:
@@ -248,7 +294,7 @@ class GenericSensor(SensorEntity):
 class BinarySensorBase(BinarySensorEntity):
     """Base representation of a Sensor."""
 
-    should_poll = False
+    _attr_should_poll = False
 
     def __init__(self, device: TydomDevice):
         """Initialize the sensor."""
@@ -276,7 +322,7 @@ class GenericBinarySensor(BinarySensorBase):
     def __init__(
         self,
         device: TydomDevice,
-        device_class: BinarySensorDeviceClass,
+        device_class: BinarySensorDeviceClass | None,
         name: str,
         attribute: str,
     ):
@@ -311,9 +357,9 @@ class HATydom(UpdateEntity, HAEntity):
     _attr_entity_category = None
     entity_description: str
 
-    should_poll = False
-    device_class = None
-    supported_features = None
+    _attr_should_poll = False
+    _attr_device_class: UpdateDeviceClass | None = None
+    _attr_supported_features: UpdateEntityFeature | None = None
 
     sensor_classes = {"update_available": BinarySensorDeviceClass.UPDATE}
 
@@ -343,23 +389,27 @@ class HATydom(UpdateEntity, HAEntity):
         """Initialize HATydom."""
         self.hass = hass
         self._device = device
-        self._device._ha_device = self
-        self.supported_features = UpdateEntityFeature.INSTALL
+        self._device._ha_device = self  # type: ignore[assignment]
+        self._attr_supported_features = UpdateEntityFeature.INSTALL
         self._attr_device_class = UpdateDeviceClass.FIRMWARE
         self._attr_unique_id = f"{self._device.device_id}"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo:
         """Return information to link this entity with the correct device."""
-        return {
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_id,
-            "manufacturer": "Delta Dore",
-            "sw_version": self._device.mainVersionSW,
-            "model": self._device.productName,
+            "manufacturer": device_info["manufacturer"],
         }
+        if hasattr(self._device, "mainVersionSW") and self._device.mainVersionSW is not None:
+            info["sw_version"] = str(self._device.mainVersionSW)
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return info
 
     @property
     def installed_version(self) -> str | None:
@@ -368,7 +418,8 @@ class HATydom(UpdateEntity, HAEntity):
             return None
         # return self._hub.current_firmware
         if hasattr(self._device, "mainVersionSW"):
-            return self._device.mainVersionSW
+            version = getattr(self._device, "mainVersionSW", None)
+            return str(version) if version is not None else None
         else:
             return None
 
@@ -376,11 +427,14 @@ class HATydom(UpdateEntity, HAEntity):
     def latest_version(self) -> str | None:
         """Latest version available for install."""
         if self._device is not None and hasattr(self._device, "mainVersionSW"):
-            if self._device.updateAvailable:
+            version = getattr(self._device, "mainVersionSW", None)
+            if version is None:
+                return None
+            if hasattr(self._device, "updateAvailable") and getattr(self._device, "updateAvailable", False):
                 # If update is available, return current version as latest
                 # (actual update version is not provided by the API)
-                return self._device.mainVersionSW
-            return self._device.mainVersionSW
+                return str(version)
+            return str(version)
         return None
 
     async def async_install(
@@ -397,9 +451,9 @@ class HAEnergy(SensorEntity, HAEntity):
     _attr_entity_category = None
     entity_description: str
 
-    should_poll = False
-    device_class = None
-    supported_features = None
+    _attr_should_poll = False
+    _attr_device_class: SensorDeviceClass | None = None
+    _attr_supported_features: int | None = None
 
     sensor_classes = {
         "energyInstantTotElec": SensorDeviceClass.CURRENT,
@@ -472,30 +526,35 @@ class HAEnergy(SensorEntity, HAEntity):
         """Initialize HAEnergy."""
         self.hass = hass
         self._device = device
-        self._device._ha_device = self
+        self._device._ha_device = self  # type: ignore[assignment]
         self._attr_unique_id = f"{self._device.device_id}_energy"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo:
         """Return information to link this entity with the correct device."""
-        sw_version = None
-        if hasattr(self._device, "softVersion"):
-            sw_version = self._device.softVersion
-        return {
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
-            "sw_version": sw_version,
+            "manufacturer": device_info["manufacturer"],
         }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        if hasattr(self._device, "softVersion"):
+            sw_version = getattr(self._device, "softVersion", None)
+            if sw_version is not None:
+                info["sw_version"] = str(sw_version)
+        return info
 
 
 class HACover(CoverEntity, HAEntity):
     """Representation of a Cover."""
 
-    should_poll = False
-    supported_features = 0
-    device_class = CoverDeviceClass.SHUTTER
+    _attr_should_poll = False
+    _attr_supported_features: CoverEntityFeature = CoverEntityFeature(0)
+    _attr_device_class = CoverDeviceClass.SHUTTER
 
     sensor_classes = {
         "batt_defect": BinarySensorDeviceClass.PROBLEM,
@@ -510,21 +569,21 @@ class HACover(CoverEntity, HAEntity):
         """Initialize the sensor."""
         self.hass = hass
         self._device = device
-        self._device._ha_device = self
+        self._device._ha_device = self  # type: ignore[assignment]
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
         if hasattr(device, "position"):
-            self.supported_features = (
-                self.supported_features
+            self._attr_supported_features = (
+                self._attr_supported_features
                 | CoverEntityFeature.SET_POSITION
                 | CoverEntityFeature.OPEN
                 | CoverEntityFeature.CLOSE
                 | CoverEntityFeature.STOP
             )
         if hasattr(device, "slope"):
-            self.supported_features = (
-                self.supported_features | CoverEntityFeature.SET_TILT_POSITION
+            self._attr_supported_features = (
+                self._attr_supported_features | CoverEntityFeature.SET_TILT_POSITION
                 # | CoverEntityFeature.OPEN_TILT
                 # | CoverEntityFeature.CLOSE_TILT
                 # | CoverEntityFeature.STOP_TILT
@@ -533,26 +592,37 @@ class HACover(CoverEntity, HAEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
-        return {
+        device_info = self._get_device_info()
+        name = getattr(self, "name", None)
+        info: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self.name,
+            "name": str(name) if name is not None else self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
         }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return info
 
     @property
-    def current_cover_position(self):
+    def current_cover_position(self) -> int | None:
         """Return the current position of the cover."""
-        return self._device.position
+        if hasattr(self._device, "position"):
+            return getattr(self._device, "position", None)
+        return None
 
     @property
     def is_closed(self) -> bool:
         """Return if the cover is closed, same as position 0."""
-        return self._device.position == 0
+        if hasattr(self._device, "position"):
+            position = getattr(self._device, "position", None)
+            return position == 0 if position is not None else False
+        return False
 
     @property
-    def current_cover_tilt_position(self):
+    def current_cover_tilt_position(self) -> int | None:
         """Return the current tilt position of the cover."""
         if hasattr(self._device, "slope"):
-            return self._device.slope
+            return getattr(self._device, "slope", None)
         else:
             return None
 
@@ -604,8 +674,8 @@ class HACover(CoverEntity, HAEntity):
 class HASmoke(BinarySensorEntity, HAEntity):
     """Representation of an Smoke sensor."""
 
-    should_poll = False
-    supported_features = None
+    _attr_should_poll = False
+    _attr_supported_features: int | None = None
 
     sensor_classes = {"batt_defect": BinarySensorDeviceClass.PROBLEM}
 
@@ -613,7 +683,7 @@ class HASmoke(BinarySensorEntity, HAEntity):
         """Initialize TydomSmoke."""
         self.hass = hass
         self._device = device
-        self._device._ha_device = self
+        self._device._ha_device = self  # type: ignore[assignment]
         self._attr_unique_id = f"{self._device.device_id}_smoke"
         self._attr_name = self._device.device_name
         self._state = False
@@ -621,24 +691,30 @@ class HASmoke(BinarySensorEntity, HAEntity):
         self._attr_device_class = BinarySensorDeviceClass.SMOKE
 
     @property
-    def is_on(self):
+    def is_on(self) -> bool:
         """Return the state of the sensor."""
-        return self._device.techSmokeDefect
+        if hasattr(self._device, "techSmokeDefect"):
+            return bool(getattr(self._device, "techSmokeDefect", False))
+        return False
 
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
-        return {
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
-            "manufacturer": "Delta Dore",
+            "manufacturer": device_info["manufacturer"],
         }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return info
 
 
 class HaClimate(ClimateEntity, HAEntity):
     """A climate entity."""
 
-    should_poll = False
+    _attr_should_poll = False
 
     sensor_classes = {
         "temperature": SensorDeviceClass.TEMPERATURE,
@@ -663,7 +739,7 @@ class HaClimate(ClimateEntity, HAEntity):
         super().__init__()
         self.hass = hass
         self._device = device
-        self._device._ha_device = self
+        self._device._ha_device = self  # type: ignore[assignment]
         self._attr_unique_id = f"{self._device.device_id}_climate"
         self._attr_name = self._device.device_name
         self._enable_turn_on_off_backwards_compatibility = False
@@ -702,10 +778,14 @@ class HaClimate(ClimateEntity, HAEntity):
             self.dict_modes_ha_to_dd[HVACMode.AUTO] = "AUTO"
 
         if hasattr(self._device, "minSetpoint"):
-            self._attr_min_temp = self._device.minSetpoint
+            min_setpoint = getattr(self._device, "minSetpoint", None)
+            if min_setpoint is not None:
+                self._attr_min_temp = float(min_setpoint)
 
         if hasattr(self._device, "maxSetpoint"):
-            self._attr_max_temp = self._device.maxSetpoint
+            max_setpoint = getattr(self._device, "maxSetpoint", None)
+            if max_setpoint is not None:
+                self._attr_max_temp = float(max_setpoint)
 
         self._attr_supported_features = (
             self._attr_supported_features
@@ -779,14 +859,14 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
-        infos = {
+        device_info = self._get_device_info()
+        infos: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
         }
-
-        if hasattr(self._device, "manufacturer"):
-            infos["manufacturer"] = self._device.manufacturer
-
+        if "model" in device_info:
+            infos["model"] = device_info["model"]
         return infos
 
     @property
@@ -797,82 +877,99 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def hvac_mode(self) -> HVACMode:
         """Return the current operation (e.g. heat, cool, idle)."""
-        if hasattr(self._device, "hvacMode") and self._device.hvacMode is not None:
-            LOGGER.debug(
-                "hvac_mode = %s", self.dict_modes_dd_to_ha[self._device.hvacMode]
-            )
-            return self.dict_modes_dd_to_ha[self._device.hvacMode]
-        elif hasattr(self._device, "authorization"):
-            LOGGER.debug(
-                "authorization = %s",
-                self.dict_modes_dd_to_ha[self._device.thermicLevel],
-            )
-            return self.dict_modes_dd_to_ha[self._device.authorization]
-        elif hasattr(self._device, "thermicLevel"):
-            LOGGER.debug(
-                "thermicLevel = %s", self.dict_modes_dd_to_ha[self._device.thermicLevel]
-            )
-            return self.dict_modes_dd_to_ha[self._device.thermicLevel]
-        else:
-            return None
+        if hasattr(self._device, "hvacMode"):
+            hvac_mode = getattr(self._device, "hvacMode", None)
+            if hvac_mode is not None and hvac_mode in self.dict_modes_dd_to_ha:
+                LOGGER.debug(
+                    "hvac_mode = %s", self.dict_modes_dd_to_ha[hvac_mode]
+                )
+                return self.dict_modes_dd_to_ha[hvac_mode]
+        if hasattr(self._device, "authorization"):
+            authorization = getattr(self._device, "authorization", None)
+            if authorization is not None and authorization in self.dict_modes_dd_to_ha:
+                thermic_level = getattr(self._device, "thermicLevel", None)
+                if thermic_level is not None and thermic_level in self.dict_modes_dd_to_ha:
+                    LOGGER.debug(
+                        "authorization = %s",
+                        self.dict_modes_dd_to_ha[thermic_level],
+                    )
+                    return self.dict_modes_dd_to_ha[thermic_level]
+        if hasattr(self._device, "thermicLevel"):
+            thermic_level = getattr(self._device, "thermicLevel", None)
+            if thermic_level is not None and thermic_level in self.dict_modes_dd_to_ha:
+                LOGGER.debug(
+                    "thermicLevel = %s", self.dict_modes_dd_to_ha[thermic_level]
+                )
+                return self.dict_modes_dd_to_ha[thermic_level]
+        return HVACMode.OFF
 
     @property
     def current_temperature(self) -> float | None:
         """Return the current temperature."""
         if hasattr(self._device, "temperature"):
-            return self._device.temperature
-        elif hasattr(self._device, "ambientTemperature"):
-            return self._device.ambientTemperature
-        else:
-            return None
+            temp = getattr(self._device, "temperature", None)
+            if temp is not None:
+                return float(temp)
+        if hasattr(self._device, "ambientTemperature"):
+            temp = getattr(self._device, "ambientTemperature", None)
+            if temp is not None:
+                return float(temp)
+        return None
 
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature currently set to be reached."""
         if hasattr(self._device, "hvacMode"):
-            if (
-                self._device.hvacMode == "HEATING" or self._device.hvacMode == "NORMAL"
-            ) and hasattr(self._device, "setpoint"):
-                return self._device.setpoint
-            elif (
-                self._device.hvacMode == "HEATING" or self._device.hvacMode == "NORMAL"
-            ) and hasattr(self._device, "heatSetpoint"):
-                return self._device.heatSetpoint
-            elif self._device.hvacMode == "COOLING" and hasattr(
-                self._device, "setpoint"
-            ):
-                return self._device.setpoint
-            elif self._device.hvacMode == "COOLING" and hasattr(
-                self._device, "coolSetpoint"
-            ):
-                return self._device.coolSetpoint
+            hvac_mode = getattr(self._device, "hvacMode", None)
+            if hvac_mode in ("HEATING", "NORMAL"):
+                if hasattr(self._device, "setpoint"):
+                    setpoint = getattr(self._device, "setpoint", None)
+                    if setpoint is not None:
+                        return float(setpoint)
+                if hasattr(self._device, "heatSetpoint"):
+                    heat_setpoint = getattr(self._device, "heatSetpoint", None)
+                    if heat_setpoint is not None:
+                        return float(heat_setpoint)
+            elif hvac_mode == "COOLING":
+                if hasattr(self._device, "setpoint"):
+                    setpoint = getattr(self._device, "setpoint", None)
+                    if setpoint is not None:
+                        return float(setpoint)
+                if hasattr(self._device, "coolSetpoint"):
+                    cool_setpoint = getattr(self._device, "coolSetpoint", None)
+                    if cool_setpoint is not None:
+                        return float(cool_setpoint)
 
-        elif hasattr(self._device, "authorization"):
-            if self._device.authorization == "HEATING" and hasattr(
-                self._device, "heatSetpoint"
-            ):
-                return self._device.heatSetpoint
-            elif self._device.authorization == "HEATING" and hasattr(
-                self._device, "setpoint"
-            ):
-                return self._device.setpoint
-            elif self._device.authorization == "COOLING" and hasattr(
-                self._device, "coolSetpoint"
-            ):
-                return self._device.coolSetpoint
-            elif self._device.authorization == "COOLING" and hasattr(
-                self._device, "setpoint"
-            ):
-                return self._device.setpoint
+        if hasattr(self._device, "authorization"):
+            authorization = getattr(self._device, "authorization", None)
+            if authorization == "HEATING":
+                if hasattr(self._device, "heatSetpoint"):
+                    heat_setpoint = getattr(self._device, "heatSetpoint", None)
+                    if heat_setpoint is not None:
+                        return float(heat_setpoint)
+                if hasattr(self._device, "setpoint"):
+                    setpoint = getattr(self._device, "setpoint", None)
+                    if setpoint is not None:
+                        return float(setpoint)
+            elif authorization == "COOLING":
+                if hasattr(self._device, "coolSetpoint"):
+                    cool_setpoint = getattr(self._device, "coolSetpoint", None)
+                    if cool_setpoint is not None:
+                        return float(cool_setpoint)
+                if hasattr(self._device, "setpoint"):
+                    setpoint = getattr(self._device, "setpoint", None)
+                    if setpoint is not None:
+                        return float(setpoint)
         return None
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
         await self._device.set_hvac_mode(self.dict_modes_ha_to_dd[hvac_mode])
 
-    async def async_set_preset_mode(self, preset_mode):
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new target preset mode."""
-        await self._device.set_preset_mode(preset_mode)
+        if hasattr(self._device, "set_preset_mode"):
+            await self._device.set_preset_mode(preset_mode)
 
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
@@ -882,9 +979,9 @@ class HaClimate(ClimateEntity, HAEntity):
 class HaWindow(CoverEntity, HAEntity):
     """Representation of a Window."""
 
-    should_poll = False
-    supported_features = None
-    device_class = CoverDeviceClass.WINDOW
+    _attr_should_poll = False
+    _attr_supported_features: CoverEntityFeature | None = None
+    _attr_device_class = CoverDeviceClass.WINDOW
 
     sensor_classes = {
         "battDefect": BinarySensorDeviceClass.PROBLEM,
@@ -895,7 +992,7 @@ class HaWindow(CoverEntity, HAEntity):
         """Initialize the sensor."""
         self.hass = hass
         self._device = device
-        self._device._ha_device = self
+        self._device._ha_device = self  # type: ignore[assignment]
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
@@ -903,18 +1000,26 @@ class HaWindow(CoverEntity, HAEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
-        return {
+        device_info = self._get_device_info()
+        name = getattr(self, "name", None)
+        info: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self.name,
+            "name": str(name) if name is not None else self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
         }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return info
 
     @property
     def is_closed(self) -> bool:
         """Return if the window is closed."""
         if hasattr(self._device, "openState"):
-            return self._device.openState == "LOCKED"
+            open_state = getattr(self._device, "openState", None)
+            return open_state == "LOCKED"
         elif hasattr(self._device, "intrusionDetect"):
-            return not self._device.intrusionDetect
+            intrusion_detect = getattr(self._device, "intrusionDetect", False)
+            return not bool(intrusion_detect)
         else:
             LOGGER.error("Unknown state for device %s", self._device.device_id)
             return True
@@ -923,9 +1028,9 @@ class HaWindow(CoverEntity, HAEntity):
 class HaDoor(CoverEntity, HAEntity):
     """Representation of a Door."""
 
-    should_poll = False
-    supported_features = None
-    device_class = CoverDeviceClass.DOOR
+    _attr_should_poll = False
+    _attr_supported_features: CoverEntityFeature | None = None
+    _attr_device_class = CoverDeviceClass.DOOR
     sensor_classes = {
         "battDefect": BinarySensorDeviceClass.PROBLEM,
         "calibrationDefect": BinarySensorDeviceClass.PROBLEM,
@@ -936,7 +1041,7 @@ class HaDoor(CoverEntity, HAEntity):
         """Initialize the sensor."""
         self.hass = hass
         self._device = device
-        self._device._ha_device = self
+        self._device._ha_device = self  # type: ignore[assignment]
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
@@ -944,18 +1049,26 @@ class HaDoor(CoverEntity, HAEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
-        return {
+        device_info = self._get_device_info()
+        name = getattr(self, "name", None)
+        info: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self.name,
+            "name": str(name) if name is not None else self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
         }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return info
 
     @property
     def is_closed(self) -> bool:
         """Return if the door is locked."""
         if hasattr(self._device, "openState"):
-            return self._device.openState == "LOCKED"
+            open_state = getattr(self._device, "openState", None)
+            return open_state == "LOCKED"
         elif hasattr(self._device, "intrusionDetect"):
-            return not self._device.intrusionDetect
+            intrusion_detect = getattr(self._device, "intrusionDetect", False)
+            return not bool(intrusion_detect)
         else:
             raise AttributeError(
                 "The required attributes 'openState' or 'intrusionDetect' are not available in the device."
@@ -965,16 +1078,16 @@ class HaDoor(CoverEntity, HAEntity):
 class HaGate(CoverEntity, HAEntity):
     """Representation of a Gate."""
 
-    should_poll = False
-    supported_features = CoverEntityFeature.OPEN
-    device_class = CoverDeviceClass.GATE
+    _attr_should_poll = False
+    _attr_supported_features: CoverEntityFeature = CoverEntityFeature.OPEN
+    _attr_device_class = CoverDeviceClass.GATE
     sensor_classes = {}
 
     def __init__(self, device: TydomGate, hass) -> None:
         """Initialize the sensor."""
         self.hass = hass
         self._device = device
-        self._device._ha_device = self
+        self._device._ha_device = self  # type: ignore[assignment]
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
@@ -983,28 +1096,35 @@ class HaGate(CoverEntity, HAEntity):
             and "levelCmd" in self._device._metadata
             and "OFF" in self._device._metadata["levelCmd"]["enum_values"]
         ):
-            self.supported_features = self.supported_features | CoverEntityFeature.CLOSE
+            self._attr_supported_features = self._attr_supported_features | CoverEntityFeature.CLOSE
 
         if (
             self._device._metadata is not None
             and "levelCmd" in self._device._metadata
             and "STOP" in self._device._metadata["levelCmd"]["enum_values"]
         ):
-            self.supported_features = self.supported_features | CoverEntityFeature.STOP
+            self._attr_supported_features = self._attr_supported_features | CoverEntityFeature.STOP
 
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
-        return {
+        device_info = self._get_device_info()
+        name = getattr(self, "name", None)
+        info: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self.name,
+            "name": str(name) if name is not None else self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
         }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return info
 
     @property
     def is_closed(self) -> bool | None:
         """Return if the window is closed."""
         if hasattr(self._device, "openState"):
-            return self._device.openState == "LOCKED"
+            open_state = getattr(self._device, "openState", None)
+            return open_state == "LOCKED"
         else:
             LOGGER.warning(
                 "no attribute 'openState' for device %s", self._device.device_id
@@ -1048,9 +1168,9 @@ class HaGate(CoverEntity, HAEntity):
 class HaGarage(CoverEntity, HAEntity):
     """Representation of a Garage door."""
 
-    should_poll = False
-    supported_features = CoverEntityFeature.OPEN
-    device_class = CoverDeviceClass.GARAGE
+    _attr_should_poll = False
+    _attr_supported_features: CoverEntityFeature = CoverEntityFeature.OPEN
+    _attr_device_class = CoverDeviceClass.GARAGE
     sensor_classes = {
         "thermic_defect": BinarySensorDeviceClass.PROBLEM,
     }
@@ -1059,7 +1179,7 @@ class HaGarage(CoverEntity, HAEntity):
         """Initialize the sensor."""
         self.hass = hass
         self._device = device
-        self._device._ha_device = self
+        self._device._ha_device = self  # type: ignore[assignment]
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
@@ -1068,28 +1188,35 @@ class HaGarage(CoverEntity, HAEntity):
             and "levelCmd" in self._device._metadata
             and "OFF" in self._device._metadata["levelCmd"]["enum_values"]
         ):
-            self.supported_features = self.supported_features | CoverEntityFeature.CLOSE
+            self._attr_supported_features = self._attr_supported_features | CoverEntityFeature.CLOSE
 
         if (
             self._device._metadata is not None
             and "levelCmd" in self._device._metadata
             and "STOP" in self._device._metadata["levelCmd"]["enum_values"]
         ):
-            self.supported_features = self.supported_features | CoverEntityFeature.STOP
+            self._attr_supported_features = self._attr_supported_features | CoverEntityFeature.STOP
 
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
-        return {
+        device_info = self._get_device_info()
+        name = getattr(self, "name", None)
+        info: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self.name,
+            "name": str(name) if name is not None else self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
         }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return info
 
     @property
     def is_closed(self) -> bool | None:
         """Return if the garage door is closed."""
         if hasattr(self._device, "level"):
-            return self._device.level == 0
+            level = getattr(self._device, "level", None)
+            return level == 0 if level is not None else None
         else:
             return None
 
@@ -1116,12 +1243,12 @@ class HaGarage(CoverEntity, HAEntity):
 class HaLight(LightEntity, HAEntity):
     """Representation of a Light."""
 
-    should_poll = False
+    _attr_should_poll = False
     sensor_classes = {
         "thermic_defect": BinarySensorDeviceClass.PROBLEM,
     }
-    color_mode = None
-    supported_color_modes = set()
+    _attr_color_mode: ColorMode | str | None = None
+    _attr_supported_color_modes: set[ColorMode] | set[str] | None = None
 
     BRIGHTNESS_SCALE = (0, 255)
 
@@ -1129,7 +1256,7 @@ class HaLight(LightEntity, HAEntity):
         """Initialize the sensor."""
         self.hass = hass
         self._device = device
-        self._device._ha_device = self
+        self._device._ha_device = self  # type: ignore[assignment]
         self._attr_unique_id = f"{self._device.device_id}_light"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
@@ -1137,29 +1264,46 @@ class HaLight(LightEntity, HAEntity):
             self._device._metadata is not None
             and "level" in self._device._metadata
         ):
-            self.color_mode = ColorMode.BRIGHTNESS
-            self.supported_color_modes.add(ColorMode.BRIGHTNESS)
+            self._attr_color_mode = ColorMode.BRIGHTNESS
+            if self._attr_supported_color_modes is None:
+                self._attr_supported_color_modes = set()
+            self._attr_supported_color_modes.add(ColorMode.BRIGHTNESS)
         else:
-            self.color_mode = ColorMode.ONOFF
-            self.supported_color_modes.add(ColorMode.ONOFF)
+            self._attr_color_mode = ColorMode.ONOFF
+            if self._attr_supported_color_modes is None:
+                self._attr_supported_color_modes = set()
+            self._attr_supported_color_modes.add(ColorMode.ONOFF)
 
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
-        return {
+        device_info = self._get_device_info()
+        name = getattr(self, "name", None)
+        info: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self.name,
+            "name": str(name) if name is not None else self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
         }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return info
 
     @property
     def brightness(self) -> int | None:
         """Return the current brightness."""
-        return percentage_to_ranged_value(self.BRIGHTNESS_SCALE, self._device.level)
+        if hasattr(self._device, "level"):
+            level = getattr(self._device, "level", None)
+            if level is not None:
+                return int(percentage_to_ranged_value(self.BRIGHTNESS_SCALE, float(level)))
+        return None
 
     @property
     def is_on(self) -> bool:
         """Return true if light is on."""
-        return bool(self._device.level != 0)
+        if hasattr(self._device, "level"):
+            level = getattr(self._device, "level", None)
+            return bool(level != 0 if level is not None else False)
+        return False
 
     async def async_turn_on(self, **kwargs):
         """Turn device on."""
@@ -1180,8 +1324,8 @@ class HaLight(LightEntity, HAEntity):
 class HaAlarm(AlarmControlPanelEntity, HAEntity):
     """Representation of an Alarm."""
 
-    should_poll = False
-    supported_features = 0
+    _attr_should_poll = False
+    _attr_supported_features = AlarmControlPanelEntityFeature(0)
     sensor_classes = {
         "networkDefect": BinarySensorDeviceClass.PROBLEM,
         "remoteSurveyDefect": BinarySensorDeviceClass.PROBLEM,
@@ -1205,15 +1349,15 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         """Initialize the sensor."""
         self.hass = hass
         self._device = device
-        self._device._ha_device = self
+        self._device._ha_device = self  # type: ignore[assignment]
         self._attr_unique_id = f"{self._device.device_id}_alarm"
         self._attr_name = self._device.device_name
         self._attr_code_format = CodeFormat.NUMBER
         self._attr_code_arm_required = True
         self._registered_sensors = []
 
-        self.supported_features = (
-            self.supported_features
+        self._attr_supported_features = (
+            self._attr_supported_features
             | AlarmControlPanelEntityFeature.ARM_AWAY
             | AlarmControlPanelEntityFeature.ARM_HOME
             | AlarmControlPanelEntityFeature.ARM_NIGHT
@@ -1221,38 +1365,43 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         )
 
     @property
-    def alarm_state(self):
+    def alarm_state(self) -> AlarmControlPanelState:
         """Return the alarm state."""
         # alarmMode :  "OFF", "ON", "TEST", "ZONE", "MAINTENANCE"
         # alarmState: "OFF", "DELAYED", "ON", "QUIET"
-        if self._device.alarmMode == "MAINTENANCE":
-            return AlarmControlPanelState.DISARMED
+        if hasattr(self._device, "alarmMode"):
+            alarm_mode = getattr(self._device, "alarmMode", None)
+            if alarm_mode == "MAINTENANCE":
+                return AlarmControlPanelState.DISARMED
 
-        match self._device.alarmMode:
-            case "MAINTENANCE":
+            if alarm_mode == "OFF":
                 return AlarmControlPanelState.DISARMED
-            case "OFF":
-                return AlarmControlPanelState.DISARMED
-            case "ON":
-                if self._device.alarmState == "OFF":
+            if alarm_mode == "ON":
+                alarm_state = getattr(self._device, "alarmState", None)
+                if alarm_state == "OFF":
                     return AlarmControlPanelState.ARMED_AWAY
                 else:
                     return AlarmControlPanelState.TRIGGERED
-            case "ZONE" | "PART":
-                if self._device.alarmState == "OFF":
+            if alarm_mode in ("ZONE", "PART"):
+                alarm_state = getattr(self._device, "alarmState", None)
+                if alarm_state == "OFF":
                     return AlarmControlPanelState.ARMED_HOME
                 else:
                     return AlarmControlPanelState.TRIGGERED
-            case _:
-                return AlarmControlPanelState.TRIGGERED
+        return AlarmControlPanelState.TRIGGERED
 
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
-        return {
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
         }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return info
 
     async def async_alarm_disarm(self, code=None) -> None:
         """Send disarm command."""
@@ -1319,7 +1468,7 @@ class HaWeather(WeatherEntity, HAEntity):
         """Initialize the sensor."""
         self.hass = hass
         self._device = device
-        self._device._ha_device = self
+        self._device._ha_device = self  # type: ignore[assignment]
         self._attr_unique_id = f"{self._device.device_id}_weather"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
@@ -1339,27 +1488,40 @@ class HaWeather(WeatherEntity, HAEntity):
     @property
     def native_temperature(self) -> float | None:
         """Return current temperature in C."""
-        return self._device.outTemperature
+        if hasattr(self._device, "outTemperature"):
+            temp = getattr(self._device, "outTemperature", None)
+            if temp is not None:
+                return float(temp)
+        return None
 
     @property
-    def condition(self) -> str:
+    def condition(self) -> str | None:
         """Return current weather condition."""
-        return self.tydom_ha_condition[self._device.weather]
+        if hasattr(self._device, "weather"):
+            weather = getattr(self._device, "weather", None)
+            if weather is not None and weather in self.tydom_ha_condition:
+                return self.tydom_ha_condition[weather]
+        return None
 
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
-        return {
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
         }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return info
 
 
 class HaMoisture(BinarySensorEntity, HAEntity):
     """Representation of an leak detector sensor."""
 
-    should_poll = False
-    supported_features = None
+    _attr_should_poll = False
+    _attr_supported_features: int | None = None
 
     sensor_classes = {"batt_defect": BinarySensorDeviceClass.PROBLEM}
 
@@ -1367,7 +1529,7 @@ class HaMoisture(BinarySensorEntity, HAEntity):
         """Initialize TydomSmoke."""
         self.hass = hass
         self._device = device
-        self._device._ha_device = self
+        self._device._ha_device = self  # type: ignore[assignment]
         self._attr_unique_id = f"{self._device.device_id}_moisture"
         self._attr_name = self._device.device_name
         self._state = False
@@ -1375,18 +1537,24 @@ class HaMoisture(BinarySensorEntity, HAEntity):
         self._attr_device_class = BinarySensorDeviceClass.MOISTURE
 
     @property
-    def is_on(self):
+    def is_on(self) -> bool:
         """Return the state of the sensor."""
-        return self._device.techWaterDefect
+        if hasattr(self._device, "techWaterDefect"):
+            return bool(getattr(self._device, "techWaterDefect", False))
+        return False
 
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
-        return {
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
-            "manufacturer": "Delta Dore",
+            "manufacturer": device_info["manufacturer"],
         }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return info
 
 
 class HaThermo(SensorEntity, HAEntity):
@@ -1396,7 +1564,7 @@ class HaThermo(SensorEntity, HAEntity):
         """Initialize TydomSmoke."""
         self.hass = hass
         self._device = device
-        self._device._ha_device = self
+        self._device._ha_device = self  # type: ignore[assignment]
         self._attr_unique_id = f"{self._device.device_id}_thermos"
         self._attr_name = self._device.device_name
         self._state = False
@@ -1405,29 +1573,38 @@ class HaThermo(SensorEntity, HAEntity):
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
 
     @property
-    def state(self):
+    def state(self) -> float | None:
         """Return the state of the sensor."""
-        return self._device.outTemperature
+        if hasattr(self._device, "outTemperature"):
+            temp = getattr(self._device, "outTemperature", None)
+            if temp is not None:
+                return float(temp)
+        return None
 
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
-        return {
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
         }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return info
 
 
 class HASensor(SensorEntity, HAEntity):
     """Representation of a generic sensor for unknown device types."""
 
-    should_poll = False
+    _attr_should_poll = False
 
     def __init__(self, device: TydomDevice, hass) -> None:
         """Initialize HASensor."""
         self.hass = hass
         self._device = device
-        self._device._ha_device = self
+        self._device._ha_device = self  # type: ignore[assignment]
         self._attr_unique_id = f"{self._device.device_id}_sensor"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
@@ -1446,8 +1623,12 @@ class HASensor(SensorEntity, HAEntity):
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
-        return {
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
-            "manufacturer": "Delta Dore",
+            "manufacturer": device_info["manufacturer"],
         }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return info

@@ -72,7 +72,7 @@ class TydomDevice:
         return self._type
 
     @property
-    def device_endpoint(self) -> str:
+    def device_endpoint(self) -> str | None:
         """Return endpoint for device."""
         return self._endpoint
 
@@ -204,7 +204,8 @@ class TydomBoiler(TydomDevice):
                 )
         elif mode == "NORMAL":
             if hasattr(self, "hvacMode"):
-                if self.hvacMode == "ANTI_FROST":
+                hvac_mode = getattr(self, "hvacMode", None)
+                if hvac_mode == "ANTI_FROST":
                     await self._tydom_client.put_data("/home/absence", "to", 0)
                     await self._tydom_client.put_data("/events/home/absence", "to", 0)
                     await self._tydom_client.put_data(
@@ -221,16 +222,26 @@ class TydomBoiler(TydomDevice):
                     self._id, self._endpoint, "antifrostOn", False
                 )
             else:
-                if "COMFORT" in self._metadata["thermicLevel"]["enum_values"]:
-                    await self._tydom_client.put_devices_data(
-                        self._id, self._endpoint, "thermicLevel", "COMFORT"
-                    )
-                elif "HEATING" in self._metadata["thermicLevel"]["enum_values"]:
-                    await self._tydom_client.put_devices_data(
-                        self._id, self._endpoint, "thermicLevel", "HEATING"
-                    )
+                if (
+                    self._metadata is not None
+                    and "thermicLevel" in self._metadata
+                    and "enum_values" in self._metadata["thermicLevel"]
+                ):
+                    if "COMFORT" in self._metadata["thermicLevel"]["enum_values"]:
+                        await self._tydom_client.put_devices_data(
+                            self._id, self._endpoint, "thermicLevel", "COMFORT"
+                        )
+                    elif "HEATING" in self._metadata["thermicLevel"]["enum_values"]:
+                        await self._tydom_client.put_devices_data(
+                            self._id, self._endpoint, "thermicLevel", "HEATING"
+                        )
 
-                if "HEATING" in self._metadata["comfortMode"]["enum_values"]:
+                if (
+                    self._metadata is not None
+                    and "comfortMode" in self._metadata
+                    and "enum_values" in self._metadata["comfortMode"]
+                    and "HEATING" in self._metadata["comfortMode"]["enum_values"]
+                ):
                     await self._tydom_client.put_devices_data(
                         self._id, self._endpoint, "comfortMode", "HEATING"
                     )
@@ -342,7 +353,8 @@ class TydomLight(TydomDevice):
         if brightness is None:
             command = "TOGGLE"
             if (
-                "levelCmd" in self._metadata
+                self._metadata is not None
+                and "levelCmd" in self._metadata
                 and "enum_values" in self._metadata["levelCmd"]
             ):
                 if "ON" in self._metadata["levelCmd"]["enum_values"]:
@@ -368,7 +380,11 @@ class TydomLight(TydomDevice):
         """Tell light to turn off."""
 
         command = "TOGGLE"
-        if "levelCmd" in self._metadata and "enum_values" in self._metadata["levelCmd"]:
+        if (
+            self._metadata is not None
+            and "levelCmd" in self._metadata
+            and "enum_values" in self._metadata["levelCmd"]
+        ):
             if "OFF" in self._metadata["levelCmd"]["enum_values"]:
                 command = "OFF"
 
@@ -473,6 +489,9 @@ class TydomAlarm(TydomDevice):
 
     async def get_events(self, event_type: str | None) -> list[dict[str, Any]]:
         """Get alarm events."""
+        if self._endpoint is None:
+            LOGGER.error("Cannot get events: endpoint is None for device %s", self._id)
+            return []
         events = await self._tydom_client.get_historic_cdata(
             self._id, self._endpoint, event_type
         )

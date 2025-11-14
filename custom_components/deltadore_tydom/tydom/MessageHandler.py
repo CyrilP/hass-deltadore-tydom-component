@@ -876,7 +876,7 @@ class HTTPResponse:
 
 def _parse_response(raw_message: bytes) -> HTTPResponse:
     sock = BytesIOSocket(raw_message)
-    response = CoreHTTPResponse(sock)
+    response = CoreHTTPResponse(sock)  # type: ignore[arg-type]
     response.begin()
 
     return HTTPResponse(
@@ -904,7 +904,8 @@ class _FakeHTTPRequest(CoreHTTPResponse):
         version = words[-1]
 
         if not version.startswith("HTTP/"):
-            self._close_conn()
+            if hasattr(self, "_close_conn"):
+                self._close_conn()  # type: ignore[attr-defined]
             raise ValueError(line)
 
         command, path = words[:2]
@@ -937,7 +938,7 @@ def parse_request(raw_request: bytes) -> HTTPRequest:
 
     """
     sock = BytesIOSocket(raw_request)
-    request = _FakeHTTPRequest(sock)
+    request = _FakeHTTPRequest(sock)  # type: ignore[arg-type]
     request.begin()
 
     return HTTPRequest(
