@@ -23,6 +23,8 @@ from .tydom.tydom_devices import (
     TydomWeather,
     TydomWater,
     TydomThermo,
+    TydomSwitch,
+    TydomRemote,
 )
 from .ha_entities import (
     HATydom,
@@ -39,6 +41,8 @@ from .ha_entities import (
     HaWeather,
     HaMoisture,
     HaThermo,
+    HaSwitch,
+    HaRemote,
 )
 
 from .const import LOGGER
@@ -90,6 +94,7 @@ class Hub:
         self.add_update_callback = None
         self.add_weather_callback = None
         self.add_binary_sensor_callback = None
+        self.add_switch_callback = None
 
         self._tydom_client = TydomClient(
             hass=self._hass,
@@ -151,6 +156,7 @@ class Hub:
             and self.add_update_callback is not None
             and self.add_alarm_callback is not None
             and self.add_weather_callback is not None
+            and self.add_switch_callback is not None
         )
 
     async def setup(self, connection: ClientWebSocketResponse) -> None:
@@ -344,6 +350,24 @@ class Hub:
             case TydomThermo():
                 LOGGER.debug("Create thermo %s", device.device_id)
                 ha_device = HaThermo(device, self._hass)
+                self.ha_devices[device.device_id] = ha_device
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback([ha_device])
+
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback(ha_device.get_sensors())
+            case TydomSwitch():
+                LOGGER.debug("Create plug %s", device.device_id)
+                ha_device = HaSwitch(device, self._hass)
+                self.ha_devices[device.device_id] = ha_device
+                if self.add_switch_callback is not None:
+                    self.add_switch_callback([ha_device])
+
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback(ha_device.get_sensors())
+            case TydomRemote():
+                LOGGER.debug("Create remote %s", device.device_id)
+                ha_device = HaRemote(device, self._hass)
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_sensor_callback is not None:
                     self.add_sensor_callback([ha_device])

@@ -30,6 +30,7 @@ PLATFORMS: list[str] = [
     Platform.ALARM_CONTROL_PANEL,
     Platform.WEATHER,
     Platform.BINARY_SENSOR,
+    Platform.SWITCH,
 ]
 
 

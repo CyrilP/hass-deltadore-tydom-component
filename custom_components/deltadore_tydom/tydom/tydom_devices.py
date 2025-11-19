@@ -500,3 +500,23 @@ class TydomWater(TydomDevice):
 
 class TydomThermo(TydomDevice):
     """Represents a thermometer."""
+
+
+class TydomSwitch(TydomDevice):
+    """Represents a switch."""
+
+    async def turn_on(self) -> None:
+        """Tell switch to go down."""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "plugCmd", "ON"
+        )
+
+    async def turn_off(self) -> None:
+        """Tell switch to go up."""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "plugCmd", "OFF"
+        )
+
+
+class TydomRemote(TydomDevice):
+    """Represents a remote."""

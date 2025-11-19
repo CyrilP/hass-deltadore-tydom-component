@@ -68,6 +68,10 @@ from homeassistant.components.weather import (
     ATTR_CONDITION_SUNNY,
 )
 
+from homeassistant.components.switch import (
+    SwitchEntity,
+)
+
 from .tydom.tydom_devices import (
     Tydom,
     TydomDevice,
@@ -84,6 +88,8 @@ from .tydom.tydom_devices import (
     TydomWeather,
     TydomWater,
     TydomThermo,
+    TydomSwitch,
+    TydomRemote,
 )
 
 from .const import DOMAIN, LOGGER
@@ -1379,3 +1385,67 @@ class HaThermo(SensorEntity, HAEntity):
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
         }
+
+
+class HaSwitch(SwitchEntity, HAEntity):
+    """Representation of a switch."""
+
+    sensor_classes = {
+        "energyInstantTotElecP": SensorDeviceClass.POWER,
+        "energyTotIndexWatt": SensorDeviceClass.ENERGY,
+    }
+
+    state_classes = {
+        "energyTotIndexWatt": SensorStateClass.TOTAL_INCREASING,
+    }
+
+    units = {
+        "energyInstantTotElecP": UnitOfPower.WATT,
+        "energyTotIndexWatt": UnitOfEnergy.WATT_HOUR,
+    }
+
+    def __init__(self, device: TydomSwitch, hass) -> None:
+        """Initialize the sensor."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self
+        self._attr_unique_id = f"{self._device.device_id}"
+        self._attr_name = self._device.device_name
+        self._registered_sensors = []
+
+    async def async_turn_on(self, **kwargs):
+        """Open the switch."""
+        await self._device.turn_on()
+
+    async def async_turn_off(self, **kwargs):
+        """Open the switch."""
+        await self._device.turn_off()
+
+    @property
+    def is_on(self):
+        """Return true if switch is on."""
+        if self._device.plugCmd == "ON":
+            return True
+        else:
+            return False
+
+    @property
+    def device_info(self):
+        """Return information to link this entity with the correct device."""
+        return {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+        }
+
+
+class HaRemote(SensorEntity, HAEntity):
+    """Representation of a remote."""
+
+    def __init__(self, device: TydomRemote, hass) -> None:
+        """Initialize TydomRemote."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self
+        self._attr_unique_id = f"{self._device.device_id}"
+        self._attr_name = self._device.device_name
+        self._registered_sensors = []
