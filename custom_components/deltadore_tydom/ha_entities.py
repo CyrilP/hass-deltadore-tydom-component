@@ -1422,6 +1422,42 @@ class HaWindow(CoverEntity, HAEntity):
             LOGGER.error("Unknown state for device %s", self._device.device_id)
             return True
 
+class HaWindowBinary(BinarySensorEntity, HAEntity):
+    """Binary sensor for a Tydom window.
+
+    Exposes ON when the window is open (any open mode),
+    and OFF when closed/locked.
+    """
+
+    should_poll = False
+    _attr_device_class = BinarySensorDeviceClass.WINDOW
+
+    def __init__(self, device: TydomWindow, hass) -> None:
+        """Initialize the binary sensor for a Tydom window."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self
+        self._attr_unique_id = f"{self._device.device_id}"
+        self._attr_name = self._device.device_name
+        self._registered_sensors = []
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device metadata for Home Assistant."""
+        return {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+        }
+
+    @property
+    def is_on(self) -> bool:
+        """Return True if the window is open, False if closed or locked."""
+        raw = getattr(self._device, "openState", None)
+        if isinstance(raw, str):
+            raw_l = raw.lower()
+            return raw_l not in ("closed", "locked")
+        return False
+
 
 class HaDoor(CoverEntity, HAEntity):
     """Representation of a Door."""
@@ -1473,6 +1509,41 @@ class HaDoor(CoverEntity, HAEntity):
             raise AttributeError(
                 "The required attributes 'openState' or 'intrusionDetect' are not available in the device."
             )
+
+class HaDoorBinary(BinarySensorEntity, HAEntity):
+    """Binary sensor for a Tydom door.
+
+    Exposes ON when the door is open, OFF when closed/locked.
+    """
+
+    should_poll = False
+    _attr_device_class = BinarySensorDeviceClass.DOOR
+
+    def __init__(self, device: TydomDoor, hass) -> None:
+        """Initialize the binary sensor for a Tydom door."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self
+        self._attr_unique_id = f"{self._device.device_id}"
+        self._attr_name = self._device.device_name
+        self._registered_sensors = []
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device metadata for Home Assistant."""
+        return {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+        }
+
+    @property
+    def is_on(self) -> bool:
+        """Return True if the door is open, False if closed or locked."""
+        raw = getattr(self._device, "openState", None)
+        if isinstance(raw, str):
+            raw_l = raw.lower()
+            return raw_l not in ("closed", "locked")
+        return False
 
 
 class HaGate(CoverEntity, HAEntity):
