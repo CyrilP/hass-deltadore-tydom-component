@@ -42,9 +42,11 @@ class TydomDevice:
                 if isinstance(data[key], dict):
                     LOGGER.debug("type of %s : %s", key, type(data[key]))
                     LOGGER.debug("%s => %s", key, data[key])
+                    setattr(self, key, data[key])
                 elif isinstance(data[key], list):
                     LOGGER.debug("type of %s : %s", key, type(data[key]))
                     LOGGER.debug("%s => %s", key, data[key])
+                    setattr(self, key, data[key])
                 else:
                     setattr(self, key, data[key])
 
@@ -72,7 +74,7 @@ class TydomDevice:
         return self._type
 
     @property
-    def device_endpoint(self) -> str:
+    def device_endpoint(self) -> str | None:
         """Return endpoint for device."""
         return self._endpoint
 
@@ -80,8 +82,12 @@ class TydomDevice:
         """Update the device values from another device."""
         LOGGER.debug("Update device %s", device.device_id)
         for attribute, value in device.__dict__.items():
-            if (attribute == "_uid" or attribute[:1] != "_") and value is not None:
-                setattr(self, attribute, value)
+            # Mettre à jour tous les attributs publics, même s'ils sont None
+            # Cela permet de mettre à jour correctement les valeurs qui passent à None
+            if attribute == "_uid" or attribute[:1] != "_":
+                # Ne pas mettre à jour les attributs internes comme _tydom_client, _callbacks, etc.
+                if attribute not in ["_tydom_client", "_callbacks", "_ha_device", "_metadata"]:
+                    setattr(self, attribute, value)
         await self.publish_updates()
         if hasattr(self, "_ha_device") and self._ha_device is not None:
             try:
@@ -204,7 +210,8 @@ class TydomBoiler(TydomDevice):
                 )
         elif mode == "NORMAL":
             if hasattr(self, "hvacMode"):
-                if self.hvacMode == "ANTI_FROST":
+                hvac_mode = getattr(self, "hvacMode", None)
+                if hvac_mode == "ANTI_FROST":
                     await self._tydom_client.put_data("/home/absence", "to", 0)
                     await self._tydom_client.put_data("/events/home/absence", "to", 0)
                     await self._tydom_client.put_data(
@@ -221,16 +228,26 @@ class TydomBoiler(TydomDevice):
                     self._id, self._endpoint, "antifrostOn", False
                 )
             else:
-                if "COMFORT" in self._metadata["thermicLevel"]["enum_values"]:
-                    await self._tydom_client.put_devices_data(
-                        self._id, self._endpoint, "thermicLevel", "COMFORT"
-                    )
-                elif "HEATING" in self._metadata["thermicLevel"]["enum_values"]:
-                    await self._tydom_client.put_devices_data(
-                        self._id, self._endpoint, "thermicLevel", "HEATING"
-                    )
+                if (
+                    self._metadata is not None
+                    and "thermicLevel" in self._metadata
+                    and "enum_values" in self._metadata["thermicLevel"]
+                ):
+                    if "COMFORT" in self._metadata["thermicLevel"]["enum_values"]:
+                        await self._tydom_client.put_devices_data(
+                            self._id, self._endpoint, "thermicLevel", "COMFORT"
+                        )
+                    elif "HEATING" in self._metadata["thermicLevel"]["enum_values"]:
+                        await self._tydom_client.put_devices_data(
+                            self._id, self._endpoint, "thermicLevel", "HEATING"
+                        )
 
-                if "HEATING" in self._metadata["comfortMode"]["enum_values"]:
+                if (
+                    self._metadata is not None
+                    and "comfortMode" in self._metadata
+                    and "enum_values" in self._metadata["comfortMode"]
+                    and "HEATING" in self._metadata["comfortMode"]["enum_values"]
+                ):
                     await self._tydom_client.put_devices_data(
                         self._id, self._endpoint, "comfortMode", "HEATING"
                     )
@@ -342,7 +359,8 @@ class TydomLight(TydomDevice):
         if brightness is None:
             command = "TOGGLE"
             if (
-                "levelCmd" in self._metadata
+                self._metadata is not None
+                and "levelCmd" in self._metadata
                 and "enum_values" in self._metadata["levelCmd"]
             ):
                 if "ON" in self._metadata["levelCmd"]["enum_values"]:
@@ -368,7 +386,11 @@ class TydomLight(TydomDevice):
         """Tell light to turn off."""
 
         command = "TOGGLE"
-        if "levelCmd" in self._metadata and "enum_values" in self._metadata["levelCmd"]:
+        if (
+            self._metadata is not None
+            and "levelCmd" in self._metadata
+            and "enum_values" in self._metadata["levelCmd"]
+        ):
             if "OFF" in self._metadata["levelCmd"]["enum_values"]:
                 command = "OFF"
 
@@ -473,6 +495,9 @@ class TydomAlarm(TydomDevice):
 
     async def get_events(self, event_type: str | None) -> list[dict[str, Any]]:
         """Get alarm events."""
+        if self._endpoint is None:
+            LOGGER.error("Cannot get events: endpoint is None for device %s", self._id)
+            return []
         events = await self._tydom_client.get_historic_cdata(
             self._id, self._endpoint, event_type
         )
@@ -500,3 +525,55 @@ class TydomWater(TydomDevice):
 
 class TydomThermo(TydomDevice):
     """Represents a thermometer."""
+
+
+class TydomScene(TydomDevice):
+    """Represents a scene/scenario."""
+
+    def __init__(
+        self,
+        tydom_client: TydomClient,
+        uid: str,
+        device_id: str,
+        name: str,
+        device_type: str,
+        endpoint: str | None,
+        metadata: dict | None,
+        data: dict | None,
+    ):
+        """Initialize a TydomScene with special handling for epAct and grpAct."""
+        # Stocker epAct et grpAct comme attributs privés pour éviter l'exposition automatique
+        if data is not None:
+            # Faire une copie pour ne pas modifier le dictionnaire original
+            data_copy = data.copy()
+            grp_act = data_copy.pop("grpAct", None)
+            ep_act = data_copy.pop("epAct", None)
+            super().__init__(
+                tydom_client, uid, device_id, name, device_type, endpoint, metadata, data_copy
+            )
+            # Stocker comme attributs privés (commençant par _)
+            if grp_act is not None:
+                self._grp_act = grp_act
+            if ep_act is not None:
+                self._ep_act = ep_act
+        else:
+            super().__init__(
+                tydom_client, uid, device_id, name, device_type, endpoint, metadata, data
+            )
+
+    @property
+    def grpAct(self):
+        """Get grpAct as a property to maintain compatibility."""
+        return getattr(self, "_grp_act", None)
+
+    @property
+    def epAct(self):
+        """Get epAct as a property to maintain compatibility."""
+        return getattr(self, "_ep_act", None)
+
+    async def activate(self) -> None:
+        """Activate the scene."""
+        LOGGER.debug("Activating scene %s", self.device_id)
+        # Scenarios are activated via PUT /scenarios/{id}
+        scene_id = getattr(self, "scene_id", None) or self._id
+        await self._tydom_client.activate_scenario(scene_id)

@@ -1,62 +1,83 @@
 {
     "config": {
         "step": {
+            "user": {
+                "title": "Delta Dore Tydom Configuration",
+                "description": "Choose the configuration mode. Cloud mode automatically retrieves Tydom credentials from your Delta Dore account. Manual mode requires you to enter the Tydom password directly.",
+                "data": {
+                    "config_mode": "Configuration mode"
+                }
+            },
             "user_manual": {
                 "title": "Delta Dore Tydom Configuration",
-                "description": "If you need help with the configuration go to: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "Configure your Tydom gateway using manual credentials. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
                 "data": {
                     "host": "Tydom or mediation IP/hostname",
-                    "mac": "MAC address",
+                    "mac": "MAC address (12 characters, no separators)",
                     "password": "Tydom password",
                     "tydom_password": "Tydom password",
-                    "refresh_interval": "Refresh interval in min",
-                    "zones_away": "Active zones in away alarm mode",
-                    "zones_home": "Active zones in home alarm mode",
-                    "pin": "Alarm PIN"
+                    "refresh_interval": "Refresh interval in minutes (default: 30)",
+                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
+                    "pin": "Alarm PIN (optional, required for alarm control)"
                 }
             },
             "user_cloud": {
                 "title": "Delta Dore Tydom Configuration",
-                "description": "If you need help with the configuration go to: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "Configure your Tydom gateway using your Delta Dore cloud account. The Tydom password will be retrieved automatically. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
                 "data": {
-                    "host": "Tydom or mediation IP/hostname",
-                    "mac": "MAC address",
-                    "email": "Cloud account email",
-                    "password": "Cloud account password",
-                    "tydom_password": "Tydom password",
-                    "refresh_interval": "Refresh interval in min",
-                    "zones_away": "Active zones in away alarm mode",
-                    "zones_home": "Active zones in home alarm mode",
-                    "pin": "Alarm PIN"
+                    "host": "Tydom or mediation IP/hostname (use 'mediation.tydom.com' for cloud mode)",
+                    "mac": "MAC address (12 characters, no separators)",
+                    "email": "Delta Dore cloud account email",
+                    "password": "Delta Dore cloud account password",
+                    "tydom_password": "Tydom password (retrieved automatically)",
+                    "refresh_interval": "Refresh interval in minutes (default: 30)",
+                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
+                    "pin": "Alarm PIN (optional, required for alarm control)"
+                }
+            },
+            "discovery_confirm": {
+                "title": "Delta Dore Tydom Configuration",
+                "description": "A Tydom gateway was discovered ({name}). Choose the configuration mode.",
+                "data": {
+                    "config_mode": "Configuration mode"
                 }
             },
             "discovery_confirm_manual": {
                 "title": "Delta Dore Tydom Configuration",
-                "description": "If you need help with the configuration go to: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "A Tydom gateway was discovered ({name}). Configure it using manual credentials. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
                 "data": {
                     "host": "Tydom or mediation IP/hostname",
-                    "mac": "MAC address",
-                    "email": "Cloud account email",
+                    "mac": "MAC address (12 characters, no separators)",
                     "tydom_password": "Tydom password",
-                    "refresh_interval": "Refresh interval in min",
-                    "zones_away": "Active zones in away alarm mode",
-                    "zones_home": "Active zones in home alarm mode",
-                    "pin": "Alarm PIN"
+                    "refresh_interval": "Refresh interval in minutes (default: 30)",
+                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
+                    "pin": "Alarm PIN (optional, required for alarm control)"
                 }
             },
             "discovery_confirm_cloud": {
                 "title": "Delta Dore Tydom Configuration",
-                "description": "If you need help with the configuration go to: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "A Tydom gateway was discovered ({name}). Configure it using your Delta Dore cloud account. The Tydom password will be retrieved automatically. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
                 "data": {
-                    "host": "Tydom or mediation IP/hostname",
-                    "mac": "MAC address",
-                    "email": "Cloud account email",
-                    "password": "Cloud account password",
-                    "refresh_interval": "Refresh interval in min",
-                    "zones_away": "Active zones in away alarm mode",
-                    "zones_home": "Active zones in home alarm mode",
-                    "pin": "Alarm PIN"
+                    "host": "Tydom or mediation IP/hostname (use 'mediation.tydom.com' for cloud mode)",
+                    "mac": "MAC address (12 characters, no separators)",
+                    "email": "Delta Dore cloud account email",
+                    "password": "Delta Dore cloud account password",
+                    "refresh_interval": "Refresh interval in minutes (default: 30)",
+                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
+                    "pin": "Alarm PIN (optional, required for alarm control)"
                 }
+            },
+            "reauth_confirm": {
+                "title": "Re-authenticate Delta Dore Tydom",
+                "description": "The credentials for {name} have expired or are invalid. Please update them."
             }
         },
         "error": {
@@ -67,6 +88,7 @@
             "invalid_password": "Password is invalid",
             "invalid_refresh_interval": "Refresh interval is not valid",
             "communication_error": "Couldn't connect to Tydom Gateway",
+            "authentication_error": "Authentication error",
             "invalid_zone_config": "Zone configuration is invalid. syntax is : zone_id_1,zone_id_2... Example: 1,2,4"
         },
         "abort": {
@@ -75,18 +97,21 @@
             "all_configured": "All device are already configured",
             "unknown": "Unknown error occurred",
             "cannot_connect": "Unable to connect to the device",
-            "already_configured": "Device is already configured"
+            "already_configured": "Device is already configured",
+            "reauth_entry_not_found": "Re-authentication entry not found",
+            "reauth_successful": "Re-authentication successful"
         }
     },
     "options": {
         "step": {
             "init": {
                 "title": "Delta Dore Tydom Configuration",
-                "description": "If you need help with the configuration go to: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "Update your Tydom integration settings. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
                 "data": {
-                    "refresh_interval": "Refresh interval in min",
-                    "zones_away": "Active zones in away alarm mode",
-                    "zones_home": "Active zones in home alarm mode"
+                    "refresh_interval": "Refresh interval in minutes (default: 30)",
+                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)"
                 }
             }
         },
@@ -122,6 +147,128 @@
                     "name": "Event type",
                     "description": "Alarm event type"
                 }
+            }
+        }
+    },
+    "entity": {
+        "scene": {
+            "name": "Scene",
+            "state_attributes": {
+                "scenario_id": {
+                    "name": "Scenario ID"
+                },
+                "scenario_type": {
+                    "name": "Scenario type"
+                },
+                "picto": {
+                    "name": "Pictogram"
+                },
+                "rule_id": {
+                    "name": "Rule ID"
+                },
+                "affected_groups": {
+                    "name": "Affected groups"
+                },
+                "affected_endpoints": {
+                    "name": "Affected endpoints"
+                }
+            }
+        },
+        "switch": {
+            "name": "Switch"
+        },
+        "button": {
+            "name": "Button"
+        },
+        "number": {
+            "name": "Number"
+        },
+        "select": {
+            "name": "Select"
+        },
+        "event": {
+            "name": "Event"
+        },
+        "sensor": {
+            "temperature": {
+                "name": "Temperature"
+            },
+            "outtemperature": {
+                "name": "Outdoor temperature"
+            },
+            "ambienttemperature": {
+                "name": "Ambient temperature"
+            },
+            "battlevel": {
+                "name": "Battery level"
+            },
+            "level": {
+                "name": "Level"
+            },
+            "position": {
+                "name": "Position"
+            },
+            "hygroin": {
+                "name": "Humidity"
+            },
+            "energy": {
+                "name": "Energy"
+            },
+            "power": {
+                "name": "Power"
+            },
+            "current": {
+                "name": "Current"
+            },
+            "value": {
+                "name": "Value"
+            },
+            "state": {
+                "name": "State"
+            },
+            "config": {
+                "name": "Configuration"
+            },
+            "supervisionmode": {
+                "name": "Supervision mode"
+            },
+            "productname": {
+                "name": "Product name"
+            },
+            "mac": {
+                "name": "MAC address"
+            },
+            "softversion": {
+                "name": "Software version"
+            },
+            "mainversionhw": {
+                "name": "Main hardware version"
+            },
+            "keyversionhw": {
+                "name": "Key hardware version"
+            }
+        },
+        "binary_sensor": {
+            "tempsensordefect": {
+                "name": "Temperature sensor defect"
+            },
+            "tempsensoropencirc": {
+                "name": "Temperature sensor open circuit"
+            },
+            "tempsensorshortcut": {
+                "name": "Temperature sensor short circuit"
+            },
+            "productiondefect": {
+                "name": "Production defect"
+            },
+            "batterycmddefect": {
+                "name": "Battery command defect"
+            },
+            "thermic_defect": {
+                "name": "Thermic defect"
+            },
+            "update_available": {
+                "name": "Update available"
             }
         }
     }
