@@ -196,7 +196,9 @@ class TydomClient:
                 "Error fetching information",
             ) from exception
         except Exception as exception:  # pylint: disable=broad-except
-            traceback.print_exception(type(exception), exception, exception.__traceback__)
+            traceback.print_exception(
+                type(exception), exception, exception.__traceback__
+            )
             raise TydomClientApiClientError(
                 "Something really wrong happened!"
             ) from exception
@@ -251,7 +253,9 @@ class TydomClient:
                 www_authenticate = response.headers.get("WWW-Authenticate")
                 if www_authenticate is None:
                     response.close()
-                    raise TydomClientApiClientError("Could't find WWW-Authenticate header")
+                    raise TydomClientApiClientError(
+                        "Could't find WWW-Authenticate header"
+                    )
 
                 re_matcher = re.match(
                     '.*nonce="([a-zA-Z0-9+=]+)".*',

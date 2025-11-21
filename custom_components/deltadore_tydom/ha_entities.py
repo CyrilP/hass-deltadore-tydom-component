@@ -444,7 +444,10 @@ class GenericSensor(SensorEntity):
 
         # Link device to Tydom gateway via via_device
         gateway_device_id = self._get_tydom_gateway_device_id()
-        if gateway_device_id is not None and gateway_device_id != self._device.device_id:
+        if (
+            gateway_device_id is not None
+            and gateway_device_id != self._device.device_id
+        ):
             info["via_device"] = (DOMAIN, gateway_device_id)
 
         return info
@@ -457,6 +460,7 @@ class GenericSensor(SensorEntity):
         # Use the same availability logic as HAEntity
         if hasattr(self, "hass") and self.hass is not None:
             from .const import DOMAIN
+
             if DOMAIN in self.hass.data:
                 hubs = self.hass.data[DOMAIN]
                 if hubs:
@@ -546,7 +550,10 @@ class BinarySensorBase(BinarySensorEntity):
                 info["model"] = str(product_name)
         # Link to gateway if available
         gateway_device_id = self._get_tydom_gateway_device_id()
-        if gateway_device_id is not None and gateway_device_id != self._device.device_id:
+        if (
+            gateway_device_id is not None
+            and gateway_device_id != self._device.device_id
+        ):
             info["via_device"] = (DOMAIN, gateway_device_id)
         return info
 
@@ -622,6 +629,7 @@ class GenericBinarySensor(BinarySensorBase):
         # Use the same availability logic as HAEntity
         if hasattr(self, "hass") and self.hass is not None:
             from .const import DOMAIN
+
             if DOMAIN in self.hass.data:
                 hubs = self.hass.data[DOMAIN]
                 if hubs:
@@ -702,10 +710,15 @@ class HATydom(UpdateEntity, HAEntity):
         device_info = self._get_device_info()
         info: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self._device.device_name if hasattr(self._device, "device_name") and self._device.device_name else f"Tydom Gateway {self._device.device_id[-6:]}",
+            "name": self._device.device_name
+            if hasattr(self._device, "device_name") and self._device.device_name
+            else f"Tydom Gateway {self._device.device_id[-6:]}",
             "manufacturer": device_info["manufacturer"],
         }
-        if hasattr(self._device, "mainVersionSW") and self._device.mainVersionSW is not None:
+        if (
+            hasattr(self._device, "mainVersionSW")
+            and self._device.mainVersionSW is not None
+        ):
             info["sw_version"] = str(self._device.mainVersionSW)
         if "model" in device_info:
             info["model"] = device_info["model"]
@@ -731,7 +744,9 @@ class HATydom(UpdateEntity, HAEntity):
             version = getattr(self._device, "mainVersionSW", None)
             if version is None:
                 return None
-            if hasattr(self._device, "updateAvailable") and getattr(self._device, "updateAvailable", False):
+            if hasattr(self._device, "updateAvailable") and getattr(
+                self._device, "updateAvailable", False
+            ):
                 # If update is available, return current version as latest
                 # (actual update version is not provided by the API)
                 return str(version)
@@ -1149,7 +1164,9 @@ class HaClimate(ClimateEntity, HAEntity):
         # Add common presets if available
         if not self._attr_preset_modes:
             # Default presets if none found in metadata
-            if hasattr(self._device, "comfortMode") or hasattr(self._device, "thermicLevel"):
+            if hasattr(self._device, "comfortMode") or hasattr(
+                self._device, "thermicLevel"
+            ):
                 self._attr_preset_modes = ["NORMAL", "ECO", "COMFORT"]
 
         # Add PRESET_NONE if we have presets
@@ -1161,32 +1178,26 @@ class HaClimate(ClimateEntity, HAEntity):
             HVACMode.AUTO,
         ]
 
-        if (
-            self._device._metadata is not None
-            and (
-                (
-                    "comfortMode" in self._device._metadata
-                    and "COOLING" in self._device._metadata["comfortMode"]["enum_values"]
-                )
-                or (
-                    "hvacMode" in self._device._metadata
-                    and "COOLING" in self._device._metadata["hvacMode"]["enum_values"]
-                )
+        if self._device._metadata is not None and (
+            (
+                "comfortMode" in self._device._metadata
+                and "COOLING" in self._device._metadata["comfortMode"]["enum_values"]
+            )
+            or (
+                "hvacMode" in self._device._metadata
+                and "COOLING" in self._device._metadata["hvacMode"]["enum_values"]
             )
         ):
             self._attr_hvac_modes.append(HVACMode.COOL)
 
-        if (
-            self._device._metadata is not None
-            and (
-                (
-                    "comfortMode" in self._device._metadata
-                    and "HEATING" in self._device._metadata["comfortMode"]["enum_values"]
-                )
-                or (
-                    "hvacMode" in self._device._metadata
-                    and "HEATING" in self._device._metadata["hvacMode"]["enum_values"]
-                )
+        if self._device._metadata is not None and (
+            (
+                "comfortMode" in self._device._metadata
+                and "HEATING" in self._device._metadata["comfortMode"]["enum_values"]
+            )
+            or (
+                "hvacMode" in self._device._metadata
+                and "HEATING" in self._device._metadata["hvacMode"]["enum_values"]
             )
         ):
             self._attr_hvac_modes.append(HVACMode.HEAT)
@@ -1231,15 +1242,16 @@ class HaClimate(ClimateEntity, HAEntity):
         if hasattr(self._device, "hvacMode"):
             hvac_mode = getattr(self._device, "hvacMode", None)
             if hvac_mode is not None and hvac_mode in self.dict_modes_dd_to_ha:
-                LOGGER.debug(
-                    "hvac_mode = %s", self.dict_modes_dd_to_ha[hvac_mode]
-                )
+                LOGGER.debug("hvac_mode = %s", self.dict_modes_dd_to_ha[hvac_mode])
                 return self.dict_modes_dd_to_ha[hvac_mode]
         if hasattr(self._device, "authorization"):
             authorization = getattr(self._device, "authorization", None)
             if authorization is not None and authorization in self.dict_modes_dd_to_ha:
                 thermic_level = getattr(self._device, "thermicLevel", None)
-                if thermic_level is not None and thermic_level in self.dict_modes_dd_to_ha:
+                if (
+                    thermic_level is not None
+                    and thermic_level in self.dict_modes_dd_to_ha
+                ):
                     LOGGER.debug(
                         "authorization = %s",
                         self.dict_modes_dd_to_ha[thermic_level],
@@ -1338,7 +1350,8 @@ class HaClimate(ClimateEntity, HAEntity):
         if (
             self._device._metadata is not None
             and "comfortMode" in self._device._metadata
-            and preset_mode in self._device._metadata["comfortMode"].get("enum_values", [])
+            and preset_mode
+            in self._device._metadata["comfortMode"].get("enum_values", [])
         ):
             await self._device._tydom_client.put_devices_data(
                 self._device._id, self._device._endpoint, "comfortMode", preset_mode
@@ -1347,7 +1360,8 @@ class HaClimate(ClimateEntity, HAEntity):
         elif (
             self._device._metadata is not None
             and "thermicLevel" in self._device._metadata
-            and preset_mode in self._device._metadata["thermicLevel"].get("enum_values", [])
+            and preset_mode
+            in self._device._metadata["thermicLevel"].get("enum_values", [])
         ):
             await self._device._tydom_client.put_devices_data(
                 self._device._id, self._device._endpoint, "thermicLevel", preset_mode
@@ -1484,14 +1498,18 @@ class HaGate(CoverEntity, HAEntity):
             and "levelCmd" in self._device._metadata
             and "OFF" in self._device._metadata["levelCmd"]["enum_values"]
         ):
-            self._attr_supported_features = self._attr_supported_features | CoverEntityFeature.CLOSE
+            self._attr_supported_features = (
+                self._attr_supported_features | CoverEntityFeature.CLOSE
+            )
 
         if (
             self._device._metadata is not None
             and "levelCmd" in self._device._metadata
             and "STOP" in self._device._metadata["levelCmd"]["enum_values"]
         ):
-            self._attr_supported_features = self._attr_supported_features | CoverEntityFeature.STOP
+            self._attr_supported_features = (
+                self._attr_supported_features | CoverEntityFeature.STOP
+            )
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -1578,14 +1596,18 @@ class HaGarage(CoverEntity, HAEntity):
             and "levelCmd" in self._device._metadata
             and "OFF" in self._device._metadata["levelCmd"]["enum_values"]
         ):
-            self._attr_supported_features = self._attr_supported_features | CoverEntityFeature.CLOSE
+            self._attr_supported_features = (
+                self._attr_supported_features | CoverEntityFeature.CLOSE
+            )
 
         if (
             self._device._metadata is not None
             and "levelCmd" in self._device._metadata
             and "STOP" in self._device._metadata["levelCmd"]["enum_values"]
         ):
-            self._attr_supported_features = self._attr_supported_features | CoverEntityFeature.STOP
+            self._attr_supported_features = (
+                self._attr_supported_features | CoverEntityFeature.STOP
+            )
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -1652,10 +1674,7 @@ class HaLight(LightEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_light"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
-        if (
-            self._device._metadata is not None
-            and "level" in self._device._metadata
-        ):
+        if self._device._metadata is not None and "level" in self._device._metadata:
             self._attr_color_mode = ColorMode.BRIGHTNESS
             if self._attr_supported_color_modes is None:
                 self._attr_supported_color_modes = set()
@@ -1686,7 +1705,9 @@ class HaLight(LightEntity, HAEntity):
         if hasattr(self._device, "level"):
             level = getattr(self._device, "level", None)
             if level is not None:
-                return int(percentage_to_ranged_value(self.BRIGHTNESS_SCALE, float(level)))
+                return int(
+                    percentage_to_ranged_value(self.BRIGHTNESS_SCALE, float(level))
+                )
         return None
 
     @property
@@ -2171,7 +2192,9 @@ class HAScene(Scene, HAEntity):
                                 f"{item_type.capitalize()} {item_id} ({', '.join(state_parts)})"
                             )
                         else:
-                            formatted_items.append(f"{item_type.capitalize()} {item_id}")
+                            formatted_items.append(
+                                f"{item_type.capitalize()} {item_id}"
+                            )
                     else:
                         formatted_items.append(f"{item_type.capitalize()} {item_id}")
 
@@ -2322,7 +2345,9 @@ class HAButton(ButtonEntity, HAEntity):
     _attr_has_entity_name = True
     _attr_icon = "mdi:button-cursor"
 
-    def __init__(self, device: TydomDevice, hass, action_name: str, action_method: str) -> None:
+    def __init__(
+        self, device: TydomDevice, hass, action_name: str, action_method: str
+    ) -> None:
         """Initialize HAButton."""
         self.hass = hass
         self._device = device

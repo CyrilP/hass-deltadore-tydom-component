@@ -17,4 +17,3 @@ async def async_setup_entry(
     """Add switches for passed config_entry in HA."""
     hub = hass.data[DOMAIN][config_entry.entry_id]
     hub.add_switch_callback = async_add_entities
-

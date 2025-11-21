@@ -86,7 +86,12 @@ class TydomDevice:
             # Cela permet de mettre à jour correctement les valeurs qui passent à None
             if attribute == "_uid" or attribute[:1] != "_":
                 # Ne pas mettre à jour les attributs internes comme _tydom_client, _callbacks, etc.
-                if attribute not in ["_tydom_client", "_callbacks", "_ha_device", "_metadata"]:
+                if attribute not in [
+                    "_tydom_client",
+                    "_callbacks",
+                    "_ha_device",
+                    "_metadata",
+                ]:
                     setattr(self, attribute, value)
         await self.publish_updates()
         if hasattr(self, "_ha_device") and self._ha_device is not None:
@@ -549,7 +554,14 @@ class TydomScene(TydomDevice):
             grp_act = data_copy.pop("grpAct", None)
             ep_act = data_copy.pop("epAct", None)
             super().__init__(
-                tydom_client, uid, device_id, name, device_type, endpoint, metadata, data_copy
+                tydom_client,
+                uid,
+                device_id,
+                name,
+                device_type,
+                endpoint,
+                metadata,
+                data_copy,
             )
             # Stocker comme attributs privés (commençant par _)
             if grp_act is not None:
@@ -558,7 +570,14 @@ class TydomScene(TydomDevice):
                 self._ep_act = ep_act
         else:
             super().__init__(
-                tydom_client, uid, device_id, name, device_type, endpoint, metadata, data
+                tydom_client,
+                uid,
+                device_id,
+                name,
+                device_type,
+                endpoint,
+                metadata,
+                data,
             )
 
     @property
