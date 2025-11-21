@@ -8,11 +8,12 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.config_entries import OptionsFlow
+from homeassistant.config_entries import OptionsFlow, ConfigEntry
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries, exceptions
+from homeassistant.data_entry_flow import AbortFlow
 from homeassistant.const import (
     CONF_NAME,
     CONF_HOST,
@@ -61,11 +62,13 @@ DATA_SCHEMA = vol.Schema(
 def host_valid(host) -> bool:
     """Return True if hostname or IP address is valid."""
     try:
-        if ipaddress.ip_address(host).version == (4 or 6):
+        if ipaddress.ip_address(host).version in (4, 6):
             return True
+        return False
     except ValueError:
         disallowed = re.compile(r"[^a-zA-Z\d\-]")
-        return all(x and not disallowed.search(x) for x in host.split("."))
+        parts = host.split(".")
+        return bool(parts and all(x and not disallowed.search(x) for x in parts))
 
 
 email_regex = re.compile(
@@ -76,12 +79,12 @@ zones_regex = re.compile(r"^$|^[0-8](,[0-8]){0,7}$")
 
 def email_valid(email) -> bool:
     """Return True if email is valid."""
-    return re.fullmatch(email_regex, email)
+    return re.fullmatch(email_regex, email) is not None
 
 
 def zones_valid(zones) -> bool:
     """Return True if zone config is valid."""
-    return re.fullmatch(zones_regex, zones)
+    return re.fullmatch(zones_regex, zones) is not None
 
 
 async def validate_input(
@@ -115,9 +118,13 @@ async def validate_input(
         if len(data[CONF_PASSWORD]) < 3:
             raise InvalidPassword
 
+        # Convert to string if it's an int (from NumberSelector)
+        if isinstance(data[CONF_REFRESH_INTERVAL], int):
+            data[CONF_REFRESH_INTERVAL] = str(data[CONF_REFRESH_INTERVAL])
+
         try:
             int(data[CONF_REFRESH_INTERVAL])
-        except ValueError:
+        except (ValueError, TypeError):
             raise InvalidRefreshInterval
 
         password = await hub.Hub.get_tydom_credentials(
@@ -130,8 +137,20 @@ async def validate_input(
     else:
         data[CONF_EMAIL] = ""
         data[CONF_PASSWORD] = ""
-        if len(data[CONF_TYDOM_PASSWORD]) < 3:
+        if (
+            CONF_TYDOM_PASSWORD not in data
+            or len(data.get(CONF_TYDOM_PASSWORD, "")) < 3
+        ):
             raise InvalidPassword
+
+        # Convert to string if it's an int (from NumberSelector)
+        if isinstance(data[CONF_REFRESH_INTERVAL], int):
+            data[CONF_REFRESH_INTERVAL] = str(data[CONF_REFRESH_INTERVAL])
+
+        try:
+            int(data[CONF_REFRESH_INTERVAL])
+        except (ValueError, TypeError):
+            raise InvalidRefreshInterval
 
     LOGGER.debug("Input is valid.")
     return {
@@ -158,6 +177,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize config flow."""
         self._discovered_host = None
         self._discovered_mac = None
+        self._name_value: str | None = None
 
     async def async_step_import(self, import_config):
         """Import a config entry from configuration.yaml."""
@@ -173,7 +193,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_user_cloud()
         else:
             user_input = user_input or {}
-            return self.async_show_form(
+            return self.async_show_form(  # type: ignore[return-value]
                 step_id="user",
                 data_schema=vol.Schema(
                     {
@@ -212,7 +232,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         default_zone_night = ""
 
         if user_input is not None:
-            user_input.get(CONF_PIN, "")
             default_zone_home = user_input.get(CONF_ZONES_HOME, None)
             default_zone_away = user_input.get(CONF_ZONES_AWAY, None)
             default_zone_night = user_input.get(CONF_ZONES_NIGHT, None)
@@ -222,7 +241,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 tydom_hub = hub.Hub(
                     self.hass,
-                    None,
+                    None,  # type: ignore[arg-type]
                     user_input[CONF_HOST],
                     user_input[CONF_MAC],
                     user_input[CONF_TYDOM_PASSWORD],
@@ -280,41 +299,102 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 traceback.print_exc()
                 _errors["base"] = "unknown"
                 LOGGER.exception("Unknown error")
-
+            except AbortFlow:
+                raise
             except Exception:  # pylint: disable=broad-except
                 traceback.print_exc()
                 LOGGER.exception("Unexpected exception")
                 _errors["base"] = "unknown"
             else:
-                LOGGER.warn("adding TYDOM entry")
+                LOGGER.warning("adding TYDOM entry")
                 await self.async_set_unique_id(user_input[CONF_MAC])
                 self._abort_if_unique_id_configured()
 
-                return self.async_create_entry(
+                return self.async_create_entry(  # type: ignore[return-value]
                     title="Tydom-" + user_input[CONF_MAC][6:], data=user_input
                 )
 
         user_input = user_input or {}
 
-        return self.async_show_form(
+        return self.async_show_form(  # type: ignore[return-value]
             step_id="user_cloud",
             data_schema=vol.Schema(
                 {
                     vol.Required(
                         CONF_HOST, default=user_input.get(CONF_HOST)
-                    ): cv.string,
-                    vol.Required(CONF_MAC, default=user_input.get(CONF_MAC)): cv.string,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Required(
+                        CONF_MAC, default=user_input.get(CONF_MAC)
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Required(
                         CONF_EMAIL, default=user_input.get(CONF_EMAIL)
-                    ): cv.string,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.EMAIL,
+                            autocomplete="username",
+                        )
+                    ),
                     vol.Required(
                         CONF_PASSWORD, default=user_input.get(CONF_PASSWORD)
-                    ): cv.string,
-                    vol.Required(CONF_REFRESH_INTERVAL, default="30"): cv.string,
-                    vol.Optional(CONF_ZONES_HOME, default=default_zone_home): str,
-                    vol.Optional(CONF_ZONES_AWAY, default=default_zone_away): str,
-                    vol.Optional(CONF_ZONES_NIGHT, default=default_zone_night): str,
-                    vol.Optional(CONF_PIN, default=user_input.get(CONF_PIN, "")): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="current-password",
+                        )
+                    ),
+                    vol.Required(
+                        CONF_REFRESH_INTERVAL, default="30"
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=1,
+                            max=1440,
+                            step=1,
+                            unit_of_measurement="minutes",
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_ZONES_HOME, default=default_zone_home
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_ZONES_AWAY, default=default_zone_away
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_ZONES_NIGHT, default=default_zone_night
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_PIN, default=user_input.get(CONF_PIN, "")
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="off",
+                        )
+                    ),
                 }
             ),
             errors=_errors,
@@ -335,7 +415,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         default_zone_away = ""
         default_zone_night = ""
         if user_input is not None:
-            user_input.get(CONF_PIN, "")
             default_zone_home = user_input.get(CONF_ZONES_HOME, None)
             default_zone_away = user_input.get(CONF_ZONES_AWAY, None)
             default_zone_night = user_input.get(CONF_ZONES_NIGHT, None)
@@ -345,7 +424,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 tydom_hub = hub.Hub(
                     self.hass,
-                    None,
+                    None,  # type: ignore[arg-type]
                     user_input[CONF_HOST],
                     user_input[CONF_MAC],
                     user_input[CONF_TYDOM_PASSWORD],
@@ -400,7 +479,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 traceback.print_exc()
                 _errors["base"] = "unknown"
                 LOGGER.exception("Unknown error")
-
+            except AbortFlow:
+                raise
             except Exception:  # pylint: disable=broad-except
                 traceback.print_exc()
                 LOGGER.exception("Unexpected exception")
@@ -409,28 +489,83 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 await self.async_set_unique_id(user_input[CONF_MAC])
                 self._abort_if_unique_id_configured()
 
-                return self.async_create_entry(
+                return self.async_create_entry(  # type: ignore[return-value]
                     title="Tydom-" + user_input[CONF_MAC][6:], data=user_input
                 )
 
         user_input = user_input or {}
 
-        return self.async_show_form(
+        return self.async_show_form(  # type: ignore[return-value]
             step_id="user_manual",
             data_schema=vol.Schema(
                 {
                     vol.Required(
                         CONF_HOST, default=user_input.get(CONF_HOST)
-                    ): cv.string,
-                    vol.Required(CONF_MAC, default=user_input.get(CONF_MAC)): cv.string,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Required(
+                        CONF_MAC, default=user_input.get(CONF_MAC)
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Required(
                         CONF_TYDOM_PASSWORD, default=user_input.get(CONF_TYDOM_PASSWORD)
-                    ): cv.string,
-                    vol.Required(CONF_REFRESH_INTERVAL, default="30"): cv.string,
-                    vol.Optional(CONF_ZONES_HOME, default=default_zone_home): str,
-                    vol.Optional(CONF_ZONES_AWAY, default=default_zone_away): str,
-                    vol.Optional(CONF_ZONES_NIGHT, default=default_zone_night): str,
-                    vol.Optional(CONF_PIN, default=user_input.get(CONF_PIN, "")): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Required(
+                        CONF_REFRESH_INTERVAL, default="30"
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=1,
+                            max=1440,
+                            step=1,
+                            unit_of_measurement="minutes",
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_ZONES_HOME, default=default_zone_home
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_ZONES_AWAY, default=default_zone_away
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_ZONES_NIGHT, default=default_zone_night
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_PIN, default=user_input.get(CONF_PIN, "")
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="off",
+                        )
+                    ),
                 }
             ),
             errors=_errors,
@@ -438,12 +573,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @property
     def _name(self) -> str | None:
-        return self.context.get(CONF_NAME)
+        return self._name_value or self.context.get(CONF_NAME)
 
     @_name.setter
     def _name(self, value: str) -> None:
-        self.context[CONF_NAME] = value
-        self.context["title_placeholders"] = {"name": self._name}
+        self._name_value = value
 
     async def async_step_dhcp(self, discovery_info: dhcp.DhcpServiceInfo):
         """Handle the discovery from dhcp."""
@@ -498,7 +632,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # Ensure it's working as expected
                 tydom_hub = hub.Hub(
                     self.hass,
-                    None,
+                    None,  # type: ignore[arg-type]
                     user_input[CONF_HOST],
                     user_input[CONF_MAC],
                     user_input[CONF_TYDOM_PASSWORD],
@@ -534,7 +668,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except TydomClientApiClientError:
                 traceback.print_exc()
                 _errors["base"] = "unknown"
-
+            except AbortFlow:
+                raise
             except Exception:  # pylint: disable=broad-except
                 traceback.print_exc()
                 LOGGER.exception("Unexpected exception")
@@ -550,33 +685,78 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         user_input = user_input or {}
         return self.async_show_form(
             step_id="discovery_confirm_manual",
-            description_placeholders={"name": self._name},
+            description_placeholders={"name": self._name or ""},
             data_schema=vol.Schema(
                 {
                     vol.Required(
                         CONF_HOST,
                         default=user_input.get(CONF_HOST, self._discovered_host),
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Required(
                         CONF_MAC, default=user_input.get(CONF_MAC, self._discovered_mac)
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Required(
                         CONF_TYDOM_PASSWORD, default=user_input.get(CONF_TYDOM_PASSWORD)
-                    ): cv.string,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Required(
                         CONF_REFRESH_INTERVAL,
                         default=user_input.get(CONF_REFRESH_INTERVAL, "30"),
-                    ): str,
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=1,
+                            max=1440,
+                            step=1,
+                            unit_of_measurement="minutes",
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
                     vol.Optional(
                         CONF_ZONES_HOME, default=user_input.get(CONF_ZONES_HOME, "")
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Optional(
                         CONF_ZONES_AWAY, default=user_input.get(CONF_ZONES_AWAY, "")
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Optional(
                         CONF_ZONES_NIGHT, default=user_input.get(CONF_ZONES_NIGHT, "")
-                    ): str,
-                    vol.Optional(CONF_PIN, default=user_input.get(CONF_PIN, "")): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_PIN, default=user_input.get(CONF_PIN, "")
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="off",
+                        )
+                    ),
                 }
             ),
         )
@@ -590,7 +770,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # Ensure it's working as expected
                 tydom_hub = hub.Hub(
                     self.hass,
-                    None,
+                    None,  # type: ignore[arg-type]
                     user_input[CONF_HOST],
                     user_input[CONF_MAC],
                     user_input[CONF_TYDOM_PASSWORD],
@@ -629,7 +809,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except TydomClientApiClientError:
                 traceback.print_exc()
                 _errors["base"] = "unknown"
-
+            except AbortFlow:
+                raise
             except Exception:  # pylint: disable=broad-except
                 traceback.print_exc()
                 LOGGER.exception("Unexpected exception")
@@ -645,39 +826,245 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         user_input = user_input or {}
         return self.async_show_form(
             step_id="discovery_confirm_cloud",
-            description_placeholders={"name": self._name},
+            description_placeholders={"name": self._name or ""},
             data_schema=vol.Schema(
                 {
                     vol.Required(
                         CONF_HOST,
                         default=user_input.get(CONF_HOST, self._discovered_host),
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Required(
                         CONF_MAC, default=user_input.get(CONF_MAC, self._discovered_mac)
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Required(
                         CONF_EMAIL, default=user_input.get(CONF_EMAIL)
-                    ): cv.string,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.EMAIL,
+                            autocomplete="username",
+                        )
+                    ),
                     vol.Required(
                         CONF_PASSWORD, default=user_input.get(CONF_PASSWORD)
-                    ): cv.string,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="current-password",
+                        )
+                    ),
                     vol.Required(
                         CONF_REFRESH_INTERVAL,
                         default=user_input.get(CONF_REFRESH_INTERVAL, "30"),
-                    ): str,
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=1,
+                            max=1440,
+                            step=1,
+                            unit_of_measurement="minutes",
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
                     vol.Optional(
                         CONF_ZONES_HOME, default=user_input.get(CONF_ZONES_HOME, "")
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Optional(
                         CONF_ZONES_AWAY, default=user_input.get(CONF_ZONES_AWAY, "")
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Optional(
                         CONF_ZONES_NIGHT, default=user_input.get(CONF_ZONES_NIGHT, "")
-                    ): str,
-                    vol.Optional(CONF_PIN, default=user_input.get(CONF_PIN, "")): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_PIN, default=user_input.get(CONF_PIN, "")
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="off",
+                        )
+                    ),
                 }
             ),
         )
+
+    async def async_step_reauth(self, user_input=None):
+        """Handle reauth upon an API authentication error."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(self, user_input=None):
+        """Handle reauth confirmation."""
+        errors = {}
+        existing_entry = self._get_reauth_entry()
+        if existing_entry is None:
+            return self.async_abort(reason="reauth_entry_not_found")
+
+        if user_input is not None:
+            try:
+                # Determine if cloud or manual mode
+                cloud_mode = (
+                    CONF_EMAIL in existing_entry.data
+                    and existing_entry.data[CONF_EMAIL]
+                )
+
+                if cloud_mode:
+                    # Cloud mode reauth
+                    data = {
+                        CONF_HOST: user_input.get(
+                            CONF_HOST, existing_entry.data[CONF_HOST]
+                        ),
+                        CONF_MAC: existing_entry.data[CONF_MAC],
+                        CONF_EMAIL: user_input[CONF_EMAIL],
+                        CONF_PASSWORD: user_input[CONF_PASSWORD],
+                        CONF_REFRESH_INTERVAL: existing_entry.data.get(
+                            CONF_REFRESH_INTERVAL, "30"
+                        ),
+                        CONF_ZONES_HOME: existing_entry.data.get(CONF_ZONES_HOME, ""),
+                        CONF_ZONES_AWAY: existing_entry.data.get(CONF_ZONES_AWAY, ""),
+                        CONF_ZONES_NIGHT: existing_entry.data.get(CONF_ZONES_NIGHT, ""),
+                        CONF_PIN: existing_entry.data.get(CONF_PIN, ""),
+                    }
+                    validated_data = await validate_input(self.hass, True, data)
+                else:
+                    # Manual mode reauth
+                    data = {
+                        CONF_HOST: user_input.get(
+                            CONF_HOST, existing_entry.data[CONF_HOST]
+                        ),
+                        CONF_MAC: existing_entry.data[CONF_MAC],
+                        CONF_TYDOM_PASSWORD: user_input[CONF_TYDOM_PASSWORD],
+                        CONF_REFRESH_INTERVAL: existing_entry.data.get(
+                            CONF_REFRESH_INTERVAL, "30"
+                        ),
+                        CONF_ZONES_HOME: existing_entry.data.get(CONF_ZONES_HOME, ""),
+                        CONF_ZONES_AWAY: existing_entry.data.get(CONF_ZONES_AWAY, ""),
+                        CONF_ZONES_NIGHT: existing_entry.data.get(CONF_ZONES_NIGHT, ""),
+                        CONF_PIN: existing_entry.data.get(CONF_PIN, ""),
+                    }
+                    validated_data = await validate_input(self.hass, False, data)
+
+                # Test credentials
+                tydom_hub = hub.Hub(
+                    self.hass,
+                    None,  # type: ignore[arg-type]
+                    validated_data[CONF_HOST],
+                    validated_data[CONF_MAC],
+                    validated_data[CONF_TYDOM_PASSWORD],
+                    "-1",
+                    "",
+                    "",
+                    "",
+                    "",
+                )
+                await tydom_hub.test_credentials()
+
+                # Update entry
+                self.hass.config_entries.async_update_entry(
+                    existing_entry, data=validated_data
+                )
+                await self.hass.config_entries.async_reload(existing_entry.entry_id)
+                return self.async_abort(reason="reauth_successful")
+
+            except TydomClientApiClientAuthenticationError:
+                errors["base"] = "authentication_error"
+                LOGGER.exception("Authentication error during reauth")
+            except TydomClientApiClientCommunicationError:
+                errors["base"] = "communication_error"
+                LOGGER.exception("Communication error during reauth")
+            except InvalidPassword:
+                if cloud_mode:
+                    errors[CONF_PASSWORD] = "invalid_password"
+                else:
+                    errors[CONF_TYDOM_PASSWORD] = "invalid_password"
+            except InvalidHost:
+                errors[CONF_HOST] = "invalid_host"
+            except Exception:
+                errors["base"] = "unknown"
+                LOGGER.exception("Unexpected error during reauth")
+
+        # Show form
+        if cloud_mode:
+            schema = vol.Schema(
+                {
+                    vol.Required(
+                        CONF_EMAIL, default=existing_entry.data.get(CONF_EMAIL, "")
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.EMAIL,
+                            autocomplete="username",
+                        )
+                    ),
+                    vol.Required(CONF_PASSWORD): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="current-password",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_HOST, default=existing_entry.data.get(CONF_HOST, "")
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                }
+            )
+        else:
+            schema = vol.Schema(
+                {
+                    vol.Required(CONF_TYDOM_PASSWORD): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_HOST, default=existing_entry.data.get(CONF_HOST, "")
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                }
+            )
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={"name": existing_entry.title},
+        )
+
+    def _get_reauth_entry(self) -> ConfigEntry | None:
+        """Get the entry being re-authenticated."""
+        if "entry_id" not in self.context:
+            return None
+        entry_id = self.context["entry_id"]
+        return self.hass.config_entries.async_get_entry(entry_id)
 
     @staticmethod
     @callback
@@ -699,8 +1086,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Manage the options."""
         _errors = {}
+        if self.config_entry is None:
+            return self.async_abort(reason="config_entry_not_found")
+
         default_zone_home = ""
         default_zone_away = ""
+        default_zone_night = ""
         default_refresh_interval = "30"
         if CONF_ZONES_HOME in self.config_entry.data:
             default_zone_home = self.config_entry.data[CONF_ZONES_HOME]
@@ -721,59 +1112,75 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             default_refresh_interval = user_input.get(CONF_REFRESH_INTERVAL, "30")
 
             try:
-                if CONF_ZONES_HOME in user_input and not zones_valid(
-                    user_input[CONF_ZONES_HOME]
-                ):
-                    raise InvalidZoneHome
+                # Validate zones
+                if CONF_ZONES_HOME in user_input and user_input[CONF_ZONES_HOME]:
+                    if not zones_valid(user_input[CONF_ZONES_HOME]):
+                        raise InvalidZoneHome
 
-                if CONF_ZONES_AWAY in user_input and not zones_valid(
-                    user_input[CONF_ZONES_AWAY]
-                ):
-                    raise InvalidZoneAway
+                if CONF_ZONES_AWAY in user_input and user_input[CONF_ZONES_AWAY]:
+                    if not zones_valid(user_input[CONF_ZONES_AWAY]):
+                        raise InvalidZoneAway
 
-                if CONF_ZONES_NIGHT in user_input and not zones_valid(
-                    user_input[CONF_ZONES_NIGHT]
-                ):
-                    raise InvalidZoneNight
+                if CONF_ZONES_NIGHT in user_input and user_input[CONF_ZONES_NIGHT]:
+                    if not zones_valid(user_input[CONF_ZONES_NIGHT]):
+                        raise InvalidZoneNight
+
+                # Validate refresh interval
+                # Convert to string if it's an int (from NumberSelector)
+                if isinstance(user_input[CONF_REFRESH_INTERVAL], int):
+                    user_input[CONF_REFRESH_INTERVAL] = str(
+                        user_input[CONF_REFRESH_INTERVAL]
+                    )
+                    default_refresh_interval = user_input[CONF_REFRESH_INTERVAL]
 
                 try:
-                    int(user_input[CONF_REFRESH_INTERVAL])
-                except ValueError:
+                    interval = int(user_input[CONF_REFRESH_INTERVAL])
+                    if interval < 0:
+                        raise InvalidRefreshInterval
+                except (ValueError, TypeError):
                     raise InvalidRefreshInterval
 
-                user_input[CONF_HOST] = self.config_entry.data[CONF_HOST]
-                user_input[CONF_MAC] = self.config_entry.data[CONF_MAC]
-                user_input[CONF_EMAIL] = self.config_entry.data[CONF_EMAIL]
-                user_input[CONF_PASSWORD] = self.config_entry.data[CONF_PASSWORD]
-                user_input[CONF_TYDOM_PASSWORD] = self.config_entry.data[
-                    CONF_TYDOM_PASSWORD
-                ]
-                user_input[CONF_PIN] = self.config_entry.data[CONF_PIN]
-                user_input[CONF_ZONES_HOME] = default_zone_home
-                user_input[CONF_ZONES_AWAY] = default_zone_away
-                user_input[CONF_ZONES_NIGHT] = default_zone_night
+                if self.config_entry is None:
+                    return self.async_abort(reason="config_entry_not_found")
 
+                # Prepare updated data
+                updated_data = self.config_entry.data.copy()
+                updated_data[CONF_ZONES_HOME] = default_zone_home
+                updated_data[CONF_ZONES_AWAY] = default_zone_away
+                updated_data[CONF_ZONES_NIGHT] = default_zone_night
+                updated_data[CONF_REFRESH_INTERVAL] = default_refresh_interval
+
+                # Update entry
                 self.hass.config_entries.async_update_entry(
                     self.config_entry,
-                    data=user_input,
+                    data=updated_data,
                     options=self.config_entry.options,
                 )
                 return self.async_create_entry(title="", data={})
 
             except InvalidRefreshInterval:
                 _errors[CONF_REFRESH_INTERVAL] = "invalid_refresh_interval"
+                LOGGER.warning(
+                    "Invalid refresh interval: %s",
+                    user_input.get(CONF_REFRESH_INTERVAL),
+                )
             except InvalidZoneHome:
                 _errors[CONF_ZONES_HOME] = "invalid_zone_config"
                 default_zone_home = ""
-                LOGGER.error("Invalid Zone HOME: %s", user_input[CONF_ZONES_HOME])
+                LOGGER.warning("Invalid Zone HOME: %s", user_input.get(CONF_ZONES_HOME))
             except InvalidZoneAway:
                 _errors[CONF_ZONES_AWAY] = "invalid_zone_config"
                 default_zone_away = ""
-                LOGGER.error("Invalid Zone AWAY: %s", user_input[CONF_ZONES_AWAY])
+                LOGGER.warning("Invalid Zone AWAY: %s", user_input.get(CONF_ZONES_AWAY))
             except InvalidZoneNight:
                 _errors[CONF_ZONES_NIGHT] = "invalid_zone_config"
                 default_zone_night = ""
-                LOGGER.error("Invalid Zone NIGHT: %s", user_input[CONF_ZONES_NIGHT])
+                LOGGER.warning(
+                    "Invalid Zone NIGHT: %s", user_input.get(CONF_ZONES_NIGHT)
+                )
+            except Exception:
+                _errors["base"] = "unknown"
+                LOGGER.exception("Unexpected error in options flow")
 
         return self.async_show_form(
             step_id="init",
@@ -782,15 +1189,42 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     vol.Required(
                         CONF_REFRESH_INTERVAL,
                         description={"suggested_value": default_refresh_interval},
-                    ): str,
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=1,
+                            max=1440,
+                            step=1,
+                            unit_of_measurement="minutes",
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
                     vol.Optional(
                         CONF_ZONES_HOME,
                         description={"suggested_value": default_zone_home},
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                     vol.Optional(
                         CONF_ZONES_AWAY,
                         description={"suggested_value": default_zone_away},
-                    ): str,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_ZONES_NIGHT,
+                        description={"suggested_value": default_zone_night},
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
                 }
             ),
             errors=_errors,
