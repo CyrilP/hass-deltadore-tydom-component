@@ -131,12 +131,12 @@ class HAEntity:
             return None
         # Look for the Tydom gateway device in hub devices
         if hasattr(hub_instance, "devices"):
-            for device_id, device in hub_instance.devices.items():
+            for _device_id, device in hub_instance.devices.items():
                 if isinstance(device, Tydom):
                     return device.device_id
         # Also check ha_devices
         if hasattr(hub_instance, "ha_devices"):
-            for device_id, ha_device in hub_instance.ha_devices.items():
+            for _device_id, ha_device in hub_instance.ha_devices.items():
                 if isinstance(ha_device, HATydom):
                     return ha_device._device.device_id
         return None
@@ -360,11 +360,11 @@ class GenericSensor(SensorEntity):
         if hub_instance is None:
             return None
         if hasattr(hub_instance, "devices"):
-            for device_id, device in hub_instance.devices.items():
+            for _device_id, device in hub_instance.devices.items():
                 if isinstance(device, Tydom):
                     return device.device_id
         if hasattr(hub_instance, "ha_devices"):
-            for device_id, ha_device in hub_instance.ha_devices.items():
+            for _device_id, ha_device in hub_instance.ha_devices.items():
                 if isinstance(ha_device, HATydom):
                     return ha_device._device.device_id
         return None
@@ -511,11 +511,11 @@ class BinarySensorBase(BinarySensorEntity):
         if hub_instance is None:
             return None
         if hasattr(hub_instance, "devices"):
-            for device_id, device in hub_instance.devices.items():
+            for _device_id, device in hub_instance.devices.items():
                 if isinstance(device, Tydom):
                     return device.device_id
         if hasattr(hub_instance, "ha_devices"):
-            for device_id, ha_device in hub_instance.ha_devices.items():
+            for _device_id, ha_device in hub_instance.ha_devices.items():
                 if isinstance(ha_device, HATydom):
                     return ha_device._device.device_id
         return None
@@ -605,11 +605,11 @@ class GenericBinarySensor(BinarySensorBase):
         if hub_instance is None:
             return None
         if hasattr(hub_instance, "devices"):
-            for device_id, device in hub_instance.devices.items():
+            for _device_id, device in hub_instance.devices.items():
                 if isinstance(device, Tydom):
                     return device.device_id
         if hasattr(hub_instance, "ha_devices"):
-            for device_id, ha_device in hub_instance.ha_devices.items():
+            for _device_id, ha_device in hub_instance.ha_devices.items():
                 if isinstance(ha_device, HATydom):
                     return ha_device._device.device_id
         return None
