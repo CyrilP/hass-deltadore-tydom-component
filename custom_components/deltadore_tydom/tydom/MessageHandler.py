@@ -923,7 +923,9 @@ class MessageHandler:
         # Store groups data in a way that can be accessed later if needed
         if parsed and isinstance(parsed, dict):
             groups = parsed.get("groups", [])
-            LOGGER.debug("Found %d groups", len(groups) if isinstance(groups, list) else 0)
+            LOGGER.debug(
+                "Found %d groups", len(groups) if isinstance(groups, list) else 0
+            )
         return []
 
     async def parse_moments_file(self, parsed, transaction_id):
@@ -933,7 +935,10 @@ class MessageHandler:
         # but we parse them for future use (could be exposed as schedules or time-based automations)
         if parsed and isinstance(parsed, dict):
             moments = parsed.get("moments", [])
-            LOGGER.debug("Found %d moments/programs", len(moments) if isinstance(moments, list) else 0)
+            LOGGER.debug(
+                "Found %d moments/programs",
+                len(moments) if isinstance(moments, list) else 0,
+            )
         return []
 
     # FUNCTIONS

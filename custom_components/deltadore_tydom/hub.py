@@ -187,12 +187,9 @@ class Hub:
                     else:
                         # Check for collision: same device_id but different device
                         stored_device = self.devices[device.device_id]
-                        if (
-                            stored_device is not device
-                            and (
-                                stored_device.device_name != device.device_name
-                                or stored_device.device_type != device.device_type
-                            )
+                        if stored_device is not device and (
+                            stored_device.device_name != device.device_name
+                            or stored_device.device_type != device.device_type
                         ):
                             LOGGER.warning(
                                 "Collision d'identifiant détectée dans hub : "
