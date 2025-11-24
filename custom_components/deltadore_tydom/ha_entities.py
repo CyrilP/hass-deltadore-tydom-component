@@ -2546,7 +2546,7 @@ class TydomPlug(SwitchEntity, HAEntity):
         "energyTotIndexWatt": UnitOfEnergy.WATT_HOUR,
     }
 
-    def __init__(self, device: TydomSwitch, hass) -> None:
+    def __init__(self, device: TydomPlug, hass) -> None:
         """Initialize the sensor."""
         self.hass = hass
         self._device = device
