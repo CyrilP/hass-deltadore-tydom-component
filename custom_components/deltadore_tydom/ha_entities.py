@@ -94,7 +94,7 @@ from .tydom.tydom_devices import (
     TydomWater,
     TydomThermo,
     TydomScene,
-    TydomSwitch,
+    TydomPlug,
 )
 
 from .const import DOMAIN, LOGGER
@@ -2529,7 +2529,7 @@ class HAEvent(EventEntity, HAEntity):
         return self._enrich_device_info(info)
 
 
-class HaSwitch(SwitchEntity, HAEntity):
+class TydomPlug(SwitchEntity, HAEntity):
     """Representation of a switch."""
 
     sensor_classes = {

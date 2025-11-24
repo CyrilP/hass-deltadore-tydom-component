@@ -598,7 +598,7 @@ class TydomScene(TydomDevice):
         await self._tydom_client.activate_scenario(scene_id)
 
 
-class TydomSwitch(TydomDevice):
+class TydomPlug(TydomDevice):
     """Represents a switch."""
 
     async def turn_on(self) -> None:
