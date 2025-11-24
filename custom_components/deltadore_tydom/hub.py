@@ -25,6 +25,7 @@ from .tydom.tydom_devices import (
     TydomThermo,
     TydomDevice,
     TydomScene,
+    TydomSwitch,
 )
 from .ha_entities import (
     HATydom,
@@ -43,7 +44,7 @@ from .ha_entities import (
     HaThermo,
     HASensor,
     HAScene,
-    HASwitch,
+    HaSwitch,
 )
 
 from .const import LOGGER
@@ -391,6 +392,15 @@ class Hub:
                 self.ha_devices[device.device_id] = ha_device
                 if self.add_scene_callback is not None:
                     self.add_scene_callback([ha_device])
+            case TydomSwitch():
+                LOGGER.debug("Create switch %s", device.device_id)
+                ha_device = HaSwitch(device, self._hass)
+                self.ha_devices[device.device_id] = ha_device
+                if self.add_switch_callback is not None:
+                    self.add_switch_callback([ha_device])
+
+                if self.add_sensor_callback is not None:
+                    self.add_sensor_callback(ha_device.get_sensors())
             case TydomDevice():
                 LOGGER.debug("Create generic sensor %s", device.device_id)
                 ha_device = HASensor(device, self._hass)
@@ -421,7 +431,7 @@ class Hub:
                             "Device %s has on/off capabilities, creating switch",
                             device.device_id,
                         )
-                        switch_device = HASwitch(device, self._hass)
+                        switch_device = HaSwitch(device, self._hass)
                         if self.add_switch_callback is not None:
                             self.add_switch_callback([switch_device])
             case _:

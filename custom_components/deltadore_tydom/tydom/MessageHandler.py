@@ -29,6 +29,7 @@ from .tydom_devices import (
     TydomWater,
     TydomThermo,
     TydomScene,
+    TydomSwitch,
 )
 
 if TYPE_CHECKING:
@@ -459,6 +460,17 @@ class MessageHandler:
                 )
             case "sensorThermo":
                 return TydomThermo(
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata[uid],
+                    data,
+                )
+            case "plug":
+                return TydomSwitch(
                     tydom_client,
                     uid,
                     device_id,
