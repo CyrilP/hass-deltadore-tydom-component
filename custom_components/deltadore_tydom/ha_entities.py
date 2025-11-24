@@ -2529,7 +2529,7 @@ class HAEvent(EventEntity, HAEntity):
         return self._enrich_device_info(info)
 
 
-class TydomPlug(SwitchEntity, HAEntity):
+class HaPlug(SwitchEntity, HAEntity):
     """Representation of a switch."""
 
     sensor_classes = {
@@ -2546,7 +2546,7 @@ class TydomPlug(SwitchEntity, HAEntity):
         "energyTotIndexWatt": UnitOfEnergy.WATT_HOUR,
     }
 
-    def __init__(self, device: TydomPlug, hass) -> None:
+    def __init__(self, device: TydomDevice, hass) -> None:
         """Initialize the sensor."""
         self.hass = hass
         self._device = device
@@ -2556,11 +2556,11 @@ class TydomPlug(SwitchEntity, HAEntity):
         self._registered_sensors = []
 
     async def async_turn_on(self, **kwargs):
-        """Open the switch."""
+        """Turn On the switch."""
         await self._device.turn_on()
 
     async def async_turn_off(self, **kwargs):
-        """Open the switch."""
+        """Turn Off the switch."""
         await self._device.turn_off()
 
     @property
