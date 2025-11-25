@@ -71,7 +71,12 @@ from homeassistant.components.weather import (
     ATTR_CONDITION_SUNNY,
 )
 from homeassistant.components.scene import Scene
-from homeassistant.components.switch import SwitchEntity
+
+from homeassistant.components.switch import (
+    SwitchEntity,
+    SwitchDeviceClass,
+)
+
 from homeassistant.components.button import ButtonEntity
 from homeassistant.components.number import NumberEntity
 from homeassistant.components.select import SelectEntity
