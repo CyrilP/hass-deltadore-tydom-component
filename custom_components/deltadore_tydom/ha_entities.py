@@ -2532,6 +2532,8 @@ class HAEvent(EventEntity, HAEntity):
 class HaPlug(SwitchEntity, HAEntity):
     """Representation of a switch."""
 
+    _attr_device_class = SwitchDeviceClass.OUTLET
+
     sensor_classes = {
         "energyInstantTotElecP": SensorDeviceClass.POWER,
         "energyTotIndexWatt": SensorDeviceClass.ENERGY,
