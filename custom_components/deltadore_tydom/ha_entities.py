@@ -71,7 +71,12 @@ from homeassistant.components.weather import (
     ATTR_CONDITION_SUNNY,
 )
 from homeassistant.components.scene import Scene
-from homeassistant.components.switch import SwitchEntity
+
+from homeassistant.components.switch import (
+    SwitchEntity,
+    SwitchDeviceClass,
+)
+
 from homeassistant.components.button import ButtonEntity
 from homeassistant.components.number import NumberEntity
 from homeassistant.components.select import SelectEntity
@@ -94,6 +99,7 @@ from .tydom.tydom_devices import (
     TydomWater,
     TydomThermo,
     TydomScene,
+    TydomPlug,
 )
 
 from .const import DOMAIN, LOGGER
@@ -2526,3 +2532,56 @@ class HAEvent(EventEntity, HAEntity):
         if "model" in device_info:
             info["model"] = device_info["model"]
         return self._enrich_device_info(info)
+
+
+class HaPlug(SwitchEntity, HAEntity):
+    """Representation of a switch."""
+
+    _attr_device_class = SwitchDeviceClass.OUTLET
+
+    sensor_classes = {
+        "energyInstantTotElecP": SensorDeviceClass.POWER,
+        "energyTotIndexWatt": SensorDeviceClass.ENERGY,
+    }
+
+    state_classes = {
+        "energyTotIndexWatt": SensorStateClass.TOTAL_INCREASING,
+    }
+
+    units = {
+        "energyInstantTotElecP": UnitOfPower.WATT,
+        "energyTotIndexWatt": UnitOfEnergy.WATT_HOUR,
+    }
+
+    def __init__(self, device: TydomPlug, hass) -> None:
+        """Initialize the sensor."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self
+        self._attr_unique_id = f"{self._device.device_id}"
+        self._attr_name = self._device.device_name
+        self._registered_sensors = []
+
+    async def async_turn_on(self, **kwargs):
+        """Turn On the switch."""
+        await self._device.turn_on()
+
+    async def async_turn_off(self, **kwargs):
+        """Turn Off the switch."""
+        await self._device.turn_off()
+
+    @property
+    def is_on(self):
+        """Return true if switch is on."""
+        if self._device.plugCmd == "ON":
+            return True
+        else:
+            return False
+
+    @property
+    def device_info(self):
+        """Return information to link this entity with the correct device."""
+        return {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+        }

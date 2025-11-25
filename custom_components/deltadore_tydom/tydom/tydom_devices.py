@@ -596,3 +596,19 @@ class TydomScene(TydomDevice):
         # Scenarios are activated via PUT /scenarios/{id}
         scene_id = getattr(self, "scene_id", None) or self._id
         await self._tydom_client.activate_scenario(scene_id)
+
+
+class TydomPlug(TydomDevice):
+    """Represents a switch."""
+
+    async def turn_on(self) -> None:
+        """Tell switch to go down."""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "plugCmd", "ON"
+        )
+
+    async def turn_off(self) -> None:
+        """Tell switch to go up."""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "plugCmd", "OFF"
+        )
