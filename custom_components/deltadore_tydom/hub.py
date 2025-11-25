@@ -45,7 +45,7 @@ from .ha_entities import (
     HASensor,
     HAScene,
     HASwitch,
-    HaPlug
+    HaPlug,
 )
 
 from .const import LOGGER
