@@ -424,6 +424,22 @@ class GenericSensor(SensorEntity):
             min = self._device._metadata[self._attribute]["min"]
             max = self._device._metadata[self._attribute]["max"]
             value = ranged_value_to_percentage((min, max), value)
+
+        # Handle complex values (lists, dicts) that exceed Home Assistant's 255 char limit
+        if value is not None:
+            # Check if value is a list or dict
+            if isinstance(value, (list, dict)):
+                # Convert to string to check length
+                value_str = str(value)
+                if len(value_str) > 255:
+                    # For protocols list, return a summary
+                    if self._attribute == "protocols" and isinstance(value, list):
+                        # Return count of protocols
+                        return len(value)
+                    # For other complex types, return None to avoid state truncation
+                    # The data will still be available in extra_state_attributes if needed
+                    return None
+
         return value
 
     @property
