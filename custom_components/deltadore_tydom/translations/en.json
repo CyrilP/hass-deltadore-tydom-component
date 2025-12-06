@@ -129,18 +129,8 @@
                 "data": {
                     "reload_devices": "Reload devices",
                     "reload_devices_button": "Reload all devices"
-                },
-                "description_placeholders": {
-                    "status": "",
-                    "reload_success": "\n\n✓ Reload successful! Devices will be rediscovered automatically.",
-                    "reload_error": "\n\n✗ Error during reload. Check logs for more details.",
-                    "hub_not_found": "\n\n✗ Tydom hub not found. Verify that the integration is properly configured."
                 }
             }
-        },
-        "menu_options": {
-            "configure": "Configure",
-            "actions": "Actions"
         },
         "error": {
             "invalid_refresh_interval": "Refresh interval is not valid",
@@ -194,60 +184,9 @@
         }
     },
     "entity": {
-        "scene": {
-            "name": "Scene",
-            "state_attributes": {
-                "scenario_id": {
-                    "name": "Scenario ID"
-                },
-                "scenario_type": {
-                    "name": "Scenario type"
-                },
-                "picto": {
-                    "name": "Pictogram"
-                },
-                "rule_id": {
-                    "name": "Rule ID"
-                },
-                "affected_groups": {
-                    "name": "Affected groups"
-                },
-                "affected_endpoints": {
-                    "name": "Affected endpoints"
-                }
-            },
-            "zone": {
-                "day": {
-                    "name": "Day"
-                },
-                "night": {
-                    "name": "Night"
-                }
-            },
-            "device": {
-                "tywell_control": {
-                    "name": "Tywell Control"
-                },
-                "tydom_scenes": {
-                    "name": "Tydom Scenes"
-                }
-            }
-        },
-        "switch": {
-            "name": "Switch",
-            "state_attributes": {
-                "level": {
-                    "name": "Level"
-                }
-            }
-        },
+        "scene": {},
+        "switch": {},
         "button": {
-            "name": "Button",
-            "state_attributes": {
-                "action_name": {
-                    "name": "Action name"
-                }
-            },
             "group_light": {
                 "name": "Light Group"
             },
@@ -267,155 +206,16 @@
                 "name": "Alarm Group"
             }
         },
-        "number": {
-            "name": "Number",
-            "state_attributes": {
-                "value": {
-                    "name": "Value"
-                },
-                "min": {
-                    "name": "Minimum"
-                },
-                "max": {
-                    "name": "Maximum"
-                },
-                "step": {
-                    "name": "Step"
-                }
-            }
-        },
-        "select": {
-            "name": "Select",
-            "state_attributes": {
-                "options": {
-                    "name": "Available options"
-                },
-                "current_option": {
-                    "name": "Current option"
-                }
-            }
-        },
-        "event": {
-            "name": "Event",
-            "state_attributes": {
-                "event_type": {
-                    "name": "Event type"
-                },
-                "event_data": {
-                    "name": "Event data"
-                }
-            }
-        },
-        "cover": {
-            "name": "Cover",
-            "state_attributes": {
-                "position": {
-                    "name": "Position"
-                },
-                "tilt_position": {
-                    "name": "Tilt position"
-                },
-                "current_position": {
-                    "name": "Current position"
-                }
-            }
-        },
-        "light": {
-            "name": "Light",
-            "state_attributes": {
-                "brightness": {
-                    "name": "Brightness"
-                },
-                "color_mode": {
-                    "name": "Color mode"
-                },
-                "supported_color_modes": {
-                    "name": "Supported color modes"
-                }
-            }
-        },
-        "climate": {
-            "name": "Climate",
-            "state_attributes": {
-                "temperature": {
-                    "name": "Temperature"
-                },
-                "target_temperature": {
-                    "name": "Target temperature"
-                },
-                "hvac_mode": {
-                    "name": "HVAC mode"
-                },
-                "preset_mode": {
-                    "name": "Preset mode"
-                },
-                "current_temperature": {
-                    "name": "Current temperature"
-                }
-            }
-        },
-        "alarm_control_panel": {
-            "name": "Alarm Control Panel",
-            "state_attributes": {
-                "changed_by": {
-                    "name": "Changed by"
-                },
-                "code_arm_required": {
-                    "name": "Code required to arm"
-                },
-                "code_format": {
-                    "name": "Code format"
-                }
-            }
-        },
-        "lock": {
-            "name": "Lock",
-            "state_attributes": {
-                "lock_state": {
-                    "name": "Lock state"
-                },
-                "battery_level": {
-                    "name": "Battery level"
-                }
-            }
-        },
-        "weather": {
-            "name": "Weather",
-            "state_attributes": {
-                "temperature": {
-                    "name": "Temperature"
-                },
-                "humidity": {
-                    "name": "Humidity"
-                },
-                "pressure": {
-                    "name": "Pressure"
-                },
-                "wind_speed": {
-                    "name": "Wind speed"
-                },
-                "wind_bearing": {
-                    "name": "Wind bearing"
-                }
-            }
-        },
-        "update": {
-            "name": "Update",
-            "state_attributes": {
-                "installed_version": {
-                    "name": "Installed version"
-                },
-                "latest_version": {
-                    "name": "Latest version"
-                },
-                "release_summary": {
-                    "name": "Release summary"
-                },
-                "release_url": {
-                    "name": "Release URL"
-                }
-            }
-        },
+        "number": {},
+        "select": {},
+        "event": {},
+        "cover": {},
+        "light": {},
+        "climate": {},
+        "alarm_control_panel": {},
+        "lock": {},
+        "weather": {},
+        "update": {},
         "sensor": {
             "temperature": {
                 "name": "Temperature"
@@ -576,36 +376,7 @@
                 "name": "Maintenance"
             }
         },
-        "group": {
-            "name": "Group",
-            "state_attributes": {
-                "group_id": {
-                    "name": "Group ID"
-                },
-                "device_count": {
-                    "name": "Device count"
-                },
-                "device_ids": {
-                    "name": "Device IDs"
-                },
-                "device_names": {
-                    "name": "Device names"
-                }
-            }
-        },
-        "moment": {
-            "name": "Moment",
-            "state_attributes": {
-                "moment_id": {
-                    "name": "Moment ID"
-                },
-                "suspended": {
-                    "name": "Suspended"
-                },
-                "suspend_to": {
-                    "name": "Suspend until"
-                }
-            }
-        }
+        "group": {},
+        "moment": {}
     }
 }

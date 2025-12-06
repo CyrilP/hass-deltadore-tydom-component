@@ -124,12 +124,14 @@ class Hub:
 
         self.online = True
         self._reload_button_created = False
-        
+
         # Polling cache for optimization
-        self._polling_cache: dict[tuple[str, str], int] = {}  # (device_id, attr_name) -> interval
+        self._polling_cache: dict[
+            tuple[str, str], int
+        ] = {}  # (device_id, attr_name) -> interval
         self._polling_cache_timestamp = 0
         self._polling_cache_ttl = 300  # 5 minutes
-        
+
         # Device factory registry for create_ha_device
         self._device_factories: dict[type, Callable] = {
             Tydom: self._create_tydom_device,
@@ -206,7 +208,11 @@ class Hub:
             and self.add_event_callback is not None
         )
         # Créer le bouton de rechargement une fois que les callbacks sont prêts
-        if is_ready and not self._reload_button_created and self.add_button_callback is not None:
+        if (
+            is_ready
+            and not self._reload_button_created
+            and self.add_button_callback is not None
+        ):
             reload_button = HAReloadButton(self, self._hass)
             self.add_button_callback([reload_button])
             self._reload_button_created = True
@@ -219,7 +225,7 @@ class Hub:
         while not self.ready():
             await asyncio.sleep(1)
         LOGGER.debug("Listen to tydom events")
-        
+
         # Validate data consistency after initial setup
         await self._validate_data_consistency()
         while True:
@@ -229,9 +235,11 @@ class Hub:
                     if device.device_id not in self.devices:
                         self.devices[device.device_id] = device
                         STRUCTURED_LOGGER.device_operation(
-                            "debug", "create", device.device_id,
+                            "debug",
+                            "create",
+                            device.device_id,
                             type=device.device_type,
-                            name=device.device_name
+                            name=device.device_name,
                         )
                         await self.create_ha_device(device)
                     else:
@@ -243,26 +251,31 @@ class Hub:
                         ):
                             # Resolve collision: update stored device with new data
                             STRUCTURED_LOGGER.device_operation(
-                                "warning", "collision_resolved", device.device_id,
+                                "warning",
+                                "collision_resolved",
+                                device.device_id,
                                 stored_name=stored_device.device_name,
                                 stored_type=stored_device.device_type,
                                 new_name=device.device_name,
                                 new_type=device.device_type,
-                                action="updating_existing"
+                                action="updating_existing",
                             )
-                            
+
                             # Update stored device attributes to match new device
                             # This ensures consistency and prevents future collisions
-                            if hasattr(stored_device, '_name'):
+                            if hasattr(stored_device, "_name"):
                                 stored_device._name = device.device_name
-                            if hasattr(stored_device, '_type'):
+                            if hasattr(stored_device, "_type"):
                                 stored_device._type = device.device_type
-                            
+
                             # Also update metadata if available
-                            if hasattr(device, '_metadata') and device._metadata is not None:
-                                if hasattr(stored_device, '_metadata'):
+                            if (
+                                hasattr(device, "_metadata")
+                                and device._metadata is not None
+                            ):
+                                if hasattr(stored_device, "_metadata"):
                                     stored_device._metadata = device._metadata
-                        
+
                         LOGGER.debug(
                             "update device %s : %s",
                             device.device_id,
@@ -274,28 +287,29 @@ class Hub:
 
     async def create_ha_device(self, device: TydomDevice) -> None:
         """Create a new HA device using factory pattern.
-        
+
         This method uses a factory pattern to delegate device-specific creation
         logic to specialized methods. This improves maintainability and reduces
         complexity compared to a large match/case statement.
-        
+
         Args:
             device: TydomDevice instance to create Home Assistant entity for
-        
+
         Raises:
             None: Exceptions are caught and logged, but do not propagate
+
         """
         device_type = type(device)
         factory = self._device_factories.get(device_type)
-        
+
         if factory is None:
             LOGGER.error(
                 "Unsupported device type: %s for device %s",
                 device_type.__name__,
-                device.device_id
+                device.device_id,
             )
             return
-        
+
         try:
             await factory(device)
         except Exception as e:
@@ -303,9 +317,9 @@ class Hub:
                 "Error creating HA device for %s (%s): %s",
                 device.device_id,
                 device_type.__name__,
-                e
+                e,
             )
-    
+
     async def _create_tydom_device(self, device: Tydom) -> None:
         """Create Tydom gateway device."""
         LOGGER.debug("Create Tydom gateway %s", device.device_id)
@@ -317,7 +331,7 @@ class Hub:
         if self.add_sensor_callback is not None:
             self.add_sensor_callback(ha_device.get_sensors())
         # Le bouton de rechargement est créé dans ready() pour être toujours présent
-    
+
     async def _create_shutter_device(self, device: TydomShutter) -> None:
         """Create shutter/cover device."""
         LOGGER.debug("Create cover %s", device.device_id)
@@ -327,7 +341,7 @@ class Hub:
             self.add_cover_callback([ha_device])
         if self.add_sensor_callback is not None:
             self.add_sensor_callback(ha_device.get_sensors())
-    
+
     async def _create_energy_device(self, device: TydomEnergy) -> None:
         """Create energy consumption device."""
         LOGGER.debug("Create conso %s", device.device_id)
@@ -336,7 +350,7 @@ class Hub:
         if self.add_sensor_callback is not None:
             self.add_sensor_callback([ha_device])
             self.add_sensor_callback(ha_device.get_sensors())
-    
+
     async def _create_smoke_device(self, device: TydomSmoke) -> None:
         """Create smoke detector device."""
         LOGGER.debug("Create smoke %s", device.device_id)
@@ -345,7 +359,7 @@ class Hub:
         if self.add_sensor_callback is not None:
             self.add_sensor_callback([ha_device])
             self.add_sensor_callback(ha_device.get_sensors())
-    
+
     async def _create_boiler_device(self, device: TydomBoiler) -> None:
         """Create boiler/climate device."""
         LOGGER.debug("Create boiler %s", device.device_id)
@@ -355,17 +369,16 @@ class Hub:
             self.add_climate_callback([ha_device])
         if self.add_sensor_callback is not None:
             self.add_sensor_callback(ha_device.get_sensors())
-    
+
     async def _create_window_device(self, device: TydomWindow) -> None:
         """Create window device (cover or binary_sensor)."""
         LOGGER.debug("Create window %s", device.device_id)
         ha_device = HaWindow(device, self._hass)
         self.ha_devices[device.device_id] = ha_device
-        
+
         # Décision automatique selon les attributs du device
         if any(
-            hasattr(device, a)
-            for a in ["position", "positionCmd", "level", "levelCmd"]
+            hasattr(device, a) for a in ["position", "positionCmd", "level", "levelCmd"]
         ):
             LOGGER.debug(
                 "Window %s has motor control → adding as cover",
@@ -380,20 +393,19 @@ class Hub:
             )
             if self.add_binary_sensor_callback:
                 self.add_binary_sensor_callback([ha_device])
-        
+
         if self.add_sensor_callback:
             self.add_sensor_callback(ha_device.get_sensors())
-    
+
     async def _create_door_device(self, device: TydomDoor) -> None:
         """Create door device (cover or binary_sensor)."""
         LOGGER.debug("Create door %s", device.device_id)
         ha_device = HaDoor(device, self._hass)
         self.ha_devices[device.device_id] = ha_device
-        
+
         # Décision automatique selon les attributs du device
         if any(
-            hasattr(device, a)
-            for a in ["position", "positionCmd", "level", "levelCmd"]
+            hasattr(device, a) for a in ["position", "positionCmd", "level", "levelCmd"]
         ):
             LOGGER.debug(
                 "Door %s has motor control → adding as cover", device.device_id
@@ -406,10 +418,10 @@ class Hub:
             )
             if self.add_binary_sensor_callback:
                 self.add_binary_sensor_callback([ha_device])
-        
+
         if self.add_sensor_callback:
             self.add_sensor_callback(ha_device.get_sensors())
-    
+
     async def _create_gate_device(self, device: TydomGate) -> None:
         """Create gate device."""
         LOGGER.debug("Create gate %s", device.device_id)
@@ -419,7 +431,7 @@ class Hub:
             self.add_cover_callback([ha_device])
         if self.add_sensor_callback is not None:
             self.add_sensor_callback(ha_device.get_sensors())
-    
+
     async def _create_garage_device(self, device: TydomGarage) -> None:
         """Create garage device."""
         LOGGER.debug("Create garage %s", device.device_id)
@@ -429,7 +441,7 @@ class Hub:
             self.add_cover_callback([ha_device])
         if self.add_sensor_callback is not None:
             self.add_sensor_callback(ha_device.get_sensors())
-    
+
     async def _create_light_device(self, device: TydomLight) -> None:
         """Create light device."""
         LOGGER.debug("Create light %s", device.device_id)
@@ -439,7 +451,7 @@ class Hub:
             self.add_light_callback([ha_device])
         if self.add_sensor_callback is not None:
             self.add_sensor_callback(ha_device.get_sensors())
-    
+
     async def _create_alarm_device(self, device: TydomAlarm) -> None:
         """Create alarm device."""
         LOGGER.debug("Create alarm %s", device.device_id)
@@ -449,7 +461,7 @@ class Hub:
             self.add_alarm_callback([ha_device])
         if self.add_sensor_callback is not None:
             self.add_sensor_callback(ha_device.get_sensors())
-    
+
     async def _create_weather_device(self, device: TydomWeather) -> None:
         """Create weather device."""
         LOGGER.debug("Create weather %s", device.device_id)
@@ -459,7 +471,7 @@ class Hub:
             self.add_weather_callback([ha_device])
         if self.add_sensor_callback is not None:
             self.add_sensor_callback(ha_device.get_sensors())
-    
+
     async def _create_water_device(self, device: TydomWater) -> None:
         """Create water/moisture device."""
         LOGGER.debug("Create moisture %s", device.device_id)
@@ -468,7 +480,7 @@ class Hub:
         if self.add_sensor_callback is not None:
             self.add_sensor_callback([ha_device])
             self.add_sensor_callback(ha_device.get_sensors())
-    
+
     async def _create_thermo_device(self, device: TydomThermo) -> None:
         """Create thermostat device."""
         LOGGER.debug("Create thermo %s", device.device_id)
@@ -477,7 +489,7 @@ class Hub:
         if self.add_sensor_callback is not None:
             self.add_sensor_callback([ha_device])
             self.add_sensor_callback(ha_device.get_sensors())
-    
+
     async def _create_scene_device(self, device: TydomScene) -> None:
         """Create scene device."""
         LOGGER.debug("Create scene %s", device.device_id)
@@ -485,7 +497,7 @@ class Hub:
         self.ha_devices[device.device_id] = ha_device
         if self.add_scene_callback is not None:
             self.add_scene_callback([ha_device])
-    
+
     async def _create_group_device(self, device: TydomGroup) -> None:
         """Create group device."""
         LOGGER.debug("Create group %s", device.device_id)
@@ -493,7 +505,7 @@ class Hub:
         self.ha_devices[device.device_id] = ha_device
         if self.add_button_callback is not None:
             self.add_button_callback([ha_device])
-    
+
     async def _create_moment_device(self, device: TydomMoment) -> None:
         """Create moment device."""
         LOGGER.debug("Create moment %s", device.device_id)
@@ -501,7 +513,7 @@ class Hub:
         self.ha_devices[device.device_id] = ha_device
         if self.add_switch_callback is not None:
             self.add_switch_callback([ha_device])
-    
+
     async def _create_generic_device(self, device: TydomDevice) -> None:
         """Create generic sensor device."""
         LOGGER.debug("Create generic sensor %s", device.device_id)
@@ -510,7 +522,7 @@ class Hub:
         if self.add_sensor_callback is not None:
             self.add_sensor_callback([ha_device])
             self.add_sensor_callback(ha_device.get_sensors())
-        
+
         # Try to detect if device should also be a switch
         # Check for on/off capabilities that aren't already handled
         if device.device_type not in ["light", "cover", "alarm"]:
@@ -526,7 +538,7 @@ class Hub:
                     if key.endswith("Cmd") or key in ["level", "on", "state"]:
                         has_control = True
                         break
-            
+
             if has_on_off and has_control:
                 LOGGER.debug(
                     "Device %s has on/off capabilities, creating switch",
@@ -541,11 +553,11 @@ class Hub:
         try:
             await stored_device.update_device(device)
             ha_device = self.ha_devices[device.device_id]
-            
+
             # Special handling for scenes: invalidate caches and recreate relations
             if isinstance(device, TydomScene) and isinstance(ha_device, HAScene):
                 await ha_device.async_device_update(device)
-            
+
             new_sensors = ha_device.get_sensors()
             if len(new_sensors) > 0 and self.add_sensor_callback is not None:
                 # add new sensors
@@ -601,12 +613,12 @@ class Hub:
 
     def _rebuild_polling_cache(self) -> None:
         """Rebuild polling cache efficiently.
-        
+
         This method scans all devices and their metadata to build a cache
         mapping (device_id, attribute_name) to polling intervals based on
         the validity metadata. The cache is rebuilt periodically to account
         for metadata changes.
-        
+
         The cache structure: {(device_id, attr_name): interval_seconds}
         - Devices with validity=INFINITE or upToDate are not cached (no polling)
         - Devices with validity=ES_SUPERVISION are cached with 300s interval
@@ -623,54 +635,19 @@ class Hub:
                     interval = get_polling_interval_for_validity(validity)
                     if interval is not None:
                         new_cache[(device_id, attr_name)] = interval
-        
+
         # Update cache atomically
         self._polling_cache = new_cache
         LOGGER.debug("Polling cache rebuilt with %d entries", len(self._polling_cache))
 
-    async def ping(self) -> None:
-        """Periodically send pings to keep connection alive.
-        
-        This method sends ping messages every 30 seconds to maintain the
-        WebSocket connection and detect connection issues early.
-        """
-        """Periodically send pings."""
-        while True:
-            await self._tydom_client.ping()
-            await asyncio.sleep(30)
-
-    async def refresh_all(self) -> None:
-        """Periodically refresh all metadata and data.
-
-        It allows new devices to be discovered.
-        """
-        while True:
-            await self._tydom_client.get_info()
-            await self._tydom_client.put_api_mode()
-            await self._tydom_client.get_groups()
-            await self._tydom_client.post_refresh()
-            await self._tydom_client.get_configs_file()
-            await self._tydom_client.get_devices_meta()
-            await self._tydom_client.get_devices_cmeta()
-            await self._tydom_client.get_devices_data()
-            await self._tydom_client.get_scenarii()
-            await self._tydom_client.get_moments()
-            await asyncio.sleep(600)
-
-    async def refresh_data_1s(self) -> None:
-        """Refresh data for devices in list."""
-        while True:
-            await self._tydom_client.poll_devices_data_1s()
-            await asyncio.sleep(1)
-
     def _rebuild_polling_cache(self) -> None:
         """Rebuild polling cache efficiently.
-        
+
         This method scans all devices and their metadata to build a cache
         mapping (device_id, attribute_name) to polling intervals based on
         the validity metadata. The cache is rebuilt periodically to account
         for metadata changes.
-        
+
         The cache structure: {(device_id, attr_name): interval_seconds}
         - Devices with validity=INFINITE or upToDate are not cached (no polling)
         - Devices with validity=ES_SUPERVISION are cached with 300s interval
@@ -687,45 +664,45 @@ class Hub:
                     interval = get_polling_interval_for_validity(validity)
                     if interval is not None:
                         new_cache[(device_id, attr_name)] = interval
-        
+
         # Update cache atomically
         self._polling_cache = new_cache
 
     async def refresh_data(self) -> None:
         """Periodically refresh data for devices which don't do push.
-        
+
         Uses adaptive polling based on validity metadata:
         - INFINITE/upToDate: No polling needed
         - ES_SUPERVISION: Poll every 5 minutes
         - SENSOR_SUPERVISION: Poll every 1 minute
         - SYNCHRO_SUPERVISION: Poll every 30 seconds
-        
+
         The polling groups are rebuilt every 5 minutes to account for
         metadata changes.
         """
         while True:
             current_time = time.time()
-            
+
             # Rebuild cache only if expired
             if current_time - self._polling_cache_timestamp > self._polling_cache_ttl:
                 self._rebuild_polling_cache()
                 self._polling_cache_timestamp = current_time
-            
+
             # Group devices by interval from cache
             interval_groups: dict[int, list[tuple[str, str]]] = {}
             for (device_id, attr_name), interval in self._polling_cache.items():
                 if interval not in interval_groups:
                     interval_groups[interval] = []
                 interval_groups[interval].append((device_id, attr_name))
-            
+
             # Poll devices according to their intervals
             if interval_groups:
                 # Sort intervals from shortest to longest
                 sorted_intervals = sorted(interval_groups.keys())
                 shortest_interval = sorted_intervals[0]
-                
+
                 # Poll devices that need the shortest interval
-                for device_id, attr_name in interval_groups[shortest_interval]:
+                for device_id, _attr_name in interval_groups[shortest_interval]:
                     if device_id in self.devices:
                         device = self.devices[device_id]
                         if hasattr(device, "_tydom_client"):
@@ -735,7 +712,7 @@ class Hub:
                                 LOGGER.warning(
                                     "Error polling device %s: %s", device_id, e
                                 )
-                
+
                 # Sleep for the shortest interval
                 await asyncio.sleep(shortest_interval)
             else:
@@ -748,37 +725,37 @@ class Hub:
 
     async def reload_devices(self) -> None:
         """Recharger tous les appareils et entités comme au démarrage initial.
-        
+
         Cette méthode vide tous les appareils existants et les recharges depuis zéro.
         """
         LOGGER.info("Début du rechargement de tous les appareils")
-        
+
         # Vider les dictionnaires d'appareils
         self.devices.clear()
         self.ha_devices.clear()
         # Réinitialiser le flag pour recréer le bouton après le rechargement
         self._reload_button_created = False
-        
+
         # Supprimer toutes les entités existantes via l'Entity Registry
         from homeassistant.helpers import entity_registry as er
-        
+
         entity_registry = er.async_get(self._hass)
         entities_to_remove = []
-        
+
         # Parcourir toutes les entités enregistrées pour cette intégration
         for entity_id, entity_entry in entity_registry.entities.items():
             if entity_entry.config_entry_id == self._entry.entry_id:
                 entities_to_remove.append(entity_id)
-        
+
         # Supprimer les entités
         for entity_id in entities_to_remove:
             entity_registry.async_remove(entity_id)
-        
+
         LOGGER.info(
             "Suppression de %d entité(s) existante(s) et rechargement des appareils",
-            len(entities_to_remove)
+            len(entities_to_remove),
         )
-        
+
         # Recharger toutes les métadonnées et données comme au démarrage
         await self._tydom_client.get_info()
         await self._tydom_client.put_api_mode()
@@ -790,24 +767,26 @@ class Hub:
         await self._tydom_client.get_devices_data()
         await self._tydom_client.get_scenarii()
         await self._tydom_client.get_moments()
-        
+
         # Recréer le bouton de rechargement après le rechargement
         if self.add_button_callback is not None:
             reload_button = HAReloadButton(self, self._hass)
             self.add_button_callback([reload_button])
             LOGGER.debug("Bouton de rechargement recréé après le rechargement")
-        
-        LOGGER.info("Rechargement terminé, les nouveaux appareils seront découverts automatiquement")
-        
+
+        LOGGER.info(
+            "Rechargement terminé, les nouveaux appareils seront découverts automatiquement"
+        )
+
         # Validate data consistency after reload
         await self._validate_data_consistency()
 
     async def _validate_data_consistency(self) -> None:
         """Validate data consistency: check that devices in groups exist, scenarios reference valid devices."""
         LOGGER.debug("Validating data consistency...")
-        
+
         issues = []
-        
+
         # Check groups: verify that all device IDs in groups exist
         for device_id, device in self.devices.items():
             if isinstance(device, TydomGroup):
@@ -818,17 +797,18 @@ class Hub:
                         for _id, _device in self.devices.items():
                             if (
                                 _id == group_device_id
-                                or str(getattr(_device, "device_id", "")) == group_device_id
+                                or str(getattr(_device, "device_id", ""))
+                                == group_device_id
                                 or str(getattr(_device, "_id", "")) == group_device_id
                             ):
                                 found = True
                                 break
-                        
+
                         if not found:
                             issues.append(
                                 f"Group {device.device_name} ({device_id}) references non-existent device: {group_device_id}"
                             )
-        
+
         # Check scenarios: verify that grpAct and epAct reference valid devices/groups
         for device_id, device in self.devices.items():
             if isinstance(device, TydomScene):
@@ -843,15 +823,18 @@ class Hub:
                                 # Check if group exists
                                 group_found = False
                                 for _id, _device in self.devices.items():
-                                    if isinstance(_device, TydomGroup) and _device.group_id == grp_id_str:
+                                    if (
+                                        isinstance(_device, TydomGroup)
+                                        and _device.group_id == grp_id_str
+                                    ):
                                         group_found = True
                                         break
-                                
+
                                 if not group_found:
                                     issues.append(
                                         f"Scene {device.device_name} ({device_id}) references non-existent group: {grp_id_str}"
                                     )
-                
+
                 # Check epAct
                 ep_act = getattr(device, "epAct", None)
                 if ep_act and isinstance(ep_act, list):
@@ -865,17 +848,18 @@ class Hub:
                                 for _id, _device in self.devices.items():
                                     if (
                                         _id == ep_id_str
-                                        or str(getattr(_device, "device_id", "")) == ep_id_str
+                                        or str(getattr(_device, "device_id", ""))
+                                        == ep_id_str
                                         or str(getattr(_device, "_id", "")) == ep_id_str
                                     ):
                                         device_found = True
                                         break
-                                
+
                                 if not device_found:
                                     issues.append(
                                         f"Scene {device.device_name} ({device_id}) references non-existent device/endpoint: {ep_id_str}"
                                     )
-        
+
         # Log issues
         if issues:
             LOGGER.warning(
