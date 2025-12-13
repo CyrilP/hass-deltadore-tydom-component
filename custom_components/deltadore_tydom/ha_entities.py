@@ -1081,6 +1081,8 @@ class HaClimate(ClimateEntity, HAEntity):
         self._attr_name = self._device.device_name
         self._enable_turn_on_off_backwards_compatibility = False
 
+        self._attr_hvac_mode = HVACMode.OFF
+
         self.dict_modes_ha_to_dd = {
             HVACMode.COOL: "COOLING",
             HVACMode.HEAT: "NORMAL",
@@ -1175,6 +1177,8 @@ class HaClimate(ClimateEntity, HAEntity):
 
         self._attr_hvac_modes = [
             HVACMode.OFF,
+            HVACMode.HEAT,
+            HVACMode.COOL,
             HVACMode.AUTO,
         ]
 
@@ -1237,34 +1241,44 @@ class HaClimate(ClimateEntity, HAEntity):
         return UnitOfTemperature.CELSIUS
 
     @property
-    def hvac_mode(self) -> HVACMode:
+    def hvac_mode(self) -> HVACMode | None:
         """Return the current operation (e.g. heat, cool, idle)."""
-        if hasattr(self._device, "hvacMode"):
-            hvac_mode = getattr(self._device, "hvacMode", None)
-            if hvac_mode is not None and hvac_mode in self.dict_modes_dd_to_ha:
-                LOGGER.debug("hvac_mode = %s", self.dict_modes_dd_to_ha[hvac_mode])
-                return self.dict_modes_dd_to_ha[hvac_mode]
-        if hasattr(self._device, "authorization"):
-            authorization = getattr(self._device, "authorization", None)
-            if authorization is not None and authorization in self.dict_modes_dd_to_ha:
-                thermic_level = getattr(self._device, "thermicLevel", None)
-                if (
-                    thermic_level is not None
-                    and thermic_level in self.dict_modes_dd_to_ha
-                ):
-                    LOGGER.debug(
-                        "authorization = %s",
-                        self.dict_modes_dd_to_ha[thermic_level],
-                    )
-                    return self.dict_modes_dd_to_ha[thermic_level]
-        if hasattr(self._device, "thermicLevel"):
-            thermic_level = getattr(self._device, "thermicLevel", None)
-            if thermic_level is not None and thermic_level in self.dict_modes_dd_to_ha:
+        mode_tydom = None
+        source = None
+
+        # Priorité au matériel récent (Logique PR)
+        if hasattr(self._device, "authorization") and self._device.authorization is not None:
+            mode_tydom = self._device.authorization
+            source = "authorization"
+        # Fallback pour les anciens matériels
+        elif hasattr(self._device, "hvacMode") and self._device.hvacMode is not None:
+            mode_tydom = self._device.hvacMode
+            source = "hvacMode"
+        elif hasattr(self._device, "thermicLevel") and self._device.thermicLevel is not None:
+            mode_tydom = self._device.thermicLevel
+            source = "thermicLevel"
+
+        if mode_tydom:
+            mode_ha = self.dict_modes_dd_to_ha.get(mode_tydom)
+            if mode_ha:
                 LOGGER.debug(
-                    "thermicLevel = %s", self.dict_modes_dd_to_ha[thermic_level]
+                    "hvac_mode found: Tydom='%s' (from %s) -> HA='%s'",
+                    mode_tydom,
+                    source,
+                    mode_ha,
                 )
-                return self.dict_modes_dd_to_ha[thermic_level]
-        return HVACMode.OFF
+                return mode_ha
+            else:
+                LOGGER.warning(
+                    "Tydom mode '%s' (from %s) has no translation in HA dictionary.",
+                    mode_tydom,
+                    source,
+                )
+        else:
+            LOGGER.debug("No valid Tydom hvac_mode attribute found. Returning OFF.")
+            return HVACMode.OFF
+
+        return None
 
     @property
     def current_temperature(self) -> float | None:
@@ -1282,52 +1296,55 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature currently set to be reached."""
-        if hasattr(self._device, "hvacMode"):
-            hvac_mode = getattr(self._device, "hvacMode", None)
-            if hvac_mode in ("HEATING", "NORMAL"):
-                if hasattr(self._device, "setpoint"):
-                    setpoint = getattr(self._device, "setpoint", None)
-                    if setpoint is not None:
-                        return float(setpoint)
-                if hasattr(self._device, "heatSetpoint"):
-                    heat_setpoint = getattr(self._device, "heatSetpoint", None)
-                    if heat_setpoint is not None:
-                        return float(heat_setpoint)
-            elif hvac_mode == "COOLING":
-                if hasattr(self._device, "setpoint"):
-                    setpoint = getattr(self._device, "setpoint", None)
-                    if setpoint is not None:
-                        return float(setpoint)
-                if hasattr(self._device, "coolSetpoint"):
-                    cool_setpoint = getattr(self._device, "coolSetpoint", None)
-                    if cool_setpoint is not None:
-                        return float(cool_setpoint)
+        # Priorité à l'attribut générique 'setpoint' (Logique PR - Nouveau matériel)
+        if hasattr(self._device, "setpoint"):
+            val = getattr(self._device, "setpoint", None)
+            if val is not None:
+                return float(val)
 
-        if hasattr(self._device, "authorization"):
-            authorization = getattr(self._device, "authorization", None)
-            if authorization == "HEATING":
-                if hasattr(self._device, "heatSetpoint"):
-                    heat_setpoint = getattr(self._device, "heatSetpoint", None)
-                    if heat_setpoint is not None:
-                        return float(heat_setpoint)
-                if hasattr(self._device, "setpoint"):
-                    setpoint = getattr(self._device, "setpoint", None)
-                    if setpoint is not None:
-                        return float(setpoint)
-            elif authorization == "COOLING":
-                if hasattr(self._device, "coolSetpoint"):
-                    cool_setpoint = getattr(self._device, "coolSetpoint", None)
-                    if cool_setpoint is not None:
-                        return float(cool_setpoint)
-                if hasattr(self._device, "setpoint"):
-                    setpoint = getattr(self._device, "setpoint", None)
-                    if setpoint is not None:
-                        return float(setpoint)
+        # Fallback sur la logique complexe pour les anciens appareils (Logique Main)
+        # qui séparent parfois heatSetpoint et coolSetpoint
+        hvac_mode = getattr(self._device, "hvacMode", None)
+        authorization = getattr(self._device, "authorization", None)
+
+        if hvac_mode in ("HEATING", "NORMAL"):
+            if hasattr(self._device, "heatSetpoint"):
+                val = getattr(self._device, "heatSetpoint", None)
+                if val is not None:
+                    return float(val)
+        elif hvac_mode == "COOLING":
+            if hasattr(self._device, "coolSetpoint"):
+                val = getattr(self._device, "coolSetpoint", None)
+                if val is not None:
+                    return float(val)
+
+        if authorization == "HEATING":
+            if hasattr(self._device, "heatSetpoint"):
+                val = getattr(self._device, "heatSetpoint", None)
+                if val is not None:
+                    return float(val)
+        elif authorization == "COOLING":
+            if hasattr(self._device, "coolSetpoint"):
+                val = getattr(self._device, "coolSetpoint", None)
+                if val is not None:
+                    return float(val)
+
         return None
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
-        await self._device.set_hvac_mode(self.dict_modes_ha_to_dd[hvac_mode])
+        # Logique pour le matériel récent (RE2020)
+        if self._device.device_type == "re2020ControlBoiler":
+            tydom_mode = "STOP" # Par défaut
+            if hvac_mode == HVACMode.HEAT:
+                tydom_mode = "HEATING"
+            elif hvac_mode == HVACMode.COOL:
+                tydom_mode = "COOLING"
+            await self._device.set_area_data("authorization", tydom_mode)
+
+        # Logique existante pour les anciens matériels
+        else:
+            await self._device.set_hvac_mode(self.dict_modes_ha_to_dd.get(hvac_mode))
 
     @property
     def preset_mode(self) -> str | None:
@@ -1369,8 +1386,15 @@ class HaClimate(ClimateEntity, HAEntity):
 
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
-        await self._device.set_temperature(str(kwargs.get(ATTR_TEMPERATURE)))
+        temperature = kwargs.get(ATTR_TEMPERATURE)
+        if temperature is not None:
+            # Logique pour le matériel récent (RE2020)
+            if self._device.device_type == "re2020ControlBoiler":
+                await self._device.set_area_data("setpoint", str(temperature))
 
+            # Logique existante pour les anciens matériels
+            else:
+                await self._device.set_temperature(str(temperature))
 
 class HaWindow(CoverEntity, HAEntity):
     """Representation of a Window."""
