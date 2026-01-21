@@ -201,11 +201,6 @@ class TydomBoiler(TydomDevice):
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "antifrostOn", True
                 )
-                await self._tydom_client.put_data("/home/absence", "to", -1)
-                await self._tydom_client.put_data("/events/home/absence", "to", -1)
-                await self._tydom_client.put_data(
-                    "/events/home/absence", "actions", "in"
-                )
             else:
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "thermicLevel", "ANTI_FROST"
@@ -215,18 +210,8 @@ class TydomBoiler(TydomDevice):
                 )
         elif mode == "NORMAL":
             if hasattr(self, "hvacMode"):
-                hvac_mode = getattr(self, "hvacMode", None)
-                if hvac_mode == "ANTI_FROST":
-                    await self._tydom_client.put_data("/home/absence", "to", 0)
-                    await self._tydom_client.put_data("/events/home/absence", "to", 0)
-                    await self._tydom_client.put_data(
-                        "/events/home/absence", "actions", "in"
-                    )
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "hvacMode", "NORMAL"
-                )
-                await self._tydom_client.put_devices_data(
-                    self._id, self._endpoint, "authorization", "HEATING"
                 )
                 await self.set_temperature("19.0")
                 await self._tydom_client.put_devices_data(
@@ -260,16 +245,13 @@ class TydomBoiler(TydomDevice):
         elif mode == "STOP":
             if hasattr(self, "hvacMode"):
                 await self._tydom_client.put_devices_data(
+                    self._id, self._endpoint, "setpoint", None
+                )
+                await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "hvacMode", "STOP"
                 )
                 await self._tydom_client.put_devices_data(
-                    self._id, self._endpoint, "authorization", "STOP"
-                )
-                await self._tydom_client.put_devices_data(
-                    self._id, self._endpoint, "thermicLevel", "STOP"
-                )
-                await self._tydom_client.put_devices_data(
-                    self._id, self._endpoint, "setpoint", None
+                    self._id, self._endpoint, "antifrostOn", True
                 )
             else:
                 await self._tydom_client.put_devices_data(
