@@ -1425,7 +1425,6 @@ class HaWindow(CoverEntity, HAEntity):
             return not bool(intrusion_detect)
         else:
             LOGGER.error("Unknown state for device %s", self._device.device_id)
-            LOGGER.debug("Test Yann -- Unknown state for device %s", self._device.__dict__)
             return True
 
 
