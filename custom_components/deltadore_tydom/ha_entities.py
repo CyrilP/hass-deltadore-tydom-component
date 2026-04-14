@@ -1,5 +1,7 @@
 """Home assistant entites."""
 
+# rajouté 3 lignes "energyDistrib" pour gérer les sensors tywatt
+
 from typing import Any
 import inspect
 import math
@@ -797,6 +799,7 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyIndexECSWatt": SensorDeviceClass.ENERGY,
         "energyIndexHeatGas": SensorDeviceClass.ENERGY,
         "energyIndex": SensorDeviceClass.ENERGY,
+        "energyDistrib": SensorDeviceClass.ENERGY,
         "outTemperature": SensorDeviceClass.TEMPERATURE,
     }
 
@@ -808,6 +811,7 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyIndexHeatWatt": SensorStateClass.TOTAL_INCREASING,
         "energyIndexHeatGas": SensorStateClass.TOTAL_INCREASING,
         "energyIndex": SensorStateClass.TOTAL_INCREASING,
+        "energyDistrib": SensorStateClass.TOTAL_INCREASING,
         # Measurement for instant values
         "energyInstantTotElec": SensorStateClass.MEASUREMENT,
         "energyInstantTotElecP": SensorStateClass.MEASUREMENT,
@@ -843,6 +847,7 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyIndexECSWatt": UnitOfEnergy.WATT_HOUR,
         "energyIndexHeatGas": UnitOfEnergy.WATT_HOUR,
         "energyIndex": UnitOfEnergy.WATT_HOUR,
+        "energyDistrib": UnitOfEnergy.WATT_HOUR,
         "outTemperature": UnitOfTemperature.CELSIUS,
     }
 
@@ -1420,6 +1425,7 @@ class HaWindow(CoverEntity, HAEntity):
             return not bool(intrusion_detect)
         else:
             LOGGER.error("Unknown state for device %s", self._device.device_id)
+            LOGGER.debug("Test Yann -- Unknown state for device %s", self._device.__dict__)
             return True
 
 
