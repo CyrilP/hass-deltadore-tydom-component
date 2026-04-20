@@ -789,15 +789,15 @@ class _OpenStateMixin:
     _device: Any
 
     @property
-    def is_closed(self) -> bool:
-        """Return True if closed based on openState or intrusionDetect."""
+    def is_closed(self) -> bool | None:
+        """Return True if closed, False if open, None if unknown."""
         v = getattr(self._device, "openState", None)
         if v is not None:
             return v == "LOCKED"
         v = getattr(self._device, "intrusionDetect", None)
         if v is not None:
             return not bool(v)
-        return True
+        return None
 
 
 class HaWindow(_OpenStateMixin, CoverEntity, HAEntity):
@@ -1035,11 +1035,28 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
             | AlarmControlPanelEntityFeature.TRIGGER
         )
 
+    def _get_active_zones(self) -> set[str]:
+        """Return the set of currently active zone numbers (as strings)."""
+        active = set()
+        for i in range(1, 9):
+            if getattr(self._device, f"zone{i}State", None) == "ON":
+                active.add(str(i))
+        return active
+
+    @staticmethod
+    def _parse_zone_config(zone_cfg: str | None) -> set[str]:
+        """Parse a comma-separated zone config string into a set."""
+        if not zone_cfg:
+            return set()
+        return {z.strip() for z in zone_cfg.split(",") if z.strip()}
+
     @property
-    def alarm_state(self) -> AlarmControlPanelState:
+    def alarm_state(self) -> AlarmControlPanelState | None:
         """Return the alarm state."""
         mode = getattr(self._device, "alarmMode", None)
         state = getattr(self._device, "alarmState", None)
+        if mode is None:
+            return None
         if mode in ("OFF", "MAINTENANCE"):
             return AlarmControlPanelState.DISARMED
         if mode == "ON":
@@ -1049,12 +1066,16 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
                 else AlarmControlPanelState.TRIGGERED
             )
         if mode in ("ZONE", "PART"):
-            return (
-                AlarmControlPanelState.ARMED_HOME
-                if state == "OFF"
-                else AlarmControlPanelState.TRIGGERED
+            if state != "OFF":
+                return AlarmControlPanelState.TRIGGERED
+            active = self._get_active_zones()
+            night_zones = self._parse_zone_config(
+                self._device._tydom_client._zone_night
             )
-        return AlarmControlPanelState.TRIGGERED
+            if active and night_zones and active == night_zones:
+                return AlarmControlPanelState.ARMED_NIGHT
+            return AlarmControlPanelState.ARMED_HOME
+        return None
 
     @property
     def device_info(self):

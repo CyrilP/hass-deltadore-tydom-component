@@ -1,4 +1,4 @@
-"""A demonstration 'hub' that connects several devices."""
+"""Hub that connects to the Tydom gateway and manages devices."""
 
 from __future__ import annotations
 
@@ -45,8 +45,34 @@ from .ha_entities import (
     HAScene,
     HASwitch,
 )
-
 from .const import LOGGER
+
+# Callback attribute names for platform registration
+_CALLBACK_NAMES = (
+    "add_cover_callback", "add_sensor_callback", "add_climate_callback",
+    "add_light_callback", "add_lock_callback", "add_alarm_callback",
+    "add_update_callback", "add_weather_callback", "add_binary_sensor_callback",
+    "add_scene_callback", "add_switch_callback", "add_button_callback",
+    "add_number_callback", "add_select_callback", "add_event_callback",
+)
+
+# Device type → (HA entity class, callback attribute name)
+# Order does not matter since we match by exact type()
+_DEVICE_HANDLERS: dict[type, tuple[type, str]] = {
+    Tydom: (HATydom, "add_update_callback"),
+    TydomShutter: (HACover, "add_cover_callback"),
+    TydomEnergy: (HAEnergy, "add_sensor_callback"),
+    TydomSmoke: (HASmoke, "add_sensor_callback"),
+    TydomBoiler: (HaClimate, "add_climate_callback"),
+    TydomLight: (HaLight, "add_light_callback"),
+    TydomAlarm: (HaAlarm, "add_alarm_callback"),
+    TydomWeather: (HaWeather, "add_weather_callback"),
+    TydomWater: (HaMoisture, "add_sensor_callback"),
+    TydomThermo: (HaThermo, "add_sensor_callback"),
+    TydomGate: (HaGate, "add_cover_callback"),
+    TydomGarage: (HaGarage, "add_cover_callback"),
+    TydomScene: (HAScene, "add_scene_callback"),
+}
 
 
 class Hub:
@@ -56,7 +82,6 @@ class Hub:
 
     def handle_event(self, event):
         """Event callback."""
-        pass
 
     def __init__(
         self,
@@ -86,21 +111,9 @@ class Hub:
         self._id = "Tydom-" + mac[6:]
         self.devices = {}
         self.ha_devices = {}
-        self.add_cover_callback = None
-        self.add_sensor_callback = None
-        self.add_climate_callback = None
-        self.add_light_callback = None
-        self.add_lock_callback = None
-        self.add_alarm_callback = None
-        self.add_update_callback = None
-        self.add_weather_callback = None
-        self.add_binary_sensor_callback = None
-        self.add_scene_callback = None
-        self.add_switch_callback = None
-        self.add_button_callback = None
-        self.add_number_callback = None
-        self.add_select_callback = None
-        self.add_event_callback = None
+
+        for name in _CALLBACK_NAMES:
+            setattr(self, name, None)
 
         self._tydom_client = TydomClient(
             hass=self._hass,
@@ -114,7 +127,6 @@ class Hub:
             alarm_pin=self._pin,
             event_callback=self.handle_event,
         )
-
         self.online = True
 
     def update_config(self, refresh_interval, zone_home, zone_away, zone_night):
@@ -127,7 +139,7 @@ class Hub:
 
     @property
     def hub_id(self) -> str:
-        """ID for dummy hub."""
+        """Return hub ID."""
         return self._id
 
     async def connect(self) -> ClientWebSocketResponse:
@@ -152,314 +164,127 @@ class Hub:
             await connection.close()
 
     def ready(self) -> bool:
-        """Check if we're ready to work."""
-        # and self.add_alarm_callback is not None
-        return (
-            self.add_cover_callback is not None
-            and self.add_sensor_callback is not None
-            and self.add_climate_callback is not None
-            and self.add_light_callback is not None
-            and self.add_lock_callback is not None
-            and self.add_update_callback is not None
-            and self.add_alarm_callback is not None
-            and self.add_weather_callback is not None
-            and self.add_scene_callback is not None
-            and self.add_switch_callback is not None
-            and self.add_button_callback is not None
-            and self.add_number_callback is not None
-            and self.add_select_callback is not None
-            and self.add_event_callback is not None
-        )
+        """Check if all platform callbacks are registered."""
+        return all(getattr(self, name) is not None for name in _CALLBACK_NAMES)
 
     async def setup(self, connection: ClientWebSocketResponse) -> None:
-        """Listen to tydom events."""
-        # wait for callbacks to become available
+        """Listen to Tydom events."""
         while not self.ready():
             await asyncio.sleep(1)
         LOGGER.debug("Listen to tydom events")
         while True:
             devices = await self._tydom_client.consume_messages()
-            if devices is not None:
-                for device in devices:
-                    if device.device_id not in self.devices:
-                        self.devices[device.device_id] = device
-                        await self.create_ha_device(device)
-                    else:
-                        # Check for collision: same device_id but different device
-                        stored_device = self.devices[device.device_id]
-                        if stored_device is not device and (
-                            stored_device.device_name != device.device_name
-                            or stored_device.device_type != device.device_type
-                        ):
-                            LOGGER.warning(
-                                "Collision d'identifiant détectée dans hub : "
-                                "device_id=%s existe déjà avec name=%s, type=%s. "
-                                "Nouvel appareil : name=%s, type=%s. "
-                                "Mise à jour de l'appareil existant.",
-                                device.device_id,
-                                stored_device.device_name,
-                                stored_device.device_type,
-                                device.device_name,
-                                device.device_type,
-                            )
-                        LOGGER.debug(
-                            "update device %s : %s",
-                            device.device_id,
-                            self.devices[device.device_id],
-                        )
-                        await self.update_ha_device(
-                            self.devices[device.device_id], device
-                        )
-
-    async def create_ha_device(self, device):  # noqa: C901
-        """Create a new HA device."""
-        match device:
-            case Tydom():
-                LOGGER.debug("Create Tydom gateway %s", device.device_id)
-                self.devices[device.device_id] = device
-                ha_device = HATydom(device, self._hass)
-                self.ha_devices[device.device_id] = ha_device
-                if self.add_update_callback is not None:
-                    self.add_update_callback([ha_device])
-                if self.add_sensor_callback is not None:
-                    self.add_sensor_callback(ha_device.get_sensors())
-            case TydomShutter():
-                LOGGER.debug("Create cover %s", device.device_id)
-                ha_device = HACover(device, self._hass)
-                self.ha_devices[device.device_id] = ha_device
-                if self.add_cover_callback is not None:
-                    self.add_cover_callback([ha_device])
-                if self.add_sensor_callback is not None:
-                    self.add_sensor_callback(ha_device.get_sensors())
-            case TydomEnergy():
-                LOGGER.debug("Create conso %s", device.device_id)
-                ha_device = HAEnergy(device, self._hass)
-                self.ha_devices[device.device_id] = ha_device
-
-                if self.add_sensor_callback is not None:
-                    self.add_sensor_callback([ha_device])
-
-                if self.add_sensor_callback is not None:
-                    self.add_sensor_callback(ha_device.get_sensors())
-
-            case TydomSmoke():
-                LOGGER.debug("Create smoke %s", device.device_id)
-                ha_device = HASmoke(device, self._hass)
-                self.ha_devices[device.device_id] = ha_device
-                if self.add_sensor_callback is not None:
-                    self.add_sensor_callback([ha_device])
-
-                if self.add_sensor_callback is not None:
-                    self.add_sensor_callback(ha_device.get_sensors())
-            case TydomBoiler():
-                LOGGER.debug("Create boiler %s", device.device_id)
-                ha_device = HaClimate(device, self._hass)
-                self.ha_devices[device.device_id] = ha_device
-                if self.add_climate_callback is not None:
-                    self.add_climate_callback([ha_device])
-
-                if self.add_sensor_callback is not None:
-                    self.add_sensor_callback(ha_device.get_sensors())
-            case TydomWindow():
-                LOGGER.debug("Create window %s", device.device_id)
-                ha_device = HaWindow(device, self._hass)
-                self.ha_devices[device.device_id] = ha_device
-
-                # Décision automatique selon les attributs du device
-                if any(
-                    hasattr(device, a)
-                    for a in ["position", "positionCmd", "level", "levelCmd"]
-                ):
-                    LOGGER.debug(
-                        "Window %s has motor control → adding as cover",
-                        device.device_id,
-                    )
-                    if self.add_cover_callback:
-                        self.add_cover_callback([ha_device])
+            if devices is None:
+                continue
+            for device in devices:
+                if device.device_id not in self.devices:
+                    self.devices[device.device_id] = device
+                    await self._create_ha_device(device)
                 else:
-                    LOGGER.debug(
-                        "Window %s is passive → adding as binary_sensor",
-                        device.device_id,
-                    )
-                    if self.add_binary_sensor_callback:
-                        self.add_binary_sensor_callback([ha_device])
-
-                if self.add_sensor_callback:
-                    self.add_sensor_callback(ha_device.get_sensors())
-            #                LOGGER.debug("Create window %s", device.device_id)
-            #                ha_device = HaWindow(device, self._hass)
-            #                self.ha_devices[device.device_id] = ha_device
-            #                # On ne l'ajoute plus comme cover !
-            #                # if self.add_cover_callback is not None:
-            #                #     self.add_cover_callback([ha_device])
-            #                # On le route vers la plateforme binary_sensor
-            #                if self.add_binary_sensor_callback is not None:
-            #                    self.add_binary_sensor_callback([ha_device])
-            #                # on garde les capteurs associés
-            #                if self.add_sensor_callback is not None:
-            #                    self.add_sensor_callback(ha_device.get_sensors())
-            case TydomDoor():
-                LOGGER.debug("Create door %s", device.device_id)
-                ha_device = HaDoor(device, self._hass)
-                self.ha_devices[device.device_id] = ha_device
-
-                # Décision automatique selon les attributs du device
-                if any(
-                    hasattr(device, a)
-                    for a in ["position", "positionCmd", "level", "levelCmd"]
-                ):
-                    LOGGER.debug(
-                        "Door %s has motor control → adding as cover", device.device_id
-                    )
-                    if self.add_cover_callback:
-                        self.add_cover_callback([ha_device])
-                else:
-                    LOGGER.debug(
-                        "Door %s is passive → adding as binary_sensor", device.device_id
-                    )
-                    if self.add_binary_sensor_callback:
-                        self.add_binary_sensor_callback([ha_device])
-
-                if self.add_sensor_callback:
-                    self.add_sensor_callback(ha_device.get_sensors())
-            case TydomGate():
-                LOGGER.debug("Create gate %s", device.device_id)
-                ha_device = HaGate(device, self._hass)
-                self.ha_devices[device.device_id] = ha_device
-                if self.add_cover_callback is not None:
-                    self.add_cover_callback([ha_device])
-
-                if self.add_sensor_callback is not None:
-                    self.add_sensor_callback(ha_device.get_sensors())
-            case TydomGarage():
-                LOGGER.debug("Create garage %s", device.device_id)
-                ha_device = HaGarage(device, self._hass)
-                self.ha_devices[device.device_id] = ha_device
-                if self.add_cover_callback is not None:
-                    self.add_cover_callback([ha_device])
-
-                if self.add_sensor_callback is not None:
-                    self.add_sensor_callback(ha_device.get_sensors())
-            case TydomLight():
-                LOGGER.debug("Create light %s", device.device_id)
-                ha_device = HaLight(device, self._hass)
-                self.ha_devices[device.device_id] = ha_device
-                if self.add_light_callback is not None:
-                    self.add_light_callback([ha_device])
-
-                if self.add_sensor_callback is not None:
-                    self.add_sensor_callback(ha_device.get_sensors())
-            case TydomAlarm():
-                LOGGER.debug("Create alarm %s", device.device_id)
-                ha_device = HaAlarm(device, self._hass)
-                self.ha_devices[device.device_id] = ha_device
-                if self.add_alarm_callback is not None:
-                    self.add_alarm_callback([ha_device])
-
-                if self.add_sensor_callback is not None:
-                    self.add_sensor_callback(ha_device.get_sensors())
-            case TydomWeather():
-                LOGGER.debug("Create weather %s", device.device_id)
-                ha_device = HaWeather(device, self._hass)
-                self.ha_devices[device.device_id] = ha_device
-                if self.add_weather_callback is not None:
-                    self.add_weather_callback([ha_device])
-
-                if self.add_sensor_callback is not None:
-                    self.add_sensor_callback(ha_device.get_sensors())
-            case TydomWater():
-                LOGGER.debug("Create moisture %s", device.device_id)
-                ha_device = HaMoisture(device, self._hass)
-                self.ha_devices[device.device_id] = ha_device
-                if self.add_sensor_callback is not None:
-                    self.add_sensor_callback([ha_device])
-
-                if self.add_sensor_callback is not None:
-                    self.add_sensor_callback(ha_device.get_sensors())
-            case TydomThermo():
-                LOGGER.debug("Create thermo %s", device.device_id)
-                ha_device = HaThermo(device, self._hass)
-                self.ha_devices[device.device_id] = ha_device
-                if self.add_sensor_callback is not None:
-                    self.add_sensor_callback([ha_device])
-
-                if self.add_sensor_callback is not None:
-                    self.add_sensor_callback(ha_device.get_sensors())
-            case TydomScene():
-                LOGGER.debug("Create scene %s", device.device_id)
-                ha_device = HAScene(device, self._hass)
-                self.ha_devices[device.device_id] = ha_device
-                if self.add_scene_callback is not None:
-                    self.add_scene_callback([ha_device])
-            case TydomDevice():
-                LOGGER.debug("Create generic sensor %s", device.device_id)
-                ha_device = HASensor(device, self._hass)
-                self.ha_devices[device.device_id] = ha_device
-                if self.add_sensor_callback is not None:
-                    self.add_sensor_callback([ha_device])
-                if self.add_sensor_callback is not None:
-                    self.add_sensor_callback(ha_device.get_sensors())
-
-                # Try to detect if device should also be a switch
-                # Check for on/off capabilities that aren't already handled
-                if device.device_type not in ["light", "cover", "alarm"]:
-                    has_on_off = (
-                        hasattr(device, "level")
-                        or hasattr(device, "on")
-                        or hasattr(device, "state")
-                    )
-                    # Check if device has levelCmd or onCmd in metadata (writable)
-                    has_control = False
-                    if device._metadata is not None:
-                        for key in device._metadata:
-                            if key.endswith("Cmd") or key in ["level", "on", "state"]:
-                                has_control = True
-                                break
-
-                    if has_on_off and has_control:
-                        LOGGER.debug(
-                            "Device %s has on/off capabilities, creating switch",
+                    stored = self.devices[device.device_id]
+                    if stored is not device and (
+                        stored.device_name != device.device_name
+                        or stored.device_type != device.device_type
+                    ):
+                        LOGGER.warning(
+                            "Collision d'identifiant : device_id=%s "
+                            "(existant: %s/%s, nouveau: %s/%s)",
                             device.device_id,
+                            stored.device_name, stored.device_type,
+                            device.device_name, device.device_type,
                         )
-                        switch_device = HASwitch(device, self._hass)
-                        if self.add_switch_callback is not None:
-                            self.add_switch_callback([switch_device])
-            case _:
-                LOGGER.error(
-                    "unsupported device type (%s) %s for device %s",
-                    type(device),
-                    device.device_type,
-                    device.device_id,
+                    await self._update_ha_device(stored, device)
+
+    def _add_callback(self, callback_name: str, entities: list):
+        """Invoke a platform callback if registered."""
+        cb = getattr(self, callback_name, None)
+        if cb is not None:
+            cb(entities)
+
+    async def _create_ha_device(self, device):
+        """Create a new HA device from a Tydom device."""
+        device_type = type(device)
+
+        # ── Standard devices (matched by exact type) ──
+        handler = _DEVICE_HANDLERS.get(device_type)
+        if handler:
+            ha_class, callback_attr = handler
+            LOGGER.debug("Create %s %s", device_type.__name__, device.device_id)
+            ha_device = ha_class(device, self._hass)
+            self.ha_devices[device.device_id] = ha_device
+            self._add_callback(callback_attr, [ha_device])
+            # All devices except scenes get sensor auto-discovery
+            if device_type != TydomScene:
+                self._add_callback("add_sensor_callback", ha_device.get_sensors())
+            return
+
+        # ── Window / Door: route to cover or binary_sensor ──
+        if isinstance(device, (TydomWindow, TydomDoor)):
+            type_name = type(device).__name__
+            ha_class = HaWindow if isinstance(device, TydomWindow) else HaDoor
+            LOGGER.debug("Create %s %s", type_name, device.device_id)
+            ha_device = ha_class(device, self._hass)
+            self.ha_devices[device.device_id] = ha_device
+
+            has_motor = any(
+                hasattr(device, a)
+                for a in ("position", "positionCmd", "level", "levelCmd")
+            )
+            if has_motor:
+                LOGGER.debug("%s %s has motor → cover", type_name, device.device_id)
+                self._add_callback("add_cover_callback", [ha_device])
+            else:
+                LOGGER.debug("%s %s passive → binary_sensor", type_name, device.device_id)
+                self._add_callback("add_binary_sensor_callback", [ha_device])
+            self._add_callback("add_sensor_callback", ha_device.get_sensors())
+            return
+
+        # ── Generic TydomDevice fallback ──
+        if isinstance(device, TydomDevice):
+            LOGGER.debug("Create generic sensor %s", device.device_id)
+            ha_device = HASensor(device, self._hass)
+            self.ha_devices[device.device_id] = ha_device
+            self._add_callback("add_sensor_callback", [ha_device])
+            self._add_callback("add_sensor_callback", ha_device.get_sensors())
+
+            # Auto-detect switch capabilities
+            if device.device_type not in ("light", "cover", "alarm"):
+                has_on_off = any(
+                    hasattr(device, a) for a in ("level", "on", "state")
                 )
-                return
+                has_control = device._metadata and any(
+                    k.endswith("Cmd") or k in ("level", "on", "state")
+                    for k in device._metadata
+                )
+                if has_on_off and has_control:
+                    LOGGER.debug("Device %s → also creating switch", device.device_id)
+                    self._add_callback(
+                        "add_switch_callback", [HASwitch(device, self._hass)]
+                    )
+            return
 
-    async def update_ha_device(self, stored_device, device):
+        LOGGER.error(
+            "Unsupported device type (%s) %s for %s",
+            device_type, device.device_type, device.device_id,
+        )
+
+    async def _update_ha_device(self, stored_device, device):
         """Update HA device values."""
         try:
             await stored_device.update_device(device)
             ha_device = self.ha_devices[device.device_id]
             new_sensors = ha_device.get_sensors()
-            if len(new_sensors) > 0 and self.add_sensor_callback is not None:
-                # add new sensors
+            if new_sensors:
                 LOGGER.debug(
-                    "Ajout de %d nouveau(x) capteur(s) pour le device %s: %s",
-                    len(new_sensors),
-                    device.device_id,
+                    "Ajout de %d capteur(s) pour %s: %s",
+                    len(new_sensors), device.device_id,
                     [s._attr_name for s in new_sensors],
                 )
-                self.add_sensor_callback(new_sensors)
-            # ha_device.publish_updates()
-            # ha_device.update()
+                self._add_callback("add_sensor_callback", new_sensors)
         except KeyError as e:
-            LOGGER.warning(
-                "Device %s non trouvé dans ha_devices lors de la mise à jour: %s",
-                device.device_id,
-                e,
-            )
+            LOGGER.warning("Device %s non trouvé dans ha_devices: %s", device.device_id, e)
         except Exception:
-            LOGGER.exception(
-                "Erreur lors de la mise à jour du device %s", device.device_id
-            )
+            LOGGER.exception("Erreur mise à jour device %s", device.device_id)
 
     async def ping(self) -> None:
         """Periodically send pings."""
@@ -468,10 +293,7 @@ class Hub:
             await asyncio.sleep(30)
 
     async def refresh_all(self) -> None:
-        """Periodically refresh all metadata and data.
-
-        It allows new devices to be discovered.
-        """
+        """Periodically refresh all metadata and data."""
         while True:
             await self._tydom_client.get_info()
             await self._tydom_client.put_api_mode()
@@ -486,13 +308,13 @@ class Hub:
             await asyncio.sleep(600)
 
     async def refresh_data_1s(self) -> None:
-        """Refresh data for devices in list."""
+        """Refresh data for polled devices (1s interval)."""
         while True:
             await self._tydom_client.poll_devices_data_1s()
             await asyncio.sleep(1)
 
     async def refresh_data(self) -> None:
-        """Periodically refresh data for devices which don't do push."""
+        """Periodically refresh data for non-push devices."""
         while True:
             if self._refresh_interval > 0:
                 await self._tydom_client.poll_devices_data_5m()
