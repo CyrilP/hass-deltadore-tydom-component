@@ -1035,6 +1035,21 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
             | AlarmControlPanelEntityFeature.TRIGGER
         )
 
+    def _get_active_zones(self) -> set[str]:
+        """Return the set of currently active zone numbers (as strings)."""
+        active = set()
+        for i in range(1, 9):
+            if getattr(self._device, f"zone{i}State", None) == "ON":
+                active.add(str(i))
+        return active
+
+    @staticmethod
+    def _parse_zone_config(zone_cfg: str | None) -> set[str]:
+        """Parse a comma-separated zone config string into a set."""
+        if not zone_cfg:
+            return set()
+        return {z.strip() for z in zone_cfg.split(",") if z.strip()}
+
     @property
     def alarm_state(self) -> AlarmControlPanelState | None:
         """Return the alarm state."""
@@ -1051,11 +1066,15 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
                 else AlarmControlPanelState.TRIGGERED
             )
         if mode in ("ZONE", "PART"):
-            return (
-                AlarmControlPanelState.ARMED_HOME
-                if state == "OFF"
-                else AlarmControlPanelState.TRIGGERED
+            if state != "OFF":
+                return AlarmControlPanelState.TRIGGERED
+            active = self._get_active_zones()
+            night_zones = self._parse_zone_config(
+                self._device._tydom_client._zone_night
             )
+            if active and night_zones and active == night_zones:
+                return AlarmControlPanelState.ARMED_NIGHT
+            return AlarmControlPanelState.ARMED_HOME
         return None
 
     @property
