@@ -355,11 +355,10 @@ class TydomGarage(TydomDevice):
             self._id, self._endpoint, "levelCmd", "TOGGLE"
         )
 
-
 class TydomLight(TydomDevice):
     """represents a light."""
 
-    async def turn_on(self, brightness) -> None:
+    async def turn_on(self, brightness=None, color_xy=None, color_temp=None) -> None:
         """Tell light to turn on."""
         if brightness is None:
             command = "TOGGLE"
@@ -370,7 +369,6 @@ class TydomLight(TydomDevice):
             ):
                 if "ON" in self._metadata["levelCmd"]["enum_values"]:
                     command = "ON"
-
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "levelCmd", command
                 )
@@ -378,18 +376,35 @@ class TydomLight(TydomDevice):
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "level", "100"
                 )
-
         else:
             await self._tydom_client.put_devices_data(
                 self._id, self._endpoint, "level", str(brightness)
             )
+
+        # Température de couleur (mired), prioritaire sur XY si les deux sont fournis
+        if color_temp is not None:
+            color_temp_clamped = max(153, min(555, int(color_temp)))
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "miredTemperatureW", str(color_temp_clamped)
+            )
+
+        # Couleur XY (si pas de color_temp)
+        elif color_xy is not None:
+            x, y = color_xy  # tuple (float, float), chacun entre 0.0 et 1.0
+            # Encodage : x dans les 16 bits hauts, y dans les 16 bits bas
+            x_int = int(x * 65535)
+            y_int = int(y * 65535)
+            color_xy_value = (x_int << 16) | y_int
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "colorXY", str(color_xy_value)
+            )
+
         self._tydom_client.add_poll_device_url_1s(
             f"/devices/{self._id}/endpoints/{self._endpoint}/cdata"
         )
 
     async def turn_off(self) -> None:
         """Tell light to turn off."""
-
         command = "TOGGLE"
         if (
             self._metadata is not None
@@ -398,7 +413,6 @@ class TydomLight(TydomDevice):
         ):
             if "OFF" in self._metadata["levelCmd"]["enum_values"]:
                 command = "OFF"
-
             await self._tydom_client.put_devices_data(
                 self._id, self._endpoint, "levelCmd", command
             )
@@ -406,10 +420,86 @@ class TydomLight(TydomDevice):
             await self._tydom_client.put_devices_data(
                 self._id, self._endpoint, "level", "0"
             )
-
         self._tydom_client.add_poll_device_url_1s(
             f"/devices/{self._id}/endpoints/{self._endpoint}/cdata"
         )
+
+    async def set_color_temp(self, mired: int) -> None:
+        """Set color temperature in mired (153 = cold ~6500K, 555 = warm ~1800K)."""
+        mired_clamped = max(153, min(555, mired))
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "miredTemperatureW", str(mired_clamped)
+        )
+        self._tydom_client.add_poll_device_url_1s(
+            f"/devices/{self._id}/endpoints/{self._endpoint}/cdata"
+        )
+
+    async def set_color_xy(self, x: float, y: float) -> None:
+        """Set color using CIE XY color space (x, y each between 0.0 and 1.0)."""
+        x_int = int(max(0.0, min(1.0, x)) * 65535)
+        y_int = int(max(0.0, min(1.0, y)) * 65535)
+        color_xy_value = (x_int << 16) | y_int
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "colorXY", str(color_xy_value)
+        )
+        self._tydom_client.add_poll_device_url_1s(
+            f"/devices/{self._id}/endpoints/{self._endpoint}/cdata"
+        )
+
+# class TydomLight(TydomDevice):
+#     """represents a light."""
+
+#     async def turn_on(self, brightness) -> None:
+#         """Tell light to turn on."""
+#         if brightness is None:
+#             command = "TOGGLE"
+#             if (
+#                 self._metadata is not None
+#                 and "levelCmd" in self._metadata
+#                 and "enum_values" in self._metadata["levelCmd"]
+#             ):
+#                 if "ON" in self._metadata["levelCmd"]["enum_values"]:
+#                     command = "ON"
+
+#                 await self._tydom_client.put_devices_data(
+#                     self._id, self._endpoint, "levelCmd", command
+#                 )
+#             else:
+#                 await self._tydom_client.put_devices_data(
+#                     self._id, self._endpoint, "level", "100"
+#                 )
+
+#         else:
+#             await self._tydom_client.put_devices_data(
+#                 self._id, self._endpoint, "level", str(brightness)
+#             )
+#         self._tydom_client.add_poll_device_url_1s(
+#             f"/devices/{self._id}/endpoints/{self._endpoint}/cdata"
+#         )
+
+#     async def turn_off(self) -> None:
+#         """Tell light to turn off."""
+
+#         command = "TOGGLE"
+#         if (
+#             self._metadata is not None
+#             and "levelCmd" in self._metadata
+#             and "enum_values" in self._metadata["levelCmd"]
+#         ):
+#             if "OFF" in self._metadata["levelCmd"]["enum_values"]:
+#                 command = "OFF"
+
+#             await self._tydom_client.put_devices_data(
+#                 self._id, self._endpoint, "levelCmd", command
+#             )
+#         else:
+#             await self._tydom_client.put_devices_data(
+#                 self._id, self._endpoint, "level", "0"
+#             )
+
+#         self._tydom_client.add_poll_device_url_1s(
+#             f"/devices/{self._id}/endpoints/{self._endpoint}/cdata"
+#         )
 
 
 class TydomAlarm(TydomDevice):

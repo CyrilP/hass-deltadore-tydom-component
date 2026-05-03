@@ -40,7 +40,7 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorEntityDescription,
 )
-from homeassistant.components.light import LightEntity, ColorMode, ATTR_BRIGHTNESS
+from homeassistant.components.light import LightEntity, ColorMode, ATTR_BRIGHTNESS, LightEntityFeature, ColorMode, ATTR_XY_COLOR, ATTR_COLOR_TEMP
 from homeassistant.components.update import (
     UpdateEntity,
     UpdateEntityFeature,
@@ -1663,7 +1663,6 @@ class HaLight(LightEntity, HAEntity):
     }
     _attr_color_mode: ColorMode | str | None = None
     _attr_supported_color_modes: set[ColorMode] | set[str] | None = None
-
     BRIGHTNESS_SCALE = (0, 255)
 
     def __init__(self, device: TydomLight, hass) -> None:
@@ -1674,16 +1673,31 @@ class HaLight(LightEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_light"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
-        if self._device._metadata is not None and "level" in self._device._metadata:
-            self._attr_color_mode = ColorMode.BRIGHTNESS
-            if self._attr_supported_color_modes is None:
-                self._attr_supported_color_modes = set()
-            self._attr_supported_color_modes.add(ColorMode.BRIGHTNESS)
-        else:
-            self._attr_color_mode = ColorMode.ONOFF
-            if self._attr_supported_color_modes is None:
-                self._attr_supported_color_modes = set()
+
+        if self._attr_supported_color_modes is None:
+            self._attr_supported_color_modes = set()
+
+        if self._device._metadata is not None:
+            # Brightness
+            if "level" in self._device._metadata:
+                self._attr_supported_color_modes.add(ColorMode.BRIGHTNESS)
+                self._attr_color_mode = ColorMode.BRIGHTNESS
+
+            # Color temp
+            if "miredTemperatureW" in self._device._metadata:
+                self._attr_supported_color_modes.discard(ColorMode.BRIGHTNESS)
+                self._attr_supported_color_modes.add(ColorMode.COLOR_TEMP)
+                self._attr_color_mode = ColorMode.COLOR_TEMP
+
+            # XY color
+            if "colorXY" in self._device._metadata:
+                self._attr_supported_color_modes.add(ColorMode.XY)
+                # XY est le mode le plus riche, on le met par défaut si dispo
+                self._attr_color_mode = ColorMode.XY
+
+        if not self._attr_supported_color_modes:
             self._attr_supported_color_modes.add(ColorMode.ONOFF)
+            self._attr_color_mode = ColorMode.ONOFF
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -1711,6 +1725,43 @@ class HaLight(LightEntity, HAEntity):
         return None
 
     @property
+    def color_temp(self) -> int | None:
+        """Return color temperature in mireds."""
+        return getattr(self._device, "miredTemperatureW", None)
+
+    @property
+    def min_mireds(self) -> int:
+        val = getattr(self._device, "minMiredTemperatureW", None)
+        return int(val) if val is not None else 153
+
+    @property
+    def max_mireds(self) -> int:
+        val = getattr(self._device, "maxMiredTemperatureW", None)
+        return int(val) if val is not None else 555
+
+    @property
+    def xy_color(self) -> tuple[float, float] | None:
+        """Decode packed colorXY int -> (x, y)."""
+        raw = getattr(self._device, "colorXY", None)
+        if raw is None:
+            return None
+        val = int(raw)
+        x = ((val >> 16) & 0xFFFF) / 65535.0
+        y = (val & 0xFFFF) / 65535.0
+        return (round(x, 4), round(y, 4))
+
+    @property
+    def color_mode(self) -> ColorMode | str | None:
+        """Return current color mode from device."""
+        mode = getattr(self._device, "colorMode", None)
+        mapping = {
+            "TEMP. MIRED": ColorMode.COLOR_TEMP,
+            "XY": ColorMode.XY,
+            "HUE_SAT": ColorMode.HS,
+        }
+        return mapping.get(mode, self._attr_color_mode)
+
+    @property
     def is_on(self) -> bool:
         """Return true if light is on."""
         if hasattr(self._device, "level"):
@@ -1727,11 +1778,100 @@ class HaLight(LightEntity, HAEntity):
                     self.BRIGHTNESS_SCALE, kwargs[ATTR_BRIGHTNESS]
                 )
             )
+
+        if ATTR_COLOR_TEMP in kwargs:
+            await self._device.set_color_temp(int(kwargs[ATTR_COLOR_TEMP]))
+
+        elif ATTR_XY_COLOR in kwargs:
+            x, y = kwargs[ATTR_XY_COLOR]
+            await self._device.set_color_xy(x, y)
+
         await self._device.turn_on(brightness)
 
     async def async_turn_off(self, **kwargs):
         """Turn device off."""
         await self._device.turn_off()
+
+# class HaLight(LightEntity, HAEntity):
+#     """Representation of a Light."""
+
+#     _attr_should_poll = False
+#     _attr_icon = "mdi:lightbulb"
+#     _attr_has_entity_name = True
+#     sensor_classes = {
+#         "thermic_defect": BinarySensorDeviceClass.PROBLEM,
+#     }
+#     _attr_color_mode: ColorMode | str | None = None
+#     _attr_supported_color_modes: set[ColorMode] | set[str] | None = None
+
+#     BRIGHTNESS_SCALE = (0, 255)
+
+#     def __init__(self, device: TydomLight, hass) -> None:
+#         """Initialize the sensor."""
+#         self.hass = hass
+#         self._device = device
+#         self._device._ha_device = self  # type: ignore[assignment]
+#         self._attr_unique_id = f"{self._device.device_id}_light"
+#         self._attr_name = self._device.device_name
+#         self._registered_sensors = []
+#         if self._device._metadata is not None and "level" in self._device._metadata:
+#             self._attr_color_mode = ColorMode.BRIGHTNESS
+#             if self._attr_supported_color_modes is None:
+#                 self._attr_supported_color_modes = set()
+#             self._attr_supported_color_modes.add(ColorMode.BRIGHTNESS)
+#         else:
+#             self._attr_color_mode = ColorMode.ONOFF
+#             if self._attr_supported_color_modes is None:
+#                 self._attr_supported_color_modes = set()
+#             self._attr_supported_color_modes.add(ColorMode.ONOFF)
+
+#     @property
+#     def device_info(self) -> DeviceInfo:
+#         """Information about this entity/device."""
+#         device_info = self._get_device_info()
+#         name = getattr(self, "name", None)
+#         info: DeviceInfo = {
+#             "identifiers": {(DOMAIN, self._device.device_id)},
+#             "name": str(name) if name is not None else self._device.device_name,
+#             "manufacturer": device_info["manufacturer"],
+#         }
+#         if "model" in device_info:
+#             info["model"] = device_info["model"]
+#         return info
+
+#     @property
+#     def brightness(self) -> int | None:
+#         """Return the current brightness."""
+#         if hasattr(self._device, "level"):
+#             level = getattr(self._device, "level", None)
+#             if level is not None:
+#                 return int(
+#                     percentage_to_ranged_value(self.BRIGHTNESS_SCALE, float(level))
+#                 )
+#         return None
+
+#     @property
+#     def is_on(self) -> bool:
+#         """Return true if light is on."""
+#         if hasattr(self._device, "level"):
+#             level = getattr(self._device, "level", None)
+#             return bool(level != 0 if level is not None else False)
+#         return False
+
+#     async def async_turn_on(self, **kwargs):
+#         """Turn device on."""
+#         brightness = None
+#         if ATTR_BRIGHTNESS in kwargs:
+#             brightness = math.ceil(
+#                 ranged_value_to_percentage(
+#                     self.BRIGHTNESS_SCALE, kwargs[ATTR_BRIGHTNESS]
+#                 )
+#             )
+#         await self._device.turn_on(brightness)
+
+#     async def async_turn_off(self, **kwargs):
+#         """Turn device off."""
+#         await self._device.turn_off()
 
 
 class HaAlarm(AlarmControlPanelEntity, HAEntity):
