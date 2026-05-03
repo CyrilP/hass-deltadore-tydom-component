@@ -40,7 +40,7 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorEntityDescription,
 )
-from homeassistant.components.light import LightEntity, ColorMode, ATTR_BRIGHTNESS, LightEntityFeature, ColorMode, ATTR_XY_COLOR, ATTR_COLOR_TEMP
+from homeassistant.components.light import LightEntity, ColorMode, ATTR_BRIGHTNESS, LightEntityFeature, ColorMode, ATTR_XY_COLOR, ATTR_COLOR_TEMP_KELVIN
 from homeassistant.components.update import (
     UpdateEntity,
     UpdateEntityFeature,
@@ -1779,8 +1779,8 @@ class HaLight(LightEntity, HAEntity):
                 )
             )
 
-        if ATTR_COLOR_TEMP in kwargs:
-            await self._device.set_color_temp(int(kwargs[ATTR_COLOR_TEMP]))
+        if ATTR_COLOR_TEMP_KELVIN in kwargs:
+            await self._device.set_color_temp(int(kwargs[ATTR_COLOR_TEMP_KELVIN]))
 
         elif ATTR_XY_COLOR in kwargs:
             x, y = kwargs[ATTR_XY_COLOR]
