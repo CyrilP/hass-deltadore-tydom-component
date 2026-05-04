@@ -3,6 +3,8 @@
 from typing import Any
 import inspect
 import math
+import logging
+_LOGGER = logging.getLogger(__name__)
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -1724,20 +1726,23 @@ class HaLight(LightEntity, HAEntity):
                 )
         return None
 
-    @property
-    def color_temp(self) -> int | None:
-        """Return color temperature in mireds."""
-        return getattr(self._device, "miredTemperatureW", None)
 
     @property
-    def min_mireds(self) -> int:
-        val = getattr(self._device, "minMiredTemperatureW", None)
-        return int(val) if val is not None else 153
+    def color_temp_kelvin(self) -> int | None:
+        mired = getattr(self._device, "miredTemperatureW", None)
+        if mired is not None and int(mired) > 0:
+            return round(1_000_000 / int(mired))
+        return None
 
     @property
-    def max_mireds(self) -> int:
+    def min_color_temp_kelvin(self) -> int:
         val = getattr(self._device, "maxMiredTemperatureW", None)
-        return int(val) if val is not None else 555
+        return round(1_000_000 / int(val)) if val else 1800
+
+    @property
+    def max_color_temp_kelvin(self) -> int:
+        val = getattr(self._device, "minMiredTemperatureW", None)
+        return round(1_000_000 / int(val)) if val else 6500
 
     @property
     def xy_color(self) -> tuple[float, float] | None:
@@ -1752,14 +1757,14 @@ class HaLight(LightEntity, HAEntity):
 
     @property
     def color_mode(self) -> ColorMode | str | None:
-        """Return current color mode from device."""
         mode = getattr(self._device, "colorMode", None)
         mapping = {
             "TEMP. MIRED": ColorMode.COLOR_TEMP,
             "XY": ColorMode.XY,
             "HUE_SAT": ColorMode.HS,
         }
-        return mapping.get(mode, self._attr_color_mode)
+        result = mapping.get(mode, self._attr_color_mode)
+        return result
 
     @property
     def is_on(self) -> bool:
@@ -1771,6 +1776,8 @@ class HaLight(LightEntity, HAEntity):
 
     async def async_turn_on(self, **kwargs):
         """Turn device on."""
+        _LOGGER.debug("async_turn_on kwargs: %s", kwargs)
+        
         brightness = None
         if ATTR_BRIGHTNESS in kwargs:
             brightness = math.ceil(
@@ -1780,10 +1787,14 @@ class HaLight(LightEntity, HAEntity):
             )
 
         if ATTR_COLOR_TEMP_KELVIN in kwargs:
-            await self._device.set_color_temp(int(kwargs[ATTR_COLOR_TEMP_KELVIN]))
+            kelvin = kwargs[ATTR_COLOR_TEMP_KELVIN]
+            mired = round(1_000_000 / kelvin)
+            _LOGGER.debug("set color_temp: %sK -> %s mired", kelvin, mired)
+            await self._device.set_color_temp(mired)
 
         elif ATTR_XY_COLOR in kwargs:
             x, y = kwargs[ATTR_XY_COLOR]
+            _LOGGER.debug("set color_xy: x=%s y=%s", x, y)
             await self._device.set_color_xy(x, y)
 
         await self._device.turn_on(brightness)
