@@ -1,7 +1,6 @@
 """Config flow for Tydom integration."""
 
 from __future__ import annotations
-import traceback
 import ipaddress
 import re
 from typing import Any, cast
@@ -72,7 +71,7 @@ def host_valid(host) -> bool:
 
 
 email_regex = re.compile(
-    r"([A-Za-z0-9]+[.-_])*[A-Za-z0-9]+@[A-Za-z0-9-]+(\.[A-Z|a-z]{2,})+"
+    r"([A-Za-z0-9]+[.\-_])*[A-Za-z0-9]+@[A-Za-z0-9\-]+(\.[A-Za-z]{2,})+"
 )
 zones_regex = re.compile(r"^$|^[0-8](,[0-8]){0,7}$")
 
@@ -129,7 +128,7 @@ async def validate_input(
     if not host_valid(data[CONF_HOST]):
         raise InvalidHost
 
-    if len(data[CONF_MAC]) != 12:
+    if not re.fullmatch(r"[0-9A-Fa-f]{12}", data[CONF_MAC]):
         raise InvalidMacAddress
 
     for zone, error in {
@@ -291,10 +290,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # comments on `DATA_SCHEMA` for further details.
                 # Set the error on the `host` field, not the entire form.
                 _errors[CONF_HOST] = "invalid_host"
-                LOGGER.error("Invalid host: %s", user_input[CONF_HOST])
+                LOGGER.warning("Invalid host")
             except InvalidMacAddress:
                 _errors[CONF_MAC] = "invalid_macaddress"
-                LOGGER.error("Invalid MAC: %s", user_input[CONF_MAC])
+                LOGGER.warning("Invalid MAC")
             except InvalidEmail:
                 _errors[CONF_EMAIL] = "invalid_email"
                 sanitized_email = sanitize_config_data(
@@ -309,31 +308,27 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except InvalidZoneHome:
                 _errors[CONF_ZONES_HOME] = "invalid_zone_config"
                 default_zone_home = ""
-                LOGGER.error("Invalid Zone HOME: %s", user_input[CONF_ZONES_HOME])
+                LOGGER.warning("Invalid Zone HOME")
             except InvalidZoneAway:
                 _errors[CONF_ZONES_AWAY] = "invalid_zone_config"
                 default_zone_away = ""
-                LOGGER.error("Invalid Zone AWAY: %s", user_input[CONF_ZONES_AWAY])
+                LOGGER.warning("Invalid Zone AWAY")
             except InvalidZoneNight:
                 _errors[CONF_ZONES_NIGHT] = "invalid_zone_config"
                 default_zone_night = ""
-                LOGGER.error("Invalid Zone NIGHT: %s", user_input[CONF_ZONES_NIGHT])
+                LOGGER.warning("Invalid Zone NIGHT")
             except TydomClientApiClientCommunicationError:
-                traceback.print_exc()
                 _errors["base"] = "communication_error"
                 LOGGER.exception("Communication error")
             except TydomClientApiClientAuthenticationError:
-                traceback.print_exc()
                 _errors["base"] = "authentication_error"
                 LOGGER.exception("Authentication error")
             except TydomClientApiClientError:
-                traceback.print_exc()
                 _errors["base"] = "unknown"
                 LOGGER.exception("Unknown error")
             except AbortFlow:
                 raise
             except Exception:  # pylint: disable=broad-except
-                traceback.print_exc()
                 LOGGER.exception("Unexpected exception")
                 _errors["base"] = "unknown"
             else:
@@ -477,10 +472,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # comments on `DATA_SCHEMA` for further details.
                 # Set the error on the `host` field, not the entire form.
                 _errors[CONF_HOST] = "invalid_host"
-                LOGGER.error("Invalid host: %s", user_input[CONF_HOST])
+                LOGGER.warning("Invalid host")
             except InvalidMacAddress:
                 _errors[CONF_MAC] = "invalid_macaddress"
-                LOGGER.error("Invalid MAC: %s", user_input[CONF_MAC])
+                LOGGER.warning("Invalid MAC")
             except InvalidPassword:
                 _errors[CONF_TYDOM_PASSWORD] = "invalid_password"
                 LOGGER.error("Invalid password")
@@ -489,31 +484,27 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except InvalidZoneHome:
                 _errors[CONF_ZONES_HOME] = "invalid_zone_config"
                 default_zone_home = ""
-                LOGGER.error("Invalid Zone HOME: %s", user_input[CONF_ZONES_HOME])
+                LOGGER.warning("Invalid Zone HOME")
             except InvalidZoneAway:
                 _errors[CONF_ZONES_AWAY] = "invalid_zone_config"
                 default_zone_away = ""
-                LOGGER.error("Invalid Zone AWAY: %s", user_input[CONF_ZONES_AWAY])
+                LOGGER.warning("Invalid Zone AWAY")
             except InvalidZoneNight:
                 _errors[CONF_ZONES_NIGHT] = "invalid_zone_config"
                 default_zone_night = ""
-                LOGGER.error("Invalid Zone NIGHT: %s", user_input[CONF_ZONES_NIGHT])
+                LOGGER.warning("Invalid Zone NIGHT")
             except TydomClientApiClientCommunicationError:
-                traceback.print_exc()
                 _errors["base"] = "communication_error"
                 LOGGER.exception("Communication error")
             except TydomClientApiClientAuthenticationError:
-                traceback.print_exc()
                 _errors["base"] = "authentication_error"
                 LOGGER.exception("Authentication error")
             except TydomClientApiClientError:
-                traceback.print_exc()
                 _errors["base"] = "unknown"
                 LOGGER.exception("Unknown error")
             except AbortFlow:
                 raise
             except Exception:  # pylint: disable=broad-except
-                traceback.print_exc()
                 LOGGER.exception("Unexpected exception")
                 _errors["base"] = "unknown"
             else:
@@ -691,18 +682,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except InvalidZoneNight:
                 _errors[CONF_ZONES_NIGHT] = "invalid_zone_config"
             except TydomClientApiClientCommunicationError:
-                traceback.print_exc()
                 _errors["base"] = "communication_error"
             except TydomClientApiClientAuthenticationError:
-                traceback.print_exc()
                 _errors["base"] = "authentication_error"
             except TydomClientApiClientError:
-                traceback.print_exc()
                 _errors["base"] = "unknown"
             except AbortFlow:
                 raise
             except Exception:  # pylint: disable=broad-except
-                traceback.print_exc()
                 LOGGER.exception("Unexpected exception")
                 _errors["base"] = "unknown"
             else:
@@ -832,18 +819,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except InvalidZoneNight:
                 _errors[CONF_ZONES_NIGHT] = "invalid_zone_config"
             except TydomClientApiClientCommunicationError:
-                traceback.print_exc()
                 _errors["base"] = "communication_error"
             except TydomClientApiClientAuthenticationError:
-                traceback.print_exc()
                 _errors["base"] = "authentication_error"
             except TydomClientApiClientError:
-                traceback.print_exc()
                 _errors["base"] = "unknown"
             except AbortFlow:
                 raise
             except Exception:  # pylint: disable=broad-except
-                traceback.print_exc()
                 LOGGER.exception("Unexpected exception")
                 _errors["base"] = "unknown"
             else:
