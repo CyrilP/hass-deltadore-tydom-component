@@ -4,7 +4,7 @@ from __future__ import annotations
 import traceback
 import ipaddress
 import re
-from typing import Any
+from typing import Any, cast
 
 import voluptuous as vol
 
@@ -87,6 +87,34 @@ def zones_valid(zones) -> bool:
     return re.fullmatch(zones_regex, zones) is not None
 
 
+def sanitize_config_data(data: dict[str, Any]) -> dict[str, Any]:
+    """Masquer les informations sensibles dans les données de configuration."""
+    sanitized = data.copy()
+    # Masquer le mot de passe
+    if CONF_PASSWORD in sanitized and sanitized[CONF_PASSWORD]:
+        sanitized[CONF_PASSWORD] = "***"
+    # Masquer l'email (partiellement)
+    if CONF_EMAIL in sanitized and sanitized[CONF_EMAIL]:
+        email = sanitized[CONF_EMAIL]
+        if "@" in email:
+            parts = email.split("@")
+            if len(parts) == 2:
+                # Masquer la partie locale de l'email
+                local = parts[0]
+                if len(local) > 2:
+                    sanitized[CONF_EMAIL] = f"{local[:2]}***@{parts[1]}"
+                else:
+                    sanitized[CONF_EMAIL] = f"***@{parts[1]}"
+            else:
+                sanitized[CONF_EMAIL] = "***"
+        else:
+            sanitized[CONF_EMAIL] = "***"
+    # Masquer le mot de passe Tydom s'il est présent
+    if CONF_TYDOM_PASSWORD in sanitized and sanitized[CONF_TYDOM_PASSWORD]:
+        sanitized[CONF_TYDOM_PASSWORD] = "***"
+    return sanitized
+
+
 async def validate_input(
     hass: HomeAssistant, cloud: bool, data: dict
 ) -> dict[str, Any]:
@@ -96,7 +124,8 @@ async def validate_input(
     """
     # Validate the data can be used to set up a connection.
 
-    LOGGER.debug("validating input: %s", data)
+    sanitized_data = sanitize_config_data(data)
+    LOGGER.debug("validating input: %s", sanitized_data)
     if not host_valid(data[CONF_HOST]):
         raise InvalidHost
 
@@ -171,7 +200,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Tydom."""
 
     VERSION = 1
-    CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_PUSH
 
     def __init__(self):
         """Initialize config flow."""
@@ -241,7 +269,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 tydom_hub = hub.Hub(
                     self.hass,
-                    None,  # type: ignore[arg-type]
+                    cast(ConfigEntry, None),
                     user_input[CONF_HOST],
                     user_input[CONF_MAC],
                     user_input[CONF_TYDOM_PASSWORD],
@@ -269,7 +297,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 LOGGER.error("Invalid MAC: %s", user_input[CONF_MAC])
             except InvalidEmail:
                 _errors[CONF_EMAIL] = "invalid_email"
-                LOGGER.error("Invalid email: %s", user_input[CONF_EMAIL])
+                sanitized_email = sanitize_config_data(
+                    {CONF_EMAIL: user_input.get(CONF_EMAIL, "")}
+                )[CONF_EMAIL]
+                LOGGER.error("Invalid email: %s", sanitized_email)
             except InvalidPassword:
                 _errors[CONF_PASSWORD] = "invalid_password"
                 LOGGER.error("Invalid password")
@@ -424,7 +455,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 tydom_hub = hub.Hub(
                     self.hass,
-                    None,  # type: ignore[arg-type]
+                    cast(ConfigEntry, None),
                     user_input[CONF_HOST],
                     user_input[CONF_MAC],
                     user_input[CONF_TYDOM_PASSWORD],
@@ -632,7 +663,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # Ensure it's working as expected
                 tydom_hub = hub.Hub(
                     self.hass,
-                    None,  # type: ignore[arg-type]
+                    cast(ConfigEntry, None),
                     user_input[CONF_HOST],
                     user_input[CONF_MAC],
                     user_input[CONF_TYDOM_PASSWORD],
@@ -770,7 +801,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # Ensure it's working as expected
                 tydom_hub = hub.Hub(
                     self.hass,
-                    None,  # type: ignore[arg-type]
+                    cast(ConfigEntry, None),
                     user_input[CONF_HOST],
                     user_input[CONF_MAC],
                     user_input[CONF_TYDOM_PASSWORD],
@@ -1072,18 +1103,32 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         config_entry: config_entries.ConfigEntry,
     ) -> OptionsFlow:
         """Create the options flow."""
-        return OptionsFlowHandler()
+        return OptionsFlowHandler(config_entry)
 
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Option flow to configure zones at any time."""
 
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self._config_entry = config_entry
+
     @property
-    def config_entry(self):
+    def config_entry(self) -> config_entries.ConfigEntry | None:
         """Config entry."""
-        return self.hass.config_entries.async_get_entry(self.handler)
+        return self._config_entry
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
+        """Show menu to choose between configuration and actions."""
+        if self.config_entry is None:
+            return self.async_abort(reason="config_entry_not_found")
+
+        return self.async_show_menu(
+            step_id="init",
+            menu_options=["configure", "actions"],
+        )
+
+    async def async_step_configure(self, user_input: dict[str, Any] | None = None):
         """Manage the options."""
         _errors = {}
         if self.config_entry is None:
@@ -1183,7 +1228,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 LOGGER.exception("Unexpected error in options flow")
 
         return self.async_show_form(
-            step_id="init",
+            step_id="configure",
             data_schema=vol.Schema(
                 {
                     vol.Required(
@@ -1228,6 +1273,58 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 }
             ),
             errors=_errors,
+        )
+
+    async def async_step_actions(self, user_input: dict[str, Any] | None = None):
+        """Show actions page with reload devices button."""
+        if self.config_entry is None:
+            return self.async_abort(reason="config_entry_not_found")
+
+        _errors = {}
+        status_message = ""
+
+        # Vérifier si le hub est disponible
+        hub_available = (
+            DOMAIN in self.hass.data
+            and self.config_entry.entry_id in self.hass.data[DOMAIN]
+        )
+
+        if user_input is not None:
+            # Le champ reload_devices est présent et True si l'utilisateur a activé le bouton
+            if user_input.get("reload_devices"):
+                if hub_available:
+                    tydom_hub = self.hass.data[DOMAIN][self.config_entry.entry_id]
+                    try:
+                        await tydom_hub.reload_devices()
+                        status_message = "reload_success"
+                    except Exception as e:
+                        LOGGER.exception(
+                            "Erreur lors du rechargement des appareils: %s", e
+                        )
+                        _errors["base"] = "reload_error"
+                        status_message = "reload_error"
+                else:
+                    _errors["base"] = "hub_not_found"
+                    status_message = "hub_not_found"
+
+        # Utiliser un champ booléen optionnel
+        # Quand l'utilisateur active ce champ et soumet, l'action est déclenchée
+        return self.async_show_form(
+            step_id="actions",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional("reload_devices"): selector.BooleanSelector(
+                        selector.BooleanSelectorConfig()
+                    ),
+                }
+            ),
+            errors=_errors,
+            description_placeholders={
+                "status": status_message if status_message else "",
+                "hub_status": "disponible"
+                if hub_available
+                else "non disponible - redémarrez Home Assistant",
+            },
         )
 
 

@@ -29,6 +29,7 @@ select = [
 
 ignore = [
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+    "C901",  # Function is too complex - acceptable for complex business logic
     "COM812", # incompatible with formatter
     "D202",  # No blank lines allowed after function docstring
     "D203", # no-blank-line-before-class (incompatible with formatter)

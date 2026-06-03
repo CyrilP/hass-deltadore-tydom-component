@@ -37,3 +37,77 @@ get_events:
               value: ON_OFF
             - label: All alarm events
               value: EVENTS
+reload_devices:
+  name: Reload devices
+  description: Recharger tous les appareils et entités comme au démarrage initial. Cette action supprime toutes les entités existantes et les recrée depuis zéro.
+activate_group_scenario:
+  name: Activate scenario on group
+  description: Activate a scenario on a Tydom group
+  target:
+    entity:
+      integration: deltadore_tydom
+      domain: button
+  fields:
+    scenario_id:
+      name: Scenario ID
+      description: The ID of the scenario to activate
+      required: true
+      selector:
+        text:
+create_scene:
+  name: Create or update scene
+  description: Create or update a Tydom scene with specific entities. This allows you to modify which entities are controlled by a Tydom scene in Home Assistant.
+  target:
+    entity:
+      integration: deltadore_tydom
+      domain: scene
+  fields:
+    entities:
+      name: Entities
+      description: Dictionary of entities and their states to include in the scene
+      required: true
+      selector:
+        object:
+control_group:
+  name: Control group
+  description: Control a Tydom group with specific action (turn on/off, open/close, stop, set position)
+  target:
+    entity:
+      integration: deltadore_tydom
+      domain: button
+  fields:
+    action:
+      name: Action
+      description: Action to perform on the group
+      required: true
+      selector:
+        select:
+          options:
+            - label: Turn on
+              value: turn_on
+            - label: Turn off
+              value: turn_off
+            - label: Open
+              value: open
+            - label: Close
+              value: close
+            - label: Stop
+              value: stop
+            - label: Set position
+              value: set_position
+    position:
+      name: Position
+      description: Position for covers (0-100), required when action is set_position
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+get_group_devices:
+  name: Get group devices
+  description: Get the list of devices in a Tydom group
+  target:
+    entity:
+      integration: deltadore_tydom
+      domain: button
