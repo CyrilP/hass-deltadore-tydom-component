@@ -89,7 +89,12 @@
             "invalid_refresh_interval": "L'intervalle de rafraîchissement n'est pas valide",
             "communication_error": "Impossible de se connecter à la passerelle Tydom",
             "authentication_error": "Erreur d'authentification",
-            "invalid_zone_config": "La configuration des zones est invalide. Syntaxe : zone_id_1,zone_id_2... Exemple : 1,2,4"
+            "invalid_zone_config": "La configuration des zones est invalide. Syntaxe : zone_id_1,zone_id_2... Exemple : 1,2,4",
+            "validation_error": "Erreur de validation",
+            "value_out_of_range": "La valeur est hors des limites autorisées",
+            "value_invalid_step": "La valeur n'est pas un multiple du pas autorisé",
+            "value_invalid_enum": "La valeur n'est pas dans les valeurs autorisées",
+            "attribute_not_writable": "L'attribut n'est pas modifiable"
         },
         "abort": {
             "discover_timeout": "Impossible de découvrir les appareils",
@@ -106,6 +111,10 @@
     "options": {
         "step": {
             "init": {
+                "title": "Options Delta Dore Tydom",
+                "description": "Choisissez une option"
+            },
+            "configure": {
                 "title": "Configuration Delta Dore Tydom",
                 "description": "Mettez à jour les paramètres de votre intégration Tydom. Si vous avez besoin d'aide, consultez : https://github.com/CyrilP/hass-deltadore-tydom-component",
                 "data": {
@@ -114,11 +123,21 @@
                     "zones_home": "Zones actives en mode alarme présent (séparées par des virgules, ex. : 1,2,4)",
                     "zones_night": "Zones actives en mode alarme nuit (séparées par des virgules, ex. : 1,2,4)"
                 }
+            },
+            "actions": {
+                "title": "Actions Delta Dore Tydom",
+                "description": "Actions disponibles pour l'intégration Tydom{status}\n\nStatut du hub : {hub_status}",
+                "data": {
+                    "reload_devices": "Recharger les appareils",
+                    "reload_devices_button": "Recharger tous les appareils"
+                }
             }
         },
         "error": {
             "invalid_refresh_interval": "L'intervalle de rafraîchissement n'est pas valide",
-            "invalid_zone_config": "La configuration des zones est invalide. Syntaxe : zone_id_1,zone_id_2... Exemple : 1,2,4"
+            "invalid_zone_config": "La configuration des zones est invalide. Syntaxe : zone_id_1,zone_id_2... Exemple : 1,2,4",
+            "reload_error": "Erreur lors du rechargement des appareils",
+            "hub_not_found": "Hub Tydom introuvable"
         }
     },
     "selector": {
@@ -149,47 +168,55 @@
                     "description": "Type d'événement d'alarme"
                 }
             }
+        },
+        "reload_devices": {
+            "name": "Recharger les appareils",
+            "description": "Recharger tous les appareils et entités comme au démarrage initial. Cette action supprime toutes les entités existantes et les recrée depuis zéro."
+        },
+        "activate_group_scenario": {
+            "name": "Activer un scénario sur un groupe",
+            "description": "Activer un scénario sur un groupe Tydom",
+            "fields": {
+                "scenario_id": {
+                    "name": "ID du scénario",
+                    "description": "L'ID du scénario à activer"
+                }
+            }
         }
     },
     "entity": {
-        "scene": {
-            "name": "Scénario",
-            "state_attributes": {
-                "scenario_id": {
-                    "name": "ID du scénario"
-                },
-                "scenario_type": {
-                    "name": "Type de scénario"
-                },
-                "picto": {
-                    "name": "Pictogramme"
-                },
-                "rule_id": {
-                    "name": "ID de la règle"
-                },
-                "affected_groups": {
-                    "name": "Groupes affectés"
-                },
-                "affected_endpoints": {
-                    "name": "Endpoints affectés"
-                }
+        "scene": {},
+        "switch": {},
+        "button": {
+            "group_light": {
+                "name": "Groupe Lumières"
+            },
+            "group_shutter": {
+                "name": "Groupe Volets"
+            },
+            "group_awning": {
+                "name": "Groupe Stores"
+            },
+            "group_plug": {
+                "name": "Groupe Prises"
+            },
+            "group_heating": {
+                "name": "Groupe Chauffage"
+            },
+            "group_alarm": {
+                "name": "Groupe Alarme"
             }
         },
-        "switch": {
-            "name": "Interrupteur"
-        },
-        "button": {
-            "name": "Bouton"
-        },
-        "number": {
-            "name": "Nombre"
-        },
-        "select": {
-            "name": "Sélection"
-        },
-        "event": {
-            "name": "Événement"
-        },
+        "number": {},
+        "select": {},
+        "event": {},
+        "cover": {},
+        "light": {},
+        "climate": {},
+        "alarm_control_panel": {},
+        "lock": {},
+        "weather": {},
+        "update": {},
         "sensor": {
             "temperature": {
                 "name": "Température"
@@ -247,6 +274,36 @@
             },
             "keyversionhw": {
                 "name": "Version matérielle clé"
+            },
+            "longitude": {
+                "name": "Longitude"
+            },
+            "latitude": {
+                "name": "Latitude"
+            },
+            "clock": {
+                "name": "Horloge"
+            },
+            "timezone": {
+                "name": "Fuseau horaire"
+            },
+            "clock_source": {
+                "name": "Source de l'horloge"
+            },
+            "summer_offset": {
+                "name": "Décalage été"
+            },
+            "bdd_status": {
+                "name": "Statut de la base de données"
+            },
+            "permissions": {
+                "name": "Permissions"
+            },
+            "readable": {
+                "name": "Lisible"
+            },
+            "writable": {
+                "name": "Modifiable"
             }
         },
         "binary_sensor": {
@@ -270,8 +327,58 @@
             },
             "update_available": {
                 "name": "Mise à jour disponible"
+            },
+            "batt_defect": {
+                "name": "Défaut de batterie"
+            },
+            "up_defect": {
+                "name": "Défaut montée"
+            },
+            "down_defect": {
+                "name": "Défaut descente"
+            },
+            "obstacle_defect": {
+                "name": "Défaut obstacle"
+            },
+            "intrusion": {
+                "name": "Intrusion"
+            },
+            "techsmokedefect": {
+                "name": "Défaut détecteur de fumée"
+            },
+            "protocol_x3d": {
+                "name": "Protocole X3D"
+            },
+            "protocol_zigbee": {
+                "name": "Protocole Zigbee"
+            },
+            "protocol_x3dv": {
+                "name": "Protocole X3DV"
+            },
+            "protocol_pltservice": {
+                "name": "Protocole PltService"
+            },
+            "protocol_http": {
+                "name": "Protocole HTTP"
+            },
+            "bdd_empty": {
+                "name": "Base de données vide"
+            },
+            "api_mode": {
+                "name": "Mode API"
+            },
+            "plt_registered": {
+                "name": "Plateforme enregistrée"
+            },
+            "password_empty": {
+                "name": "Mot de passe vide"
+            },
+            "maintenance": {
+                "name": "Maintenance"
             }
-        }
+        },
+        "group": {},
+        "moment": {}
     }
 }
 

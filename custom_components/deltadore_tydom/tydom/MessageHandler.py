@@ -9,7 +9,7 @@ from functools import partial
 from http.client import HTTPMessage, LineTooLong
 from http.client import HTTPResponse as CoreHTTPResponse
 from io import BytesIO
-from typing import TYPE_CHECKING, TypedDict, cast
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 from ..const import LOGGER
 from .tydom_devices import (
@@ -45,6 +45,8 @@ device_endpoint = {}
 device_type = {}
 device_metadata = {}
 scenario_metadata = {}  # Store scenario metadata from /configs/file
+groups_metadata = {}  # Store group metadata from /configs/file: {group_id: {"usage": "light", "name": "TOTAL"}}
+groups_data = {}  # Store groups data: {group_id: {"devices": [device_ids], "name": group_name}}
 
 
 class Reply(TypedDict):
@@ -100,6 +102,26 @@ class MessageHandler:
                 reply = None
 
         return reply
+
+    def remove_reply(self, transaction_id: str) -> None:
+        """
+        Remove a pending reply to prevent memory leaks.
+
+        This should be called when a request times out or fails.
+
+        Args:
+            transaction_id: The transaction ID of the request to remove.
+
+        """
+        # Remove from cdata_replies
+        for reply in self._cdata_replies[:]:
+            if reply["transaction_id"] == transaction_id:
+                self._cdata_replies.remove(reply)
+                break
+
+        # Remove from end_reply_events
+        self._end_reply_events.pop(transaction_id, None)
+        LOGGER.debug("Removed pending reply for transaction_id: %s", transaction_id)
 
     async def route_response(self, bytes_str: bytes) -> list["TydomDevice"] | None:
         """
@@ -344,7 +366,7 @@ class MessageHandler:
                     name,
                     last_usage,
                     endpoint,
-                    device_metadata[uid],
+                    device_metadata.get(uid),
                     data,
                 )
             case "belmDoor" | "klineDoor":
@@ -355,7 +377,7 @@ class MessageHandler:
                     name,
                     last_usage,
                     endpoint,
-                    device_metadata[uid],
+                    device_metadata.get(uid),
                     data,
                 )
             case "garage_door":
@@ -366,7 +388,7 @@ class MessageHandler:
                     name,
                     last_usage,
                     endpoint,
-                    device_metadata[uid],
+                    device_metadata.get(uid),
                     data,
                 )
             case "gate":
@@ -377,7 +399,7 @@ class MessageHandler:
                     name,
                     last_usage,
                     endpoint,
-                    device_metadata[uid],
+                    device_metadata.get(uid),
                     data,
                 )
             case "light":
@@ -388,7 +410,7 @@ class MessageHandler:
                     name,
                     last_usage,
                     endpoint,
-                    device_metadata[uid],
+                    device_metadata.get(uid),
                     data,
                 )
             case "conso":
@@ -399,7 +421,7 @@ class MessageHandler:
                     name,
                     last_usage,
                     endpoint,
-                    device_metadata[uid],
+                    device_metadata.get(uid),
                     data,
                 )
             case "sensorDFR":
@@ -410,7 +432,7 @@ class MessageHandler:
                     name,
                     last_usage,
                     endpoint,
-                    device_metadata[uid],
+                    device_metadata.get(uid),
                     data,
                 )
             case "boiler" | "sh_hvac" | "electric" | "aeraulic":
@@ -421,7 +443,7 @@ class MessageHandler:
                     name,
                     last_usage,
                     endpoint,
-                    device_metadata[uid],
+                    device_metadata.get(uid),
                     data,
                 )
             case "alarm":
@@ -432,7 +454,7 @@ class MessageHandler:
                     name,
                     last_usage,
                     endpoint,
-                    device_metadata[uid],
+                    device_metadata.get(uid),
                     data,
                 )
             case "weather":
@@ -443,7 +465,7 @@ class MessageHandler:
                     name,
                     last_usage,
                     endpoint,
-                    device_metadata[uid],
+                    device_metadata.get(uid),
                     data,
                 )
             case "sensorDF":
@@ -454,7 +476,7 @@ class MessageHandler:
                     name,
                     last_usage,
                     endpoint,
-                    device_metadata[uid],
+                    device_metadata.get(uid),
                     data,
                 )
             case "sensorThermo":
@@ -465,7 +487,7 @@ class MessageHandler:
                     name,
                     last_usage,
                     endpoint,
-                    device_metadata[uid],
+                    device_metadata.get(uid),
                     data,
                 )
             case _:
@@ -519,6 +541,23 @@ class MessageHandler:
                         "Stored scenario metadata: id=%s, name=%s",
                         scenario_id,
                         scenario_metadata[scenario_id]["name"],
+                    )
+
+        # Parse groups metadata from /configs/file
+        if "groups" in parsed and isinstance(parsed["groups"], list):
+            for group in parsed["groups"]:
+                if isinstance(group, dict) and "id" in group:
+                    group_id = group.get("id")
+                    group_id_str = str(group_id)
+                    groups_metadata[group_id_str] = {
+                        "usage": group.get("usage", ""),
+                        "name": group.get("name", f"Group {group_id}"),
+                    }
+                    LOGGER.debug(
+                        "Stored group metadata: id=%s, usage=%s, name=%s",
+                        group_id_str,
+                        groups_metadata[group_id_str]["usage"],
+                        groups_metadata[group_id_str]["name"],
                     )
 
         LOGGER.debug("Configuration updated")
@@ -917,29 +956,132 @@ class MessageHandler:
         return devices
 
     async def parse_groups_file(self, parsed, transaction_id):
-        """Parse groups file."""
+        """Parse groups file and create TydomGroup devices."""
         LOGGER.debug("parse_groups_file : %s", parsed)
-        # Groups are currently not exposed as entities, but we parse them for future use
-        # Store groups data in a way that can be accessed later if needed
+        devices = []
+        # Store groups data for resolving grpAct in scenarios
         if parsed and isinstance(parsed, dict):
             groups = parsed.get("groups", [])
-            LOGGER.debug(
-                "Found %d groups", len(groups) if isinstance(groups, list) else 0
-            )
-        return []
+            if isinstance(groups, list):
+                for group in groups:
+                    if isinstance(group, dict) and "id" in group:
+                        group_id = group.get("id")
+                        group_id_str = str(group_id)
+
+                        # Extract device IDs from the group
+                        device_ids = []
+                        devices_list = group.get("devices", [])
+                        if isinstance(devices_list, list):
+                            for device in devices_list:
+                                if isinstance(device, dict):
+                                    # Get device ID
+                                    dev_id = device.get("id")
+                                    if dev_id:
+                                        device_ids.append(str(dev_id))
+
+                                    # Also get endpoint IDs as they might be used as device IDs
+                                    endpoints = device.get("endpoints", [])
+                                    if isinstance(endpoints, list):
+                                        for endpoint in endpoints:
+                                            if isinstance(endpoint, dict):
+                                                ep_id = endpoint.get("id")
+                                                if ep_id:
+                                                    ep_id_str = str(ep_id)
+                                                    # Try format epId_devId if dev_id exists
+                                                    if dev_id:
+                                                        unique_id = (
+                                                            f"{ep_id_str}_{dev_id}"
+                                                        )
+                                                        if unique_id not in device_ids:
+                                                            device_ids.append(unique_id)
+                                                    # Also add epId alone
+                                                    if ep_id_str not in device_ids:
+                                                        device_ids.append(ep_id_str)
+
+                        # Get group metadata from /configs/file if available
+                        group_meta = groups_metadata.get(group_id_str, {})
+                        group_usage = group_meta.get("usage", "")
+                        config_name = group_meta.get("name", "")
+
+                        # Use config name if available and not default, otherwise use generic name
+                        # The actual display name will come from translation_key in HAGroup
+                        if (
+                            config_name
+                            and config_name != f"Group {group_id}"
+                            and config_name != "TOTAL"
+                        ):
+                            group_name = config_name
+                        else:
+                            # Use generic name - translation will be handled by translation_key
+                            group_name = f"Group {group_id}"
+
+                        # Store group data
+                        groups_data[group_id_str] = {
+                            "devices": device_ids,
+                            "name": group_name,
+                            "usage": group_usage,
+                        }
+
+                        # Create TydomGroup device
+                        # Import here to avoid circular import
+                        from .tydom_devices import TydomGroup
+
+                        group_device = TydomGroup(
+                            self.tydom_client,
+                            group_id_str,
+                            group_name,
+                            device_ids,
+                            usage=group_usage,  # Pass usage for translation
+                        )
+                        devices.append(group_device)
+
+                        LOGGER.debug(
+                            "Created group: %s (%s) with %d device(s)",
+                            group_id_str,
+                            group_name,
+                            len(device_ids),
+                        )
+                LOGGER.debug(
+                    "Found and created %d groups",
+                    len(groups) if isinstance(groups, list) else 0,
+                )
+        return devices
 
     async def parse_moments_file(self, parsed, transaction_id):
-        """Parse moments file."""
+        """Parse moments file and create TydomMoment devices."""
         LOGGER.debug("parse_moments_file : %s", parsed)
-        # Moments (programs/schedules) are currently not exposed as entities
-        # but we parse them for future use (could be exposed as schedules or time-based automations)
+        devices = []
         if parsed and isinstance(parsed, dict):
             moments = parsed.get("moments", [])
+            if isinstance(moments, list):
+                for moment in moments:
+                    if isinstance(moment, dict) and "id" in moment:
+                        moment_id = moment.get("id")
+                        moment_id_str = str(moment_id)
+                        moment_name = moment.get("name", f"Moment {moment_id}")
+
+                        # Create TydomMoment device
+                        # Import here to avoid circular import
+                        from .tydom_devices import TydomMoment
+
+                        moment_device = TydomMoment(
+                            self.tydom_client,
+                            moment_id_str,
+                            moment_name,
+                            moment,
+                        )
+                        devices.append(moment_device)
+
+                        LOGGER.debug(
+                            "Created moment: %s (%s)",
+                            moment_id_str,
+                            moment_name,
+                        )
             LOGGER.debug(
-                "Found %d moments/programs",
+                "Found and created %d moments/programs",
                 len(moments) if isinstance(moments, list) else 0,
             )
-        return []
+        return devices
 
     # FUNCTIONS
 
@@ -988,7 +1130,8 @@ class HTTPResponse:
 
 def _parse_response(raw_message: bytes) -> HTTPResponse:
     sock = BytesIOSocket(raw_message)
-    response = CoreHTTPResponse(sock)  # type: ignore[arg-type]
+    # CoreHTTPResponse expects a socket, but BytesIOSocket implements the interface
+    response = CoreHTTPResponse(cast(Any, sock))
     response.begin()
 
     return HTTPResponse(
@@ -1017,7 +1160,8 @@ class _FakeHTTPRequest(CoreHTTPResponse):
 
         if not version.startswith("HTTP/"):
             if hasattr(self, "_close_conn"):
-                self._close_conn()  # type: ignore[attr-defined]
+                # _close_conn is a dynamic attribute added by http.client
+                getattr(self, "_close_conn")()
             raise ValueError(line)
 
         command, path = words[:2]
@@ -1050,7 +1194,8 @@ def parse_request(raw_request: bytes) -> HTTPRequest:
 
     """
     sock = BytesIOSocket(raw_request)
-    request = _FakeHTTPRequest(sock)  # type: ignore[arg-type]
+    # _FakeHTTPRequest inherits from CoreHTTPResponse which expects a socket
+    request = _FakeHTTPRequest(cast(Any, sock))
     request.begin()
 
     return HTTPRequest(
