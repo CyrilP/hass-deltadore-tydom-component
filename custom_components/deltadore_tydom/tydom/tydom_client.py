@@ -2,7 +2,6 @@
 
 import asyncio
 import base64
-import json
 import os
 import re
 import socket
@@ -10,7 +9,6 @@ import ssl
 import time
 import traceback
 from typing import TYPE_CHECKING, cast
-from urllib.parse import quote
 
 import aiohttp
 import async_timeout
@@ -101,11 +99,11 @@ class TydomClientApiClientAuthenticationError(TydomClientApiClientError):
 
 proxy = None
 
-# DEBUG ONLY — replaces websocket with a local trace file
+# For debugging with traces
 file_mode = False
 file_lines = None
 file_index = 0
-file_name = os.path.join(os.environ.get("HA_CONFIG_DIR", "/config"), "traces.txt")
+file_name = "/config/traces.txt"
 
 
 class TydomClient:
@@ -282,8 +280,8 @@ class TydomClient:
         global file_lines, file_mode, file_name
         self.pending_pings = 0
         if file_mode:
-            with open(file_name) as file:
-                file_lines = file.readlines()
+            file = open(file_name)
+            file_lines = file.readlines()
 
             # Return a dummy connection for file mode
             # This should not happen in production, but we need to satisfy the type checker
@@ -298,17 +296,12 @@ class TydomClient:
             "Sec-WebSocket-Version": "13",
         }
 
+        # configuration needed for local mode
         # - Wrap slow blocking call flagged by HA
         sslcontext = await asyncio.to_thread(ssl.create_default_context)
         sslcontext.options |= 0x4  # OP_LEGACY_SERVER_CONNECT
-        if self._host == MEDIATION_URL:
-            # Cloud mode: enforce TLS verification against the public CA chain
-            sslcontext.check_hostname = True
-            sslcontext.verify_mode = ssl.CERT_REQUIRED
-        else:
-            # Local mode: Tydom gateway uses a self-signed certificate
-            sslcontext.check_hostname = False
-            sslcontext.verify_mode = ssl.CERT_NONE
+        sslcontext.check_hostname = False
+        sslcontext.verify_mode = ssl.CERT_NONE
 
         session = async_create_clientsession(self._hass, False)
 
@@ -958,10 +951,10 @@ class TydomClient:
     async def get_device_data(self, id):
         """Give order to endpoint."""
         # 10 here is the endpoint = the device (shutter in this case) to open.
-        safe_device_id = quote(str(id), safe="")
-        str_request = f"GET /devices/{safe_device_id}/endpoints/{safe_device_id}/data HTTP/1.1\r\nContent-Length: 0\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
+        device_id = str(id)
+        str_request = f"GET /devices/{device_id}/endpoints/{device_id}/data HTTP/1.1\r\nContent-Length: 0\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
         a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
-        LOGGER.debug("Sending message to tydom (%s)", "GET device data")
+        LOGGER.debug("Sending message to tydom (%s %s)", "GET device data", str_request)
         if not file_mode:
             await self.send_bytes(a_bytes)
 
@@ -999,6 +992,8 @@ class TydomClient:
 
         """
         # Format du body JSON : {"suspend": {"to": suspend_to}}
+        import json
+
         suspend_data = {"suspend": {"to": suspend_to}}
         body = json.dumps(suspend_data)
 
@@ -1091,7 +1086,13 @@ class TydomClient:
 
     async def put_data(self, path, name, value):
         """Give order (name + value) to path."""
-        body = json.dumps({name: value})
+        body: str
+        if value is None:
+            body = '{"' + name + '":"null}'
+        elif isinstance(value, bool | int):
+            body = '{"' + name + '":"' + str(value).lower() + "}"
+        else:
+            body = '{"' + name + '":"' + value + '"}'
 
         str_request = (
             f"PUT {path} HTTP/1.1\r\nContent-Length: "
@@ -1101,7 +1102,7 @@ class TydomClient:
             + "\r\n\r\n"
         )
         a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
-        LOGGER.debug("Sending message to tydom (%s)", "PUT data")
+        LOGGER.debug("Sending message to tydom (%s %s)", "PUT data", body)
         if not file_mode:
             await self.send_bytes(a_bytes)
         return 0
@@ -1128,14 +1129,18 @@ class TydomClient:
 
         """
         # For shutter, value is the percentage of closing
-        body = json.dumps([{"name": name, "value": value}])
+        body: str
+        if value is None:
+            body = '[{"name":"' + name + '","value":null}]'
+        elif isinstance(value, bool):
+            body = '[{"name":"' + name + '","value":' + str(value).lower() + "}]"
+        else:
+            body = '[{"name":"' + name + '","value":"' + value + '"}]'
 
-        safe_device_id = quote(str(device_id), safe="")
-        safe_endpoint_id = quote(str(endpoint_id), safe="")
         # endpoint_id is the endpoint = the device (shutter in this case) to
         # open.
         str_request = (
-            f"PUT /devices/{safe_device_id}/endpoints/{safe_endpoint_id}/data HTTP/1.1\r\nContent-Length: "
+            f"PUT /devices/{device_id}/endpoints/{endpoint_id}/data HTTP/1.1\r\nContent-Length: "
             + str(len(body))
             + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
             + body
@@ -1168,7 +1173,7 @@ class TydomClient:
                 str(e),
             )
             raise
-        LOGGER.debug("Sending message to tydom (%s)", "PUT device data")
+        LOGGER.debug("Sending message to tydom (%s %s)", "PUT device data", body)
         if not file_mode:
             await self.send_bytes(a_bytes)
 
@@ -1297,22 +1302,27 @@ class TydomClient:
         try:
             if zone_id is None or zone_id == "":
                 cmd = "alarmCmd"
-                body = json.dumps({"value": str(value), "pwd": str(pin)})
+                body = '{"value":"' + str(value) + '","pwd":"' + str(pin) + '"}'
             else:
                 if legacy_zones:
                     cmd = "partCmd"
-                    body = json.dumps({"value": str(value), "part": str(zone_id)})
+                    body = (
+                        '{"value":"' + str(value) + ', "part":"' + str(zone_id) + '"}'
+                    )
                 else:
                     cmd = "zoneCmd"
-                    body = json.dumps(
-                        {"value": str(value), "pwd": str(pin), "zones": [int(zone_id)]}
+                    body = (
+                        '{"value":"'
+                        + str(value)
+                        + '","pwd":"'
+                        + str(pin)
+                        + '","zones":"['
+                        + str(zone_id)
+                        + ']"}'
                     )
 
-            safe_device_id = quote(str(device_id), safe="")
-            safe_endpoint_id = quote(str(endpoint_id), safe="")
-            safe_cmd = quote(str(cmd), safe="")
             str_request = (
-                f"PUT /devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata?name={safe_cmd} HTTP/1.1\r\nContent-Length: "
+                f"PUT /devices/{device_id}/endpoints/{endpoint_id}/cdata?name={cmd} HTTP/1.1\r\nContent-Length: "
                 + str(len(body))
                 + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
                 + body
@@ -1320,7 +1330,7 @@ class TydomClient:
             )
 
             a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
-            LOGGER.debug("Sending message to tydom (%s)", "PUT cdata")
+            LOGGER.debug("Sending message to tydom (%s %s)", "PUT cdata", body)
 
             try:
                 if not file_mode:
@@ -1362,10 +1372,7 @@ class TydomClient:
         """Get historical events."""
         # GET /devices/xxxx/endpoints/xxxx/cdata?name=histo&type=ALL&indexStart=0&nbElem=10
         type_ = event_type or "ALL"
-        safe_device_id = quote(str(device_id), safe="")
-        safe_endpoint_id = quote(str(endpoint_id), safe="")
-        safe_type = quote(str(type_), safe="")
-        url = f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata?name=histo&type={safe_type}&indexStart={indexStart}&nbElem={nbElement}"
+        url = f"/devices/{device_id}/endpoints/{endpoint_id}/cdata?name=histo&type={type_}&indexStart={indexStart}&nbElem={nbElement}"
         timeout = TIMEOUT_LONG_REQUEST  # Wait maximum for long operations like historical data
         async with asyncio.timeout(timeout):
             return await self.get_reply_to_request("GET", url)

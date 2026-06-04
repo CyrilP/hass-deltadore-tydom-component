@@ -2559,6 +2559,11 @@ class HaGarage(CoverEntity, HAEntity):
                 self._attr_supported_features | CoverEntityFeature.STOP
             )
 
+        if hasattr(device, "level"):
+            self._attr_supported_features = (
+                self._attr_supported_features | CoverEntityFeature.SET_POSITION
+            )
+
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
@@ -2582,6 +2587,13 @@ class HaGarage(CoverEntity, HAEntity):
         else:
             return None
 
+    @property
+    def current_cover_position(self) -> int | None:
+        """Return the current position of the garage door."""
+        if hasattr(self._device, "level"):
+            return getattr(self._device, "level", None)
+        return None
+
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
         if (
@@ -2600,6 +2612,10 @@ class HaGarage(CoverEntity, HAEntity):
     async def async_stop_cover(self, **kwargs):
         """Stop the cover."""
         await self._device.stop()
+
+    async def async_set_cover_position(self, **kwargs: Any) -> None:
+        """Set the garage door position."""
+        await self._device.set_level(kwargs[ATTR_POSITION])
 
 
 class HaLight(LightEntity, HAEntity):

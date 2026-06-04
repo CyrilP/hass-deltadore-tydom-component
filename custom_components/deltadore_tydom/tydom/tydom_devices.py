@@ -388,6 +388,12 @@ class TydomGarage(TydomDevice):
             self._id, self._endpoint, "levelCmd", "TOGGLE"
         )
 
+    async def set_level(self, level: int) -> None:
+        """Set garage door to the given level."""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "level", str(level)
+        )
+
 
 class TydomLight(TydomDevice):
     """represents a light."""
