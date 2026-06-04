@@ -1,5 +1,9 @@
 # Security Fixes — 2026-06-03
 
+> **Historique** :
+> - 2026-06-03 : première ré-application après le merge de la v0.21 (`9d15282`) qui avait réécrit `config_flow.py` et `tydom_client.py` — commit `a47f338`.
+> - 2026-06-04 : seconde ré-application après le `rebase from last release` (`632c29c`) qui a de nouveau réécrit les deux fichiers. Le contenu de ce doc reste valide : les patterns vulnérables et les emplacements ciblés sont inchangés.
+
 Ré-application des correctifs de sécurité du commit `db71301` (cf. `2026-05-05-security-fixes.md`) après que le merge de la v0.21 (`9d15282`) a réécrit `config_flow.py` et `tydom_client.py` et annulé la majorité des correctifs.
 
 ## Fichiers modifiés
