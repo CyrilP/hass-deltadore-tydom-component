@@ -16,3 +16,5 @@ coverage.xml
 # Home Assistant configuration
 config/*
 !config/configuration.yaml
+# Development documentation
+PR_DESCRIPTION.md
