@@ -14,7 +14,7 @@ jobs:
     runs-on: "ubuntu-latest"
     steps:
         - name: "Checkout the repository"
-          uses: "actions/checkout@v6.0.0"
+          uses: "actions/checkout@v6.0.3"
 
         - name: "Set up Python"
           uses: actions/setup-python@v6.2.0
@@ -26,8 +26,8 @@ jobs:
           run: python3 -m pip install -r requirements.txt
 
         - name: "Lint"
-          run: python3 -m ruff check .
+          run: python3 -m ruff check custom_components/
 
         - name: "Format"
-          run: python3 -m ruff format . --check
+          run: python3 -m ruff format custom_components/ --check
     

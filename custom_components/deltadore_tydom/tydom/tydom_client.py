@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+import json
 import os
 import re
 import socket
@@ -9,6 +10,7 @@ import ssl
 import time
 import traceback
 from typing import TYPE_CHECKING, cast
+from urllib.parse import quote
 
 import aiohttp
 import async_timeout
@@ -17,7 +19,17 @@ from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from requests.auth import HTTPDigestAuth
 from urllib3 import encode_multipart_formdata
 
-from ..const import LOGGER
+from ..const import (
+    LOGGER,
+    validate_value_with_metadata,
+    TIMEOUT_QUICK_REQUEST,
+    TIMEOUT_NORMAL_REQUEST,
+    TIMEOUT_LONG_REQUEST,
+    TIMEOUT_WEBSOCKET_CONNECT,
+    TIMEOUT_WEBSOCKET_RECEIVE,
+    TIMEOUT_PING,
+    STRUCTURED_LOGGER,
+)
 from .const import (
     DELTADORE_API_SITES,
     DELTADORE_AUTH_CLIENTID,
@@ -30,6 +42,49 @@ from .MessageHandler import MessageHandler
 
 if TYPE_CHECKING:
     from .tydom_devices import TydomDevice
+
+
+def sanitize_log_message(message: str, password: str | None = None) -> str:
+    """Masquer les informations sensibles dans les messages de log."""
+    import re
+
+    sanitized = str(message)
+
+    # Masquer le mot de passe s'il est présent
+    if password:
+        sanitized = sanitized.replace(password, "***")
+        sanitized = sanitized.replace(f'"{password}"', '"***"')
+        sanitized = sanitized.replace(f"'{password}'", "'***'")
+
+    # Masquer les patterns de mots de passe dans les JSON/strings
+    sanitized = re.sub(
+        r'"password"\s*:\s*"[^"]*"', '"password":"***"', sanitized, flags=re.IGNORECASE
+    )
+    sanitized = re.sub(
+        r'"pwd"\s*:\s*"[^"]*"', '"pwd":"***"', sanitized, flags=re.IGNORECASE
+    )
+    sanitized = re.sub(
+        r'"access_token"\s*:\s*"[^"]*"',
+        '"access_token":"***"',
+        sanitized,
+        flags=re.IGNORECASE,
+    )
+    sanitized = re.sub(
+        r'"token"\s*:\s*"[^"]*"', '"token":"***"', sanitized, flags=re.IGNORECASE
+    )
+
+    # Masquer les patterns dans les URLs ou headers
+    sanitized = re.sub(
+        r'(password|pwd|passwd|token|access_token)\s*[=:]\s*[^\s"\'<>]+',
+        r"\1=***",
+        sanitized,
+        flags=re.IGNORECASE,
+    )
+    sanitized = re.sub(
+        r"Bearer\s+[A-Za-z0-9\-._~+/]+", "Bearer ***", sanitized, flags=re.IGNORECASE
+    )
+
+    return sanitized
 
 
 class TydomClientApiClientError(Exception):
@@ -46,11 +101,11 @@ class TydomClientApiClientAuthenticationError(TydomClientApiClientError):
 
 proxy = None
 
-# For debugging with traces
+# DEBUG ONLY — replaces websocket with a local trace file
 file_mode = False
 file_lines = None
 file_index = 0
-file_name = "/config/traces.txt"
+file_name = os.path.join(os.environ.get("HA_CONFIG_DIR", "/config"), "traces.txt")
 
 
 class TydomClient:
@@ -93,7 +148,7 @@ class TydomClient:
         if self._remote_mode:
             LOGGER.info("Configure remote mode (%s)", self._host)
             self._cmd_prefix = b"\x02"
-            self._ping_timeout = 40
+            self._ping_timeout = TIMEOUT_PING
         else:
             LOGGER.info("Configure local mode (%s)", self._host)
             self._cmd_prefix = b""
@@ -102,6 +157,20 @@ class TydomClient:
         self._message_handler = MessageHandler(
             tydom_client=self, cmd_prefix=self._cmd_prefix
         )
+
+        # Reconnection parameters with exponential backoff
+        self._reconnect_attempts = 0
+        self._max_reconnect_attempts = 10
+        self._reconnect_delay = 1.0
+        self._max_reconnect_delay = 60.0
+        self._reconnect_backoff_factor = 2.0
+        self.online = True
+
+        # Metadata cache with TTL (Time To Live)
+        self._metadata_cache: dict[
+            str, tuple[float, bool]
+        ] = {}  # endpoint -> (timestamp, is_valid)
+        self._metadata_cache_ttl = 3600.0  # 1 hour in seconds
 
     def update_config(self, zone_home: str, zone_away: str, zone_night: str):
         """Update zones configuration."""
@@ -117,7 +186,7 @@ class TydomClient:
         if file_mode:
             return "dummyPassword"
         try:
-            async with async_timeout.timeout(10):
+            async with async_timeout.timeout(TIMEOUT_QUICK_REQUEST):
                 response = await session.request(
                     method="GET", url=DELTADORE_AUTH_URL, proxy=proxy
                 )
@@ -151,11 +220,13 @@ class TydomClient:
                     proxy=proxy,
                 )
 
+                response_text = await response.text()
+                sanitized_content = sanitize_log_message(response_text, password)
                 LOGGER.debug(
                     "response status for signin : %s\nheaders : %s\ncontent : %s",
                     response.status,
                     response.headers,
-                    await response.text(),
+                    sanitized_content,
                 )
 
                 json_response = await response.json()
@@ -169,11 +240,14 @@ class TydomClient:
                     proxy=proxy,
                 )
 
+                response_text = await response.text()
+                # Le contenu peut contenir le mot de passe Tydom, le masquer
+                sanitized_content = sanitize_log_message(response_text)
                 LOGGER.debug(
                     "response status for https://prod.iotdeltadore.com/sitesmanagement/api/v1/sites?gateway_mac= : %s\nheaders : %s\ncontent : %s",
                     response.status,
                     response.headers,
-                    await response.text(),
+                    sanitized_content,
                 )
 
                 json_response = await response.json()
@@ -208,8 +282,8 @@ class TydomClient:
         global file_lines, file_mode, file_name
         self.pending_pings = 0
         if file_mode:
-            file = open(file_name)
-            file_lines = file.readlines()
+            with open(file_name) as file:
+                file_lines = file.readlines()
 
             # Return a dummy connection for file mode
             # This should not happen in production, but we need to satisfy the type checker
@@ -224,17 +298,27 @@ class TydomClient:
             "Sec-WebSocket-Version": "13",
         }
 
-        # configuration needed for local mode
         # - Wrap slow blocking call flagged by HA
         sslcontext = await asyncio.to_thread(ssl.create_default_context)
         sslcontext.options |= 0x4  # OP_LEGACY_SERVER_CONNECT
-        sslcontext.check_hostname = False
-        sslcontext.verify_mode = ssl.CERT_NONE
+        if self._host == MEDIATION_URL:
+            # Cloud mode: enforce TLS verification against the public CA chain
+            sslcontext.check_hostname = True
+            sslcontext.verify_mode = ssl.CERT_REQUIRED
+        else:
+            # Local mode: Tydom gateway uses a self-signed certificate
+            sslcontext.check_hostname = False
+            sslcontext.verify_mode = ssl.CERT_NONE
 
         session = async_create_clientsession(self._hass, False)
 
         try:
-            async with async_timeout.timeout(10):
+            # Use TIMEOUT_WEBSOCKET_CONNECT instead of TIMEOUT_QUICK_REQUEST because
+            # the initial GET request is part of the WebSocket connection process:
+            # it obtains the digest challenge, calculates authentication, and establishes
+            # the WebSocket connection. This can take longer, especially on first connection
+            # or with network latency.
+            async with async_timeout.timeout(TIMEOUT_WEBSOCKET_CONNECT):
                 response = await session.request(
                     method="GET",
                     url=f"https://{self._host}:443/mediation/client?mac={self._mac}&appli=1",
@@ -279,8 +363,8 @@ class TydomClient:
                     headers=http_headers,
                     autoping=True,
                     heartbeat=2.0,
-                    timeout=aiohttp.ClientTimeout(total=10.0),  # type: ignore[arg-type]
-                    receive_timeout=5.0,
+                    timeout=TIMEOUT_WEBSOCKET_CONNECT,  # type: ignore[arg-type]
+                    receive_timeout=TIMEOUT_WEBSOCKET_RECEIVE,
                     autoclose=True,
                     proxy=proxy,
                     ssl=sslcontext,
@@ -304,7 +388,12 @@ class TydomClient:
 
     async def listen_tydom(self, connection: ClientWebSocketResponse):
         """Listen for Tydom messages."""
-        LOGGER.info("Listen for Tydom messages")
+        STRUCTURED_LOGGER.connection_event(
+            "info",
+            "listen_started",
+            host=self._host,
+            mode="remote" if self._remote_mode else "local",
+        )
         self._connection = connection
         await self.ping()
         await self.get_info()
@@ -329,6 +418,70 @@ class TydomClient:
 
         await self.get_scenarii()
 
+    async def _reconnect_with_backoff(self) -> None:
+        """Reconnect with exponential backoff strategy.
+
+        This method implements an exponential backoff reconnection strategy
+        to avoid overwhelming the server with reconnection attempts. The delay
+        between attempts increases exponentially: delay = base_delay * (factor ^ attempt).
+        The delay is capped at max_reconnect_delay to prevent excessive wait times.
+
+        The reconnection process:
+        1. Calculate delay based on attempt number
+        2. Wait for the calculated delay
+        3. Attempt to connect and listen
+        4. If successful, reset attempts counter and mark as online
+        5. If failed, increment attempts and retry (up to max_attempts)
+
+        Raises:
+            None: Exceptions are logged but do not propagate. The method
+                  will stop after max_reconnect_attempts and mark client as offline.
+
+        """
+        while self._reconnect_attempts < self._max_reconnect_attempts:
+            delay = min(
+                self._reconnect_delay
+                * (self._reconnect_backoff_factor**self._reconnect_attempts),
+                self._max_reconnect_delay,
+            )
+            STRUCTURED_LOGGER.connection_event(
+                "info",
+                "reconnect_attempt",
+                attempt=self._reconnect_attempts + 1,
+                max_attempts=self._max_reconnect_attempts,
+                delay_seconds=delay,
+            )
+            await asyncio.sleep(delay)
+
+            try:
+                self._connection = await self.async_connect()
+                await self.listen_tydom(self._connection)
+                self._reconnect_attempts = 0
+                self.online = True
+                STRUCTURED_LOGGER.connection_event(
+                    "info",
+                    "reconnect_success",
+                    attempt=self._reconnect_attempts + 1,
+                    total_attempts=self._reconnect_attempts + 1,
+                )
+                return
+            except Exception as e:
+                self._reconnect_attempts += 1
+                STRUCTURED_LOGGER.connection_event(
+                    "warning",
+                    "reconnect_failed",
+                    attempt=self._reconnect_attempts,
+                    max_attempts=self._max_reconnect_attempts,
+                    error=str(e),
+                )
+
+        LOGGER.error(
+            "Impossible de se reconnecter après %d tentatives",
+            self._max_reconnect_attempts,
+        )
+        # Notifier Home Assistant de la perte de connexion
+        self.online = False
+
     async def consume_messages(self) -> list["TydomDevice"] | None:
         """Read and parse incoming messages."""
         global file_lines, file_mode, file_index
@@ -339,7 +492,10 @@ class TydomClient:
                 )
                 incoming_bytes_str = incoming.encode("utf-8")
                 file_index += 1
-                LOGGER.info("Incomming message - message : %s", incoming_bytes_str)
+                sanitized_msg = sanitize_log_message(
+                    incoming_bytes_str.decode("utf-8", errors="replace"), self._password
+                )
+                LOGGER.info("Incomming message - message : %s", sanitized_msg)
             else:
                 await asyncio.sleep(10)
                 return None
@@ -350,14 +506,21 @@ class TydomClient:
                 return None
             if self._connection.closed or self.pending_pings > 5:
                 await self._connection.close()
-                await asyncio.sleep(10)
-                await self.listen_tydom(await self.async_connect())
+                await self._reconnect_with_backoff()
+                return None
 
             if self._connection is None:
                 return None
             msg = await self._connection.receive()
+            # Masquer les informations sensibles dans les messages entrants
+            msg_data_str = (
+                msg.data.decode("utf-8", errors="replace")
+                if isinstance(msg.data, bytes)
+                else str(msg.data)
+            )
+            sanitized_msg = sanitize_log_message(msg_data_str, self._password)
             LOGGER.info(
-                "Incoming message - type : %s - message : %s", msg.type, msg.data
+                "Incoming message - type : %s - message : %s", msg.type, sanitized_msg
             )
 
             if (
@@ -379,6 +542,7 @@ class TydomClient:
             return await self._message_handler.route_response(incoming_bytes_str)
 
         except Exception:
+            # Ne pas logger le message complet pour éviter d'exposer des informations sensibles
             LOGGER.exception("Unable to handle message")
             return None
 
@@ -404,25 +568,80 @@ class TydomClient:
         )
         return digest
 
-    async def send_bytes(self, a_bytes: bytes):
-        """Send bytes to connection, retry if it fails."""
+    async def send_bytes(
+        self, a_bytes: bytes, max_retries: int = 3, retry_delay: float = 1.0
+    ):
+        """Send bytes to connection with intelligent retry mechanism.
+
+        Args:
+            a_bytes: Bytes to send
+            max_retries: Maximum number of retry attempts
+            retry_delay: Initial delay between retries (exponential backoff)
+
+        """
         if file_mode:
             return
 
-        if self._connection is not None:
-            try:
-                await self._connection.send_bytes(a_bytes)
-            except ConnectionResetError:
-                # Failed, retrying...
-                try:
-                    self._connection = await self.async_connect()
-                    await self._connection.send_bytes(a_bytes)
-                except ConnectionResetError:
-                    LOGGER.warning("Cannot send message to Tydom. Connection was lost.")
-        else:
+        if self._connection is None:
             LOGGER.warning(
                 "Cannot send message to Tydom because no connection has been established yet."
             )
+            return
+
+        last_exception = None
+        for attempt in range(max_retries + 1):
+            try:
+                await self._connection.send_bytes(a_bytes)
+                if attempt > 0:
+                    LOGGER.info(
+                        "Successfully sent message after %d retry attempt(s)",
+                        attempt,
+                    )
+                return
+            except (ConnectionResetError, ConnectionError, OSError) as e:
+                last_exception = e
+                if attempt < max_retries:
+                    delay = retry_delay * (2**attempt)  # Exponential backoff
+                    LOGGER.warning(
+                        "Connection error (attempt %d/%d): %s. Retrying in %.1f seconds...",
+                        attempt + 1,
+                        max_retries + 1,
+                        str(e),
+                        delay,
+                    )
+                    try:
+                        # Try to reconnect
+                        self._connection = await self.async_connect()
+                        await asyncio.sleep(delay)
+                    except Exception as reconnect_error:
+                        LOGGER.error(
+                            "Failed to reconnect (attempt %d/%d): %s",
+                            attempt + 1,
+                            max_retries + 1,
+                            reconnect_error,
+                        )
+                        if attempt < max_retries:
+                            await asyncio.sleep(delay)
+                else:
+                    LOGGER.error(
+                        "Cannot send message to Tydom after %d attempts. Connection was lost: %s",
+                        max_retries + 1,
+                        str(e),
+                    )
+            except Exception as e:
+                # For other exceptions, don't retry
+                LOGGER.error(
+                    "Unexpected error sending message to Tydom: %s",
+                    str(e),
+                    exc_info=True,
+                )
+                raise
+
+        # If we get here, all retries failed
+        if last_exception:
+            raise TydomClientApiClientCommunicationError(
+                f"Failed to send message after {max_retries + 1} attempts"
+            ) from last_exception
 
     async def send_message(self, method, msg):
         """Send Generic message to Tydom."""
@@ -475,17 +694,22 @@ class TydomClient:
         url: str,
         body: dict | bytes | None = None,
         headers: dict | None = None,
+        timeout: float = TIMEOUT_NORMAL_REQUEST,
     ) -> list[dict] | None:
-        """Send request and wait for its reply.
+        """Send request and wait for its reply with timeout handling.
 
         Args:
             method: Request method
             url: Request URL
             body: Request body
             headers: Request headers
+            timeout: Timeout in seconds (default: 10.0)
 
         Returns:
             List of reply events or None
+
+        Raises:
+            TydomClientApiClientCommunicationError: If timeout or communication error occurs
 
         """
         event = asyncio.Event()
@@ -493,12 +717,49 @@ class TydomClient:
         transaction_id, request = self._message_handler.prepare_request(
             method, url, body, headers, reply_event=event
         )
-        await self.send_bytes(request)
 
-        # Wait for the reply
-        await event.wait()
+        try:
+            await self.send_bytes(request)
+        except Exception as e:
+            LOGGER.error(
+                "Failed to send request %s %s: %s",
+                method,
+                url,
+                str(e),
+                exc_info=True,
+            )
+            raise TydomClientApiClientCommunicationError(
+                f"Failed to send request {method} {url}: {str(e)}"
+            ) from e
+
+        # Wait for the reply with timeout
+        try:
+            async with async_timeout.timeout(timeout):
+                await event.wait()
+        except TimeoutError:
+            LOGGER.warning(
+                "Timeout waiting for reply to %s %s (transaction_id: %s, timeout: %.1fs)",
+                method,
+                url,
+                transaction_id,
+                timeout,
+            )
+            # Remove the pending reply to avoid memory leak
+            self._message_handler.remove_reply(transaction_id)
+            raise TydomClientApiClientCommunicationError(
+                f"Timeout waiting for reply to {method} {url}"
+            )
 
         reply = self._message_handler.get_reply(transaction_id)
+
+        if reply is None:
+            LOGGER.warning(
+                "No reply received for %s %s (transaction_id: %s)",
+                method,
+                url,
+                transaction_id,
+            )
+            return None
 
         return reply["events"] if reply else None
 
@@ -551,11 +812,44 @@ class TydomClient:
         await self.send_message(method=req, msg=msg_type)
         self.pending_pings += 1
 
-    async def get_devices_meta(self):
-        """Get all devices metadata."""
+    async def get_devices_meta(self, force_refresh: bool = False):
+        """Get all devices metadata.
+
+        This method retrieves metadata for all devices from the Tydom API.
+        The metadata includes information about device attributes such as:
+        - Type (numeric, boolean, string, etc.)
+        - Permissions (read, write, read-write)
+        - Validity periods (for polling decisions)
+        - Min/max/step values (for numeric attributes)
+        - Enum values (for string attributes)
+
+        The results are cached for 1 hour (metadata_cache_ttl) to reduce
+        API calls. Use force_refresh=True to bypass the cache.
+
+        Args:
+            force_refresh: If True, force refresh even if cache is valid (default: False)
+
+        """
+        # Check cache if not forcing refresh
+        if not force_refresh:
+            current_time = time.time()
+            cache_key = "devices_meta"
+            if cache_key in self._metadata_cache:
+                timestamp, is_valid = self._metadata_cache[cache_key]
+                if current_time - timestamp < self._metadata_cache_ttl and is_valid:
+                    LOGGER.debug(
+                        "Using cached devices metadata (age: %.1fs)",
+                        current_time - timestamp,
+                    )
+                    return
+
+        # Cache expired or force refresh, fetch new metadata
         msg_type = "/devices/meta"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
+
+        # Update cache
+        self._metadata_cache["devices_meta"] = (time.time(), True)
 
     async def get_devices_data(self):
         """Get all devices data."""
@@ -580,11 +874,68 @@ class TydomClient:
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
-    async def get_devices_cmeta(self):
-        """Get metadata configuration to list poll devices (like Tywatt)."""
+    async def get_devices_cmeta(self, force_refresh: bool = False):
+        """Get metadata configuration to list poll devices (like Tywatt).
+
+        This method retrieves configuration metadata that identifies which
+        devices require polling and at what intervals. This is particularly
+        important for devices like Tywatt (energy monitoring) that don't send
+        push updates and must be polled regularly.
+
+        The results are cached for 1 hour (metadata_cache_ttl) to reduce
+        API calls. Use force_refresh=True to bypass the cache.
+
+        Args:
+            force_refresh: If True, force refresh even if cache is valid (default: False)
+
+        """
+        # Check cache if not forcing refresh
+        if not force_refresh:
+            current_time = time.time()
+            cache_key = "devices_cmeta"
+            if cache_key in self._metadata_cache:
+                timestamp, is_valid = self._metadata_cache[cache_key]
+                if current_time - timestamp < self._metadata_cache_ttl and is_valid:
+                    LOGGER.debug(
+                        "Using cached devices cmeta (age: %.1fs)",
+                        current_time - timestamp,
+                    )
+                    return
+
+        # Cache expired or force refresh, fetch new metadata
         msg_type = "/devices/cmeta"
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
+
+        # Update cache
+        self._metadata_cache["devices_cmeta"] = (time.time(), True)
+
+    def invalidate_metadata_cache(self, cache_key: str | None = None):
+        """Invalidate metadata cache.
+
+        This method allows manual invalidation of the metadata cache. This is
+        useful when you know that metadata has changed and you want to force
+        a refresh on the next call to get_devices_meta() or get_devices_cmeta().
+
+        Args:
+            cache_key: Specific cache key to invalidate (e.g., "devices_meta", "devices_cmeta").
+                      If None, invalidates all caches.
+
+        Examples:
+            # Invalidate all caches
+            client.invalidate_metadata_cache()
+
+            # Invalidate only devices metadata cache
+            client.invalidate_metadata_cache("devices_meta")
+
+        """
+        if cache_key is None:
+            self._metadata_cache.clear()
+            LOGGER.debug("All metadata caches invalidated")
+        else:
+            if cache_key in self._metadata_cache:
+                del self._metadata_cache[cache_key]
+                LOGGER.debug("Metadata cache invalidated for: %s", cache_key)
 
     async def get_areas_meta(self):
         """Get areas metadata."""
@@ -607,10 +958,10 @@ class TydomClient:
     async def get_device_data(self, id):
         """Give order to endpoint."""
         # 10 here is the endpoint = the device (shutter in this case) to open.
-        device_id = str(id)
-        str_request = f"GET /devices/{device_id}/endpoints/{device_id}/data HTTP/1.1\r\nContent-Length: 0\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
+        safe_device_id = quote(str(id), safe="")
+        str_request = f"GET /devices/{safe_device_id}/endpoints/{safe_device_id}/data HTTP/1.1\r\nContent-Length: 0\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
         a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
-        LOGGER.debug("Sending message to tydom (%s %s)", "GET device data", str_request)
+        LOGGER.debug("Sending message to tydom (%s)", "GET device data")
         if not file_mode:
             await self.send_bytes(a_bytes)
 
@@ -636,6 +987,59 @@ class TydomClient:
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
+    async def suspend_moment(self, moment_id: str | int, suspend_to: int = -1) -> None:
+        """Suspend or resume a moment/program.
+
+        Args:
+            moment_id: The moment/program ID
+            suspend_to: Timestamp until which to suspend (-1 for indefinite, 0 to resume)
+
+        Raises:
+            TydomClientApiClientCommunicationError: If the request fails
+
+        """
+        # Format du body JSON : {"suspend": {"to": suspend_to}}
+        suspend_data = {"suspend": {"to": suspend_to}}
+        body = json.dumps(suspend_data)
+
+        path = f"/moments/{moment_id}"
+        str_request = (
+            f"PUT {path} HTTP/1.1\r\nContent-Length: "
+            + str(len(body))
+            + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
+            + body
+            + "\r\n\r\n"
+        )
+        a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
+
+        STRUCTURED_LOGGER.api_request(
+            "debug", "PUT", path, moment_id=str(moment_id), suspend_to=suspend_to
+        )
+        LOGGER.debug(
+            "Sending suspend_moment request: moment_id=%s, suspend_to=%s",
+            moment_id,
+            suspend_to,
+        )
+
+        try:
+            await self.send_bytes(a_bytes)
+            LOGGER.debug(
+                "Suspend moment request sent successfully: moment_id=%s, suspend_to=%s",
+                moment_id,
+                suspend_to,
+            )
+        except Exception as e:
+            LOGGER.error(
+                "Failed to send suspend_moment request: moment_id=%s, suspend_to=%s, error=%s",
+                moment_id,
+                suspend_to,
+                e,
+                exc_info=True,
+            )
+            raise TydomClientApiClientCommunicationError(
+                f"Failed to suspend moment {moment_id}"
+            ) from e
+
     async def get_scenarii(self):
         """Get the scenarios."""
         msg_type = "/scenarios/file"
@@ -643,11 +1047,41 @@ class TydomClient:
         await self.send_message(method=req, msg=msg_type)
 
     async def activate_scenario(self, scenario_id: str | int):
-        """Activate a scenario."""
+        """Activate a scenario.
+
+        Args:
+            scenario_id: The scenario ID to activate.
+
+        Raises:
+            Exception: If the activation request fails.
+
+        """
         # PUT /scenarios/{id}
         msg_type = f"/scenarios/{scenario_id}"
         req = "PUT"
-        await self.send_message(method=req, msg=msg_type)
+
+        LOGGER.debug(
+            "Sending scenario activation request: method=%s, path=%s, scenario_id=%s",
+            req,
+            msg_type,
+            scenario_id,
+        )
+
+        try:
+            await self.send_message(method=req, msg=msg_type)
+            LOGGER.debug(
+                "Scenario activation request sent: scenario_id=%s",
+                scenario_id,
+            )
+        except Exception as e:
+            LOGGER.error(
+                "Failed to send scenario activation request: scenario_id=%s, error=%s",
+                scenario_id,
+                e,
+                exc_info=True,
+            )
+            # Re-raise to allow caller to handle the error
+            raise
 
     async def get_groups(self):
         """Get the groups."""
@@ -657,13 +1091,7 @@ class TydomClient:
 
     async def put_data(self, path, name, value):
         """Give order (name + value) to path."""
-        body: str
-        if value is None:
-            body = '{"' + name + '":"null}'
-        elif isinstance(value, bool | int):
-            body = '{"' + name + '":"' + str(value).lower() + "}"
-        else:
-            body = '{"' + name + '":"' + value + '"}'
+        body = json.dumps({name: value})
 
         str_request = (
             f"PUT {path} HTTP/1.1\r\nContent-Length: "
@@ -673,37 +1101,140 @@ class TydomClient:
             + "\r\n\r\n"
         )
         a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
-        LOGGER.debug("Sending message to tydom (%s %s)", "PUT data", body)
+        LOGGER.debug("Sending message to tydom (%s)", "PUT data")
         if not file_mode:
             await self.send_bytes(a_bytes)
         return 0
 
-    async def put_devices_data(self, device_id, endpoint_id, name, value):
-        """Give order (name + value) to endpoint."""
-        # For shutter, value is the percentage of closing
-        body: str
-        if value is None:
-            body = '[{"name":"' + name + '","value":null}]'
-        elif isinstance(value, bool):
-            body = '[{"name":"' + name + '","value":' + str(value).lower() + "}]"
-        else:
-            body = '[{"name":"' + name + '","value":"' + value + '"}]'
+    async def put_devices_data(
+        self,
+        device_id,
+        endpoint_id,
+        name,
+        value,
+        max_retries: int = 2,
+    ):
+        """Give order (name + value) to endpoint with retry mechanism.
 
+        Args:
+            device_id: Device ID
+            endpoint_id: Endpoint ID
+            name: Attribute name
+            value: Attribute value
+            max_retries: Maximum number of retry attempts (default: 2)
+
+        Raises:
+            TydomClientApiClientCommunicationError: If all retry attempts fail
+
+        """
+        # For shutter, value is the percentage of closing
+        body = json.dumps([{"name": name, "value": value}])
+
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
         # endpoint_id is the endpoint = the device (shutter in this case) to
         # open.
         str_request = (
-            f"PUT /devices/{device_id}/endpoints/{endpoint_id}/data HTTP/1.1\r\nContent-Length: "
+            f"PUT /devices/{safe_device_id}/endpoints/{safe_endpoint_id}/data HTTP/1.1\r\nContent-Length: "
             + str(len(body))
             + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
             + body
             + "\r\n\r\n"
         )
         a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
-        LOGGER.debug("Sending message to tydom (%s %s)", "PUT device data", body)
+
+        # Log the command (masking sensitive data)
+        log_value = (
+            "***" if "pwd" in name.lower() or "password" in name.lower() else value
+        )
+        LOGGER.debug(
+            "Sending command: device_id=%s, endpoint_id=%s, name=%s, value=%s",
+            device_id,
+            endpoint_id,
+            name,
+            log_value,
+        )
+
+        # Send with retry mechanism
+        try:
+            await self.send_bytes(a_bytes, max_retries=max_retries)
+        except TydomClientApiClientCommunicationError as e:
+            LOGGER.error(
+                "Failed to send command after retries: device_id=%s, endpoint_id=%s, name=%s, value=%s, error=%s",
+                device_id,
+                endpoint_id,
+                name,
+                log_value,
+                str(e),
+            )
+            raise
+        LOGGER.debug("Sending message to tydom (%s)", "PUT device data")
         if not file_mode:
             await self.send_bytes(a_bytes)
 
         return 0
+
+    async def put_devices_data_validated(
+        self,
+        device_id,
+        endpoint_id,
+        name,
+        value,
+        device: "TydomDevice | None" = None,
+        max_retries: int = 2,
+    ):
+        """Give order (name + value) to endpoint with validation and retry mechanism.
+
+        This method validates the value against device metadata before sending
+        the command. If validation fails, a ValueError is raised. This helps
+        prevent sending invalid commands to devices.
+
+        Validation checks:
+        - Type compatibility (numeric, boolean, string)
+        - Min/max bounds for numeric values
+        - Step alignment for numeric values
+        - Enum values for string attributes
+
+        If device is None, validation is skipped and the method behaves like
+        put_devices_data().
+
+        Args:
+            device_id: Device ID
+            endpoint_id: Endpoint ID
+            name: Attribute name
+            value: Attribute value to validate and send
+            device: Optional TydomDevice instance for validation (if None, validation is skipped)
+            max_retries: Maximum number of retry attempts (default: 2)
+
+        Returns:
+            0 on success
+
+        Raises:
+            ValueError: If validation fails (with descriptive error message)
+            TydomClientApiClientCommunicationError: If all retry attempts fail
+
+        """
+        # Validate value if device is provided
+        if device is not None:
+            is_valid, error_msg = validate_value_with_metadata(device, name, value)
+            if not is_valid:
+                LOGGER.error(
+                    "Validation failed for device_id=%s, name=%s, value=%s: %s",
+                    device_id,
+                    name,
+                    value,
+                    error_msg,
+                )
+                raise ValueError(error_msg or f"Valeur invalide pour {name}: {value}")
+
+        # If validation passed (or device not provided), send the command
+        return await self.put_devices_data(
+            device_id=device_id,
+            endpoint_id=endpoint_id,
+            name=name,
+            value=value,
+            max_retries=max_retries,
+        )
 
     async def put_alarm_cdata(
         self,
@@ -766,27 +1297,22 @@ class TydomClient:
         try:
             if zone_id is None or zone_id == "":
                 cmd = "alarmCmd"
-                body = '{"value":"' + str(value) + '","pwd":"' + str(pin) + '"}'
+                body = json.dumps({"value": str(value), "pwd": str(pin)})
             else:
                 if legacy_zones:
                     cmd = "partCmd"
-                    body = (
-                        '{"value":"' + str(value) + ', "part":"' + str(zone_id) + '"}'
-                    )
+                    body = json.dumps({"value": str(value), "part": str(zone_id)})
                 else:
                     cmd = "zoneCmd"
-                    body = (
-                        '{"value":"'
-                        + str(value)
-                        + '","pwd":"'
-                        + str(pin)
-                        + '","zones":"['
-                        + str(zone_id)
-                        + ']"}'
+                    body = json.dumps(
+                        {"value": str(value), "pwd": str(pin), "zones": [int(zone_id)]}
                     )
 
+            safe_device_id = quote(str(device_id), safe="")
+            safe_endpoint_id = quote(str(endpoint_id), safe="")
+            safe_cmd = quote(str(cmd), safe="")
             str_request = (
-                f"PUT /devices/{device_id}/endpoints/{endpoint_id}/cdata?name={cmd} HTTP/1.1\r\nContent-Length: "
+                f"PUT /devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata?name={safe_cmd} HTTP/1.1\r\nContent-Length: "
                 + str(len(body))
                 + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
                 + body
@@ -794,7 +1320,7 @@ class TydomClient:
             )
 
             a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
-            LOGGER.debug("Sending message to tydom (%s %s)", "PUT cdata", body)
+            LOGGER.debug("Sending message to tydom (%s)", "PUT cdata")
 
             try:
                 if not file_mode:
@@ -802,7 +1328,14 @@ class TydomClient:
                     return 0
             except BaseException:
                 LOGGER.error("put_alarm_cdata ERROR !", exc_info=True)
-                LOGGER.error(a_bytes)
+                # Masquer les informations sensibles dans les bytes loggés
+                a_bytes_str = (
+                    a_bytes.decode("utf-8", errors="replace")
+                    if isinstance(a_bytes, bytes)
+                    else str(a_bytes)
+                )
+                sanitized_bytes = sanitize_log_message(a_bytes_str, self._password)
+                LOGGER.error("Request bytes: %s", sanitized_bytes)
         except BaseException:
             LOGGER.error("put_alarm_cdata ERROR !", exc_info=True)
 
@@ -829,8 +1362,11 @@ class TydomClient:
         """Get historical events."""
         # GET /devices/xxxx/endpoints/xxxx/cdata?name=histo&type=ALL&indexStart=0&nbElem=10
         type_ = event_type or "ALL"
-        url = f"/devices/{device_id}/endpoints/{endpoint_id}/cdata?name=histo&type={type_}&indexStart={indexStart}&nbElem={nbElement}"
-        timeout = 30.0  # Wait maximum for 30 seconds for the full reply
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        safe_type = quote(str(type_), safe="")
+        url = f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata?name=histo&type={safe_type}&indexStart={indexStart}&nbElem={nbElement}"
+        timeout = TIMEOUT_LONG_REQUEST  # Wait maximum for long operations like historical data
         async with asyncio.timeout(timeout):
             return await self.get_reply_to_request("GET", url)
 
