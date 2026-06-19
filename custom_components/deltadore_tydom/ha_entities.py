@@ -1656,21 +1656,63 @@ class HACover(CoverEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
-        if hasattr(device, "position"):
-            self._attr_supported_features = (
-                self._attr_supported_features
-                | CoverEntityFeature.SET_POSITION
-                | CoverEntityFeature.OPEN
-                | CoverEntityFeature.CLOSE
-                | CoverEntityFeature.STOP
-            )
-        if hasattr(device, "slope"):
-            self._attr_supported_features = (
-                self._attr_supported_features | CoverEntityFeature.SET_TILT_POSITION
-                # | CoverEntityFeature.OPEN_TILT
-                # | CoverEntityFeature.CLOSE_TILT
-                # | CoverEntityFeature.STOP_TILT
-            )
+        # NOTE: supported_features is intentionally NOT computed here.
+        # It is exposed as a dynamic property below so that OPEN/CLOSE/STOP/
+        # SET_POSITION/SET_TILT_POSITION reflect the *current* device state.
+        # Computing it once in __init__ froze the flags whenever the first
+        # /devices/data frame for the endpoint arrived without a "position"
+        # element (validity != "upToDate" or only positionCmd present), which
+        # left the cover with no controls even though the position later showed
+        # up as a diagnostic sensor.
+
+    async def async_added_to_hass(self) -> None:
+        """Register an update callback so the cover refreshes on every push.
+
+        HACover inherits from (CoverEntity, HAEntity). Because CoverEntity's
+        base (homeassistant Entity) defines async_added_to_hass, it shadows
+        HAEntity.async_added_to_hass in the MRO, so the mixin's callback
+        registration never runs. The cover therefore relied solely on the
+        shared `_device._ha_device` pointer for refreshes -- but every
+        diagnostic GenericSensor overwrites that pointer in its own
+        async_added_to_hass. Once a sensor (e.g. the auto-created "position"
+        sensor) stole the pointer, the cover stopped refreshing and its
+        position froze, while the diagnostic sensor kept updating.
+
+        Registering our own callback here -- exactly like the sensors do --
+        makes publish_updates() refresh the cover on every device push,
+        independently of which entity currently owns `_ha_device`.
+        """
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the registered callback when the entity is removed."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
+    @property
+    def supported_features(self) -> CoverEntityFeature:
+        """Return the dynamically computed supported features.
+
+        Movement commands (OPEN/CLOSE/STOP) rely on positionCmd via
+        up()/down()/stop() and are always valid for a shutter/awning, so they
+        do not depend on position feedback being present. SET_POSITION is added
+        only when a writable "position" attribute exists, and SET_TILT_POSITION
+        only when a "slope" attribute exists.
+        """
+        features = (
+            CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE | CoverEntityFeature.STOP
+        )
+        if hasattr(self._device, "position") and self._is_attribute_writable(
+            "position"
+        ):
+            features |= CoverEntityFeature.SET_POSITION
+        if hasattr(self._device, "slope"):
+            features |= CoverEntityFeature.SET_TILT_POSITION
+        return features
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -1689,17 +1731,33 @@ class HACover(CoverEntity, HAEntity):
     @property
     def current_cover_position(self) -> int | None:
         """Return the current position of the cover."""
-        if hasattr(self._device, "position"):
-            return getattr(self._device, "position", None)
-        return None
+        return self._read_position()
+
+    def _read_position(self) -> int | None:
+        """Return the device position as a clamped int, or None.
+
+        Tydom occasionally serializes numeric values as strings, so coerce
+        defensively rather than handing HA a str (which prevents the cover
+        card from rendering the position).
+        """
+        if not hasattr(self._device, "position"):
+            return None
+        raw = getattr(self._device, "position", None)
+        if raw is None:
+            return None
+        try:
+            value = int(float(raw))
+        except (TypeError, ValueError):
+            return None
+        return max(0, min(100, value))
 
     @property
-    def is_closed(self) -> bool:
-        """Return if the cover is closed, same as position 0."""
-        if hasattr(self._device, "position"):
-            position = getattr(self._device, "position", None)
-            return position == 0 if position is not None else False
-        return False
+    def is_closed(self) -> bool | None:
+        """Return if the cover is closed (position 0), or None if unknown."""
+        position = self._read_position()
+        if position is None:
+            return None
+        return position == 0
 
     @property
     def current_cover_tilt_position(self) -> int | None:
