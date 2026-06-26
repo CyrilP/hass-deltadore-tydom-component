@@ -1583,6 +1583,20 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyInstantTi1P": SensorStateClass.MEASUREMENT,
         "energyInstantTi1I": SensorStateClass.MEASUREMENT,
         "outTemperature": SensorStateClass.MEASUREMENT,
+        "energyInstantTotElec_Min": SensorStateClass.MEASUREMENT,
+        "energyInstantTotElec_Max": SensorStateClass.MEASUREMENT,
+        "energyScaleTotElec_Min": SensorStateClass.MEASUREMENT,
+        "energyScaleTotElec_Max": SensorStateClass.MEASUREMENT,
+        "energyInstantTotElec_P_Min": SensorStateClass.MEASUREMENT,
+        "energyInstantTotElec_P_Max": SensorStateClass.MEASUREMENT,
+        "energyScaleTotElec_P_Min": SensorStateClass.MEASUREMENT,
+        "energyScaleTotElec_P_Max": SensorStateClass.MEASUREMENT,
+        "energyInstantTi1P_Min": SensorStateClass.MEASUREMENT,
+        "energyInstantTi1P_Max": SensorStateClass.MEASUREMENT,
+        "energyScaleTi1P_Min": SensorStateClass.MEASUREMENT,
+        "energyScaleTi1P_Max": SensorStateClass.MEASUREMENT,
+        "energyInstantTi1I_Min": SensorStateClass.MEASUREMENT,
+        "energyInstantTi1I_Max": SensorStateClass.MEASUREMENT,
     }
 
     units = {
@@ -2916,6 +2930,10 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         "outTemperature": UnitOfTemperature.CELSIUS,
     }
 
+    state_classes = {
+        "outTemperature": SensorStateClass.MEASUREMENT,
+    }
+
     def __init__(self, device: TydomAlarm, hass) -> None:
         """Initialize the sensor."""
         self.hass = hass
@@ -3204,6 +3222,7 @@ class HaThermo(SensorEntity, HAEntity):
         self._state = False
         self._registered_sensors = ["outTemperature"]
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
+        self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
 
     async def async_added_to_hass(self) -> None:
