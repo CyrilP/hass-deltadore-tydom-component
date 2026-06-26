@@ -1259,6 +1259,19 @@ class HATydom(UpdateEntity, HAEntity):
         self._created_geoloc_sensors: set[str] = set()
         self._created_clock_sensors: set[str] = set()
 
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
     @property
     def device_info(self) -> DeviceInfo:
         """Return information to link this entity with the correct device."""
@@ -1611,6 +1624,19 @@ class HAEnergy(SensorEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_energy"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
+
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -2003,6 +2029,19 @@ class HASmoke(BinarySensorEntity, HAEntity):
         self._registered_sensors = []
         self._attr_device_class = BinarySensorDeviceClass.SMOKE
 
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
     @property
     def is_on(self) -> bool:
         """Return the state of the sensor."""
@@ -2210,6 +2249,19 @@ class HaClimate(ClimateEntity, HAEntity):
         ):
             self._attr_max_temp = self._device._metadata["setpoint"]["max"]
 
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
@@ -2387,6 +2439,19 @@ class HaWindow(CoverEntity, HAEntity):
         self._attr_name = self._device.device_name
         self._registered_sensors = []
 
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
@@ -2445,6 +2510,19 @@ class HaDoor(CoverEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
+
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -2518,6 +2596,19 @@ class HaGate(CoverEntity, HAEntity):
             self._attr_supported_features = (
                 self._attr_supported_features | CoverEntityFeature.STOP
             )
+
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -2622,6 +2713,19 @@ class HaGarage(CoverEntity, HAEntity):
                 self._attr_supported_features | CoverEntityFeature.SET_POSITION
             )
 
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
     @property
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
@@ -2708,6 +2812,19 @@ class HaLight(LightEntity, HAEntity):
             if self._attr_supported_color_modes is None:
                 self._attr_supported_color_modes = set()
             self._attr_supported_color_modes.add(ColorMode.ONOFF)
+
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -2817,6 +2934,19 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
             | AlarmControlPanelEntityFeature.ARM_NIGHT
             | AlarmControlPanelEntityFeature.TRIGGER
         )
+
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
 
     @property
     def alarm_state(self) -> AlarmControlPanelState:
@@ -2958,6 +3088,19 @@ class HaWeather(WeatherEntity, HAEntity):
         ):
             self.units["currentPower"] = self._device._metadata["currentPower"]["unit"]
 
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
     @property
     def native_temperature(self) -> float | None:
         """Return current temperature in C."""
@@ -3011,6 +3154,19 @@ class HaMoisture(BinarySensorEntity, HAEntity):
         self._registered_sensors = []
         self._attr_device_class = BinarySensorDeviceClass.MOISTURE
 
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
     @property
     def is_on(self) -> bool:
         """Return the state of the sensor."""
@@ -3050,6 +3206,19 @@ class HaThermo(SensorEntity, HAEntity):
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
 
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
     @property
     def state(self) -> float | None:
         """Return the state of the sensor."""
@@ -3087,6 +3256,19 @@ class HASensor(SensorEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_sensor"
         self._attr_name = self._device.device_name
         self._registered_sensors = []
+
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
 
     @property
     def native_value(self):
@@ -4424,6 +4606,19 @@ class HAMoment(SwitchEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_moment"
         self._attr_name = self._device.device_name
 
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
     @property
     def device_info(self) -> DeviceInfo:
         """Return information to link this entity with the gateway device."""
@@ -4482,6 +4677,19 @@ class HASwitch(SwitchEntity, HAEntity):
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_switch"
         self._attr_name = self._device.device_name
+
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -4595,6 +4803,19 @@ class HAGroup(ButtonEntity, HAEntity):
         )
         self.entity_description = entity_description
         self._attr_name = self._device.device_name
+
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -4955,6 +5176,19 @@ class HAButton(ButtonEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_button_{action_name}"
         self._attr_name = f"{action_name}"
 
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
     @property
     def device_info(self) -> DeviceInfo:
         """Return information to link this entity with the correct device."""
@@ -5040,6 +5274,19 @@ class HANumber(NumberEntity, HAEntity):
         self._attr_native_step = step or 1.0
         self._attr_native_unit_of_measurement = unit
 
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
     @property
     def device_info(self) -> DeviceInfo:
         """Return information to link this entity with the correct device."""
@@ -5093,6 +5340,19 @@ class HASelect(SelectEntity, HAEntity):
         self._attr_name = attribute_name
         self._attr_options = options
 
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
     @property
     def device_info(self) -> DeviceInfo:
         """Return information to link this entity with the correct device."""
@@ -5136,6 +5396,19 @@ class HAEvent(EventEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_event_{event_type}"
         self._attr_name = event_type
         self._attr_event_types = [event_type]
+
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
 
     @property
     def device_info(self) -> DeviceInfo:
