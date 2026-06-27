@@ -2480,17 +2480,26 @@ class HaOpeningBinarySensor(BinarySensorEntity, HAEntity):
     def is_on(self) -> bool:
         """Return True when the window/door is open.
 
-        Mirrors the cover's is_closed logic so the reported state stays
-        identical, just expressed as a boolean: closed only when openState is
-        "LOCKED" (the "LOCKED" semantics come from HaWindow/HaDoor, not from
-        here), otherwise driven by intrusionDetect.
+        Mirrors the cover's is_closed logic, expressed as a boolean: closed
+        only when openState is "LOCKED" (the "LOCKED" semantics come from
+        HaWindow/HaDoor, not from here), otherwise driven by intrusionDetect.
+        Only evaluated while `available` is True (a usable state is present).
         """
-        if hasattr(self._device, "openState"):
-            return getattr(self._device, "openState", None) != "LOCKED"
-        if hasattr(self._device, "intrusionDetect"):
-            return bool(getattr(self._device, "intrusionDetect", False))
-        LOGGER.error("Unknown state for device %s", self._device.device_id)
-        return False
+        if getattr(self._device, "openState", None) is not None:
+            return self._device.openState != "LOCKED"
+        return bool(getattr(self._device, "intrusionDetect", False))
+
+    @property
+    def available(self) -> bool:
+        """Available only while the device reports a usable contact state.
+
+        Returns unavailable (rather than a misleading "off"/closed) when the
+        Tydom endpoint stops sending data, mirroring the diagnostic sensors
+        created for the same device.
+        """
+        if getattr(self._device, "openState", None) is not None:
+            return True
+        return getattr(self._device, "intrusionDetect", None) is not None
 
     @property
     def device_info(self) -> DeviceInfo:
