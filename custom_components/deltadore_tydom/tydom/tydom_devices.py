@@ -565,6 +565,32 @@ class TydomThermo(TydomDevice):
     """Represents a thermometer."""
 
 
+class TydomPlug(TydomDevice):
+    """Represents a generic third-party smart plug (e.g. Zigbee Philips Hue plug).
+
+    These devices report their state via a ``plugCmd`` attribute (ON/OFF)
+    instead of the more common ``on``/``level``/``state`` attributes used by
+    native Delta Dore devices, so they need dedicated handling.
+    """
+
+    @property
+    def on(self) -> bool:
+        """Return True if the plug is currently on."""
+        return getattr(self, "plugCmd", None) == "ON"
+
+    async def turn_on(self) -> None:
+        """Turn the plug on."""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "plugCmd", "ON"
+        )
+
+    async def turn_off(self) -> None:
+        """Turn the plug off."""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "plugCmd", "OFF"
+        )
+
+
 class TydomScene(TydomDevice):
     """Represents a scene/scenario."""
 
