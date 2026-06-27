@@ -461,6 +461,8 @@ async def _create_switch_device(self, device: TydomPlug) -> None:
         self.ha_devices[device.device_id] = ha_device
         if self.add_switch_callback is not None:
             self.add_switch_callback([ha_device])
+        if self.add_sensor_callback is not None:
+            self.add_sensor_callback(ha_device.get_sensors())
 
     async def _create_alarm_device(self, device: TydomAlarm) -> None:
         """Create alarm device."""
