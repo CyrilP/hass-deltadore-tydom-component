@@ -10,7 +10,7 @@
             },
             "user_manual": {
                 "title": "Configuration Delta Dore Tydom",
-                "description": "Configurez votre passerelle Tydom en utilisant des identifiants manuels. Si vous avez besoin d'aide, consultez : https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "Configurez votre passerelle Tydom en utilisant des identifiants manuels.",
                 "data": {
                     "host": "IP/hostname du Tydom ou de la médiation",
                     "mac": "Adresse MAC (12 caractères, sans séparateurs)",
@@ -25,7 +25,7 @@
             },
             "user_cloud": {
                 "title": "Configuration Delta Dore Tydom",
-                "description": "Configurez votre passerelle Tydom en utilisant votre compte cloud Delta Dore. Le mot de passe Tydom sera récupéré automatiquement. Si vous avez besoin d'aide, consultez : https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "Configurez votre passerelle Tydom en utilisant votre compte cloud Delta Dore. Le mot de passe Tydom sera récupéré automatiquement.",
                 "data": {
                     "host": "IP/hostname du Tydom ou de la médiation (utilisez 'mediation.tydom.com' pour le mode cloud)",
                     "mac": "Adresse MAC (12 caractères, sans séparateurs)",
@@ -48,7 +48,7 @@
             },
             "discovery_confirm_manual": {
                 "title": "Configuration Delta Dore Tydom",
-                "description": "Une passerelle Tydom a été découverte ({name}). Configurez-la en utilisant des identifiants manuels. Si vous avez besoin d'aide, consultez : https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "Une passerelle Tydom a été découverte ({name}). Configurez-la en utilisant des identifiants manuels.",
                 "data": {
                     "host": "IP/hostname du Tydom ou de la médiation",
                     "mac": "Adresse MAC (12 caractères, sans séparateurs)",
@@ -62,7 +62,7 @@
             },
             "discovery_confirm_cloud": {
                 "title": "Configuration Delta Dore Tydom",
-                "description": "Une passerelle Tydom a été découverte ({name}). Configurez-la en utilisant votre compte cloud Delta Dore. Le mot de passe Tydom sera récupéré automatiquement. Si vous avez besoin d'aide, consultez : https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "Une passerelle Tydom a été découverte ({name}). Configurez-la en utilisant votre compte cloud Delta Dore. Le mot de passe Tydom sera récupéré automatiquement.",
                 "data": {
                     "host": "IP/hostname du Tydom ou de la médiation (utilisez 'mediation.tydom.com' pour le mode cloud)",
                     "mac": "Adresse MAC (12 caractères, sans séparateurs)",
@@ -116,7 +116,7 @@
             },
             "configure": {
                 "title": "Configuration Delta Dore Tydom",
-                "description": "Mettez à jour les paramètres de votre intégration Tydom. Si vous avez besoin d'aide, consultez : https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "Mettez à jour les paramètres de votre intégration Tydom.",
                 "data": {
                     "refresh_interval": "Intervalle de rafraîchissement en minutes (par défaut : 30)",
                     "zones_away": "Zones actives en mode alarme absent (séparées par des virgules, ex. : 1,2,4)",
