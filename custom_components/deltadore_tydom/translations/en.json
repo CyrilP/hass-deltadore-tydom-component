@@ -10,7 +10,7 @@
             },
             "user_manual": {
                 "title": "Delta Dore Tydom Configuration",
-                "description": "Configure your Tydom gateway using manual credentials. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "Configure your Tydom gateway using manual credentials.",
                 "data": {
                     "host": "Tydom or mediation IP/hostname",
                     "mac": "MAC address (12 characters, no separators)",
@@ -25,7 +25,7 @@
             },
             "user_cloud": {
                 "title": "Delta Dore Tydom Configuration",
-                "description": "Configure your Tydom gateway using your Delta Dore cloud account. The Tydom password will be retrieved automatically. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "Configure your Tydom gateway using your Delta Dore cloud account. The Tydom password will be retrieved automatically.",
                 "data": {
                     "host": "Tydom or mediation IP/hostname (use 'mediation.tydom.com' for cloud mode)",
                     "mac": "MAC address (12 characters, no separators)",
@@ -48,7 +48,7 @@
             },
             "discovery_confirm_manual": {
                 "title": "Delta Dore Tydom Configuration",
-                "description": "A Tydom gateway was discovered ({name}). Configure it using manual credentials. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "A Tydom gateway was discovered ({name}). Configure it using manual credentials.",
                 "data": {
                     "host": "Tydom or mediation IP/hostname",
                     "mac": "MAC address (12 characters, no separators)",
@@ -62,7 +62,7 @@
             },
             "discovery_confirm_cloud": {
                 "title": "Delta Dore Tydom Configuration",
-                "description": "A Tydom gateway was discovered ({name}). Configure it using your Delta Dore cloud account. The Tydom password will be retrieved automatically. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "A Tydom gateway was discovered ({name}). Configure it using your Delta Dore cloud account. The Tydom password will be retrieved automatically.",
                 "data": {
                     "host": "Tydom or mediation IP/hostname (use 'mediation.tydom.com' for cloud mode)",
                     "mac": "MAC address (12 characters, no separators)",
@@ -115,7 +115,7 @@
             },
             "configure": {
                 "title": "Delta Dore Tydom Configuration",
-                "description": "Update your Tydom integration settings. If you need help, visit: https://github.com/CyrilP/hass-deltadore-tydom-component",
+                "description": "Update your Tydom integration settings.",
                 "data": {
                     "refresh_interval": "Refresh interval in minutes (default: 30)",
                     "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
