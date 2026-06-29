@@ -454,7 +454,7 @@ class Hub:
         if self.add_sensor_callback is not None:
             self.add_sensor_callback(ha_device.get_sensors())
 
-async def _create_switch_device(self, device: TydomPlug) -> None:
+    async def _create_switch_device(self, device: TydomPlug) -> None:
         """Create switch device for generic third-party plugs (e.g. Hue via Zigbee)."""
         LOGGER.debug("Create switch %s", device.device_id)
         ha_device = HASwitch(device, self._hass)
