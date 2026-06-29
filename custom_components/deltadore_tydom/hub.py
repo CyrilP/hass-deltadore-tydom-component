@@ -38,6 +38,8 @@ from .ha_entities import (
     HaClimate,
     HaWindow,
     HaDoor,
+    HaWindowOpening,
+    HaDoorOpening,
     HaGate,
     HaGarage,
     HaLight,
@@ -371,10 +373,8 @@ class Hub:
             self.add_sensor_callback(ha_device.get_sensors())
 
     async def _create_window_device(self, device: TydomWindow) -> None:
-        """Create window device (cover or binary_sensor)."""
+        """Create window device (cover if motorized, else binary_sensor)."""
         LOGGER.debug("Create window %s", device.device_id)
-        ha_device = HaWindow(device, self._hass)
-        self.ha_devices[device.device_id] = ha_device
 
         # Décision automatique selon les attributs du device
         if any(
@@ -384,6 +384,7 @@ class Hub:
                 "Window %s has motor control → adding as cover",
                 device.device_id,
             )
+            ha_device = HaWindow(device, self._hass)
             if self.add_cover_callback:
                 self.add_cover_callback([ha_device])
         else:
@@ -391,17 +392,17 @@ class Hub:
                 "Window %s is passive → adding as binary_sensor",
                 device.device_id,
             )
+            ha_device = HaWindowOpening(device, self._hass)
             if self.add_binary_sensor_callback:
                 self.add_binary_sensor_callback([ha_device])
 
+        self.ha_devices[device.device_id] = ha_device
         if self.add_sensor_callback:
             self.add_sensor_callback(ha_device.get_sensors())
 
     async def _create_door_device(self, device: TydomDoor) -> None:
-        """Create door device (cover or binary_sensor)."""
+        """Create door device (cover if motorized, else binary_sensor)."""
         LOGGER.debug("Create door %s", device.device_id)
-        ha_device = HaDoor(device, self._hass)
-        self.ha_devices[device.device_id] = ha_device
 
         # Décision automatique selon les attributs du device
         if any(
@@ -410,15 +411,18 @@ class Hub:
             LOGGER.debug(
                 "Door %s has motor control → adding as cover", device.device_id
             )
+            ha_device = HaDoor(device, self._hass)
             if self.add_cover_callback:
                 self.add_cover_callback([ha_device])
         else:
             LOGGER.debug(
                 "Door %s is passive → adding as binary_sensor", device.device_id
             )
+            ha_device = HaDoorOpening(device, self._hass)
             if self.add_binary_sensor_callback:
                 self.add_binary_sensor_callback([ha_device])
 
+        self.ha_devices[device.device_id] = ha_device
         if self.add_sensor_callback:
             self.add_sensor_callback(ha_device.get_sensors())
 

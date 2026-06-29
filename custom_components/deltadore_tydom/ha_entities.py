@@ -2430,6 +2430,116 @@ class HaClimate(ClimateEntity, HAEntity):
         await self._device.set_temperature(str(kwargs.get(ATTR_TEMPERATURE)))
 
 
+class HaOpeningBinarySensor(BinarySensorEntity, HAEntity):
+    """Binary sensor for a passive (non-motorized) Tydom window or door.
+
+    Motorized windows/doors are exposed as covers (HaWindow / HaDoor). Passive
+    ones only report an open/closed contact, so a CoverEntity is the wrong
+    abstraction: its state is "open"/"closed" rather than "on"/"off", which
+    breaks the standard window/door device_class behavior and `state_color` in
+    the UI. This entity reports a proper boolean contact state instead.
+    """
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+
+    # Overridden by the window/door subclasses.
+    _opening_device_class: BinarySensorDeviceClass = BinarySensorDeviceClass.WINDOW
+
+    def __init__(self, device: TydomDevice, hass) -> None:
+        """Initialize the opening binary sensor."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self
+        # Reuse the "_cover" unique_id: a passive window/door was previously a
+        # CoverEntity routed to the binary_sensor platform with this very id.
+        # Keeping it preserves the existing entity_id across the upgrade instead
+        # of orphaning the old entity and creating a new one. The domain
+        # (binary_sensor) and platform (deltadore_tydom) are unchanged, so the
+        # registry matches the existing entry; only the reported state changes
+        # from open/closed to on/off.
+        self._attr_unique_id = f"{self._device.device_id}_cover"
+        self._attr_name = self._device.device_name
+        self._registered_sensors = []
+        self._attr_device_class = self._opening_device_class
+
+    async def async_added_to_hass(self) -> None:
+        """Refresh on every device push (see HACover for the MRO rationale)."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback registered in async_added_to_hass."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
+    @property
+    def is_on(self) -> bool:
+        """Return True when the window/door is open.
+
+        Mirrors the cover's is_closed logic, expressed as a boolean: closed
+        only when openState is "LOCKED" (the "LOCKED" semantics come from
+        HaWindow/HaDoor, not from here), otherwise driven by intrusionDetect.
+        Only evaluated while `available` is True (a usable state is present).
+        """
+        if getattr(self._device, "openState", None) is not None:
+            return self._device.openState != "LOCKED"
+        return bool(getattr(self._device, "intrusionDetect", False))
+
+    @property
+    def available(self) -> bool:
+        """Available only while the device reports a usable contact state.
+
+        Returns unavailable (rather than a misleading "off"/closed) when the
+        Tydom endpoint stops sending data, mirroring the diagnostic sensors
+        created for the same device.
+        """
+        if getattr(self._device, "openState", None) is not None:
+            return True
+        return getattr(self._device, "intrusionDetect", None) is not None
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return information to link this entity with the correct device."""
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
+        }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return self._enrich_device_info(info)
+
+
+class HaWindowOpening(HaOpeningBinarySensor):
+    """Binary sensor for a passive (non-motorized) Tydom window."""
+
+    _attr_icon = "mdi:window-open"
+    _opening_device_class = BinarySensorDeviceClass.WINDOW
+
+    sensor_classes = {
+        "battDefect": BinarySensorDeviceClass.PROBLEM,
+        "intrusionDetect": BinarySensorDeviceClass.PROBLEM,
+    }
+
+
+class HaDoorOpening(HaOpeningBinarySensor):
+    """Binary sensor for a passive (non-motorized) Tydom door."""
+
+    _attr_icon = "mdi:door"
+    _opening_device_class = BinarySensorDeviceClass.DOOR
+
+    sensor_classes = {
+        "battDefect": BinarySensorDeviceClass.PROBLEM,
+        "calibrationDefect": BinarySensorDeviceClass.PROBLEM,
+        "intrusionDetect": BinarySensorDeviceClass.PROBLEM,
+    }
+
+
 class HaWindow(CoverEntity, HAEntity):
     """Representation of a Window."""
 
