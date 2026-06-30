@@ -1636,7 +1636,7 @@ class HAEnergy(SensorEntity, HAEntity):
         # Note: _ha_device is set in async_added_to_hass (not in __init__)
         # to comply with Home Assistant best practices for disabled entities
         self._attr_unique_id = f"{self._device.device_id}_energy"
-        self._attr_name = self._device.device_name
+        self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
 
     async def async_added_to_hass(self) -> None:
@@ -1694,7 +1694,7 @@ class HACover(CoverEntity, HAEntity):
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_cover"
-        self._attr_name = self._device.device_name
+        self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
         # NOTE: supported_features is intentionally NOT computed here.
         # It is exposed as a dynamic property below so that OPEN/CLOSE/STOP/
@@ -2038,7 +2038,7 @@ class HASmoke(BinarySensorEntity, HAEntity):
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_smoke"
-        self._attr_name = self._device.device_name
+        self._attr_name = None  # primary entity inherits device name
         self._state = False
         self._registered_sensors = []
         self._attr_device_class = BinarySensorDeviceClass.SMOKE
@@ -2123,7 +2123,7 @@ class HaClimate(ClimateEntity, HAEntity):
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_climate"
-        self._attr_name = self._device.device_name
+        self._attr_name = None  # primary entity inherits device name
         self._enable_turn_on_off_backwards_compatibility = False
 
         self.dict_modes_ha_to_dd = {
@@ -2459,7 +2459,7 @@ class HaOpeningBinarySensor(BinarySensorEntity, HAEntity):
         # registry matches the existing entry; only the reported state changes
         # from open/closed to on/off.
         self._attr_unique_id = f"{self._device.device_id}_cover"
-        self._attr_name = self._device.device_name
+        self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
         self._attr_device_class = self._opening_device_class
 
@@ -2560,7 +2560,7 @@ class HaWindow(CoverEntity, HAEntity):
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_cover"
-        self._attr_name = self._device.device_name
+        self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
 
     async def async_added_to_hass(self) -> None:
@@ -2632,7 +2632,7 @@ class HaDoor(CoverEntity, HAEntity):
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_cover"
-        self._attr_name = self._device.device_name
+        self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
 
     async def async_added_to_hass(self) -> None:
@@ -2701,7 +2701,7 @@ class HaGate(CoverEntity, HAEntity):
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_cover"
-        self._attr_name = self._device.device_name
+        self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
         if (
             self._device._metadata is not None
@@ -2812,7 +2812,7 @@ class HaGarage(CoverEntity, HAEntity):
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_cover"
-        self._attr_name = self._device.device_name
+        self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
         if (
             self._device._metadata is not None
@@ -2924,7 +2924,7 @@ class HaLight(LightEntity, HAEntity):
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_light"
-        self._attr_name = self._device.device_name
+        self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
         if self._device._metadata is not None and "level" in self._device._metadata:
             self._attr_color_mode = ColorMode.BRIGHTNESS
@@ -3050,7 +3050,7 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_alarm"
-        self._attr_name = self._device.device_name
+        self._attr_name = None  # primary entity inherits device name
         self._attr_code_format = CodeFormat.NUMBER
         self._attr_code_arm_required = True
         self._registered_sensors = []
@@ -3201,7 +3201,7 @@ class HaWeather(WeatherEntity, HAEntity):
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_weather"
-        self._attr_name = self._device.device_name
+        self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
         if (
             self._device._metadata is not None
@@ -3277,7 +3277,7 @@ class HaMoisture(BinarySensorEntity, HAEntity):
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_moisture"
-        self._attr_name = self._device.device_name
+        self._attr_name = None  # primary entity inherits device name
         self._state = False
         self._registered_sensors = []
         self._attr_device_class = BinarySensorDeviceClass.MOISTURE
@@ -3328,7 +3328,7 @@ class HaThermo(SensorEntity, HAEntity):
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_thermos"
-        self._attr_name = self._device.device_name
+        self._attr_name = None  # primary entity inherits device name
         self._state = False
         self._registered_sensors = ["outTemperature"]
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
@@ -3383,7 +3383,7 @@ class HASensor(SensorEntity, HAEntity):
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_sensor"
-        self._attr_name = self._device.device_name
+        self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
 
     async def async_added_to_hass(self) -> None:
@@ -4733,7 +4733,7 @@ class HAMoment(SwitchEntity, HAEntity):
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_moment"
-        self._attr_name = self._device.device_name
+        self._attr_name = None  # primary entity inherits device name
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
@@ -4805,7 +4805,7 @@ class HASwitch(SwitchEntity, HAEntity):
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_switch"
-        self._attr_name = self._device.device_name
+        self._attr_name = None  # primary entity inherits device name
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
@@ -4931,7 +4931,7 @@ class HAGroup(ButtonEntity, HAEntity):
             translation_key=translation_key,
         )
         self.entity_description = entity_description
-        self._attr_name = self._device.device_name
+        self._attr_name = None  # primary entity inherits device name
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
