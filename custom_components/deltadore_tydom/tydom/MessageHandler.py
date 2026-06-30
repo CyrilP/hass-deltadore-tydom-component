@@ -22,6 +22,7 @@ from .tydom_devices import (
     TydomGarage,
     TydomGate,
     TydomLight,
+    TydomPlug,
     TydomShutter,
     TydomSmoke,
     TydomWindow,
@@ -481,6 +482,17 @@ class MessageHandler:
                 )
             case "sensorThermo":
                 return TydomThermo(
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata.get(uid),
+                    data,
+                )
+            case "plug":
+                return TydomPlug(
                     tydom_client,
                     uid,
                     device_id,

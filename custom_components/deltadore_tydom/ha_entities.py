@@ -4859,7 +4859,7 @@ class HASwitch(SwitchEntity, HAEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attrs: dict[str, Any] = {}
-        return self._enrich_extra_state_attributes(attrs)  # type: ignore[attr-defined]
+        return attrs
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
