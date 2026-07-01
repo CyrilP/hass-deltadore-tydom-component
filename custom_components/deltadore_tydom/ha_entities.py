@@ -15,7 +15,11 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.components.climate import (
     ClimateEntity,
     ClimateEntityFeature,
+    HVACAction,
     HVACMode,
+    PRESET_AWAY,
+    PRESET_COMFORT,
+    PRESET_ECO,
     PRESET_NONE,
 )
 from homeassistant.const import (
@@ -2263,6 +2267,49 @@ class HaClimate(ClimateEntity, HAEntity):
         ):
             self._attr_max_temp = self._device._metadata["setpoint"]["max"]
 
+        # Fil-pilote (pilot-wire) electric heater, e.g. Delta Dore RF 6600 FP
+        # (X3D). These zones expose an hvacMode attribute but have NO usable
+        # setpoint metadata and no HEATING/COOLING mode enum. Real thermostats
+        # expose a setpoint and AC units advertise a COOLING/HEATING mode enum,
+        # so they never match here and keep their previous behaviour intact.
+        # The pilot-wire order is carried by thermicLevel (STOP=Off,
+        # ANTI_FROST=Frost protection, ECO=Eco, COMFORT=Comfort); the Tydom box
+        # schedule and the native Delta Dore app both drive that register while
+        # hvacMode stays NORMAL. So we model OFF + HEAT with comfort/eco/away
+        # presets, all mapped onto thermicLevel; there is no setpoint to drive.
+        metadata = self._device._metadata
+        has_setpoint_meta = (
+            metadata is not None
+            and "setpoint" in metadata
+            and ("min" in metadata["setpoint"] or "max" in metadata["setpoint"])
+        )
+        has_heatcool_enum_meta = metadata is not None and any(
+            isinstance(metadata.get(attr), dict)
+            and (
+                "HEATING" in metadata[attr].get("enum_values", [])
+                or "COOLING" in metadata[attr].get("enum_values", [])
+            )
+            for attr in ("comfortMode", "hvacMode", "thermicLevel")
+        )
+        self._is_filpilote = (
+            hasattr(self._device, "hvacMode")
+            and not has_setpoint_meta
+            and not has_heatcool_enum_meta
+        )
+
+        if self._is_filpilote:
+            self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
+            self._attr_preset_modes = [
+                PRESET_COMFORT,
+                PRESET_ECO,
+                PRESET_AWAY,
+                PRESET_NONE,
+            ]
+            self._attr_supported_features |= ClimateEntityFeature.PRESET_MODE
+            # No setpoint on these zones: drop TARGET_TEMPERATURE so HA does not
+            # show a temperature control that would write a phantom setpoint.
+            self._attr_supported_features &= ~ClimateEntityFeature.TARGET_TEMPERATURE
+
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
         await super().async_added_to_hass()
@@ -2297,6 +2344,11 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def hvac_mode(self) -> HVACMode:
         """Return the current operation (e.g. heat, cool, idle)."""
+        if getattr(self, "_is_filpilote", False):
+            # Derive from thermicLevel (the live pilot-wire order), not hvacMode:
+            # the app/schedule set thermicLevel while hvacMode stays NORMAL.
+            level = getattr(self._device, "thermicLevel", None)
+            return HVACMode.OFF if level == "STOP" else HVACMode.HEAT
         if hasattr(self._device, "hvacMode"):
             hvac_mode = getattr(self._device, "hvacMode", None)
             if hvac_mode is not None and hvac_mode in self.dict_modes_dd_to_ha:
@@ -2323,6 +2375,16 @@ class HaClimate(ClimateEntity, HAEntity):
                 )
                 return self.dict_modes_dd_to_ha[thermic_level]
         return HVACMode.OFF
+
+    @property
+    def hvac_action(self) -> HVACAction | None:
+        """Return the current running action (best-effort for fil-pilote)."""
+        if getattr(self, "_is_filpilote", False):
+            # No temperature feedback exists, so we cannot distinguish heating
+            # from idle: report OFF when the order is STOP, HEATING otherwise.
+            level = getattr(self._device, "thermicLevel", None)
+            return HVACAction.OFF if level == "STOP" else HVACAction.HEATING
+        return None
 
     @property
     def current_temperature(self) -> float | None:
@@ -2385,11 +2447,29 @@ class HaClimate(ClimateEntity, HAEntity):
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
+        if getattr(self, "_is_filpilote", False):
+            # OFF -> pilot-wire STOP. HEAT -> keep the current heating order, or
+            # default to Comfort when coming from STOP; the level is chosen via
+            # preset_mode (comfort/eco/away).
+            if hvac_mode == HVACMode.OFF:
+                await self._device.set_thermic_level("STOP")
+            elif getattr(self._device, "thermicLevel", None) in (None, "STOP"):
+                await self._device.set_thermic_level("COMFORT")
+            return
         await self._device.set_hvac_mode(self.dict_modes_ha_to_dd[hvac_mode])
 
     @property
     def preset_mode(self) -> str | None:
         """Return the current preset mode."""
+        if getattr(self, "_is_filpilote", False):
+            level = getattr(self._device, "thermicLevel", None)
+            if level == "COMFORT":
+                return PRESET_COMFORT
+            if level == "ECO":
+                return PRESET_ECO
+            if level == "ANTI_FROST":
+                return PRESET_AWAY
+            return PRESET_NONE
         if hasattr(self._device, "comfortMode"):
             comfort_mode = getattr(self._device, "comfortMode", None)
             if comfort_mode is not None and comfort_mode in self._attr_preset_modes:
@@ -2403,6 +2483,15 @@ class HaClimate(ClimateEntity, HAEntity):
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new target preset mode."""
         if preset_mode == PRESET_NONE:
+            return
+        if getattr(self, "_is_filpilote", False):
+            # Drive the pilot-wire order register directly (as the app does).
+            if preset_mode == PRESET_COMFORT:
+                await self._device.set_thermic_level("COMFORT")
+            elif preset_mode == PRESET_ECO:
+                await self._device.set_thermic_level("ECO")
+            elif preset_mode == PRESET_AWAY:
+                await self._device.set_thermic_level("ANTI_FROST")
             return
         # Try to set comfortMode first
         if (

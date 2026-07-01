@@ -235,7 +235,12 @@ class TydomBoiler(TydomDevice):
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "hvacMode", "NORMAL"
                 )
-                await self.set_temperature("19.0")
+                # Only push a setpoint for devices that actually have one
+                # (real thermostats expose setpoint metadata). Fil-pilote zones
+                # have none; writing one is a phantom value ignored by the
+                # device (upstream #246).
+                if self._metadata is not None and "setpoint" in self._metadata:
+                    await self.set_temperature("19.0")
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "antifrostOn", False
                 )
@@ -304,6 +309,12 @@ class TydomBoiler(TydomDevice):
 
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "setpoint", temperature
+        )
+
+    async def set_thermic_level(self, level):
+        """Set the pilot-wire order directly (fil-pilote zones)."""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "thermicLevel", level
         )
 
 
