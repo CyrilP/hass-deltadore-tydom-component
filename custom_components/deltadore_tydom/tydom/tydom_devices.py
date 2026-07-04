@@ -206,9 +206,42 @@ class TydomSmoke(TydomDevice):
 class TydomBoiler(TydomDevice):
     """Represents a Boiler."""
 
+    def _uses_zone_authorization(self) -> bool:
+        """Return True when heat/cool is driven by zone authorization."""
+        return (
+            self._metadata is not None and "authorization" in self._metadata
+        ) or hasattr(self, "authorization")
+
     async def set_hvac_mode(self, mode):
         """Set hvac mode (ANTI_FROST/NORMAL/STOP)."""
         LOGGER.debug("setting hvac mode to %s", mode)
+        if self._uses_zone_authorization():
+            if mode == "STOP":
+                await self._tydom_client.put_devices_data(
+                    self._id, self._endpoint, "thermicLevel", "STOP"
+                )
+            elif mode == "COOLING":
+                await self._tydom_client.put_home_hvac_mode("COOLING")
+                await self._tydom_client.put_devices_data(
+                    self._id, self._endpoint, "thermicLevel", ""
+                )
+                if self._metadata is not None and "setpoint" in self._metadata:
+                    await self.set_temperature("19.0")
+            elif mode in ("NORMAL", "HEATING"):
+                await self._tydom_client.put_home_hvac_mode("HEATING")
+                await self._tydom_client.put_devices_data(
+                    self._id, self._endpoint, "thermicLevel", ""
+                )
+                if self._metadata is not None and "setpoint" in self._metadata:
+                    await self.set_temperature("19.0")
+            elif mode == "ANTI_FROST":
+                await self._tydom_client.put_devices_data(
+                    self._id, self._endpoint, "thermicLevel", "ANTI_FROST"
+                )
+            else:
+                LOGGER.error("Unknown hvac mode: %s", mode)
+            return
+
         if mode == "ANTI_FROST":
             if hasattr(self, "hvacMode"):
                 await self._tydom_client.put_devices_data(

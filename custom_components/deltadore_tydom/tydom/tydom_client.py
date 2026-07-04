@@ -1169,9 +1169,26 @@ class TydomClient:
             )
             raise
         LOGGER.debug("Sending message to tydom (%s)", "PUT device data")
+        return 0
+
+    async def put_home_hvac_mode(self, mode: str) -> int:
+        """Set the zone-level HVAC direction (STOP / HEATING / COOLING).
+
+        Tydom broadcasts the result to all thermostats via per-device
+        authorization updates. Per-thermostat hvacMode writes are ignored.
+        """
+        body = json.dumps({"mode": mode})
+        str_request = (
+            "PUT /home/hvac/data HTTP/1.1\r\nContent-Length: "
+            + str(len(body))
+            + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
+            + body
+            + "\r\n\r\n"
+        )
+        a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
+        LOGGER.debug("Sending message to tydom (PUT home hvac data %s)", mode)
         if not file_mode:
             await self.send_bytes(a_bytes)
-
         return 0
 
     async def put_devices_data_validated(

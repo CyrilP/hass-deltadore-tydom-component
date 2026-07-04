@@ -2341,49 +2341,84 @@ class HaClimate(ClimateEntity, HAEntity):
         """Return the unit of temperature measurement for the system."""
         return UnitOfTemperature.CELSIUS
 
-    @property
-    def hvac_mode(self) -> HVACMode:
-        """Return the current operation (e.g. heat, cool, idle)."""
+    def _resolve_hvac_mode(self) -> HVACMode:
+        """Derive HA HVAC mode from Tydom thermostat registers."""
         if getattr(self, "_is_filpilote", False):
             # Derive from thermicLevel (the live pilot-wire order), not hvacMode:
             # the app/schedule set thermicLevel while hvacMode stays NORMAL.
             level = getattr(self._device, "thermicLevel", None)
             return HVACMode.OFF if level == "STOP" else HVACMode.HEAT
+
+        thermic_level = getattr(self._device, "thermicLevel", None)
+        authorization = getattr(self._device, "authorization", None)
+
+        # Zone thermostats: combine per-thermostat preset (thermicLevel) with
+        # zone heat-pump direction (authorization). Matches tydom2mqtt logic.
+        if thermic_level is not None or authorization is not None:
+            if thermic_level == "STOP" or authorization == "STOP":
+                return HVACMode.OFF
+            if authorization == "COOLING":
+                return HVACMode.COOL
+            if authorization == "HEATING":
+                return HVACMode.HEAT
+
         if hasattr(self._device, "hvacMode"):
             hvac_mode = getattr(self._device, "hvacMode", None)
             if hvac_mode is not None and hvac_mode in self.dict_modes_dd_to_ha:
                 LOGGER.debug("hvac_mode = %s", self.dict_modes_dd_to_ha[hvac_mode])
                 return self.dict_modes_dd_to_ha[hvac_mode]
-        if hasattr(self._device, "authorization"):
-            authorization = getattr(self._device, "authorization", None)
-            if authorization is not None and authorization in self.dict_modes_dd_to_ha:
-                thermic_level = getattr(self._device, "thermicLevel", None)
-                if (
-                    thermic_level is not None
-                    and thermic_level in self.dict_modes_dd_to_ha
-                ):
-                    LOGGER.debug(
-                        "authorization = %s",
-                        self.dict_modes_dd_to_ha[thermic_level],
-                    )
-                    return self.dict_modes_dd_to_ha[thermic_level]
-        if hasattr(self._device, "thermicLevel"):
-            thermic_level = getattr(self._device, "thermicLevel", None)
-            if thermic_level is not None and thermic_level in self.dict_modes_dd_to_ha:
-                LOGGER.debug(
-                    "thermicLevel = %s", self.dict_modes_dd_to_ha[thermic_level]
-                )
-                return self.dict_modes_dd_to_ha[thermic_level]
-        return HVACMode.OFF
+        if hasattr(self._device, "comfortMode"):
+            comfort_mode = getattr(self._device, "comfortMode", None)
+            if comfort_mode == "COOLING":
+                return HVACMode.COOL
+            if comfort_mode == "HEATING":
+                return HVACMode.HEAT
+            if comfort_mode == "STOP":
+                return HVACMode.OFF
+        if thermic_level is not None and thermic_level in self.dict_modes_dd_to_ha:
+            LOGGER.debug(
+                "thermicLevel = %s", self.dict_modes_dd_to_ha[thermic_level]
+            )
+            return self.dict_modes_dd_to_ha[thermic_level]
+        return HVACMode.HEAT
+
+    @property
+    def hvac_mode(self) -> HVACMode:
+        """Return the current operation (e.g. heat, cool, idle)."""
+        return self._resolve_hvac_mode()
 
     @property
     def hvac_action(self) -> HVACAction | None:
-        """Return the current running action (best-effort for fil-pilote)."""
+        """Return the current running action."""
         if getattr(self, "_is_filpilote", False):
             # No temperature feedback exists, so we cannot distinguish heating
             # from idle: report OFF when the order is STOP, HEATING otherwise.
             level = getattr(self._device, "thermicLevel", None)
             return HVACAction.OFF if level == "STOP" else HVACAction.HEATING
+
+        authorization = getattr(self._device, "authorization", None)
+        thermic_level = getattr(self._device, "thermicLevel", None)
+        if thermic_level == "STOP" or authorization == "STOP":
+            return HVACAction.OFF
+
+        current = self.current_temperature
+        target = self.target_temperature
+        if authorization == "COOLING":
+            if current is not None and target is not None:
+                return (
+                    HVACAction.IDLE
+                    if current < target
+                    else HVACAction.COOLING
+                )
+            return HVACAction.COOLING
+        if authorization == "HEATING":
+            if current is not None and target is not None:
+                return (
+                    HVACAction.IDLE
+                    if current > target
+                    else HVACAction.HEATING
+                )
+            return HVACAction.HEATING
         return None
 
     @property
