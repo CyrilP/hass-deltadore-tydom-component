@@ -325,6 +325,24 @@ class TydomWindow(TydomDevice):
 class TydomDoor(TydomDevice):
     """represents a door."""
 
+    async def open(self) -> None:
+        """Tell door to open."""
+        await self._tydom_client.put_devices_data_validated(
+            self._id, self._endpoint, "podPosition", "OPEN", device=self
+        )
+
+    async def close(self) -> None:
+        """Tell door to close (unlocked)."""
+        await self._tydom_client.put_devices_data_validated(
+            self._id, self._endpoint, "podPosition", "CLOSE", device=self
+        )
+
+    async def lock(self) -> None:
+        """Tell door to close and lock (KLINE doors only, no unlock)."""
+        await self._tydom_client.put_devices_data_validated(
+            self._id, self._endpoint, "podPosition", "LOCK", device=self
+        )
+
 
 class TydomGate(TydomDevice):
     """represents a gate."""

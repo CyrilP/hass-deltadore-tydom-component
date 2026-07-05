@@ -407,8 +407,18 @@ class Hub:
         LOGGER.debug("Create door %s", device.device_id)
 
         # Décision automatique selon les attributs du device
+        # podPosition : attribut utilisé par les portes motorisées KLINE
+        # (device_type "belmDoor" / "klineDoor"), en lecture/écriture avec
+        # les valeurs OPEN / CLOSE / LOCK.
         if any(
-            hasattr(device, a) for a in ["position", "positionCmd", "level", "levelCmd"]
+            hasattr(device, a)
+            for a in [
+                "position",
+                "positionCmd",
+                "level",
+                "levelCmd",
+                "podPosition",
+            ]
         ):
             LOGGER.debug(
                 "Door %s has motor control → adding as cover", device.device_id

@@ -2705,7 +2705,9 @@ class HaDoor(CoverEntity, HAEntity):
     """Representation of a Door."""
 
     _attr_should_poll = False
-    _attr_supported_features: CoverEntityFeature | None = None
+    _attr_supported_features: CoverEntityFeature = (
+        CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE
+    )
     _attr_device_class = CoverDeviceClass.DOOR
     _attr_icon = "mdi:door"
     _attr_has_entity_name = True
@@ -2752,9 +2754,11 @@ class HaDoor(CoverEntity, HAEntity):
         return self._enrich_device_info(info)
 
     @property
-    def is_closed(self) -> bool:
-        """Return if the door is locked."""
-        if hasattr(self._device, "openState"):
+    def is_closed(self) -> bool | None:
+        """Return if the door is closed."""
+        if hasattr(self._device, "podPosition"):
+            return getattr(self._device, "podPosition", None) in ("CLOSE", "LOCK")
+        elif hasattr(self._device, "openState"):
             open_state = getattr(self._device, "openState", None)
             return open_state == "LOCKED"
         elif hasattr(self._device, "intrusionDetect"):
@@ -2762,8 +2766,17 @@ class HaDoor(CoverEntity, HAEntity):
             return not bool(intrusion_detect)
         else:
             raise AttributeError(
-                "The required attributes 'openState' or 'intrusionDetect' are not available in the device."
+                "The required attributes 'podPosition', 'openState' or "
+                "'intrusionDetect' are not available in the device."
             )
+
+    async def async_open_cover(self, **kwargs: Any) -> None:
+        """Open the door."""
+        await self._device.open()
+
+    async def async_close_cover(self, **kwargs: Any) -> None:
+        """Close the door."""
+        await self._device.close()
 
     @property
     def icon(self) -> str:
