@@ -14,6 +14,8 @@ on:
 jobs:
   hassfest: # https://developers.home-assistant.io/blog/2020/04/16/hassfest
     name: "Hassfest Validation"
+    # Skip scheduled runs on forks (HACS repository checks only pass on the upstream repo)
+    if: github.event_name != 'schedule' || github.repository == 'CyrilP/hass-deltadore-tydom-component'
     runs-on: "ubuntu-latest"
     steps:
         - name: "Checkout the repository"
@@ -24,6 +26,8 @@ jobs:
 
   hacs: # https://github.com/hacs/action
     name: "HACS Validation"
+    # Skip scheduled runs on forks (HACS repository checks only pass on the upstream repo)
+    if: github.event_name != 'schedule' || github.repository == 'CyrilP/hass-deltadore-tydom-component'
     runs-on: "ubuntu-latest"
     steps:
         - name: "Checkout the repository"
