@@ -2268,33 +2268,48 @@ class HaClimate(ClimateEntity, HAEntity):
             self._attr_max_temp = self._device._metadata["setpoint"]["max"]
 
         # Fil-pilote (pilot-wire) electric heater, e.g. Delta Dore RF 6600 FP
-        # (X3D). These zones expose an hvacMode attribute but have NO usable
-        # setpoint metadata and no HEATING/COOLING mode enum. Real thermostats
-        # expose a setpoint and AC units advertise a COOLING/HEATING mode enum,
-        # so they never match here and keep their previous behaviour intact.
-        # The pilot-wire order is carried by thermicLevel (STOP=Off,
-        # ANTI_FROST=Frost protection, ECO=Eco, COMFORT=Comfort); the Tydom box
-        # schedule and the native Delta Dore app both drive that register while
-        # hvacMode stays NORMAL. So we model OFF + HEAT with comfort/eco/away
-        # presets, all mapped onto thermicLevel; there is no setpoint to drive.
+        # (X3D). These zones expose hvacMode and thermicLevel but no usable
+        # setpoint metadata. The pilot-wire order is carried by thermicLevel
+        # (STOP=Off, ANTI_FROST=Frost protection, ECO=Eco, COMFORT=Comfort);
+        # the Tydom box schedule and the native Delta Dore app both drive that
+        # register while hvacMode stays NORMAL. So we model OFF + HEAT with
+        # comfort/eco/away presets, all mapped onto thermicLevel; there is no
+        # setpoint to drive.
+        #
+        # Verified metadata on live RF 6600 FP zones (Tydom 1.0):
+        #   hvacMode:     enum [NORMAL, STOP, ANTI_FROST], rw
+        #   thermicLevel: enum [ECO, MODERATO, MEDIO, COMFORT, STOP,
+        #                 ANTI_FROST], rw
+        #   comfortMode:  enum [STOP, HEATING], WRITE-ONLY command register
+        #   setpoint:     absent
+        # Only COOLING identifies an AC unit; HEATING must NOT disqualify,
+        # because the write-only comfortMode [STOP, HEATING] register above is
+        # a pilot-wire trait, not an AC mode enum. Real thermostats expose a
+        # setpoint and never carry the thermicLevel order register, so they
+        # keep their previous behaviour intact.
         metadata = self._device._metadata
         has_setpoint_meta = (
             metadata is not None
             and "setpoint" in metadata
             and ("min" in metadata["setpoint"] or "max" in metadata["setpoint"])
         )
-        has_heatcool_enum_meta = metadata is not None and any(
+        has_cool_enum_meta = metadata is not None and any(
             isinstance(metadata.get(attr), dict)
-            and (
-                "HEATING" in metadata[attr].get("enum_values", [])
-                or "COOLING" in metadata[attr].get("enum_values", [])
-            )
+            and "COOLING" in metadata[attr].get("enum_values", [])
             for attr in ("comfortMode", "hvacMode", "thermicLevel")
+        )
+        # Check the device attribute as well as the metadata: /devices/meta
+        # can be parsed after the device object got created (the metadata
+        # reference is never backfilled on later updates), so the detection
+        # must not depend on that ordering.
+        has_thermic_level = hasattr(self._device, "thermicLevel") or (
+            metadata is not None and "thermicLevel" in metadata
         )
         self._is_filpilote = (
             hasattr(self._device, "hvacMode")
+            and has_thermic_level
             and not has_setpoint_meta
-            and not has_heatcool_enum_meta
+            and not has_cool_enum_meta
         )
 
         if self._is_filpilote:
