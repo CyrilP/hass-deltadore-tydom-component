@@ -1,0 +1,46 @@
+# Configuration des notes de release auto-générées par GitHub.
+# Docs : https://docs.github.com/repositories/releasing-projects-on-github/automatically-generated-release-notes
+#
+# À chaque release, GitHub génère le Markdown de toutes les pull requests
+# mergées depuis le tag précédent, classées par catégorie ci-dessous, et
+# ajoute automatiquement la liste des contributeurs + le lien "Full Changelog".
+#
+# Le classement se fait par LABEL de PR. Pense à étiqueter tes PR :
+#   feature / enhancement -> ✨ Fonctionnalités
+#   fix / bug             -> 🐛 Corrections
+#   dependencies          -> ⬆️ Dépendances (auto par Dependabot)
+#   documentation         -> 📝 Documentation
+#   Les PR sans label listé tombent dans "🔩 Autres changements".
+
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+      - skip-changelog
+    authors:
+      - github-actions
+
+  categories:
+    - title: ✨ Nouvelles fonctionnalités
+      labels:
+        - feature
+        - enhancement
+
+    - title: 🐛 Corrections de bugs
+      labels:
+        - fix
+        - bug
+
+    - title: ⬆️ Dépendances
+      labels:
+        - dependencies
+
+    - title: 📝 Documentation
+      labels:
+        - documentation
+
+    - title: 🔩 Autres changements
+      labels:
+        - "*"
+
+
