@@ -18,7 +18,7 @@ changelog:
       - ignore-for-release
       - skip-changelog
     authors:
-      - github-actions
+      - github-actions[bot]
 
   categories:
     - title: ✨ Nouvelles fonctionnalités
