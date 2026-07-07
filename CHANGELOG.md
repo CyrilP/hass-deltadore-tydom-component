@@ -1,5 +1,41 @@
 # Changelog
 
+## v0.23 — Ventilation pilotable des splits réversibles (Atlantic/Fujitsu)
+
+### ✨ Nouvelle fonctionnalité
+
+#### Contrôle de la vitesse de ventilation (`fan_mode`) sur les splits Zigbee
+
+Les splits réversibles Atlantic/Fujitsu Naviclim (`manufacturer = ATLANTIC GROUP`,
+catalogue `split_takao_type_1`) exposent, sur l'endpoint climate, deux attributs
+**inscriptibles** (`permission: "rw"`) jusqu'ici seulement disponibles en lecture :
+
+- `speed` : `numeric`, `min=1`/`max=3` → niveau de vitesse fixe ;
+- `speedString` : `string`, `enum_values=["AUTO"]` → mode ventilation automatique.
+
+L'entité `climate.*` ne proposait **aucun** contrôle de ventilation (`fan_mode`
+absent), alors que la Delta Dore permet de changer la vitesse.
+
+**Correctif :**
+- `tydom_devices.py` (`TydomBoiler`) : nouvelle méthode `set_fan_speed()` qui écrit
+  `speedString="AUTO"` pour le mode auto, ou `speed=<int>` (1-3, sérialisé en
+  nombre JSON) pour un niveau fixe, avec validation des bornes via les métadonnées.
+- `ha_entities.py` (`HaClimate`) :
+  - construction **dynamique** de `fan_modes` depuis les métadonnées
+    (`auto` + `low`/`medium`/`high` mappés sur `speed` 1/2/3), et activation du flag
+    `ClimateEntityFeature.FAN_MODE` **uniquement** si `speed`/`speedString` sont
+    présents et inscriptibles ;
+  - propriété `fan_mode` : `speedString == "AUTO"` → `auto`, sinon `speed` →
+    niveau nommé, avec repli robuste (`None` si indisponible) ;
+  - `async_set_fan_mode()` : route vers `set_fan_speed()`.
+
+> ✅ **Aucune régression** : les radiateurs X3D et tout appareil sans `speed`/
+> `speedString` **n'obtiennent pas** la fonctionnalité (`fan_modes` vide → flag
+> `FAN_MODE` non ajouté). Les capteurs `sensor.split_*_speed` /
+> `sensor.split_*_speedstring` restent créés à l'identique (aucun `entity_id`
+> retiré). `unique_id` inchangé. Validé sur `tools/traces-naviclim-atlantic.txt`
+> (`speed`: rw 1-3, `speedString`: rw ["AUTO"]).
+
 ## v0.22 — Corrections climate & nommage des entités
 
 ### 🐛 Corrections

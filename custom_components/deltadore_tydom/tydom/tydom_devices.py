@@ -940,6 +940,56 @@ class TydomBoiler(TydomDevice):
             self._id, self._endpoint, "speedString", "AUTO"
         )
 
+    async def set_fan_speed(self, speed):
+        """Set the fan/ventilation speed for reversible splits.
+
+        Zigbee Atlantic/Fujitsu Naviclim splits (``manufacturer =
+        ATLANTIC GROUP``, catalogue ``split_takao_type_1``) expose two
+        *writable* attributes on the same endpoint:
+
+        - ``speedString`` (enum ``["AUTO"]``): selects the automatic fan mode;
+        - ``speed`` (numeric, ``min=1``/``max=3``): selects a fixed fan level.
+
+        The two are mutually exclusive on the gateway side: when the automatic
+        mode is active ``speed`` reads ``null`` and ``speedString`` reads
+        ``AUTO``; when a fixed level is active ``speedString`` reads ``null``
+        and ``speed`` holds ``1``/``2``/``3``. We therefore write ``speedString``
+        for AUTO and ``speed`` (as an int, so it is JSON-serialized as a number)
+        for a fixed level. Validated on ``tools/traces-naviclim-atlantic.txt``.
+
+        Args:
+            speed: ``"AUTO"`` (case-insensitive) or an int/str level ``1``-``3``.
+
+        """
+        if isinstance(speed, str) and speed.strip().upper() == "AUTO":
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "speedString", "AUTO"
+            )
+            return
+
+        # Fixed numeric level: validate against metadata bounds when available.
+        try:
+            level = int(float(speed))
+        except (TypeError, ValueError):
+            from homeassistant.exceptions import HomeAssistantError
+
+            raise HomeAssistantError(f"Vitesse de ventilation invalide: {speed}")
+
+        if self._metadata is not None and "speed" in self._metadata:
+            meta = self._metadata["speed"]
+            smin = int(meta.get("min", 1))
+            smax = int(meta.get("max", 3))
+            if level < smin or level > smax:
+                from homeassistant.exceptions import HomeAssistantError
+
+                raise HomeAssistantError(
+                    f"Vitesse de ventilation hors bornes ({smin}-{smax}): {level}"
+                )
+
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "speed", level
+        )
+
 
 class TydomWindow(TydomDevice):
     """represents a window."""
