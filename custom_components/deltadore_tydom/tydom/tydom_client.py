@@ -1366,9 +1366,10 @@ class TydomClient:
         safe_endpoint_id = quote(str(endpoint_id), safe="")
         safe_type = quote(str(type_), safe="")
         url = f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata?name=histo&type={safe_type}&indexStart={indexStart}&nbElem={nbElement}"
-        timeout = TIMEOUT_LONG_REQUEST  # Wait maximum for long operations like historical data
-        async with asyncio.timeout(timeout):
-            return await self.get_reply_to_request("GET", url)
+        # The box streams the events one message at a time (about 2 seconds
+        # apart), so the reply wait needs the long timeout; the default one
+        # (10 s) cuts the stream off after a few events.
+        return await self.get_reply_to_request("GET", url, timeout=TIMEOUT_LONG_REQUEST)
 
     async def update_firmware(self):
         """Update Tydom firmware."""

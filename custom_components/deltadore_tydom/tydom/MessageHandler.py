@@ -40,6 +40,13 @@ if TYPE_CHECKING:
 _MAX_REPLIES_SIZE = 5
 """Maximal number of replies to keep track of."""
 
+_HISTO_END_INDEX = 255
+"""Index value (0xFF) of the sentinel element closing an histo reply stream.
+
+Some firmwares never send an EOR flag; they mark the end of the enumeration
+with a last element carrying index 255 and invalid event data instead.
+"""
+
 # Device dict for parsing
 device_name = {}
 device_endpoint = {}
@@ -139,15 +146,46 @@ class MessageHandler:
         stripped_msg = bytes_str.strip(self.cmd_prefix)
 
         try:
+            status = None
             if stripped_msg.startswith(b"HTTP/"):
                 parsed_message = _parse_response(stripped_msg)
                 # Find Uri-Origin in header if available
                 uri_origin = parsed_message.headers.get("Uri-Origin", "")
+                status = parsed_message.status
 
             else:
                 parsed_message = parse_request(stripped_msg)
                 uri_origin = parsed_message.path
             transaction_id = parsed_message.headers.get("Transac-Id")
+
+            if (
+                status is not None
+                and transaction_id
+                and transaction_id in self._end_reply_events
+            ):
+                if status >= 400:
+                    # The box rejected the request; resolve the pending
+                    # reply right away instead of letting it time out.
+                    LOGGER.warning(
+                        "Request '%s' (%s) rejected with HTTP status %s",
+                        transaction_id,
+                        uri_origin,
+                        status,
+                    )
+                    event = self._end_reply_events.get(transaction_id)
+                    self.remove_reply(transaction_id)
+                    if event is not None:
+                        event.set()
+                    return None
+                if not parsed_message.body:
+                    # Empty acknowledgment of a pending request; the data
+                    # arrives in separate messages, so just wait for them.
+                    LOGGER.debug(
+                        "Empty acknowledgment received for request '%s' (%s).",
+                        transaction_id,
+                        uri_origin,
+                    )
+                    return None
 
             try:
                 return await self.parse_response(
@@ -872,7 +910,11 @@ class MessageHandler:
                                             reply["transaction_id"], None
                                         )
 
-                                if elem.get("EOR", False):
+                                values = elem.get("values") or {}
+                                if (
+                                    elem.get("EOR", False)
+                                    or values.get("index") == _HISTO_END_INDEX
+                                ):
                                     LOGGER.debug(
                                         "End of reply for request '%s'.", transaction_id
                                     )
