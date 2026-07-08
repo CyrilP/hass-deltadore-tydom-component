@@ -3,6 +3,7 @@
 import asyncio
 import contextlib
 import json
+import re
 import time
 from dataclasses import dataclass
 from functools import partial
@@ -288,6 +289,30 @@ class MessageHandler:
 
         if msg_type is None:
             msg_type = MSG_MAPPING.get(uri_origin)
+
+            if msg_type is None and uri_origin:
+                # Response to GET /devices/{id}/endpoints/{id}/data (adaptive
+                # polling): a single flat {"id", "error", "data"} object, not
+                # the list-of-devices shape parse_devices_data expects. Rebuild
+                # the canonical shape using the ids from the URI (authoritative,
+                # and device/endpoint ids can differ).
+                endpoint_data = re.fullmatch(
+                    r"/devices/(\d+)/endpoints/(\d+)/data", uri_origin
+                )
+                if endpoint_data and isinstance(parsed, dict):
+                    parsed = [
+                        {
+                            "id": int(endpoint_data.group(1)),
+                            "endpoints": [
+                                {
+                                    "id": int(endpoint_data.group(2)),
+                                    "error": parsed.get("error", 0),
+                                    "data": parsed.get("data", []),
+                                }
+                            ],
+                        }
+                    ]
+                    msg_type = self.parse_devices_data
 
             if msg_type is None and data:
                 first = data[:40]
@@ -656,6 +681,11 @@ class MessageHandler:
         LOGGER.debug("parse_devices_data : %s", parsed)
         devices = []
         seen_unique_ids = {}  # Track unique_ids to detect collisions
+
+        if isinstance(parsed, dict):
+            # A bare device object would otherwise be iterated key by key,
+            # logging one "Unsupported message" warning per key.
+            parsed = [parsed]
 
         for i in parsed:
             if "endpoints" in i:
