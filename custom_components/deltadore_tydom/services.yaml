@@ -1,18 +1,10 @@
 acknowledge_events:
   name: Acknowledge alarm events
-  description: Acknowledge all unacknowledged alarm events. Requires the alarm PIN code.
+  description: Acknowledge all unacknowledged alarm events.
   target:
     entity:
       integration: deltadore_tydom
       domain: alarm_control_panel
-  fields:
-    code:
-      name: Alarm PIN
-      description: The PIN code of the alarm system
-      required: true
-      selector:
-        text:
-          type: password
 get_events:
   name: Get alarm events
   description: Retrieve alarm events from the system. Returns a list of events based on the selected filter.

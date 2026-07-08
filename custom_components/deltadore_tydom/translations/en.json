@@ -150,13 +150,7 @@
     "services": {
         "acknowledge_events": {
             "name": "Acknowledge defect events",
-            "description": "Acknowledge all defect alarm events.",
-            "fields": {
-                "code": {
-                    "name": "Alarm pin code",
-                    "description": "Alarm pin code"
-                }
-            }
+            "description": "Acknowledge all defect alarm events."
         },
         "get_events": {
             "name": "Get alarm events",

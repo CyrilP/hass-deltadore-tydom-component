@@ -151,13 +151,7 @@
     "services": {
         "acknowledge_events": {
             "name": "Acquitter les événements de défaut",
-            "description": "Acquitter tous les événements d'alarme de défaut.",
-            "fields": {
-                "code": {
-                    "name": "Code PIN de l'alarme",
-                    "description": "Code PIN de l'alarme"
-                }
-            }
+            "description": "Acquitter tous les événements d'alarme de défaut."
         },
         "get_events": {
             "name": "Obtenir les événements d'alarme",
