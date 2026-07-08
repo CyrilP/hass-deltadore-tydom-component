@@ -1121,6 +1121,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         default_zone_away = ""
         default_zone_night = ""
         default_refresh_interval = "30"
+        default_pin = ""
         if CONF_ZONES_HOME in self.config_entry.data:
             default_zone_home = self.config_entry.data[CONF_ZONES_HOME]
 
@@ -1133,11 +1134,15 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if CONF_REFRESH_INTERVAL in self.config_entry.data:
             default_refresh_interval = self.config_entry.data[CONF_REFRESH_INTERVAL]
 
+        if CONF_PIN in self.config_entry.data:
+            default_pin = self.config_entry.data[CONF_PIN]
+
         if user_input is not None:
             default_zone_home = user_input.get(CONF_ZONES_HOME, "")
             default_zone_away = user_input.get(CONF_ZONES_AWAY, "")
             default_zone_night = user_input.get(CONF_ZONES_NIGHT, "")
             default_refresh_interval = user_input.get(CONF_REFRESH_INTERVAL, "30")
+            default_pin = user_input.get(CONF_PIN, "")
 
             try:
                 # Validate zones
@@ -1177,6 +1182,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 updated_data[CONF_ZONES_AWAY] = default_zone_away
                 updated_data[CONF_ZONES_NIGHT] = default_zone_night
                 updated_data[CONF_REFRESH_INTERVAL] = default_refresh_interval
+                updated_data[CONF_PIN] = default_pin
 
                 # Update entry
                 self.hass.config_entries.async_update_entry(
@@ -1250,6 +1256,15 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     ): selector.TextSelector(
                         selector.TextSelectorConfig(
                             type=selector.TextSelectorType.TEXT,
+                            autocomplete="off",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_PIN,
+                        description={"suggested_value": default_pin},
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
                             autocomplete="off",
                         )
                     ),

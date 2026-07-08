@@ -111,12 +111,17 @@
         "step": {
             "init": {
                 "title": "Delta Dore Tydom Options",
-                "description": "Choose an option"
+                "description": "Choose an option",
+                "menu_options": {
+                    "configure": "Configure (zones, refresh interval, alarm PIN)",
+                    "actions": "Actions (reload devices)"
+                }
             },
             "configure": {
                 "title": "Delta Dore Tydom Configuration",
                 "description": "Update your Tydom integration settings.",
                 "data": {
+                    "pin": "Alarm PIN (optional, required for alarm control)",
                     "refresh_interval": "Refresh interval in minutes (default: 30)",
                     "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
                     "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",

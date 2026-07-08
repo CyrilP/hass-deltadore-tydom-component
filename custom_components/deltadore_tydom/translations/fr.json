@@ -112,12 +112,17 @@
         "step": {
             "init": {
                 "title": "Options Delta Dore Tydom",
-                "description": "Choisissez une option"
+                "description": "Choisissez une option",
+                "menu_options": {
+                    "configure": "Configurer (zones, intervalle de rafraîchissement, code PIN alarme)",
+                    "actions": "Actions (recharger les appareils)"
+                }
             },
             "configure": {
                 "title": "Configuration Delta Dore Tydom",
                 "description": "Mettez à jour les paramètres de votre intégration Tydom.",
                 "data": {
+                    "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)",
                     "refresh_interval": "Intervalle de rafraîchissement en minutes (par défaut : 30)",
                     "zones_away": "Zones actives en mode alarme absent (séparées par des virgules, ex. : 1,2,4)",
                     "zones_home": "Zones actives en mode alarme présent (séparées par des virgules, ex. : 1,2,4)",
