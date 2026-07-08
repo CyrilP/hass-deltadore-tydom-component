@@ -158,25 +158,30 @@ class MessageHandler:
                 uri_origin = parsed_message.path
             transaction_id = parsed_message.headers.get("Transac-Id")
 
+            if status is not None and status >= 400:
+                # The box rejected the request; surface the error body (an
+                # HTML page naming the cause) instead of dropping it in the
+                # html no-op, and resolve any pending reply right away
+                # instead of letting it time out.
+                LOGGER.warning(
+                    "Request '%s' (%s) rejected with HTTP status %s: %s",
+                    transaction_id,
+                    uri_origin,
+                    status,
+                    (parsed_message.body or b"")[:500],
+                )
+                if transaction_id and transaction_id in self._end_reply_events:
+                    event = self._end_reply_events.get(transaction_id)
+                    self.remove_reply(transaction_id)
+                    if event is not None:
+                        event.set()
+                return None
+
             if (
                 status is not None
                 and transaction_id
                 and transaction_id in self._end_reply_events
             ):
-                if status >= 400:
-                    # The box rejected the request; resolve the pending
-                    # reply right away instead of letting it time out.
-                    LOGGER.warning(
-                        "Request '%s' (%s) rejected with HTTP status %s",
-                        transaction_id,
-                        uri_origin,
-                        status,
-                    )
-                    event = self._end_reply_events.get(transaction_id)
-                    self.remove_reply(transaction_id)
-                    if event is not None:
-                        event.set()
-                    return None
                 if not parsed_message.body:
                     # Empty acknowledgment of a pending request; the data
                     # arrives in separate messages, so just wait for them.
