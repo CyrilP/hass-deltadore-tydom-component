@@ -30,6 +30,7 @@ from homeassistant.const import (
     UnitOfEnergy,
     UnitOfPower,
     UnitOfElectricCurrent,
+    UnitOfIrradiance,
     EntityCategory,
     PERCENTAGE,
 )
@@ -3926,6 +3927,18 @@ class HASensor(SensorEntity, HAEntity):
 
     _attr_should_poll = False
     _attr_has_entity_name = True
+
+    # Typed sensors for well-known attributes carried by "generic" devices
+    # (e.g. sensorSun solar sensors expose lightPower as irradiance in W/m2).
+    sensor_classes = {
+        "lightPower": SensorDeviceClass.IRRADIANCE,
+    }
+    state_classes = {
+        "lightPower": SensorStateClass.MEASUREMENT,
+    }
+    units = {
+        "lightPower": UnitOfIrradiance.WATTS_PER_SQUARE_METER,
+    }
 
     def __init__(self, device: TydomDevice, hass) -> None:
         """Initialize HASensor."""
