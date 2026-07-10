@@ -22,7 +22,6 @@ from urllib3 import encode_multipart_formdata
 from ..const import (
     LOGGER,
     validate_value_with_metadata,
-    TIMEOUT_QUICK_REQUEST,
     TIMEOUT_NORMAL_REQUEST,
     TIMEOUT_LONG_REQUEST,
     TIMEOUT_WEBSOCKET_CONNECT,
@@ -165,6 +164,7 @@ class TydomClient:
         self._max_reconnect_delay = 60.0
         self._reconnect_backoff_factor = 2.0
         self.online = True
+        self._shutting_down = False
 
         # Metadata cache with TTL (Time To Live)
         self._metadata_cache: dict[
@@ -186,7 +186,7 @@ class TydomClient:
         if file_mode:
             return "dummyPassword"
         try:
-            async with async_timeout.timeout(TIMEOUT_QUICK_REQUEST):
+            async with async_timeout.timeout(TIMEOUT_LONG_REQUEST):
                 response = await session.request(
                     method="GET", url=DELTADORE_AUTH_URL, proxy=proxy
                 )
@@ -280,6 +280,8 @@ class TydomClient:
     async def async_connect(self) -> ClientWebSocketResponse:
         """Connect to the Tydom API."""
         global file_lines, file_mode, file_name
+        if self._shutting_down:
+            raise asyncio.CancelledError()
         self.pending_pings = 0
         if file_mode:
             with open(file_name) as file:
@@ -313,12 +315,9 @@ class TydomClient:
         session = async_create_clientsession(self._hass, False)
 
         try:
-            # Use TIMEOUT_WEBSOCKET_CONNECT instead of TIMEOUT_QUICK_REQUEST because
-            # the initial GET request is part of the WebSocket connection process:
-            # it obtains the digest challenge, calculates authentication, and establishes
-            # the WebSocket connection. This can take longer, especially on first connection
-            # or with network latency.
-            async with async_timeout.timeout(TIMEOUT_WEBSOCKET_CONNECT):
+            # Digest handshake can be very slow on busy local gateways (tydom2mqtt
+            # applies no timeout to the equivalent HTTP step).
+            async with async_timeout.timeout(TIMEOUT_LONG_REQUEST):
                 response = await session.request(
                     method="GET",
                     url=f"https://{self._host}:443/mediation/client?mac={self._mac}&appli=1",
@@ -352,25 +351,24 @@ class TydomClient:
                 else:
                     raise TydomClientApiClientError("Could't find auth nonce")
 
-                http_headers = {}
-                http_headers["Authorization"] = self.build_digest_headers(
-                    re_matcher.group(1)
-                )
+                ws_headers = {
+                    "Authorization": self.build_digest_headers(re_matcher.group(1))
+                }
 
-                connection = await session.ws_connect(
-                    method="GET",
-                    url=f"wss://{self._host}:443/mediation/client?mac={self._mac}&appli=1",
-                    headers=http_headers,
-                    autoping=True,
-                    heartbeat=2.0,
-                    timeout=TIMEOUT_WEBSOCKET_CONNECT,  # type: ignore[arg-type]
-                    receive_timeout=TIMEOUT_WEBSOCKET_RECEIVE,
-                    autoclose=True,
-                    proxy=proxy,
-                    ssl=sslcontext,
-                )
+            connection = await session.ws_connect(
+                method="GET",
+                url=f"wss://{self._host}:443/mediation/client?mac={self._mac}&appli=1",
+                headers=ws_headers,
+                autoping=True,
+                heartbeat=2.0,
+                timeout=TIMEOUT_WEBSOCKET_CONNECT,  # type: ignore[arg-type]
+                receive_timeout=TIMEOUT_WEBSOCKET_RECEIVE,
+                autoclose=True,
+                proxy=proxy,
+                ssl=sslcontext,
+            )
 
-                return connection
+            return connection
 
         except TimeoutError as exception:
             raise TydomClientApiClientCommunicationError(
@@ -386,8 +384,27 @@ class TydomClient:
                 "Something really wrong happened!"
             ) from exception
 
+    def begin_shutdown(self) -> None:
+        """Signal that the client must stop reconnecting and using the socket."""
+        self._shutting_down = True
+
+    async def async_disconnect(self) -> None:
+        """Close the active websocket connection, if any."""
+        self.begin_shutdown()
+        connection = self._connection
+        self._connection = None
+        if connection is not None and not connection.closed:
+            try:
+                await asyncio.wait_for(connection.close(), timeout=3.0)
+            except TimeoutError:
+                LOGGER.warning("Timed out closing Tydom websocket")
+            except Exception:
+                LOGGER.exception("Error closing Tydom websocket")
+
     async def listen_tydom(self, connection: ClientWebSocketResponse):
         """Listen for Tydom messages."""
+        if self._shutting_down:
+            return
         STRUCTURED_LOGGER.connection_event(
             "info",
             "listen_started",
@@ -396,7 +413,11 @@ class TydomClient:
         )
         self._connection = connection
         await self.ping()
+        if self._shutting_down:
+            return
         await self.get_info()
+        if self._shutting_down:
+            return
         # await self.put_api_mode()
         # await self.get_geoloc()
         # await self.get_local_claim()
@@ -410,11 +431,15 @@ class TydomClient:
 
         # await self.get_info()
         await self.get_groups()
+        if self._shutting_down:
+            return
         await self.post_refresh()
         await self.get_configs_file()
         await self.get_devices_meta()
         await self.get_devices_cmeta()
         await self.get_devices_data()
+        if self._shutting_down:
+            return
 
         await self.get_scenarii()
 
@@ -438,7 +463,11 @@ class TydomClient:
                   will stop after max_reconnect_attempts and mark client as offline.
 
         """
+        if self._shutting_down:
+            return
         while self._reconnect_attempts < self._max_reconnect_attempts:
+            if self._shutting_down:
+                return
             delay = min(
                 self._reconnect_delay
                 * (self._reconnect_backoff_factor**self._reconnect_attempts),
@@ -502,9 +531,13 @@ class TydomClient:
             await asyncio.sleep(1)
             return await self._message_handler.route_response(incoming_bytes_str)
         try:
+            if self._shutting_down:
+                return None
             if self._connection is None:
                 return None
             if self._connection.closed or self.pending_pings > 5:
+                if self._shutting_down:
+                    return None
                 await self._connection.close()
                 await self._reconnect_with_backoff()
                 return None
@@ -541,6 +574,8 @@ class TydomClient:
 
             return await self._message_handler.route_response(incoming_bytes_str)
 
+        except asyncio.CancelledError:
+            raise
         except Exception:
             # Ne pas logger le message complet pour éviter d'exposer des informations sensibles
             LOGGER.exception("Unable to handle message")
@@ -582,6 +617,9 @@ class TydomClient:
         if file_mode:
             return
 
+        if self._shutting_down:
+            return
+
         if self._connection is None:
             LOGGER.warning(
                 "Cannot send message to Tydom because no connection has been established yet."
@@ -610,6 +648,8 @@ class TydomClient:
                         delay,
                     )
                     try:
+                        if self._shutting_down:
+                            return
                         # Try to reconnect
                         self._connection = await self.async_connect()
                         await asyncio.sleep(delay)
@@ -703,7 +743,7 @@ class TydomClient:
             url: Request URL
             body: Request body
             headers: Request headers
-            timeout: Timeout in seconds (default: 10.0)
+            timeout: Timeout in seconds (default: 30.0)
 
         Returns:
             List of reply events or None

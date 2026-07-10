@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import homeassistant.helpers.config_validation as cv
 from homeassistant.const import CONF_HOST, CONF_MAC, CONF_PIN, Platform
 from homeassistant.config_entries import ConfigEntry
@@ -300,6 +302,15 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     return True
 
 
+async def _teardown_hub(
+    hass: HomeAssistant, entry: ConfigEntry, tydom_hub: hub.Hub
+) -> None:
+    """Stop the hub and remove it from hass.data when it is still registered."""
+    await tydom_hub.async_shutdown()
+    if hass.data.get(DOMAIN, {}).get(entry.entry_id) is tydom_hub:
+        hass.data[DOMAIN].pop(entry.entry_id, None)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Delta Dore Tydom from a config entry."""
 
@@ -316,6 +327,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     refresh_interval = "30"
     if CONF_REFRESH_INTERVAL in entry.data:
         refresh_interval = entry.data[CONF_REFRESH_INTERVAL]
+
+    existing_hub = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if existing_hub is not None:
+        await existing_hub.async_shutdown()
 
     tydom_hub = hub.Hub(
         hass,
@@ -351,7 +366,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             target=tydom_hub.refresh_data(), hass=hass, name="Tydom refresh data"
         )
 
+    except asyncio.CancelledError:
+        await _teardown_hub(hass, entry, tydom_hub)
+        raise
     except Exception as err:
+        await _teardown_hub(hass, entry, tydom_hub)
         raise ConfigEntryNotReady from err
 
     # This creates each HA object for each platform your device requires.
@@ -365,6 +384,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # This is called when an entry/configured device is to be removed. The class
     # needs to unload itself, and remove callbacks. See the classes for further
     # details
+    tydom_hub = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if tydom_hub is not None:
+        await tydom_hub.async_shutdown()
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)

@@ -174,11 +174,11 @@ def get_polling_interval_for_validity(validity: str | None) -> int | None:
 
 
 # Timeout constants (in seconds) for different operation types
-TIMEOUT_QUICK_REQUEST = 5.0  # Fast operations like simple GET requests
-TIMEOUT_NORMAL_REQUEST = 10.0  # Standard operations like PUT, POST
-TIMEOUT_LONG_REQUEST = 30.0  # Long operations like historical data, firmware updates
-TIMEOUT_WEBSOCKET_CONNECT = 10.0  # WebSocket connection timeout
-TIMEOUT_WEBSOCKET_RECEIVE = 5.0  # WebSocket receive timeout
+TIMEOUT_QUICK_REQUEST = 15.0  # Fast operations like simple GET requests
+TIMEOUT_NORMAL_REQUEST = 30.0  # Standard request/reply over the websocket
+TIMEOUT_LONG_REQUEST = 60.0  # Cloud credential fetch, digest handshake, historical data
+TIMEOUT_WEBSOCKET_CONNECT = 30.0  # WebSocket upgrade (after digest handshake)
+TIMEOUT_WEBSOCKET_RECEIVE = 20.0  # Per-message websocket receive timeout
 TIMEOUT_PING = 40.0  # Ping timeout for remote mode
 
 

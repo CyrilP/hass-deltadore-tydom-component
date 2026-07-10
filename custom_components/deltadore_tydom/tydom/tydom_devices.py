@@ -102,16 +102,14 @@ class TydomDevice:
                 ]:
                     setattr(self, attribute, value)
         await self.publish_updates()
-        if hasattr(self, "_ha_device") and self._ha_device is not None:
-            try:
-                self._ha_device.async_write_ha_state()
-            except Exception:
-                LOGGER.exception("update failed")
 
     async def publish_updates(self) -> None:
         """Schedule call all registered callbacks."""
         for callback in self._callbacks:
-            callback()
+            try:
+                callback()
+            except Exception:
+                LOGGER.exception("Device callback failed for %s", self.device_id)
 
 
 class Tydom(TydomDevice):

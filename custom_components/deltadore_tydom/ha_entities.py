@@ -2391,9 +2391,7 @@ class HaClimate(ClimateEntity, HAEntity):
             if comfort_mode == "STOP":
                 return HVACMode.OFF
         if thermic_level is not None and thermic_level in self.dict_modes_dd_to_ha:
-            LOGGER.debug(
-                "thermicLevel = %s", self.dict_modes_dd_to_ha[thermic_level]
-            )
+            LOGGER.debug("thermicLevel = %s", self.dict_modes_dd_to_ha[thermic_level])
             return self.dict_modes_dd_to_ha[thermic_level]
         return HVACMode.HEAT
 
@@ -2420,19 +2418,11 @@ class HaClimate(ClimateEntity, HAEntity):
         target = self.target_temperature
         if authorization == "COOLING":
             if current is not None and target is not None:
-                return (
-                    HVACAction.IDLE
-                    if current < target
-                    else HVACAction.COOLING
-                )
+                return HVACAction.IDLE if current < target else HVACAction.COOLING
             return HVACAction.COOLING
         if authorization == "HEATING":
             if current is not None and target is not None:
-                return (
-                    HVACAction.IDLE
-                    if current > target
-                    else HVACAction.HEATING
-                )
+                return HVACAction.IDLE if current > target else HVACAction.HEATING
             return HVACAction.HEATING
         return None
 

@@ -127,6 +127,7 @@ class Hub:
 
         self.online = True
         self._reload_button_created = False
+        self._shutting_down = False
 
         # Polling cache for optimization
         self._polling_cache: dict[
@@ -173,9 +174,28 @@ class Hub:
 
     async def connect(self) -> ClientWebSocketResponse:
         """Connect to Tydom."""
+        if self._shutting_down:
+            raise asyncio.CancelledError()
         connection = await self._tydom_client.async_connect()
+        if self._shutting_down:
+            await self._tydom_client.async_disconnect()
+            raise asyncio.CancelledError()
         await self._tydom_client.listen_tydom(connection)
         return connection
+
+    async def async_shutdown(self) -> None:
+        """Stop background work and release the Tydom websocket."""
+        if self._shutting_down:
+            return
+        self._shutting_down = True
+        await self._tydom_client.async_disconnect()
+
+    async def _interruptible_sleep(self, seconds: float) -> None:
+        """Sleep in short slices so shutdown is picked up quickly."""
+        remaining = seconds
+        while remaining > 0 and not self._shutting_down:
+            await asyncio.sleep(min(1.0, remaining))
+            remaining -= 1.0
 
     @staticmethod
     async def get_tydom_credentials(
@@ -190,7 +210,13 @@ class Hub:
         """Validate credentials."""
         connection = await self._tydom_client.async_connect()
         if hasattr(connection, "close"):
-            await connection.close()
+            try:
+                await asyncio.wait_for(connection.close(), timeout=3.0)
+            except TimeoutError:
+                LOGGER.warning(
+                    "Timed out closing Tydom websocket after credential test"
+                )
+        self._tydom_client._connection = None
 
     def ready(self) -> bool:
         """Check if we're ready to work."""
@@ -227,13 +253,17 @@ class Hub:
         """Listen to tydom events."""
         # wait for callbacks to become available
         while not self.ready():
+            if self._shutting_down:
+                return
             await asyncio.sleep(1)
         LOGGER.debug("Listen to tydom events")
 
         # Validate data consistency after initial setup
         await self._validate_data_consistency()
-        while True:
+        while not self._shutting_down:
             devices = await self._tydom_client.consume_messages()
+            if self._shutting_down:
+                return
             if devices is not None:
                 for device in devices:
                     if device.device_id not in self.devices:
@@ -609,16 +639,16 @@ class Hub:
 
     async def ping(self) -> None:
         """Periodically send pings."""
-        while True:
+        while not self._shutting_down:
             await self._tydom_client.ping()
-            await asyncio.sleep(30)
+            await self._interruptible_sleep(30)
 
     async def refresh_all(self) -> None:
         """Periodically refresh all metadata and data.
 
         It allows new devices to be discovered.
         """
-        while True:
+        while not self._shutting_down:
             await self._tydom_client.get_info()
             await self._tydom_client.put_api_mode()
             await self._tydom_client.get_groups()
@@ -629,13 +659,13 @@ class Hub:
             await self._tydom_client.get_devices_data()
             await self._tydom_client.get_scenarii()
             await self._tydom_client.get_moments()
-            await asyncio.sleep(600)
+            await self._interruptible_sleep(600)
 
     async def refresh_data_1s(self) -> None:
         """Refresh data for devices in list."""
-        while True:
+        while not self._shutting_down:
             await self._tydom_client.poll_devices_data_1s()
-            await asyncio.sleep(1)
+            await self._interruptible_sleep(1)
 
     def _rebuild_polling_cache(self) -> None:
         """Rebuild polling cache efficiently.
@@ -678,7 +708,7 @@ class Hub:
         The polling groups are rebuilt every 5 minutes to account for
         metadata changes.
         """
-        while True:
+        while not self._shutting_down:
             current_time = time.time()
 
             # Rebuild cache only if expired
@@ -712,14 +742,14 @@ class Hub:
                                 )
 
                 # Sleep for the shortest interval
-                await asyncio.sleep(shortest_interval)
+                await self._interruptible_sleep(shortest_interval)
             else:
                 # No devices need polling, use default refresh interval
                 if self._refresh_interval > 0:
                     await self._tydom_client.poll_devices_data_5m()
-                    await asyncio.sleep(self._refresh_interval)
+                    await self._interruptible_sleep(self._refresh_interval)
                 else:
-                    await asyncio.sleep(60)
+                    await self._interruptible_sleep(60)
 
     async def reload_devices(self) -> None:
         """Recharger tous les appareils et entités comme au démarrage initial.
