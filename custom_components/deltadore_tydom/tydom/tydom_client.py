@@ -178,6 +178,21 @@ class TydomClient:
         self._zone_away = zone_away
         self._zone_night = zone_night
 
+    @property
+    def zone_home(self) -> str | None:
+        """Return the configured home alarm zones."""
+        return self._zone_home
+
+    @property
+    def zone_away(self) -> str | None:
+        """Return the configured away alarm zones."""
+        return self._zone_away
+
+    @property
+    def zone_night(self) -> str | None:
+        """Return the configured night alarm zones."""
+        return self._zone_night
+
     @staticmethod
     async def async_get_credentials(
         session: ClientSession, email: str, password: str, macaddress: str
@@ -1358,8 +1373,13 @@ class TydomClient:
                     body = json.dumps({"value": str(value), "part": str(zone_id)})
                 else:
                     cmd = "zoneCmd"
+                    zones = [
+                        int(zone.strip())
+                        for zone in str(zone_id).split(",")
+                        if zone.strip()
+                    ]
                     body = json.dumps(
-                        {"value": str(value), "pwd": str(pin), "zones": [int(zone_id)]}
+                        {"value": str(value), "pwd": str(pin), "zones": zones}
                     )
 
             safe_device_id = quote(str(device_id), safe="")

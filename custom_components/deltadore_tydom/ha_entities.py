@@ -3234,14 +3234,21 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
                 alarm_state = getattr(self._device, "alarmState", None)
                 if alarm_state == "OFF":
                     return AlarmControlPanelState.ARMED_AWAY
-                else:
-                    return AlarmControlPanelState.TRIGGERED
+                return AlarmControlPanelState.TRIGGERED
             if alarm_mode in ("ZONE", "PART"):
                 alarm_state = getattr(self._device, "alarmState", None)
                 if alarm_state == "OFF":
+                    configured_mode = self._device.get_alarm_mode_from_zones()
+
+                    if configured_mode == "night":
+                        return AlarmControlPanelState.ARMED_NIGHT
+
+                    if configured_mode == "away":
+                        return AlarmControlPanelState.ARMED_AWAY
+
                     return AlarmControlPanelState.ARMED_HOME
-                else:
-                    return AlarmControlPanelState.TRIGGERED
+
+                return AlarmControlPanelState.TRIGGERED
         return AlarmControlPanelState.TRIGGERED
 
     @property

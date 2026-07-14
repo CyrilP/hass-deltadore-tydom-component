@@ -514,6 +514,38 @@ class TydomAlarm(TydomDevice):
             return True
         return False
 
+    def get_alarm_mode_from_zones(self) -> str | None:
+        """Identify the configured alarm mode from the active zones."""
+
+        def parse_zones(value) -> set[int]:
+            if not value:
+                return set()
+
+            return {
+                int(zone.strip())
+                for zone in str(value).split(",")
+                if zone.strip()
+            }
+
+        active_zones = {
+            zone
+            for zone in range(1, 9)
+            if getattr(self, f"part{zone}State", "OFF") == "ON"
+            or getattr(self, f"zone{zone}State", "OFF") == "ON"
+        }
+
+        configured_modes = (
+            ("night", parse_zones(self._tydom_client.zone_night)),
+            ("home", parse_zones(self._tydom_client.zone_home)),
+            ("away", parse_zones(self._tydom_client.zone_away)),
+        )
+
+        for mode, configured_zones in configured_modes:
+            if configured_zones and configured_zones == active_zones:
+                return mode
+
+        return None
+
     async def alarm_disarm(self, code) -> None:
         """Disarm alarm."""
         await self._tydom_client.put_alarm_cdata(
