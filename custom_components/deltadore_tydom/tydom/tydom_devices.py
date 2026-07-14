@@ -535,9 +535,9 @@ class TydomAlarm(TydomDevice):
         }
 
         configured_modes = (
-            ("night", parse_zones(self._tydom_client.zone_night)),
-            ("home", parse_zones(self._tydom_client.zone_home)),
-            ("away", parse_zones(self._tydom_client.zone_away)),
+            ("night", parse_zones(self._tydom_client._zone_night)),
+            ("home", parse_zones(self._tydom_client._zone_home)),
+            ("away", parse_zones(self._tydom_client._zone_away)),
         )
 
         for mode, configured_zones in configured_modes:
