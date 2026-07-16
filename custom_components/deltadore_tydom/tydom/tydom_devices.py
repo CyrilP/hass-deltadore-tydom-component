@@ -550,11 +550,7 @@ class TydomAlarm(TydomDevice):
             if not value:
                 return set()
 
-            return {
-                int(zone.strip())
-                for zone in str(value).split(",")
-                if zone.strip()
-            }
+            return {int(zone.strip()) for zone in str(value).split(",") if zone.strip()}
 
         active_zones = {
             zone

@@ -2337,9 +2337,7 @@ class HaClimate(ClimateEntity, HAEntity):
         # for automatic mode; we surface these as HA fan modes ("auto", "1", "2",
         # "3"). Non-AC thermostats and fil-pilote zones have neither register, so
         # get_naviclim_fan_modes returns [] and the FAN_MODE feature stays off.
-        self._attr_fan_modes = get_naviclim_fan_modes(
-            self._device._metadata, FAN_AUTO
-        )
+        self._attr_fan_modes = get_naviclim_fan_modes(self._device._metadata, FAN_AUTO)
         self._supports_fan = bool(self._attr_fan_modes)
         if self._supports_fan:
             self._attr_supported_features |= ClimateEntityFeature.FAN_MODE

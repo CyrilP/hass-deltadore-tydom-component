@@ -160,7 +160,9 @@ def validate_value_with_metadata(
 NAVICLIM_FAN_AUTO_ENUM = "AUTO"
 
 
-def get_naviclim_fan_modes(metadata: dict | None, auto_value: str = "auto") -> list[str]:
+def get_naviclim_fan_modes(
+    metadata: dict | None, auto_value: str = "auto"
+) -> list[str]:
     """Build the list of Home Assistant fan modes from Naviclim metadata.
 
     Args:
@@ -179,10 +181,9 @@ def get_naviclim_fan_modes(metadata: dict | None, auto_value: str = "auto") -> l
         return modes
 
     speed_string_meta = metadata.get("speedString")
-    if (
-        isinstance(speed_string_meta, dict)
-        and NAVICLIM_FAN_AUTO_ENUM in speed_string_meta.get("enum_values", [])
-    ):
+    if isinstance(
+        speed_string_meta, dict
+    ) and NAVICLIM_FAN_AUTO_ENUM in speed_string_meta.get("enum_values", []):
         modes.append(auto_value)
 
     speed_meta = metadata.get("speed")
