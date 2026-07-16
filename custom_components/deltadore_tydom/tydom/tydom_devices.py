@@ -348,6 +348,35 @@ class TydomBoiler(TydomDevice):
             self._id, self._endpoint, "thermicLevel", level
         )
 
+    async def set_fan_speed(self, speed) -> None:
+        """Set a manual fan speed on a Naviclim (X3D) HVAC zone.
+
+        Writes the numeric ``speed`` register (1..3 on a Naviclim). The value is
+        validated against the device metadata first so an out-of-range speed is
+        rejected before it reaches the Tydom box.
+        """
+        is_valid, error_msg = validate_value_with_metadata(self, "speed", speed)
+        if not is_valid:
+            from homeassistant.exceptions import HomeAssistantError
+
+            raise HomeAssistantError(
+                error_msg or f"Vitesse de ventilation invalide: {speed}"
+            )
+
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "speed", speed
+        )
+
+    async def set_fan_auto(self) -> None:
+        """Set automatic fan speed on a Naviclim (X3D) HVAC zone.
+
+        Writes ``speedString`` = ``"AUTO"``; the box then drives the fan speed
+        automatically and reports the numeric ``speed`` register as null.
+        """
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "speedString", "AUTO"
+        )
+
 
 class TydomWindow(TydomDevice):
     """represents a window."""

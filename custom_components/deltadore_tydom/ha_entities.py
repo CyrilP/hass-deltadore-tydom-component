@@ -15,6 +15,7 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.components.climate import (
     ClimateEntity,
     ClimateEntityFeature,
+    FAN_AUTO,
     HVACAction,
     HVACMode,
     PRESET_AWAY,
@@ -105,7 +106,13 @@ from .tydom.tydom_devices import (
     TydomMoment,
 )
 
-from .const import DOMAIN, LOGGER, TYDOM_UNIT_TO_HA_UNIT
+from .const import (
+    DOMAIN,
+    LOGGER,
+    TYDOM_UNIT_TO_HA_UNIT,
+    get_naviclim_fan_mode,
+    get_naviclim_fan_modes,
+)
 from .tydom.MessageHandler import device_name, groups_data
 
 
@@ -2325,6 +2332,18 @@ class HaClimate(ClimateEntity, HAEntity):
             # show a temperature control that would write a phantom setpoint.
             self._attr_supported_features &= ~ClimateEntityFeature.TARGET_TEMPERATURE
 
+        # Fan speed (Naviclim X3D reversible AC). Naviclim zones expose a numeric
+        # `speed` (1..3) for manual speeds and a `speedString` ["AUTO"] register
+        # for automatic mode; we surface these as HA fan modes ("auto", "1", "2",
+        # "3"). Non-AC thermostats and fil-pilote zones have neither register, so
+        # get_naviclim_fan_modes returns [] and the FAN_MODE feature stays off.
+        self._attr_fan_modes = get_naviclim_fan_modes(
+            self._device._metadata, FAN_AUTO
+        )
+        self._supports_fan = bool(self._attr_fan_modes)
+        if self._supports_fan:
+            self._attr_supported_features |= ClimateEntityFeature.FAN_MODE
+
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
         await super().async_added_to_hass()
@@ -2557,6 +2576,32 @@ class HaClimate(ClimateEntity, HAEntity):
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
         await self._device.set_temperature(str(kwargs.get(ATTR_TEMPERATURE)))
+
+    @property
+    def fan_mode(self) -> str | None:
+        """Return the current fan mode (Naviclim: Auto/1/2/3)."""
+        if not getattr(self, "_supports_fan", False):
+            return None
+        return get_naviclim_fan_mode(
+            getattr(self._device, "speed", None),
+            getattr(self._device, "speedString", None),
+            self._attr_fan_modes,
+            FAN_AUTO,
+        )
+
+    async def async_set_fan_mode(self, fan_mode: str) -> None:
+        """Set new target fan mode (Naviclim: Auto/1/2/3)."""
+        if not getattr(self, "_supports_fan", False):
+            return
+        if fan_mode == FAN_AUTO:
+            await self._device.set_fan_auto()
+            return
+        try:
+            speed = int(fan_mode)
+        except (ValueError, TypeError):
+            LOGGER.error("Invalid fan mode requested: %s", fan_mode)
+            return
+        await self._device.set_fan_speed(speed)
 
 
 class HaOpeningBinarySensor(BinarySensorEntity, HAEntity):

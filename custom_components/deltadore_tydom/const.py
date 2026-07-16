@@ -145,6 +145,101 @@ def validate_value_with_metadata(
     return True, None
 
 
+# Fan speed helpers for Naviclim (X3D) reversible air-conditioning zones.
+#
+# These HVAC zones expose two dedicated fan-speed registers (verified on a live
+# Naviclim Atlantic, see tools/traces-naviclim-atlantic.txt):
+#   speed:        numeric, permission rw, min 1, max 3, step 1  -> manual speeds
+#   speedString:  string,  permission rw, enum_values ["AUTO"]  -> automatic
+# When automatic is active the device reports speedString="AUTO" and speed=null;
+# in manual mode it reports the numeric speed (1..3). We map this onto the Home
+# Assistant fan_mode feature as ["auto", "1", "2", "3"].
+#
+# Kept here (HA-free module) so the mapping can be unit-tested in isolation and
+# reused by the climate entity.
+NAVICLIM_FAN_AUTO_ENUM = "AUTO"
+
+
+def get_naviclim_fan_modes(metadata: dict | None, auto_value: str = "auto") -> list[str]:
+    """Build the list of Home Assistant fan modes from Naviclim metadata.
+
+    Args:
+        metadata: The device ``_metadata`` dict (keyed by register name).
+        auto_value: The HA fan-mode string used for automatic speed
+            (defaults to "auto", matching ``homeassistant`` FAN_AUTO).
+
+    Returns:
+        Fan modes ordered auto first, then the numeric speeds, e.g.
+        ``["auto", "1", "2", "3"]``. Empty list when the device exposes no
+        usable fan-speed register (i.e. it is not a Naviclim-style AC).
+
+    """
+    modes: list[str] = []
+    if not isinstance(metadata, dict):
+        return modes
+
+    speed_string_meta = metadata.get("speedString")
+    if (
+        isinstance(speed_string_meta, dict)
+        and NAVICLIM_FAN_AUTO_ENUM in speed_string_meta.get("enum_values", [])
+    ):
+        modes.append(auto_value)
+
+    speed_meta = metadata.get("speed")
+    if isinstance(speed_meta, dict) and speed_meta.get("type") == "numeric":
+        try:
+            speed_min = int(float(speed_meta.get("min", 1)))
+            speed_max = int(float(speed_meta.get("max", 3)))
+        except (ValueError, TypeError):
+            speed_min, speed_max = 1, 3
+        if speed_max >= speed_min:
+            modes.extend(str(i) for i in range(speed_min, speed_max + 1))
+
+    return modes
+
+
+def get_naviclim_fan_mode(
+    speed: float | int | None,
+    speed_string: str | None,
+    fan_modes: list[str],
+    auto_value: str = "auto",
+) -> str | None:
+    """Resolve the current HA fan mode from Naviclim register values.
+
+    ``speed_string == "AUTO"`` means automatic (``speed`` is then null);
+    otherwise the numeric ``speed`` (1..3) is the active manual speed.
+
+    Args:
+        speed: Current value of the numeric ``speed`` register (or None).
+        speed_string: Current value of the ``speedString`` register (or None).
+        fan_modes: The supported fan modes (from :func:`get_naviclim_fan_modes`).
+        auto_value: The HA fan-mode string used for automatic speed.
+
+    Returns:
+        The active fan mode string, or None when fan control is unsupported.
+
+    """
+    if not fan_modes:
+        return None
+
+    if speed_string == NAVICLIM_FAN_AUTO_ENUM and auto_value in fan_modes:
+        return auto_value
+
+    if speed is not None:
+        try:
+            speed_str = str(int(float(speed)))
+        except (ValueError, TypeError):
+            speed_str = None
+        if speed_str is not None and speed_str in fan_modes:
+            return speed_str
+
+    # speed is null / unrecognised: prefer auto when the device supports it,
+    # otherwise report the first available speed so HA always has a value.
+    if auto_value in fan_modes:
+        return auto_value
+    return fan_modes[0]
+
+
 # Mapping des valeurs validity vers les intervalles de polling (en secondes)
 VALIDITY_POLLING_INTERVALS = {
     "INFINITE": None,  # Pas de polling nécessaire
