@@ -1358,8 +1358,13 @@ class TydomClient:
                     body = json.dumps({"value": str(value), "part": str(zone_id)})
                 else:
                     cmd = "zoneCmd"
+                    zones = [
+                        int(zone.strip())
+                        for zone in str(zone_id).split(",")
+                        if zone.strip()
+                    ]
                     body = json.dumps(
-                        {"value": str(value), "pwd": str(pin), "zones": [int(zone_id)]}
+                        {"value": str(value), "pwd": str(pin), "zones": zones}
                     )
 
             safe_device_id = quote(str(device_id), safe="")
