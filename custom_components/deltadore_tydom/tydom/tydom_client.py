@@ -505,11 +505,16 @@ class TydomClient:
                 )
 
         LOGGER.error(
-            "Impossible de se reconnecter après %d tentatives",
+            "Impossible de se reconnecter après %d tentatives; "
+            "nouvelle tentative dans 60 secondes",
             self._max_reconnect_attempts,
         )
         # Notifier Home Assistant de la perte de connexion
         self.online = False
+        self._reconnect_attempts = 0
+
+        if not self._shutting_down:
+            await asyncio.sleep(60)
 
     async def consume_messages(self) -> list["TydomDevice"] | None:
         """Read and parse incoming messages."""
@@ -538,7 +543,16 @@ class TydomClient:
             if self._connection.closed or self.pending_pings > 5:
                 if self._shutting_down:
                     return None
-                await self._connection.close()
+                LOGGER.warning(
+                    "Reconnecting Tydom client (reason: %s)",
+                    "websocket closed"
+                    if self._connection.closed
+                    else f"{self.pending_pings} pending pings",
+                )
+
+                if not self._connection.closed:
+                    await self._connection.close()
+
                 await self._reconnect_with_backoff()
                 return None
 
@@ -581,9 +595,9 @@ class TydomClient:
             LOGGER.exception("Unable to handle message")
             return None
 
-    def receive_pong(self):
-        """Received a pong message, decrease pending ping counts."""
-        self.pending_pings -= 1
+    def receive_pong(self) -> None:
+        """Handle a pong response and keep the pending ping counter non-negative."""
+        self.pending_pings = max(0, self.pending_pings - 1)
 
     def build_digest_headers(self, nonce):
         """Build the headers of Digest Authentication."""
