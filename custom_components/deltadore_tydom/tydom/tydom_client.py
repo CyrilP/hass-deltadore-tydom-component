@@ -515,6 +515,7 @@ class TydomClient:
         await self.get_devices_meta()
         await self.get_devices_cmeta()
         await self.get_devices_data()
+        await self.get_areas_data()
         if self._shutting_down:
             return
 
@@ -1343,6 +1344,29 @@ class TydomClient:
         LOGGER.debug("Sending message to tydom (PUT home hvac data %s)", mode)
         if not file_mode:
             await self.send_bytes(a_bytes)
+        return 0
+
+    async def put_area_data(self, area_id, name, value, max_retries: int = 2) -> int:
+        """Set one attribute on an area-backed device."""
+        body = json.dumps([{"name": name, "value": value}])
+        safe_area_id = quote(str(area_id), safe="")
+        path = f"/areas/{safe_area_id}/data"
+        str_request = (
+            f"PUT {path} HTTP/1.1\r\nContent-Length: "
+            + str(len(body))
+            + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
+            + body
+            + "\r\n\r\n"
+        )
+        a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
+        LOGGER.debug(
+            "Sending area command: area_id=%s, name=%s, value=%s",
+            area_id,
+            name,
+            value,
+        )
+        if not file_mode:
+            await self.send_bytes(a_bytes, max_retries=max_retries)
         return 0
 
     async def put_devices_data_validated(

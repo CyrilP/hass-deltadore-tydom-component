@@ -2234,26 +2234,39 @@ class HaClimate(ClimateEntity, HAEntity):
             HVACMode.AUTO,
         ]
 
-        if self._device._metadata is not None and (
-            (
-                "comfortMode" in self._device._metadata
-                and "COOLING" in self._device._metadata["comfortMode"]["enum_values"]
-            )
-            or (
-                "hvacMode" in self._device._metadata
-                and "COOLING" in self._device._metadata["hvacMode"]["enum_values"]
+        if hasattr(self._device, "area_id"):
+            self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT, HVACMode.COOL]
+
+        if (
+            HVACMode.COOL not in self._attr_hvac_modes
+            and self._device._metadata is not None
+            and (
+                (
+                    "comfortMode" in self._device._metadata
+                    and "COOLING"
+                    in self._device._metadata["comfortMode"]["enum_values"]
+                )
+                or (
+                    "hvacMode" in self._device._metadata
+                    and "COOLING" in self._device._metadata["hvacMode"]["enum_values"]
+                )
             )
         ):
             self._attr_hvac_modes.append(HVACMode.COOL)
 
-        if self._device._metadata is not None and (
-            (
-                "comfortMode" in self._device._metadata
-                and "HEATING" in self._device._metadata["comfortMode"]["enum_values"]
-            )
-            or (
-                "hvacMode" in self._device._metadata
-                and "HEATING" in self._device._metadata["hvacMode"]["enum_values"]
+        if (
+            HVACMode.HEAT not in self._attr_hvac_modes
+            and self._device._metadata is not None
+            and (
+                (
+                    "comfortMode" in self._device._metadata
+                    and "HEATING"
+                    in self._device._metadata["comfortMode"]["enum_values"]
+                )
+                or (
+                    "hvacMode" in self._device._metadata
+                    and "HEATING" in self._device._metadata["hvacMode"]["enum_values"]
+                )
             )
         ):
             self._attr_hvac_modes.append(HVACMode.HEAT)

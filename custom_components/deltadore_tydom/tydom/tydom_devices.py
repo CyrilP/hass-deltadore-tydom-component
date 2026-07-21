@@ -213,6 +213,22 @@ class TydomBoiler(TydomDevice):
     async def set_hvac_mode(self, mode):
         """Set hvac mode (ANTI_FROST/NORMAL/STOP)."""
         LOGGER.debug("setting hvac mode to %s", mode)
+        if hasattr(self, "area_id"):
+            area_modes = {
+                "NORMAL": "HEATING",
+                "HEATING": "HEATING",
+                "COOLING": "COOLING",
+                "STOP": "STOP",
+            }
+            area_mode = area_modes.get(mode)
+            if area_mode is None:
+                LOGGER.error("Unknown area HVAC mode: %s", mode)
+                return
+            await self._tydom_client.put_area_data(
+                self.area_id, "authorization", area_mode
+            )
+            return
+
         if self._uses_zone_authorization():
             if mode == "STOP":
                 await self._tydom_client.put_devices_data(
@@ -338,9 +354,14 @@ class TydomBoiler(TydomDevice):
                 error_msg or f"Température invalide: {temperature}"
             )
 
-        await self._tydom_client.put_devices_data(
-            self._id, self._endpoint, "setpoint", temperature
-        )
+        if hasattr(self, "area_id"):
+            await self._tydom_client.put_area_data(
+                self.area_id, "setpoint", temperature
+            )
+        else:
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "setpoint", temperature
+            )
 
     async def set_thermic_level(self, level):
         """Set the pilot-wire order directly (fil-pilote zones)."""

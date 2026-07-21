@@ -58,6 +58,15 @@ groups_metadata = {}  # Store group metadata from /configs/file: {group_id: {"us
 groups_data = {}  # Store groups data: {group_id: {"devices": [device_ids], "name": group_name}}
 
 
+@dataclass(frozen=True)
+class AreaDeviceReference:
+    """Identify the device endpoint whose state is backed by an area."""
+
+    uid: str
+    device_id: str
+    endpoint_id: str
+
+
 class Reply(TypedDict):
     """cdata request reply."""
 
@@ -78,6 +87,7 @@ class MessageHandler:
         self.cmd_prefix = cmd_prefix
         self._cdata_replies: list[Reply] = []
         self._end_reply_events: dict[str, asyncio.Event] = {}
+        self._area_devices: dict[str, AreaDeviceReference] = {}
 
     def get_reply(self, transaction_id: str) -> Reply | None:
         """
@@ -299,6 +309,7 @@ class MessageHandler:
             self.tydom_client.receive_pong()
 
         MSG_MAPPING = {
+            "/areas/data": self.parse_areas_data,
             "/configs/file": MessageHandler.parse_config_data,
             "/configs/gateway/api_mode": partial(no_op, "msg_api_mode"),
             "/devices/cdata": self.parse_devices_cdata,
@@ -332,6 +343,13 @@ class MessageHandler:
 
         if msg_type is None:
             msg_type = MSG_MAPPING.get(uri_origin)
+
+            if msg_type is None and uri_origin:
+                area_data = re.fullmatch(r"/areas/([^/]+)/data", uri_origin)
+                if area_data:
+                    msg_type = partial(
+                        self.parse_areas_data, area_id=area_data.group(1)
+                    )
 
             if msg_type is None and uri_origin:
                 # Response to GET /devices/{id}/endpoints/{id}/data (adaptive
@@ -504,7 +522,7 @@ class MessageHandler:
                     device_metadata.get(uid),
                     data,
                 )
-            case "boiler" | "sh_hvac" | "electric" | "aeraulic":
+            case "boiler" | "sh_hvac" | "electric" | "aeraulic" | "re2020ControlBoiler":
                 return TydomBoiler(
                     tydom_client,
                     uid,
@@ -801,6 +819,20 @@ class MessageHandler:
                     try:
                         data = {}
 
+                        link = endpoint.get("link")
+                        if (
+                            isinstance(link, dict)
+                            and link.get("type") == "area"
+                            and link.get("id") is not None
+                        ):
+                            area_id = str(link["id"])
+                            data["area_id"] = area_id
+                            self._area_devices[area_id] = AreaDeviceReference(
+                                uid=unique_id,
+                                device_id=str(device_id),
+                                endpoint_id=str(endpoint_id),
+                            )
+
                         # Only process data if available and valid
                         if has_data and not has_error:
                             for elem in endpoint["data"]:
@@ -860,6 +892,62 @@ class MessageHandler:
                         )
             else:
                 LOGGER.warning("Unsupported message received: %s", parsed)
+        return devices
+
+    async def parse_areas_data(
+        self, parsed, transaction_id, area_id: str | None = None
+    ):
+        """Map area state onto the device endpoint linked to that area."""
+        LOGGER.debug("parse_areas_data: %s", parsed)
+        devices = []
+
+        areas = parsed if isinstance(parsed, list) else [parsed]
+        for area in areas:
+            if not isinstance(area, dict):
+                continue
+
+            current_area_id = area_id if area_id is not None else area.get("id")
+            if current_area_id is None:
+                LOGGER.warning("Area data received without an area id: %s", area)
+                continue
+
+            current_area_id = str(current_area_id)
+            reference = self._area_devices.get(current_area_id)
+            if reference is None:
+                LOGGER.debug(
+                    "Ignoring data for area %s because no device endpoint links to it",
+                    current_area_id,
+                )
+                continue
+
+            data = {"area_id": current_area_id}
+            for element in area.get("data", []):
+                if (
+                    isinstance(element, dict)
+                    and element.get("validity") == "upToDate"
+                    and "name" in element
+                ):
+                    data[element["name"]] = element.get("value")
+
+            device = await MessageHandler.get_device(
+                self.tydom_client,
+                self.get_type_from_id(reference.uid),
+                reference.uid,
+                reference.device_id,
+                self.get_name_from_id(reference.uid),
+                reference.endpoint_id,
+                data,
+            )
+            if device is not None:
+                devices.append(device)
+                LOGGER.info(
+                    "Area update (area=%s, device=%s, endpoint=%s, name=%s)",
+                    current_area_id,
+                    reference.device_id,
+                    reference.endpoint_id,
+                    device.device_name,
+                )
+
         return devices
 
     async def parse_devices_cdata(self, parsed, transaction_id: str | None = None):
