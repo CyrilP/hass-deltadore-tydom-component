@@ -211,6 +211,36 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
         self.assertIsNone(client._connection)
         self.assertFalse(client._connection_ready)
 
+    async def test_concurrent_reconnects_share_one_connection(self) -> None:
+        """Concurrent reconnect callers must create one replacement socket."""
+        client = self._client()
+        candidate = _websocket()
+        reconnect_started = asyncio.Event()
+        finish_reconnect = asyncio.Event()
+
+        async def connect():
+            reconnect_started.set()
+            await finish_reconnect.wait()
+            return candidate
+
+        client.async_connect = AsyncMock(side_effect=connect)
+        client._initialise_connection = AsyncMock()
+        client._wait_or_shutdown = AsyncMock(return_value=False)
+
+        first = asyncio.create_task(client._reconnect_with_backoff())
+        await reconnect_started.wait()
+        second = asyncio.create_task(client._reconnect_with_backoff())
+        await asyncio.sleep(0)
+        finish_reconnect.set()
+
+        first_result, second_result = await asyncio.gather(first, second)
+
+        self.assertTrue(first_result)
+        self.assertTrue(second_result)
+        client.async_connect.assert_awaited_once()
+        self.assertIs(client._connection, candidate)
+        self.assertTrue(client._connection_ready)
+
     async def test_writer_uses_managed_reconnect_after_send_failure(self) -> None:
         """A writer must not create or assign a replacement socket itself."""
         client = self._client()
