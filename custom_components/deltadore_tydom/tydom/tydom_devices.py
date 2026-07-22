@@ -864,6 +864,7 @@ class TydomGroup(TydomDevice):
             )
             raise
 
+
 class TydomMoment(TydomDevice):
     """Represents a Tydom moment/program."""
 
