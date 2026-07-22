@@ -204,6 +204,26 @@ class TydomSmoke(TydomDevice):
 class TydomBoiler(TydomDevice):
     """Represents a Boiler."""
 
+    def area_hvac_modes(self) -> set[str]:
+        """Return the HVAC modes advertised by an area-backed thermostat."""
+        if not hasattr(self, "area_id"):
+            return set()
+
+        # A linked thermal receiver always provides stop and heating. Cooling is
+        # exposed only when TYDOM reports it in metadata or live state.
+        modes = {"STOP", "HEATING"}
+        metadata = self._metadata or {}
+        for attribute in ("authorization", "comfortMode", "hvacMode", "thermicLevel"):
+            attribute_metadata = metadata.get(attribute, {})
+            if isinstance(attribute_metadata, dict):
+                modes.update(attribute_metadata.get("enum_values", []))
+
+            value = getattr(self, attribute, None)
+            if isinstance(value, str):
+                modes.add(value)
+
+        return modes
+
     def _uses_zone_authorization(self) -> bool:
         """Return True when heat/cool is driven by zone authorization."""
         return (

@@ -121,6 +121,45 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         self.assertIsInstance(device, TydomBoiler)
         self.assertEqual(device.area_id, "7")
         self.assertEqual(device.temperature, 20.5)
+        self.assertEqual(device.area_hvac_modes(), {"STOP", "HEATING"})
+
+    async def test_unlinked_re2020_endpoint_does_not_create_climate(self) -> None:
+        """A shutter-only Tywell must not produce a climate device."""
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [
+                        {
+                            "id": 10,
+                            "error": 0,
+                            "data": [
+                                {
+                                    "name": "temperature",
+                                    "value": 20.5,
+                                    "validity": "upToDate",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+
+        self.assertEqual(devices, [])
+
+    async def test_area_modes_include_only_advertised_cooling(self) -> None:
+        """Cooling is exposed only when TYDOM advertises the capability."""
+        handler_module.device_metadata["10_20"] = {
+            "authorization": {
+                "enum_values": ["STOP", "HEATING", "COOLING"],
+            }
+        }
+
+        device = await self._discover()
+
+        self.assertEqual(device.area_hvac_modes(), {"STOP", "HEATING", "COOLING"})
 
     async def test_area_state_updates_linked_thermostat(self) -> None:
         """Area state is returned under the linked endpoint's stable uid."""

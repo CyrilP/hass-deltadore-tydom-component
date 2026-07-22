@@ -2235,7 +2235,12 @@ class HaClimate(ClimateEntity, HAEntity):
         ]
 
         if hasattr(self._device, "area_id"):
-            self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT, HVACMode.COOL]
+            area_modes = self._device.area_hvac_modes()
+            self._attr_hvac_modes = [HVACMode.OFF]
+            if "HEATING" in area_modes or "NORMAL" in area_modes:
+                self._attr_hvac_modes.append(HVACMode.HEAT)
+            if "COOLING" in area_modes:
+                self._attr_hvac_modes.append(HVACMode.COOL)
 
         if (
             HVACMode.COOL not in self._attr_hvac_modes
@@ -2472,6 +2477,11 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature currently set to be reached."""
+        if hasattr(self._device, "area_id"):
+            setpoint = getattr(self._device, "setpoint", None)
+            if setpoint is not None:
+                return float(setpoint)
+
         if hasattr(self._device, "hvacMode"):
             hvac_mode = getattr(self._device, "hvacMode", None)
             if hvac_mode in ("HEATING", "NORMAL"):

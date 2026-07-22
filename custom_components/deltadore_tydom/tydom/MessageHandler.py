@@ -523,7 +523,25 @@ class MessageHandler:
                     device_metadata.get(uid),
                     data,
                 )
-            case "boiler" | "sh_hvac" | "electric" | "aeraulic" | "re2020ControlBoiler":
+            case "re2020ControlBoiler":
+                if data is None or data.get("area_id") is None:
+                    LOGGER.debug(
+                        "Ignoring unlinked Tywell thermal endpoint %s (%s)",
+                        uid,
+                        name,
+                    )
+                    return None
+                return TydomBoiler(
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata.get(uid),
+                    data,
+                )
+            case "boiler" | "sh_hvac" | "electric" | "aeraulic":
                 return TydomBoiler(
                     tydom_client,
                     uid,
@@ -850,6 +868,17 @@ class MessageHandler:
                         area_id = data.get("area_id")
                         if area_id is not None and area_id in self._area_data:
                             data.update(self._area_data[area_id])
+
+                        if (
+                            type_of_id == "re2020ControlBoiler"
+                            and "area_id" not in data
+                        ):
+                            LOGGER.debug(
+                                "Ignoring unlinked Tywell thermal endpoint %s (%s)",
+                                unique_id,
+                                name_of_id,
+                            )
+                            continue
 
                         # Create the device (even without data)
                         device = await MessageHandler.get_device(
