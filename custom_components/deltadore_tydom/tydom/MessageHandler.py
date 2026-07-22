@@ -67,6 +67,40 @@ class AreaDeviceReference:
     endpoint_id: str
 
 
+def _area_control_metadata(parsed: list[dict]) -> dict[str, dict]:
+    """Return the strongest writable HVAC metadata found for each area."""
+    controls: dict[str, tuple[int, dict]] = {}
+    control_attributes = {
+        "authorization",
+        "setpoint",
+        "heatSetpoint",
+        "coolSetpoint",
+    }
+
+    for raw_device in parsed:
+        device_id = raw_device.get("id")
+        for endpoint in raw_device.get("endpoints", []):
+            endpoint_id = endpoint.get("id")
+            link = endpoint.get("link")
+            if (
+                device_id is None
+                or endpoint_id is None
+                or not isinstance(link, dict)
+                or link.get("type") != "area"
+                or link.get("id") is None
+            ):
+                continue
+
+            uid = f"{endpoint_id}_{device_id}"
+            metadata = device_metadata.get(uid, {})
+            score = sum(attribute in metadata for attribute in control_attributes)
+            area_id = str(link["id"])
+            if score > controls.get(area_id, (-1, {}))[0]:
+                controls[area_id] = (score, metadata)
+
+    return {area_id: metadata for area_id, (_, metadata) in controls.items()}
+
+
 class Reply(TypedDict):
     """cdata request reply."""
 
@@ -541,6 +575,17 @@ class MessageHandler:
                     device_metadata.get(uid),
                     data,
                 )
+            case "re2020ControlPassive":
+                return TydomDevice(
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata.get(uid),
+                    data,
+                )
             case "boiler" | "sh_hvac" | "electric" | "aeraulic":
                 return TydomBoiler(
                     tydom_client,
@@ -767,6 +812,8 @@ class MessageHandler:
             # logging one "Unsupported message" warning per key.
             parsed = [parsed]
 
+        area_metadata = _area_control_metadata(parsed)
+
         for i in parsed:
             if "endpoints" in i:
                 device_id = i["id"]
@@ -857,7 +904,9 @@ class MessageHandler:
                                 device_type[passive_climate_uid] = "re2020ControlBoiler"
                                 device_endpoint[passive_climate_uid] = endpoint_id
                                 device_metadata[passive_climate_uid] = (
-                                    device_metadata.get(unique_id, {}).copy()
+                                    area_metadata.get(
+                                        area_id, device_metadata.get(unique_id, {})
+                                    ).copy()
                                 )
                             else:
                                 data["area_id"] = area_id
@@ -936,6 +985,14 @@ class MessageHandler:
                                 climate_data = self._area_data.get(
                                     area_id, {"area_id": area_id}
                                 ).copy()
+                                for temperature_attribute in (
+                                    "temperature",
+                                    "ambientTemperature",
+                                ):
+                                    if temperature_attribute in data:
+                                        climate_data[temperature_attribute] = data[
+                                            temperature_attribute
+                                        ]
                                 climate_device = await MessageHandler.get_device(
                                     self.tydom_client,
                                     "re2020ControlBoiler",
@@ -951,7 +1008,7 @@ class MessageHandler:
                                         "device_id": device_id,
                                         "endpoint_id": endpoint_id,
                                     }
-                                    LOGGER.info(
+                                    LOGGER.debug(
                                         "Area climate created (area=%s, device=%s, "
                                         "endpoint=%s, name=%s)",
                                         area_id,
@@ -1038,7 +1095,7 @@ class MessageHandler:
                 )
                 if device is not None:
                     devices.append(device)
-                    LOGGER.info(
+                    LOGGER.debug(
                         "Area update (area=%s, device=%s, endpoint=%s, name=%s)",
                         current_area_id,
                         reference.device_id,

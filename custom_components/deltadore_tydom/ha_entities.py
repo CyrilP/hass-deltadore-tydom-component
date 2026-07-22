@@ -2277,6 +2277,10 @@ class HaClimate(ClimateEntity, HAEntity):
             self._attr_hvac_modes.append(HVACMode.HEAT)
 
         self._registered_sensors = []
+        if self._device.device_id.endswith("_area_climate"):
+            # The source passive controller already exposes these as sensors;
+            # keep them only as the climate entity's current temperature.
+            self._registered_sensors.extend(["temperature", "ambientTemperature"])
 
         if (
             self._device._metadata is not None

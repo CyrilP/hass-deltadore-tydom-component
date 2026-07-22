@@ -81,6 +81,7 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         """Reset parser registries before each test."""
         handler_module.device_name.clear()
         handler_module.device_type.clear()
+        handler_module.device_endpoint.clear()
         handler_module.device_metadata.clear()
         handler_module.device_name["10_20"] = "Living room"
         handler_module.device_type["10_20"] = "re2020ControlBoiler"
@@ -192,7 +193,70 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         self.assertEqual(climate.device_id, "10_20_area_climate")
         self.assertEqual(climate.device_name, "Tywell Ctrl RdC Thermostat")
         self.assertEqual(climate.area_id, "7")
+        self.assertEqual(climate.ambientTemperature, 20.5)
         self.assertFalse(hasattr(climate, "hygroIn"))
+
+    async def test_passive_climate_inherits_linked_area_control_metadata(self) -> None:
+        """The derived climate uses receiver limits rather than passive metadata."""
+        handler_module.device_name.update(
+            {
+                "10_20": "Tywell Ctrl RdC",
+                "11_21": "Tybox 5101 RdC",
+            }
+        )
+        handler_module.device_type.update(
+            {
+                "10_20": "re2020ControlPassive",
+                "11_21": "boiler",
+            }
+        )
+        handler_module.device_metadata.update(
+            {
+                "10_20": {"ambientTemperature": {"min": -327.67, "max": 327.66}},
+                "11_21": {
+                    "authorization": {"enum_values": ["STOP", "HEATING"]},
+                    "setpoint": {"min": 10.0, "max": 30.0, "step": 0.5},
+                },
+            }
+        )
+
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [
+                        {
+                            "id": 10,
+                            "error": 0,
+                            "link": {"type": "area", "id": 7},
+                            "data": [],
+                        }
+                    ],
+                },
+                {
+                    "id": 21,
+                    "endpoints": [
+                        {
+                            "id": 11,
+                            "error": 0,
+                            "link": {"type": "area", "id": 7},
+                            "data": [],
+                        }
+                    ],
+                },
+            ],
+            None,
+        )
+
+        derived_climate = devices[1]
+        self.assertIsInstance(derived_climate, TydomBoiler)
+        self.assertEqual(
+            derived_climate._metadata,
+            {
+                "authorization": {"enum_values": ["STOP", "HEATING"]},
+                "setpoint": {"min": 10.0, "max": 30.0, "step": 0.5},
+            },
+        )
 
     async def test_area_state_updates_derived_passive_climate(self) -> None:
         """Area pushes target the derived climate rather than the passive sensor."""
