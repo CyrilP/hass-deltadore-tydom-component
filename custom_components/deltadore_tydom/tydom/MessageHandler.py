@@ -87,7 +87,8 @@ class MessageHandler:
         self.cmd_prefix = cmd_prefix
         self._cdata_replies: list[Reply] = []
         self._end_reply_events: dict[str, asyncio.Event] = {}
-        self._area_devices: dict[str, AreaDeviceReference] = {}
+        self._area_devices: dict[str, dict[str, AreaDeviceReference]] = {}
+        self._area_data: dict[str, dict[str, Any]] = {}
 
     def get_reply(self, transaction_id: str) -> Reply | None:
         """
@@ -827,10 +828,13 @@ class MessageHandler:
                         ):
                             area_id = str(link["id"])
                             data["area_id"] = area_id
-                            self._area_devices[area_id] = AreaDeviceReference(
+                            reference = AreaDeviceReference(
                                 uid=unique_id,
                                 device_id=str(device_id),
                                 endpoint_id=str(endpoint_id),
+                            )
+                            self._area_devices.setdefault(area_id, {})[unique_id] = (
+                                reference
                             )
 
                         # Only process data if available and valid
@@ -842,6 +846,10 @@ class MessageHandler:
 
                                 if element_validity == "upToDate":
                                     data[element_name] = element_value
+
+                        area_id = data.get("area_id")
+                        if area_id is not None and area_id in self._area_data:
+                            data.update(self._area_data[area_id])
 
                         # Create the device (even without data)
                         device = await MessageHandler.get_device(
@@ -912,13 +920,20 @@ class MessageHandler:
                 continue
 
             current_area_id = str(current_area_id)
-            reference = self._area_devices.get(current_area_id)
-            if reference is None:
-                LOGGER.debug(
-                    "Ignoring data for area %s because no device endpoint links to it",
+            if area.get("error", 0) != 0:
+                LOGGER.warning(
+                    "Ignoring area %s data with error %s",
                     current_area_id,
+                    area.get("error"),
                 )
                 continue
+
+            references = self._area_devices.get(current_area_id, {})
+            if not references:
+                LOGGER.debug(
+                    "Caching data for area %s until a linked endpoint is discovered",
+                    current_area_id,
+                )
 
             data = {"area_id": current_area_id}
             for element in area.get("data", []):
@@ -929,24 +944,31 @@ class MessageHandler:
                 ):
                     data[element["name"]] = element.get("value")
 
-            device = await MessageHandler.get_device(
-                self.tydom_client,
-                self.get_type_from_id(reference.uid),
-                reference.uid,
-                reference.device_id,
-                self.get_name_from_id(reference.uid),
-                reference.endpoint_id,
-                data,
+            cached_data = self._area_data.setdefault(
+                current_area_id, {"area_id": current_area_id}
             )
-            if device is not None:
-                devices.append(device)
-                LOGGER.info(
-                    "Area update (area=%s, device=%s, endpoint=%s, name=%s)",
-                    current_area_id,
+            cached_data.update(data)
+            data = cached_data.copy()
+
+            for reference in references.values():
+                device = await MessageHandler.get_device(
+                    self.tydom_client,
+                    self.get_type_from_id(reference.uid),
+                    reference.uid,
                     reference.device_id,
+                    self.get_name_from_id(reference.uid),
                     reference.endpoint_id,
-                    device.device_name,
+                    data,
                 )
+                if device is not None:
+                    devices.append(device)
+                    LOGGER.info(
+                        "Area update (area=%s, device=%s, endpoint=%s, name=%s)",
+                        current_area_id,
+                        reference.device_id,
+                        reference.endpoint_id,
+                        device.device_name,
+                    )
 
         return devices
 

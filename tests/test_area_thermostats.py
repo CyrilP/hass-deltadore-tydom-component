@@ -167,6 +167,71 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         self.assertIsNotNone(devices)
         self.assertEqual(devices[0].authorization, "COOLING")
 
+    async def test_area_state_received_before_discovery_is_retained(self) -> None:
+        """Out-of-order initial responses must not discard area state."""
+        devices = await self.handler.parse_areas_data(
+            [
+                {
+                    "id": 7,
+                    "error": 0,
+                    "data": [
+                        {
+                            "name": "setpoint",
+                            "value": 22.0,
+                            "validity": "upToDate",
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+        self.assertEqual(devices, [])
+        await self.handler.parse_areas_data(
+            [
+                {
+                    "id": 7,
+                    "error": 0,
+                    "data": [
+                        {
+                            "name": "authorization",
+                            "value": "HEATING",
+                            "validity": "upToDate",
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+
+        device = await self._discover()
+
+        self.assertEqual(device.setpoint, 22.0)
+        self.assertEqual(device.authorization, "HEATING")
+
+    async def test_area_error_does_not_replace_cached_state(self) -> None:
+        """An errored area response must not overwrite the last valid state."""
+        await self.handler.parse_areas_data(
+            [
+                {
+                    "id": 7,
+                    "error": 0,
+                    "data": [
+                        {
+                            "name": "setpoint",
+                            "value": 22.0,
+                            "validity": "upToDate",
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+        await self.handler.parse_areas_data([{"id": 7, "error": 1, "data": []}], None)
+
+        device = await self._discover()
+
+        self.assertEqual(device.setpoint, 22.0)
+
     async def test_area_thermostat_commands_use_area_endpoint(self) -> None:
         """Mode and setpoint writes do not fall back to device endpoints."""
         device = await self._discover()
