@@ -2395,6 +2395,33 @@ class HaClimate(ClimateEntity, HAEntity):
         """Return the unit of temperature measurement for the system."""
         return UnitOfTemperature.CELSIUS
 
+    @property
+    def min_temp(self) -> float:
+        """Return the live minimum target temperature when area-backed."""
+        if hasattr(self._device, "area_id"):
+            minimum, _ = self._device.area_temperature_limits()
+            if minimum is not None:
+                return minimum
+        return super().min_temp
+
+    @property
+    def max_temp(self) -> float:
+        """Return the live maximum target temperature when area-backed."""
+        if hasattr(self._device, "area_id"):
+            _, maximum = self._device.area_temperature_limits()
+            if maximum is not None:
+                return maximum
+        return super().max_temp
+
+    @property
+    def target_temperature_step(self) -> float | None:
+        """Return the area controller's advertised temperature step."""
+        if hasattr(self._device, "area_id"):
+            step = self._device.area_temperature_step()
+            if step is not None:
+                return step
+        return super().target_temperature_step
+
     def _resolve_hvac_mode(self) -> HVACMode:
         """Derive HA HVAC mode from Tydom thermostat registers."""
         if getattr(self, "_is_filpilote", False):
@@ -2482,7 +2509,9 @@ class HaClimate(ClimateEntity, HAEntity):
     def target_temperature(self) -> float | None:
         """Return the temperature currently set to be reached."""
         if hasattr(self._device, "area_id"):
-            setpoint = getattr(self._device, "setpoint", None)
+            setpoint = getattr(
+                self._device, self._device.area_setpoint_attribute(), None
+            )
             if setpoint is not None:
                 return float(setpoint)
 

@@ -215,7 +215,7 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
                 "10_20": {"ambientTemperature": {"min": -327.67, "max": 327.66}},
                 "11_21": {
                     "authorization": {"enum_values": ["STOP", "HEATING"]},
-                    "setpoint": {"min": 10.0, "max": 30.0, "step": 0.5},
+                    "setpoint": {"min": 1.0, "max": 50.0, "step": 0.5},
                 },
             }
         )
@@ -254,9 +254,88 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
             derived_climate._metadata,
             {
                 "authorization": {"enum_values": ["STOP", "HEATING"]},
-                "setpoint": {"min": 10.0, "max": 30.0, "step": 0.5},
+                "setpoint": {"min": 1.0, "max": 50.0, "step": 0.5},
             },
         )
+        self.assertEqual(derived_climate.area_temperature_limits(), (1.0, 50.0))
+        self.assertEqual(derived_climate.area_temperature_step(), 0.5)
+
+        area_devices = await self.handler.parse_areas_data(
+            [
+                {
+                    "id": 7,
+                    "data": [
+                        {
+                            "name": "authorization",
+                            "value": "HEATING",
+                            "validity": "upToDate",
+                        },
+                        {
+                            "name": "minSetpoint",
+                            "value": 10.0,
+                            "validity": "upToDate",
+                        },
+                        {
+                            "name": "maxSetpoint",
+                            "value": 30.0,
+                            "validity": "upToDate",
+                        },
+                    ],
+                }
+            ],
+            None,
+        )
+
+        self.assertEqual(area_devices[0].area_temperature_limits(), (10.0, 30.0))
+
+    async def test_partial_update_keeps_strongest_area_metadata(self) -> None:
+        """A passive-only update must not discard linked controller limits."""
+        handler_module.device_name.update(
+            {"10_20": "Tywell Ctrl RdC", "11_21": "Tybox 5101 RdC"}
+        )
+        handler_module.device_type.update(
+            {"10_20": "re2020ControlPassive", "11_21": "boiler"}
+        )
+        controller_metadata = {
+            "authorization": {"enum_values": ["STOP", "HEATING"]},
+            "setpoint": {"min": 1.0, "max": 50.0, "step": 0.5},
+        }
+        handler_module.device_metadata.update(
+            {
+                "10_20": {"ambientTemperature": {"min": -327.67, "max": 327.66}},
+                "11_21": controller_metadata,
+            }
+        )
+        full_response = [
+            {
+                "id": 20,
+                "endpoints": [
+                    {
+                        "id": 10,
+                        "error": 0,
+                        "link": {"type": "area", "id": 7},
+                        "data": [],
+                    }
+                ],
+            },
+            {
+                "id": 21,
+                "endpoints": [
+                    {
+                        "id": 11,
+                        "error": 0,
+                        "link": {"type": "area", "id": 7},
+                        "data": [],
+                    }
+                ],
+            },
+        ]
+        await self.handler.parse_devices_data(full_response, None)
+
+        devices = await self.handler.parse_devices_data(full_response[:1], None)
+
+        derived_climate = devices[1]
+        self.assertEqual(derived_climate._metadata, controller_metadata)
 
     async def test_area_state_updates_derived_passive_climate(self) -> None:
         """Area pushes target the derived climate rather than the passive sensor."""
@@ -475,6 +554,26 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
                 call("7", "setpoint", "21.5"),
             ],
         )
+
+    async def test_reversible_area_uses_mode_specific_setpoint(self) -> None:
+        """A reversible system writes the register matching its current mode."""
+        handler_module.device_metadata["10_20"] = {
+            "authorization": {"enum_values": ["STOP", "HEATING", "COOLING"]},
+            "heatSetpoint": {"min": 7.0, "max": 32.0, "step": 0.5},
+            "coolSetpoint": {"min": 7.0, "max": 32.0, "step": 0.5},
+        }
+        device = await self._discover()
+        device.authorization = "COOLING"
+        device.coolSetpoint = 24.0
+        device.minCoolSetpoint = 18.0
+        device.maxCoolSetpoint = 30.0
+        self.client.put_area_data = AsyncMock()
+
+        await device.set_temperature("23.5")
+
+        self.client.put_area_data.assert_awaited_once_with("7", "coolSetpoint", "23.5")
+        self.assertEqual(device.area_temperature_limits(), (18.0, 30.0))
+        self.assertEqual(device.area_temperature_step(), 0.5)
 
 
 if __name__ == "__main__":

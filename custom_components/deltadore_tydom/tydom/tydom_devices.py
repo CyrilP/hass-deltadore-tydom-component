@@ -204,6 +204,102 @@ class TydomSmoke(TydomDevice):
 class TydomBoiler(TydomDevice):
     """Represents a Boiler."""
 
+    def area_setpoint_attribute(self) -> str:
+        """Return the setpoint register advertised for the current area mode."""
+        authorization = getattr(self, "authorization", None)
+        if authorization == "COOLING":
+            candidates = ("coolSetpoint", "setpoint", "heatSetpoint")
+        elif authorization == "HEATING":
+            candidates = ("heatSetpoint", "setpoint", "coolSetpoint")
+        else:
+            candidates = ("setpoint", "heatSetpoint", "coolSetpoint")
+
+        metadata = self._metadata or {}
+        return next(
+            (
+                attribute
+                for attribute in candidates
+                if hasattr(self, attribute) or attribute in metadata
+            ),
+            "setpoint",
+        )
+
+    def area_temperature_limits(self) -> tuple[float | None, float | None]:
+        """Return live area limits, falling back to controller metadata."""
+        if not hasattr(self, "area_id"):
+            return (None, None)
+
+        authorization = getattr(self, "authorization", None)
+        if authorization == "COOLING":
+            live_names = (
+                ("minCoolSetpoint", "minSetpoint"),
+                ("maxCoolSetpoint", "maxSetpoint"),
+            )
+            metadata_names = ("coolSetpoint", "setpoint")
+        elif authorization == "HEATING":
+            live_names = (
+                ("minHeatSetpoint", "minSetpoint"),
+                ("maxHeatSetpoint", "maxSetpoint"),
+            )
+            metadata_names = ("heatSetpoint", "setpoint")
+        else:
+            live_names = (
+                ("minSetpoint", "minHeatSetpoint", "minCoolSetpoint"),
+                ("maxSetpoint", "maxHeatSetpoint", "maxCoolSetpoint"),
+            )
+            metadata_names = ("setpoint", "heatSetpoint", "coolSetpoint")
+
+        limits: list[float | None] = []
+        metadata = self._metadata or {}
+        for attribute_names, bound in zip(live_names, ("min", "max"), strict=True):
+            live_value = next(
+                (
+                    getattr(self, attribute_name)
+                    for attribute_name in attribute_names
+                    if getattr(self, attribute_name, None) is not None
+                ),
+                None,
+            )
+            if live_value is not None:
+                limits.append(float(live_value))
+                continue
+
+            metadata_value = next(
+                (
+                    metadata[attribute_name].get(bound)
+                    for attribute_name in metadata_names
+                    if metadata.get(attribute_name, {}).get(bound) is not None
+                ),
+                None,
+            )
+            limits.append(float(metadata_value) if metadata_value is not None else None)
+
+        return (limits[0], limits[1])
+
+    def area_temperature_step(self) -> float | None:
+        """Return the target-temperature step advertised for this area."""
+        if not hasattr(self, "area_id"):
+            return None
+
+        authorization = getattr(self, "authorization", None)
+        if authorization == "COOLING":
+            metadata_names = ("coolSetpoint", "setpoint")
+        elif authorization == "HEATING":
+            metadata_names = ("heatSetpoint", "setpoint")
+        else:
+            metadata_names = ("setpoint", "heatSetpoint", "coolSetpoint")
+
+        metadata = self._metadata or {}
+        step = next(
+            (
+                metadata[attribute_name].get("step")
+                for attribute_name in metadata_names
+                if metadata.get(attribute_name, {}).get("step") is not None
+            ),
+            None,
+        )
+        return float(step) if step is not None else None
+
     def area_hvac_modes(self) -> set[str]:
         """Return the HVAC modes advertised by an area-backed thermostat."""
         if not hasattr(self, "area_id"):
@@ -363,9 +459,12 @@ class TydomBoiler(TydomDevice):
 
     async def set_temperature(self, temperature):
         """Set target temperature."""
+        setpoint_attribute = (
+            self.area_setpoint_attribute() if hasattr(self, "area_id") else "setpoint"
+        )
         # Validate value with metadata
         is_valid, error_msg = validate_value_with_metadata(
-            self, "setpoint", temperature
+            self, setpoint_attribute, temperature
         )
         if not is_valid:
             from homeassistant.exceptions import HomeAssistantError
@@ -376,7 +475,7 @@ class TydomBoiler(TydomDevice):
 
         if hasattr(self, "area_id"):
             await self._tydom_client.put_area_data(
-                self.area_id, "setpoint", temperature
+                self.area_id, setpoint_attribute, temperature
             )
         else:
             await self._tydom_client.put_devices_data(

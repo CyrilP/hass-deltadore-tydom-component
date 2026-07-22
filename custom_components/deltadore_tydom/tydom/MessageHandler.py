@@ -67,16 +67,22 @@ class AreaDeviceReference:
     endpoint_id: str
 
 
+_AREA_CONTROL_ATTRIBUTES = {
+    "authorization",
+    "setpoint",
+    "heatSetpoint",
+    "coolSetpoint",
+}
+
+
+def _area_metadata_score(metadata: dict) -> int:
+    """Measure how much writable HVAC information metadata contains."""
+    return sum(attribute in metadata for attribute in _AREA_CONTROL_ATTRIBUTES)
+
+
 def _area_control_metadata(parsed: list[dict]) -> dict[str, dict]:
     """Return the strongest writable HVAC metadata found for each area."""
     controls: dict[str, tuple[int, dict]] = {}
-    control_attributes = {
-        "authorization",
-        "setpoint",
-        "heatSetpoint",
-        "coolSetpoint",
-    }
-
     for raw_device in parsed:
         device_id = raw_device.get("id")
         for endpoint in raw_device.get("endpoints", []):
@@ -93,7 +99,7 @@ def _area_control_metadata(parsed: list[dict]) -> dict[str, dict]:
 
             uid = f"{endpoint_id}_{device_id}"
             metadata = device_metadata.get(uid, {})
-            score = sum(attribute in metadata for attribute in control_attributes)
+            score = _area_metadata_score(metadata)
             area_id = str(link["id"])
             if score > controls.get(area_id, (-1, {}))[0]:
                 controls[area_id] = (score, metadata)
@@ -123,6 +129,7 @@ class MessageHandler:
         self._end_reply_events: dict[str, asyncio.Event] = {}
         self._area_devices: dict[str, dict[str, AreaDeviceReference]] = {}
         self._area_data: dict[str, dict[str, Any]] = {}
+        self._area_metadata: dict[str, dict] = {}
 
     def get_reply(self, transaction_id: str) -> Reply | None:
         """
@@ -812,7 +819,12 @@ class MessageHandler:
             # logging one "Unsupported message" warning per key.
             parsed = [parsed]
 
-        area_metadata = _area_control_metadata(parsed)
+        for area_id, metadata in _area_control_metadata(parsed).items():
+            if _area_metadata_score(metadata) >= _area_metadata_score(
+                self._area_metadata.get(area_id, {})
+            ):
+                self._area_metadata[area_id] = metadata.copy()
+        area_metadata = self._area_metadata
 
         for i in parsed:
             if "endpoints" in i:
