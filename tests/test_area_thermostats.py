@@ -149,6 +149,131 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
 
         self.assertEqual(devices, [])
 
+    async def test_linked_passive_control_keeps_sensor_and_adds_climate(self) -> None:
+        """A passive Tywell retains its sensor device and gains a climate device."""
+        handler_module.device_name["10_20"] = "Tywell Ctrl RdC"
+        handler_module.device_type["10_20"] = "re2020ControlPassive"
+
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [
+                        {
+                            "id": 10,
+                            "error": 0,
+                            "link": {"type": "area", "id": 7},
+                            "data": [
+                                {
+                                    "name": "ambientTemperature",
+                                    "value": 20.5,
+                                    "validity": "upToDate",
+                                },
+                                {
+                                    "name": "hygroIn",
+                                    "value": 49.0,
+                                    "validity": "upToDate",
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+
+        self.assertEqual(len(devices), 2)
+        passive, climate = devices
+        self.assertNotIsInstance(passive, TydomBoiler)
+        self.assertEqual(passive.device_id, "10_20")
+        self.assertEqual(passive.ambientTemperature, 20.5)
+        self.assertEqual(passive.hygroIn, 49.0)
+        self.assertIsInstance(climate, TydomBoiler)
+        self.assertEqual(climate.device_id, "10_20_area_climate")
+        self.assertEqual(climate.device_name, "Tywell Ctrl RdC Thermostat")
+        self.assertEqual(climate.area_id, "7")
+        self.assertFalse(hasattr(climate, "hygroIn"))
+
+    async def test_area_state_updates_derived_passive_climate(self) -> None:
+        """Area pushes target the derived climate rather than the passive sensor."""
+        handler_module.device_name["10_20"] = "Tywell Ctrl RdC"
+        handler_module.device_type["10_20"] = "re2020ControlPassive"
+        await self.handler.parse_devices_data(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [
+                        {
+                            "id": 10,
+                            "error": 0,
+                            "link": {"type": "area", "id": 7},
+                            "data": [],
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+
+        devices = await self.handler.parse_areas_data(
+            [
+                {
+                    "id": 7,
+                    "data": [
+                        {
+                            "name": "authorization",
+                            "value": "HEATING",
+                            "validity": "upToDate",
+                        },
+                        {
+                            "name": "setpoint",
+                            "value": 21.0,
+                            "validity": "upToDate",
+                        },
+                    ],
+                }
+            ],
+            None,
+        )
+
+        self.assertEqual(len(devices), 1)
+        climate = devices[0]
+        self.assertIsInstance(climate, TydomBoiler)
+        self.assertEqual(climate.device_id, "10_20_area_climate")
+        self.assertEqual(climate.authorization, "HEATING")
+        self.assertEqual(climate.setpoint, 21.0)
+
+    async def test_unlinked_passive_control_remains_sensor_only(self) -> None:
+        """An unlinked passive Tywell must not gain a climate device."""
+        handler_module.device_name["10_20"] = "Tywell Ctrl RdC"
+        handler_module.device_type["10_20"] = "re2020ControlPassive"
+
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [
+                        {
+                            "id": 10,
+                            "error": 0,
+                            "data": [
+                                {
+                                    "name": "ambientTemperature",
+                                    "value": 20.5,
+                                    "validity": "upToDate",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+
+        self.assertEqual(len(devices), 1)
+        self.assertNotIsInstance(devices[0], TydomBoiler)
+        self.assertEqual(devices[0].device_id, "10_20")
+
     async def test_area_modes_include_only_advertised_cooling(self) -> None:
         """Cooling is exposed only when TYDOM advertises the capability."""
         handler_module.device_metadata["10_20"] = {

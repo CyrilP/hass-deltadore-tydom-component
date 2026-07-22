@@ -837,6 +837,8 @@ class MessageHandler:
 
                     try:
                         data = {}
+                        area_id = None
+                        passive_climate_uid = None
 
                         link = endpoint.get("link")
                         if (
@@ -845,15 +847,29 @@ class MessageHandler:
                             and link.get("id") is not None
                         ):
                             area_id = str(link["id"])
-                            data["area_id"] = area_id
+                            reference_uid = unique_id
+                            if type_of_id == "re2020ControlPassive":
+                                passive_climate_uid = f"{unique_id}_area_climate"
+                                reference_uid = passive_climate_uid
+                                device_name[passive_climate_uid] = (
+                                    f"{name_of_id} Thermostat"
+                                )
+                                device_type[passive_climate_uid] = "re2020ControlBoiler"
+                                device_endpoint[passive_climate_uid] = endpoint_id
+                                device_metadata[passive_climate_uid] = (
+                                    device_metadata.get(unique_id, {}).copy()
+                                )
+                            else:
+                                data["area_id"] = area_id
+
                             reference = AreaDeviceReference(
-                                uid=unique_id,
+                                uid=reference_uid,
                                 device_id=str(device_id),
                                 endpoint_id=str(endpoint_id),
                             )
-                            self._area_devices.setdefault(area_id, {})[unique_id] = (
-                                reference
-                            )
+                            self._area_devices.setdefault(area_id, {})[
+                                reference_uid
+                            ] = reference
 
                         # Only process data if available and valid
                         if has_data and not has_error:
@@ -865,8 +881,11 @@ class MessageHandler:
                                 if element_validity == "upToDate":
                                     data[element_name] = element_value
 
-                        area_id = data.get("area_id")
-                        if area_id is not None and area_id in self._area_data:
+                        if (
+                            area_id is not None
+                            and area_id in self._area_data
+                            and passive_climate_uid is None
+                        ):
                             data.update(self._area_data[area_id])
 
                         if (
@@ -912,6 +931,34 @@ class MessageHandler:
                                     name_of_id,
                                     type_of_id,
                                 )
+
+                            if passive_climate_uid is not None and area_id is not None:
+                                climate_data = self._area_data.get(
+                                    area_id, {"area_id": area_id}
+                                ).copy()
+                                climate_device = await MessageHandler.get_device(
+                                    self.tydom_client,
+                                    "re2020ControlBoiler",
+                                    passive_climate_uid,
+                                    device_id,
+                                    device_name[passive_climate_uid],
+                                    endpoint_id,
+                                    climate_data,
+                                )
+                                if climate_device is not None:
+                                    devices.append(climate_device)
+                                    seen_unique_ids[passive_climate_uid] = {
+                                        "device_id": device_id,
+                                        "endpoint_id": endpoint_id,
+                                    }
+                                    LOGGER.info(
+                                        "Area climate created (area=%s, device=%s, "
+                                        "endpoint=%s, name=%s)",
+                                        area_id,
+                                        device_id,
+                                        endpoint_id,
+                                        climate_device.device_name,
+                                    )
                         else:
                             LOGGER.warning(
                                 "Device non créé (get_device retourné None) : "
