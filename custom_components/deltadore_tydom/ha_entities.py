@@ -1825,7 +1825,7 @@ class HACover(CoverEntity, HAEntity):
         if position is None:
             return "mdi:window-shutter"
         if position == 0:
-            return "mdi:window-shutter-closed"
+            return "mdi:window-shutter"
         elif position == 100:
             return "mdi:window-shutter-open"
         else:
