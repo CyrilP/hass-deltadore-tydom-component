@@ -176,11 +176,10 @@ class Hub:
         """Connect to Tydom."""
         if self._shutting_down:
             raise asyncio.CancelledError()
-        connection = await self._tydom_client.async_connect()
+        connection = await self._tydom_client.async_connect_and_initialise()
         if self._shutting_down:
             await self._tydom_client.async_disconnect()
             raise asyncio.CancelledError()
-        await self._tydom_client.listen_tydom(connection)
         return connection
 
     async def async_shutdown(self) -> None:
@@ -216,7 +215,6 @@ class Hub:
                 LOGGER.warning(
                     "Timed out closing Tydom websocket after credential test"
                 )
-        self._tydom_client._connection = None
 
     def ready(self) -> bool:
         """Check if we're ready to work."""

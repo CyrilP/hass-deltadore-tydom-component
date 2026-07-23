@@ -123,8 +123,8 @@ class TydomClient:
         host: str = MEDIATION_URL,
         event_callback=None,
     ) -> None:
-        """Initialize client."""
-        LOGGER.debug("Initializing TydomClient Class")
+        """Initialise client."""
+        LOGGER.debug("Initialising TydomClient Class")
 
         self._hass = hass
         self.id = id
@@ -136,7 +136,11 @@ class TydomClient:
         self._zone_night = zone_night
         self._alarm_pin = alarm_pin
         self._remote_mode = self._host == MEDIATION_URL
-        self._connection = None
+        self._connection: ClientWebSocketResponse | None = None
+        self._connection_ready = False
+        self._connection_lock = asyncio.Lock()
+        self._initialising_task: asyncio.Task | None = None
+        self._shutdown_event = asyncio.Event()
         self.event_callback = event_callback
         # Some devices (like Tywatt) need polling
         self.poll_device_urls_1s = []
@@ -387,22 +391,92 @@ class TydomClient:
     def begin_shutdown(self) -> None:
         """Signal that the client must stop reconnecting and using the socket."""
         self._shutting_down = True
+        self._shutdown_event.set()
+
+    async def _wait_or_shutdown(self, delay: float) -> bool:
+        """Wait for a delay and return whether shutdown interrupted the wait."""
+        if self._shutting_down:
+            return True
+        try:
+            await asyncio.wait_for(self._shutdown_event.wait(), timeout=delay)
+        except TimeoutError:
+            return False
+        return True
+
+    async def _safe_close_connection(
+        self, connection: ClientWebSocketResponse | None
+    ) -> None:
+        """Close a websocket without allowing cleanup errors to escape."""
+        if connection is None or connection.closed:
+            return
+        try:
+            await asyncio.wait_for(connection.close(), timeout=3.0)
+        except TimeoutError:
+            LOGGER.warning("Timed out closing Tydom websocket")
+        except Exception:
+            LOGGER.exception("Error closing Tydom websocket")
+
+    def _connection_is_usable(self, connection: ClientWebSocketResponse | None) -> bool:
+        """Return whether a websocket is the active, initialised connection."""
+        return (
+            connection is not None
+            and connection is self._connection
+            and not connection.closed
+            and self._connection_ready
+        )
+
+    async def _connect_and_initialise_locked(self) -> ClientWebSocketResponse:
+        """Create and initialise the sole active websocket while holding the lock."""
+        previous = self._connection
+        self._connection = None
+        self._connection_ready = False
+        await self._safe_close_connection(previous)
+
+        candidate: ClientWebSocketResponse | None = None
+        initialising_task = asyncio.current_task()
+        try:
+            candidate = await self.async_connect()
+            self._connection = candidate
+            self._initialising_task = initialising_task
+            await self._initialise_connection(candidate)
+        except BaseException:
+            if self._connection is candidate:
+                self._connection = None
+            self._connection_ready = False
+            await self._safe_close_connection(candidate)
+            raise
+        finally:
+            if self._initialising_task is initialising_task:
+                self._initialising_task = None
+
+        if self._shutting_down:
+            if self._connection is candidate:
+                self._connection = None
+            await self._safe_close_connection(candidate)
+            raise asyncio.CancelledError()
+
+        self._connection_ready = True
+        self.online = True
+        return candidate
+
+    async def async_connect_and_initialise(self) -> ClientWebSocketResponse:
+        """Establish the initial managed websocket connection."""
+        async with self._connection_lock:
+            if self._connection_is_usable(self._connection):
+                return self._connection
+            return await self._connect_and_initialise_locked()
 
     async def async_disconnect(self) -> None:
         """Close the active websocket connection, if any."""
         self.begin_shutdown()
-        connection = self._connection
-        self._connection = None
-        if connection is not None and not connection.closed:
-            try:
-                await asyncio.wait_for(connection.close(), timeout=3.0)
-            except TimeoutError:
-                LOGGER.warning("Timed out closing Tydom websocket")
-            except Exception:
-                LOGGER.exception("Error closing Tydom websocket")
+        async with self._connection_lock:
+            connection = self._connection
+            self._connection = None
+            self._connection_ready = False
+            await self._safe_close_connection(connection)
 
-    async def listen_tydom(self, connection: ClientWebSocketResponse):
-        """Listen for Tydom messages."""
+    async def _initialise_connection(self, connection: ClientWebSocketResponse) -> None:
+        """Send initial requests on the active candidate websocket."""
         if self._shutting_down:
             return
         STRUCTURED_LOGGER.connection_event(
@@ -411,7 +485,10 @@ class TydomClient:
             host=self._host,
             mode="remote" if self._remote_mode else "local",
         )
-        self._connection = connection
+        if connection is not self._connection:
+            raise TydomClientApiClientCommunicationError(
+                "Cannot initialise a websocket that is not the active candidate"
+            )
         await self.ping()
         if self._shutting_down:
             return
@@ -443,7 +520,7 @@ class TydomClient:
 
         await self.get_scenarii()
 
-    async def _reconnect_with_backoff(self) -> None:
+    async def _reconnect_with_backoff(self) -> bool:
         """Reconnect with exponential backoff strategy.
 
         This method implements an exponential backoff reconnection strategy
@@ -464,52 +541,68 @@ class TydomClient:
 
         """
         if self._shutting_down:
-            return
-        while self._reconnect_attempts < self._max_reconnect_attempts:
-            if self._shutting_down:
-                return
-            delay = min(
-                self._reconnect_delay
-                * (self._reconnect_backoff_factor**self._reconnect_attempts),
-                self._max_reconnect_delay,
-            )
-            STRUCTURED_LOGGER.connection_event(
-                "info",
-                "reconnect_attempt",
-                attempt=self._reconnect_attempts + 1,
-                max_attempts=self._max_reconnect_attempts,
-                delay_seconds=delay,
-            )
-            await asyncio.sleep(delay)
+            return False
 
-            try:
-                self._connection = await self.async_connect()
-                await self.listen_tydom(self._connection)
+        async with self._connection_lock:
+            # Another reader or writer may have restored the connection while this
+            # coroutine was waiting for ownership of the reconnect operation.
+            if self._connection_is_usable(self._connection):
+                return True
+
+            failed_connection = self._connection
+            self._connection = None
+            self._connection_ready = False
+            await self._safe_close_connection(failed_connection)
+
+            for attempt in range(1, self._max_reconnect_attempts + 1):
+                self._reconnect_attempts = attempt
+                delay = min(
+                    self._reconnect_delay
+                    * (self._reconnect_backoff_factor ** (attempt - 1)),
+                    self._max_reconnect_delay,
+                )
+                STRUCTURED_LOGGER.connection_event(
+                    "info",
+                    "reconnect_attempt",
+                    attempt=attempt,
+                    max_attempts=self._max_reconnect_attempts,
+                    delay_seconds=delay,
+                )
+                if await self._wait_or_shutdown(delay):
+                    return False
+
+                try:
+                    await self._connect_and_initialise_locked()
+                except asyncio.CancelledError:
+                    raise
+                except Exception as e:
+                    STRUCTURED_LOGGER.connection_event(
+                        "warning",
+                        "reconnect_failed",
+                        attempt=attempt,
+                        max_attempts=self._max_reconnect_attempts,
+                        error=str(e),
+                    )
+                    continue
+
                 self._reconnect_attempts = 0
-                self.online = True
                 STRUCTURED_LOGGER.connection_event(
                     "info",
                     "reconnect_success",
-                    attempt=self._reconnect_attempts + 1,
-                    total_attempts=self._reconnect_attempts + 1,
+                    attempt=attempt,
+                    total_attempts=attempt,
                 )
-                return
-            except Exception as e:
-                self._reconnect_attempts += 1
-                STRUCTURED_LOGGER.connection_event(
-                    "warning",
-                    "reconnect_failed",
-                    attempt=self._reconnect_attempts,
-                    max_attempts=self._max_reconnect_attempts,
-                    error=str(e),
-                )
+                return True
 
-        LOGGER.error(
-            "Impossible de se reconnecter après %d tentatives",
-            self._max_reconnect_attempts,
-        )
-        # Notifier Home Assistant de la perte de connexion
-        self.online = False
+            LOGGER.error(
+                "Impossible de se reconnecter après %d tentatives; "
+                "nouvelle tentative dans 60 secondes",
+                self._max_reconnect_attempts,
+            )
+            self.online = False
+            self._reconnect_attempts = 0
+            await self._wait_or_shutdown(60)
+            return False
 
     async def consume_messages(self) -> list["TydomDevice"] | None:
         """Read and parse incoming messages."""
@@ -533,18 +626,25 @@ class TydomClient:
         try:
             if self._shutting_down:
                 return None
-            if self._connection is None:
+            connection = self._connection
+            if connection is None or not self._connection_ready:
+                await self._reconnect_with_backoff()
                 return None
-            if self._connection.closed or self.pending_pings > 5:
+            if connection.closed or self.pending_pings > 5:
                 if self._shutting_down:
                     return None
-                await self._connection.close()
+                LOGGER.warning(
+                    "Reconnecting Tydom client (reason: %s)",
+                    "websocket closed"
+                    if connection.closed
+                    else f"{self.pending_pings} pending pings",
+                )
+                if connection is self._connection:
+                    self._connection_ready = False
                 await self._reconnect_with_backoff()
                 return None
 
-            if self._connection is None:
-                return None
-            msg = await self._connection.receive()
+            msg = await connection.receive()
             # Masquer les informations sensibles dans les messages entrants
             msg_data_str = (
                 msg.data.decode("utf-8", errors="replace")
@@ -581,9 +681,9 @@ class TydomClient:
             LOGGER.exception("Unable to handle message")
             return None
 
-    def receive_pong(self):
-        """Received a pong message, decrease pending ping counts."""
-        self.pending_pings -= 1
+    def receive_pong(self) -> None:
+        """Handle a pong response and keep the pending ping counter non-negative."""
+        self.pending_pings = max(0, self.pending_pings - 1)
 
     def build_digest_headers(self, nonce):
         """Build the headers of Digest Authentication."""
@@ -605,7 +705,7 @@ class TydomClient:
 
     async def send_bytes(
         self, a_bytes: bytes, max_retries: int = 3, retry_delay: float = 1.0
-    ):
+    ) -> None:
         """Send bytes to connection with intelligent retry mechanism.
 
         Args:
@@ -618,26 +718,47 @@ class TydomClient:
             return
 
         if self._shutting_down:
-            return
+            raise asyncio.CancelledError()
 
-        if self._connection is None:
-            LOGGER.warning(
-                "Cannot send message to Tydom because no connection has been established yet."
-            )
-            return
-
-        last_exception = None
+        last_exception: Exception | None = None
         for attempt in range(max_retries + 1):
+            initialising = asyncio.current_task() is self._initialising_task
+            connection = self._connection
+
+            if not initialising and not self._connection_is_usable(connection):
+                if not await self._reconnect_with_backoff():
+                    raise TydomClientApiClientCommunicationError(
+                        "No initialised Tydom connection is available"
+                    )
+                connection = self._connection
+
+            if connection is None or connection.closed:
+                raise TydomClientApiClientCommunicationError(
+                    "No open Tydom connection is available"
+                )
+
             try:
-                await self._connection.send_bytes(a_bytes)
+                await connection.send_bytes(a_bytes)
                 if attempt > 0:
                     LOGGER.info(
                         "Successfully sent message after %d retry attempt(s)",
                         attempt,
                     )
                 return
-            except (ConnectionResetError, ConnectionError, OSError) as e:
+            except (aiohttp.ClientConnectionError, ConnectionResetError, OSError) as e:
                 last_exception = e
+
+                # Initialisation owns the connection lock. Let its caller close the
+                # failed candidate and perform the next backoff attempt rather than
+                # recursively trying to acquire the same lock here.
+                if initialising:
+                    raise TydomClientApiClientCommunicationError(
+                        "Connection failed while initialising the Tydom websocket"
+                    ) from e
+
+                if connection is self._connection:
+                    self._connection_ready = False
+
                 if attempt < max_retries:
                     delay = retry_delay * (2**attempt)  # Exponential backoff
                     LOGGER.warning(
@@ -647,21 +768,8 @@ class TydomClient:
                         str(e),
                         delay,
                     )
-                    try:
-                        if self._shutting_down:
-                            return
-                        # Try to reconnect
-                        self._connection = await self.async_connect()
-                        await asyncio.sleep(delay)
-                    except Exception as reconnect_error:
-                        LOGGER.error(
-                            "Failed to reconnect (attempt %d/%d): %s",
-                            attempt + 1,
-                            max_retries + 1,
-                            reconnect_error,
-                        )
-                        if attempt < max_retries:
-                            await asyncio.sleep(delay)
+                    if await self._wait_or_shutdown(delay):
+                        raise asyncio.CancelledError()
                 else:
                     LOGGER.error(
                         "Cannot send message to Tydom after %d attempts. Connection was lost: %s",
@@ -669,6 +777,15 @@ class TydomClient:
                         str(e),
                     )
             except Exception as e:
+                if connection.closed:
+                    last_exception = e
+                    if connection is self._connection:
+                        self._connection_ready = False
+                    if initialising:
+                        raise TydomClientApiClientCommunicationError(
+                            "Connection closed while initialising the Tydom websocket"
+                        ) from e
+                    continue
                 # For other exceptions, don't retry
                 LOGGER.error(
                     "Unexpected error sending message to Tydom: %s",
