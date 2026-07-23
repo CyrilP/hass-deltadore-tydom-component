@@ -2870,11 +2870,30 @@ class HaDoor(CoverEntity, HAEntity):
             return "mdi:door-open"
 
 
+def _level_command_cover_features(
+    device: TydomGate | TydomGarage,
+    *,
+    allow_position: bool = False,
+) -> CoverEntityFeature:
+    """Map Tydom level-command capabilities onto Home Assistant features."""
+    capabilities = device.cover_capabilities
+    features = CoverEntityFeature(0)
+    if capabilities.open:
+        features |= CoverEntityFeature.OPEN
+    if capabilities.close:
+        features |= CoverEntityFeature.CLOSE
+    if capabilities.stop:
+        features |= CoverEntityFeature.STOP
+    if allow_position and capabilities.set_position:
+        features |= CoverEntityFeature.SET_POSITION
+    return features
+
+
 class HaGate(CoverEntity, HAEntity):
     """Representation of a Gate."""
 
     _attr_should_poll = False
-    _attr_supported_features: CoverEntityFeature = CoverEntityFeature.OPEN
+    _attr_supported_features: CoverEntityFeature = CoverEntityFeature(0)
     _attr_device_class = CoverDeviceClass.GATE
     _attr_icon = "mdi:gate"
     _attr_has_entity_name = True
@@ -2888,23 +2907,7 @@ class HaGate(CoverEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
-        if (
-            self._device._metadata is not None
-            and "levelCmd" in self._device._metadata
-            and "OFF" in self._device._metadata["levelCmd"]["enum_values"]
-        ):
-            self._attr_supported_features = (
-                self._attr_supported_features | CoverEntityFeature.CLOSE
-            )
-
-        if (
-            self._device._metadata is not None
-            and "levelCmd" in self._device._metadata
-            and "STOP" in self._device._metadata["levelCmd"]["enum_values"]
-        ):
-            self._attr_supported_features = (
-                self._attr_supported_features | CoverEntityFeature.STOP
-            )
+        self._attr_supported_features = _level_command_cover_features(device)
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
@@ -2947,43 +2950,29 @@ class HaGate(CoverEntity, HAEntity):
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the gate."""
-        if (
-            self._device._metadata is not None
-            and "levelCmd" in self._device._metadata
-            and "ON" in self._device._metadata["levelCmd"]["enum_values"]
-        ):
-            await self._device.open()
-        else:
-            await self._device.toggle()
+        await self._device.open()
 
     async def async_close_cover(self, **kwargs: Any) -> None:
-        """Open the gate."""
-        if (
-            self._device._metadata is not None
-            and "levelCmd" in self._device._metadata
-            and "OFF" in self._device._metadata["levelCmd"]["enum_values"]
-        ):
-            await self._device.close()
-        else:
-            await self._device.toggle()
+        """Close the gate."""
+        await self._device.close()
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
-        """Open the gate."""
-        if (
-            self._device._metadata is not None
-            and "levelCmd" in self._device._metadata
-            and "STOP" in self._device._metadata["levelCmd"]["enum_values"]
-        ):
-            await self._device.stop()
-        else:
+        """Stop the gate."""
+        await self._device.stop()
+
+    async def async_toggle(self, **kwargs: Any) -> None:
+        """Toggle the gate without deriving direction from an unknown state."""
+        if self._device.cover_capabilities.toggle:
             await self._device.toggle()
+            return
+        await super().async_toggle(**kwargs)
 
 
 class HaGarage(CoverEntity, HAEntity):
     """Representation of a Garage door."""
 
     _attr_should_poll = False
-    _attr_supported_features: CoverEntityFeature = CoverEntityFeature.OPEN
+    _attr_supported_features: CoverEntityFeature = CoverEntityFeature(0)
     _attr_device_class = CoverDeviceClass.GARAGE
     _attr_icon = "mdi:garage"
     _attr_has_entity_name = True
@@ -2999,28 +2988,9 @@ class HaGarage(CoverEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
-        if (
-            self._device._metadata is not None
-            and "levelCmd" in self._device._metadata
-            and "OFF" in self._device._metadata["levelCmd"]["enum_values"]
-        ):
-            self._attr_supported_features = (
-                self._attr_supported_features | CoverEntityFeature.CLOSE
-            )
-
-        if (
-            self._device._metadata is not None
-            and "levelCmd" in self._device._metadata
-            and "STOP" in self._device._metadata["levelCmd"]["enum_values"]
-        ):
-            self._attr_supported_features = (
-                self._attr_supported_features | CoverEntityFeature.STOP
-            )
-
-        if hasattr(device, "level"):
-            self._attr_supported_features = (
-                self._attr_supported_features | CoverEntityFeature.SET_POSITION
-            )
+        self._attr_supported_features = _level_command_cover_features(
+            device, allow_position=True
+        )
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
@@ -3067,14 +3037,7 @@ class HaGarage(CoverEntity, HAEntity):
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
-        if (
-            self._device._metadata is not None
-            and "levelCmd" in self._device._metadata
-            and "OFF" in self._device._metadata["levelCmd"]["enum_values"]
-        ):
-            await self._device.open()
-        else:
-            await self._device.toggle()
+        await self._device.open()
 
     async def async_close_cover(self, **kwargs):
         """Close the cover."""
@@ -3087,6 +3050,13 @@ class HaGarage(CoverEntity, HAEntity):
     async def async_set_cover_position(self, **kwargs: Any) -> None:
         """Set the garage door position."""
         await self._device.set_level(kwargs[ATTR_POSITION])
+
+    async def async_toggle(self, **kwargs: Any) -> None:
+        """Toggle the garage without deriving direction from an unknown state."""
+        if self._device.cover_capabilities.toggle:
+            await self._device.toggle()
+            return
+        await super().async_toggle(**kwargs)
 
 
 class HaLight(LightEntity, HAEntity):
