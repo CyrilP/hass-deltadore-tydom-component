@@ -506,7 +506,7 @@ class TydomLight(TydomDevice):
                 self._id, self._endpoint, "level", str(brightness)
             )
         self._tydom_client.add_poll_device_url_1s(
-            f"/devices/{self._id}/endpoints/{self._endpoint}/cdata"
+            f"/devices/{self._id}/endpoints/{self._endpoint}/data"
         )
 
     async def turn_off(self) -> None:
@@ -530,7 +530,7 @@ class TydomLight(TydomDevice):
             )
 
         self._tydom_client.add_poll_device_url_1s(
-            f"/devices/{self._id}/endpoints/{self._endpoint}/cdata"
+            f"/devices/{self._id}/endpoints/{self._endpoint}/data"
         )
 
 
