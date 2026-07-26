@@ -132,7 +132,7 @@ class Hub:
         # Polling cache for optimization
         self._polling_cache: dict[
             tuple[str, str], int
-        ] = {}  # (device_id, attr_name) -> interval
+        ] = {}  # (device_key, attr_name) -> interval
         self._polling_cache_timestamp = 0
         self._polling_cache_ttl = 300  # 5 minutes
 
@@ -733,7 +733,9 @@ class Hub:
                         device = self.devices[device_key]
                         if hasattr(device, "_tydom_client"):
                             try:
-                                await device._tydom_client.poll_device_data(device_key)
+                                await device._tydom_client.poll_device_data(
+                                    device._id, device.device_endpoint
+                                )
                             except Exception as e:
                                 LOGGER.warning(
                                     "Error polling device %s: %s", device_key, e

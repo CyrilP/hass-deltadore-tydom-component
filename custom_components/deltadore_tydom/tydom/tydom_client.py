@@ -1128,15 +1128,20 @@ class TydomClient:
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
-    async def poll_device_data(self, device_key):
+    async def poll_device_data(self, device_id, endpoint_id=None):
         """Poll data for a single device.
 
-        Accepts either a plain device id or the composite
-        "<endpoint_id>_<device_id>" key used by the hub device registry.
+        The hub passes the protocol device and endpoint ids explicitly.
+        Plain device ids and composite "<endpoint_id>_<device_id>" registry
+        keys remain supported for compatibility.
         """
-        endpoint_id, separator, device_id = str(device_key).partition("_")
-        if not separator:
-            device_id = endpoint_id
+        if endpoint_id is None:
+            parsed_endpoint, separator, parsed_device = str(device_id).partition("_")
+            if separator:
+                device_id = parsed_device
+                endpoint_id = parsed_endpoint
+            else:
+                endpoint_id = device_id
         safe_device = quote(str(device_id), safe="")
         safe_endpoint = quote(str(endpoint_id), safe="")
         await self.get_poll_device_data(
