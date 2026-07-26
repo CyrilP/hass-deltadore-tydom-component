@@ -463,8 +463,30 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
             {"battLevel": {"min": 0, "max": 2}},
             {"battLevel": 2},
         )
+        direct_tywell = TydomBoiler(
+            self.client,
+            "50_60",
+            "60",
+            "Direct Tywell Control",
+            "re2020ControlBoiler",
+            "50",
+            {"battLevel": {"min": 0, "max": 2}},
+            {"battLevel": 2, "area_id": "7"},
+        )
+        ordinary_boiler = TydomBoiler(
+            self.client,
+            "70_80",
+            "80",
+            "Tybox 5101",
+            "boiler",
+            "70",
+            {"battLevel": {"min": 0, "max": 2}},
+            {"battLevel": 2, "area_id": "7"},
+        )
 
         self.assertEqual(controller.battery_level_attributes, {"battLevel"})
+        self.assertEqual(direct_tywell.battery_level_attributes, {"battLevel"})
+        self.assertEqual(ordinary_boiler.battery_level_attributes, set())
         self.assertEqual(unrelated_weather.battery_level_attributes, set())
 
     async def test_weather_endpoint_uses_single_tywell_controller_identity(

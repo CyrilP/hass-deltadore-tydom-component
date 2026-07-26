@@ -105,12 +105,16 @@ class TydomDevice:
     def battery_level_attributes(self) -> set[str]:
         """Return battery values owned by this physical endpoint.
 
-        ``battLevel`` on ``re2020ControlPassive`` is the battery level of the
-        Tywell Control wall unit itself. It must not be inferred from, or
-        applied to, the thermal controller, shutters, weather source, or other
-        entities grouped with that HA device.
+        ``battLevel`` on a ``re2020ControlPassive`` or direct
+        ``re2020ControlBoiler`` is the battery level of the Tywell Control wall
+        unit itself. It must not be inferred from, or applied to, an ordinary
+        boiler/Tybox/TY-PASS endpoint, shutter, weather source, or other entity
+        grouped with that HA device.
         """
-        if self._type == "re2020ControlPassive" and hasattr(self, "battLevel"):
+        if self._type in {
+            "re2020ControlPassive",
+            "re2020ControlBoiler",
+        } and hasattr(self, "battLevel"):
             return {"battLevel"}
         return set()
 
