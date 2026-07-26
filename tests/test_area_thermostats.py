@@ -420,6 +420,53 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         self.assertNotIsInstance(devices[0], TydomBoiler)
         self.assertEqual(devices[0].device_id, "10_20")
 
+    async def test_battery_level_belongs_only_to_physical_tywell_control(
+        self,
+    ) -> None:
+        """Only the passive wall controller owns the grouped battLevel value."""
+        handler_module.device_name["10_20"] = "Tywell Ctrl RdC"
+        handler_module.device_type["10_20"] = "re2020ControlPassive"
+        handler_module.device_metadata["10_20"] = {
+            "battLevel": {"min": 0, "max": 2, "step": 1, "unit": "NA"}
+        }
+
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [
+                        {
+                            "id": 10,
+                            "error": 0,
+                            "data": [
+                                {
+                                    "name": "battLevel",
+                                    "value": 2,
+                                    "validity": "upToDate",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+
+        controller = devices[0]
+        unrelated_weather = TydomWeather(
+            self.client,
+            "30_40",
+            "40",
+            "Weather",
+            "weather",
+            "30",
+            {"battLevel": {"min": 0, "max": 2}},
+            {"battLevel": 2},
+        )
+
+        self.assertEqual(controller.battery_level_attributes, {"battLevel"})
+        self.assertEqual(unrelated_weather.battery_level_attributes, set())
+
     async def test_weather_endpoint_uses_single_tywell_controller_identity(
         self,
     ) -> None:

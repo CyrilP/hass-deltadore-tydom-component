@@ -101,6 +101,19 @@ class TydomDevice:
         self._registry_device_id = device_id
         self._registry_device_name = device_name
 
+    @property
+    def battery_level_attributes(self) -> set[str]:
+        """Return battery values owned by this physical endpoint.
+
+        ``battLevel`` on ``re2020ControlPassive`` is the battery level of the
+        Tywell Control wall unit itself. It must not be inferred from, or
+        applied to, the thermal controller, shutters, weather source, or other
+        entities grouped with that HA device.
+        """
+        if self._type == "re2020ControlPassive" and hasattr(self, "battLevel"):
+            return {"battLevel"}
+        return set()
+
     async def update_device(self, device):
         """Update the device values from another device."""
         LOGGER.debug("Update device %s", device.device_id)

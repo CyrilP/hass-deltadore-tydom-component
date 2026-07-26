@@ -3641,6 +3641,14 @@ class HASensor(SensorEntity, HAEntity):
         self.hass = hass
         self._device = device
         self._device._ha_device = self
+        battery_attributes = self._device.battery_level_attributes
+        self.sensor_classes = dict.fromkeys(
+            battery_attributes, SensorDeviceClass.BATTERY
+        )
+        self.state_classes = dict.fromkeys(
+            battery_attributes, SensorStateClass.MEASUREMENT
+        )
+        self.units = dict.fromkeys(battery_attributes, PERCENTAGE)
         self._attr_unique_id = f"{self._device.device_id}_sensor"
         self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
