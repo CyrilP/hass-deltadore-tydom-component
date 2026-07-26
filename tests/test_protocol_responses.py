@@ -120,6 +120,22 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         self.assertIsNone(devices)
         logger.warning.assert_not_called()
 
+    async def test_empty_ping_acknowledgement_updates_liveness(self) -> None:
+        """The gateway's bodyless ping response must clear a pending ping."""
+        client = MagicMock()
+        handler = MessageHandler(client, b"")
+
+        devices = await handler.route_response(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Uri-Origin: /ping\r\n"
+            b"Content-Type: application/json\r\n"
+            b"Content-Length: 0\r\n"
+            b"Transac-Id: 123\r\n\r\n"
+        )
+
+        self.assertIsNone(devices)
+        client.receive_pong.assert_called_once_with()
+
     async def test_light_commands_poll_regular_data_endpoint(self) -> None:
         """Light state refreshes must use the supported data endpoint."""
         client = MagicMock()

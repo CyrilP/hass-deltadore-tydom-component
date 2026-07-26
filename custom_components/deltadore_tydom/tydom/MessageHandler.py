@@ -183,6 +183,11 @@ class MessageHandler:
                 # body while the updated state arrives in a separate push. This
                 # also happens for requests using the gateway's reserved
                 # transaction id "0", which are not tracked as pending replies.
+                # A ping is itself completed by this empty 200 response, so it
+                # must still reach the liveness bookkeeping even though there is
+                # no body to parse.
+                if uri_origin == "/ping":
+                    self.tydom_client.receive_pong()
                 LOGGER.debug(
                     "Empty acknowledgment received for request '%s' (%s).",
                     transaction_id,
