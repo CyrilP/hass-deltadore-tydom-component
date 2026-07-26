@@ -77,6 +77,33 @@ for name, original in _original_modules.items():
 class ProtocolResponseTests(IsolatedAsyncioTestCase):
     """Exercise response acknowledgements and light refresh polling."""
 
+    def test_light_brightness_requires_intermediate_levels(self) -> None:
+        """Binary level metadata must not advertise variable brightness."""
+        client = MagicMock()
+        binary_light = TydomLight(
+            client,
+            "10_20",
+            "20",
+            "Binary light",
+            "light",
+            "10",
+            {"level": {"min": 0, "max": 100, "step": 100}},
+            {"level": 0},
+        )
+        dimmable_light = TydomLight(
+            client,
+            "11_21",
+            "21",
+            "Dimmable light",
+            "light",
+            "11",
+            {"level": {"min": 0, "max": 100, "step": 1}},
+            {"level": 0},
+        )
+
+        self.assertFalse(binary_light.supports_brightness)
+        self.assertTrue(dimmable_light.supports_brightness)
+
     async def test_empty_success_response_is_treated_as_acknowledgement(self) -> None:
         """An empty successful response must not be reported as an unknown message."""
         logger.reset_mock()
