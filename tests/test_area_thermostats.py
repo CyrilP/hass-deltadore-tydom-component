@@ -191,6 +191,8 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         self.assertEqual(passive.hygroIn, 49.0)
         self.assertIsInstance(climate, TydomBoiler)
         self.assertEqual(climate.device_id, "10_20_area_climate")
+        self.assertTrue(climate.is_derived_area_climate)
+        self.assertEqual(climate.source_device_id, passive.device_id)
         self.assertEqual(climate.device_name, "Tywell Ctrl RdC Thermostat")
         self.assertEqual(climate.area_id, "7")
         self.assertEqual(climate.ambientTemperature, 20.5)

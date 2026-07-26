@@ -204,6 +204,18 @@ class TydomSmoke(TydomDevice):
 class TydomBoiler(TydomDevice):
     """Represents a Boiler."""
 
+    @property
+    def is_derived_area_climate(self) -> bool:
+        """Return whether this climate proxies a passive controller's area."""
+        return self.device_id.endswith("_area_climate")
+
+    @property
+    def source_device_id(self) -> str:
+        """Return the physical device identifier represented by this climate."""
+        if self.is_derived_area_climate:
+            return self.device_id.removesuffix("_area_climate")
+        return self.device_id
+
     def area_setpoint_attribute(self) -> str:
         """Return the setpoint register advertised for the current area mode."""
         authorization = getattr(self, "authorization", None)

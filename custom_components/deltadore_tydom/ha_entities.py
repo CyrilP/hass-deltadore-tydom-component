@@ -2134,7 +2134,7 @@ class HaClimate(ClimateEntity, HAEntity):
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_climate"
-        self._attr_name = None  # primary entity inherits device name
+        self._attr_name = "Thermostat" if self._device.is_derived_area_climate else None
         self._enable_turn_on_off_backwards_compatibility = False
 
         self.dict_modes_ha_to_dd = {
@@ -2364,6 +2364,12 @@ class HaClimate(ClimateEntity, HAEntity):
         if self._supports_fan:
             self._attr_supported_features |= ClimateEntityFeature.FAN_MODE
 
+    def get_sensors(self):
+        """Avoid duplicating the source controller's sensors on area proxies."""
+        if self._device.is_derived_area_climate:
+            return []
+        return super().get_sensors()
+
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
         await super().async_added_to_hass()
@@ -2381,9 +2387,10 @@ class HaClimate(ClimateEntity, HAEntity):
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
         device_info = self._get_device_info()
+        registry_device_id = self._device.source_device_id
         infos: DeviceInfo = {
-            "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self._device.device_name,
+            "identifiers": {(DOMAIN, registry_device_id)},
+            "name": device_name.get(registry_device_id, self._device.device_name),
             "manufacturer": device_info["manufacturer"],
         }
         if "model" in device_info:
