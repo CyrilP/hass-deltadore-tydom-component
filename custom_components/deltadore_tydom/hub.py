@@ -669,18 +669,18 @@ class Hub:
         """Rebuild polling cache efficiently.
 
         This method scans all devices and their metadata to build a cache
-        mapping (device_id, attribute_name) to polling intervals based on
+        mapping (device_key, attribute_name) to polling intervals based on
         the validity metadata. The cache is rebuilt periodically to account
         for metadata changes.
 
-        The cache structure: {(device_id, attr_name): interval_seconds}
+        The cache structure: {(device_key, attr_name): interval_seconds}
         - Devices with validity=INFINITE or upToDate are not cached (no polling)
         - Devices with validity=ES_SUPERVISION are cached with 300s interval
         - Devices with validity=SENSOR_SUPERVISION are cached with 60s interval
         - Devices with validity=SYNCHRO_SUPERVISION are cached with 30s interval
         """
         new_cache: dict[tuple[str, str], int] = {}
-        for device_id, device in self.devices.items():
+        for device_key, device in self.devices.items():
             if not hasattr(device, "_metadata") or device._metadata is None:
                 continue
             for attr_name, attr_metadata in device._metadata.items():
@@ -688,7 +688,7 @@ class Hub:
                     validity = attr_metadata.get("validity")
                     interval = get_polling_interval_for_validity(validity)
                     if interval is not None:
-                        new_cache[(device_id, attr_name)] = interval
+                        new_cache[(device_key, attr_name)] = interval
 
         # Update cache atomically
         self._polling_cache = new_cache
@@ -716,10 +716,10 @@ class Hub:
 
             # Group devices by interval from cache
             interval_groups: dict[int, list[tuple[str, str]]] = {}
-            for (device_id, attr_name), interval in self._polling_cache.items():
+            for (device_key, attr_name), interval in self._polling_cache.items():
                 if interval not in interval_groups:
                     interval_groups[interval] = []
-                interval_groups[interval].append((device_id, attr_name))
+                interval_groups[interval].append((device_key, attr_name))
 
             # Poll devices according to their intervals
             if interval_groups:
@@ -728,15 +728,15 @@ class Hub:
                 shortest_interval = sorted_intervals[0]
 
                 # Poll devices that need the shortest interval
-                for device_id, _attr_name in interval_groups[shortest_interval]:
-                    if device_id in self.devices:
-                        device = self.devices[device_id]
+                for device_key, _attr_name in interval_groups[shortest_interval]:
+                    if device_key in self.devices:
+                        device = self.devices[device_key]
                         if hasattr(device, "_tydom_client"):
                             try:
-                                await device._tydom_client.poll_device_data(device_id)
+                                await device._tydom_client.poll_device_data(device_key)
                             except Exception as e:
                                 LOGGER.warning(
-                                    "Error polling device %s: %s", device_id, e
+                                    "Error polling device %s: %s", device_key, e
                                 )
 
                 # Sleep for the shortest interval
