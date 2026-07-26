@@ -4215,7 +4215,7 @@ class HAScene(Scene, HAEntity):
             return set()
 
     def _find_tywell_device(self, zone: str | None = None) -> str | None:
-        """Find Tywell Control device from grpAct/epAct.
+        """Find the physical Tywell controller associated with a TWC scene.
 
         Args:
             zone: Optional zone filter ("day" or "night") to narrow search.
@@ -4235,13 +4235,6 @@ class HAScene(Scene, HAEntity):
 
             # Use the affected device IDs method
             affected_device_ids = self._get_affected_device_ids()
-
-            if not affected_device_ids:
-                LOGGER.debug(
-                    "No affected devices found for scene %s to search for Tywell Control",
-                    self._device.device_id,
-                )
-                return None
 
             # Search for Tywell Control in affected devices
             tywell_keywords = ["TYWELL", "CONTROL", "TYWELL CONTROL"]
@@ -4291,8 +4284,38 @@ class HAScene(Scene, HAEntity):
                         )
                         return device_id
 
+            # TWC_UP/DOWN/STOP scenes generally target shutter groups, not the
+            # controller endpoint itself. In that case grpAct/epAct cannot lead
+            # us back to the physical Tywell controller. The endpoint advertised
+            # as re2020ControlPassive is the controller which exposes the
+            # tywell_control widget in /configs/file.
+            passive_controllers = [
+                (device_id, device)
+                for device_id, device in hub_instance.devices.items()
+                if getattr(device, "device_type", None) == "re2020ControlPassive"
+            ]
+
+            if zone:
+                zone_controllers = [
+                    (device_id, device)
+                    for device_id, device in passive_controllers
+                    if self._get_zone_from_device(device) == zone
+                ]
+                if len(zone_controllers) == 1:
+                    passive_controllers = zone_controllers
+
+            if len(passive_controllers) == 1:
+                device_id = passive_controllers[0][0]
+                self._cached_tywell_device_id = device_id
+                LOGGER.debug(
+                    "Using physical Tywell controller %s for scene %s",
+                    device_id,
+                    self._device.device_id,
+                )
+                return device_id
+
             LOGGER.debug(
-                "No Tywell Control device found in affected devices for scene %s",
+                "No unambiguous physical Tywell controller found for scene %s",
                 self._device.device_id,
             )
             return None
@@ -4612,8 +4635,9 @@ class HAScene(Scene, HAEntity):
     def device_info(self) -> DeviceInfo | None:
         """Return information to link this entity with the correct device.
 
-        Scenes are grouped into virtual devices:
-        - TWC scenes are grouped by zone (Day/Night) into virtual "Tywell Control [Zone]" devices
+        Scenes are grouped into devices:
+        - TWC scenes use their physical Tywell controller when it is unambiguous
+        - Otherwise TWC scenes use virtual zone (Day/Night) devices
         - Other scenes are grouped into a virtual "Scènes Tydom" device
         """
         # Get gateway device ID for via_device fallback
@@ -4658,19 +4682,28 @@ class HAScene(Scene, HAEntity):
                 # Try to find any Tywell Control device
                 tywell_device_id = self._find_tywell_device(None)
 
-            # Determine via_device: use physical Tywell Control if found, otherwise gateway
-            if tywell_device_id and gateway_device_id:
-                # Verify the device exists in hub (it should be in device registry if it exists here)
+            # Prefer the physical controller's identifier so its TWC controls,
+            # room sensors and thermostat appear on the same HA device.
+            if tywell_device_id:
                 hub_instance = self._get_hub()
                 if hub_instance and hasattr(hub_instance, "devices"):
-                    if tywell_device_id in hub_instance.devices:
-                        via_device_id = tywell_device_id
-                    else:
-                        via_device_id = gateway_device_id
-                else:
-                    via_device_id = gateway_device_id
-            else:
-                via_device_id = gateway_device_id
+                    tywell_device = hub_instance.devices.get(tywell_device_id)
+                    if tywell_device is not None:
+                        device_info: DeviceInfo = {
+                            "identifiers": {(DOMAIN, tywell_device_id)},
+                            "name": tywell_device.device_name,
+                            "manufacturer": "Delta Dore",
+                            "via_device": (DOMAIN, gateway_device_id),
+                        }
+                        product_name = getattr(tywell_device, "productName", None)
+                        if product_name:
+                            device_info["model"] = str(product_name)
+                        LOGGER.debug(
+                            "Attached TWC scene %s to physical controller %s",
+                            scene_name,
+                            tywell_device_id,
+                        )
+                        return device_info
 
             # Create DeviceInfo for virtual device grouping TWC scenes
             # IMPORTANT: All TWC scenes must use the same device_identifier to be grouped
@@ -4681,9 +4714,7 @@ class HAScene(Scene, HAEntity):
                 "model": "Tywell Control",
             }
 
-            # Link to physical device or gateway
-            if via_device_id:
-                device_info["via_device"] = (DOMAIN, via_device_id)
+            device_info["via_device"] = (DOMAIN, gateway_device_id)
 
             LOGGER.debug(
                 "TWC scene device_info: scene=%s, is_twc=%s, zone=%s, device_identifier=%s",
