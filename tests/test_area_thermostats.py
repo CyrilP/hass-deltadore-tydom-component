@@ -66,6 +66,7 @@ handler_spec.loader.exec_module(handler_module)
 
 MessageHandler = handler_module.MessageHandler
 TydomBoiler = devices_module.TydomBoiler
+TydomWeather = devices_module.TydomWeather
 
 for name, original in _original_modules.items():
     if original is _MISSING:
@@ -418,6 +419,69 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         self.assertEqual(len(devices), 1)
         self.assertNotIsInstance(devices[0], TydomBoiler)
         self.assertEqual(devices[0].device_id, "10_20")
+
+    async def test_weather_endpoint_uses_single_tywell_controller_identity(
+        self,
+    ) -> None:
+        """Tywell weather data belongs to the same physical wall controller."""
+        handler_module.device_name.update(
+            {
+                "10_20": "Tywell Ctrl RdC",
+                "30_40": "Produit 1",
+            }
+        )
+        handler_module.device_type.update(
+            {
+                "10_20": "re2020ControlPassive",
+                "30_40": "weather",
+            }
+        )
+
+        weather = await MessageHandler.get_device(
+            self.client,
+            "weather",
+            "30_40",
+            "40",
+            "Produit 1",
+            "30",
+            {},
+        )
+
+        self.assertIsInstance(weather, TydomWeather)
+        self.assertEqual(weather.registry_device_id, "10_20")
+        self.assertEqual(weather.registry_device_name, "Tywell Ctrl RdC")
+        self.assertEqual(weather.device_id, "30_40")
+
+    async def test_weather_endpoint_stays_separate_when_controller_is_ambiguous(
+        self,
+    ) -> None:
+        """Do not guess a physical parent when several Tywell controls exist."""
+        handler_module.device_name.update(
+            {
+                "10_20": "Tywell Ctrl RdC",
+                "11_21": "Tywell Ctrl Étage",
+            }
+        )
+        handler_module.device_type.update(
+            {
+                "10_20": "re2020ControlPassive",
+                "11_21": "re2020ControlPassive",
+            }
+        )
+
+        weather = await MessageHandler.get_device(
+            self.client,
+            "weather",
+            "30_40",
+            "40",
+            "Produit 1",
+            "30",
+            {},
+        )
+
+        self.assertIsInstance(weather, TydomWeather)
+        self.assertEqual(weather.registry_device_id, "30_40")
+        self.assertEqual(weather.registry_device_name, "Produit 1")
 
     async def test_area_modes_include_only_advertised_cooling(self) -> None:
         """Cooling is exposed only when TYDOM advertises the capability."""

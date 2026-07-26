@@ -86,6 +86,21 @@ class TydomDevice:
         """Return endpoint for device."""
         return self._endpoint
 
+    @property
+    def registry_device_id(self) -> str:
+        """Return the physical device identifier used by Home Assistant."""
+        return getattr(self, "_registry_device_id", self._uid)
+
+    @property
+    def registry_device_name(self) -> str:
+        """Return the physical device name used by Home Assistant."""
+        return getattr(self, "_registry_device_name", self._name)
+
+    def group_with_registry_device(self, device_id: str, device_name: str) -> None:
+        """Group this protocol endpoint with another physical HA device."""
+        self._registry_device_id = device_id
+        self._registry_device_name = device_name
+
     async def update_device(self, device):
         """Update the device values from another device."""
         LOGGER.debug("Update device %s", device.device_id)

@@ -503,8 +503,10 @@ class GenericSensor(SensorEntity):
     def device_info(self):
         """Return information to link this entity with the correct device."""
         device_info_dict = self._get_device_info_dict()
+        registry_device_id = self._device.registry_device_id
+        grouped_with_parent = registry_device_id != self._device.device_id
         info: DeviceInfo = {
-            "identifiers": {(DOMAIN, self._device.device_id)},
+            "identifiers": {(DOMAIN, registry_device_id)},
         }
 
         # Add name if available
@@ -518,7 +520,9 @@ class GenericSensor(SensorEntity):
             "appareil",
         ]
 
-        if hasattr(self._device, "device_name") and self._device.device_name:
+        if grouped_with_parent:
+            info["name"] = self._device.registry_device_name
+        elif hasattr(self._device, "device_name") and self._device.device_name:
             info["name"] = self._device.device_name
         elif "model" in device_info_dict:
             model_name = device_info_dict["model"]
@@ -538,23 +542,20 @@ class GenericSensor(SensorEntity):
             info["manufacturer"] = "Delta Dore"
 
         # Add model
-        if "model" in device_info_dict:
+        if "model" in device_info_dict and not grouped_with_parent:
             info["model"] = device_info_dict["model"]
 
         # Add hardware version
-        if "hw_version" in device_info_dict:
+        if "hw_version" in device_info_dict and not grouped_with_parent:
             info["hw_version"] = device_info_dict["hw_version"]
 
         # Add software version
-        if "sw_version" in device_info_dict:
+        if "sw_version" in device_info_dict and not grouped_with_parent:
             info["sw_version"] = device_info_dict["sw_version"]
 
         # Link device to Tydom gateway via via_device
         gateway_device_id = self._get_tydom_gateway_device_id()
-        if (
-            gateway_device_id is not None
-            and gateway_device_id != self._device.device_id
-        ):
+        if gateway_device_id is not None and gateway_device_id != registry_device_id:
             info["via_device"] = (DOMAIN, gateway_device_id)
 
         return info
@@ -649,8 +650,10 @@ class BinarySensorBase(BinarySensorEntity):
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
+        registry_device_id = self._device.registry_device_id
+        grouped_with_parent = registry_device_id != self._device.device_id
         info: DeviceInfo = {
-            "identifiers": {(DOMAIN, self._device.device_id)},
+            "identifiers": {(DOMAIN, registry_device_id)},
         }
         # Add name if available
         # Avoid using generic names like "Produit 1" from productName
@@ -663,7 +666,9 @@ class BinarySensorBase(BinarySensorEntity):
             "appareil",
         ]
 
-        if hasattr(self._device, "device_name") and self._device.device_name:
+        if grouped_with_parent:
+            info["name"] = self._device.registry_device_name
+        elif hasattr(self._device, "device_name") and self._device.device_name:
             info["name"] = self._device.device_name
         elif hasattr(self._device, "productName"):
             product_name = getattr(self._device, "productName", None)
@@ -686,16 +691,13 @@ class BinarySensorBase(BinarySensorEntity):
                 info["manufacturer"] = str(manufacturer)
         if "manufacturer" not in info:
             info["manufacturer"] = "Delta Dore"
-        if hasattr(self._device, "productName"):
+        if hasattr(self._device, "productName") and not grouped_with_parent:
             product_name = getattr(self._device, "productName", None)
             if product_name is not None:
                 info["model"] = str(product_name)
         # Link to gateway if available
         gateway_device_id = self._get_tydom_gateway_device_id()
-        if (
-            gateway_device_id is not None
-            and gateway_device_id != self._device.device_id
-        ):
+        if gateway_device_id is not None and gateway_device_id != registry_device_id:
             info["via_device"] = (DOMAIN, gateway_device_id)
         return info
 
@@ -3506,14 +3508,16 @@ class HaWeather(WeatherEntity, HAEntity):
     def device_info(self):
         """Return information to link this entity with the correct device."""
         device_info = self._get_device_info()
+        registry_device_id = self._device.registry_device_id
+        grouped_with_parent = registry_device_id != self._device.device_id
         info: DeviceInfo = {
-            "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self._device.device_name,
+            "identifiers": {(DOMAIN, registry_device_id)},
+            "name": self._device.registry_device_name,
             "manufacturer": device_info["manufacturer"],
         }
-        if "model" in device_info:
+        if "model" in device_info and not grouped_with_parent:
             info["model"] = device_info["model"]
-        return info
+        return self._enrich_device_info(info)
 
 
 class HaMoisture(BinarySensorEntity, HAEntity):

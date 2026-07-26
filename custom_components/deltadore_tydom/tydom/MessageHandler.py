@@ -616,7 +616,7 @@ class MessageHandler:
                     data,
                 )
             case "weather":
-                return TydomWeather(
+                weather_device = TydomWeather(
                     tydom_client,
                     uid,
                     device_id,
@@ -626,6 +626,18 @@ class MessageHandler:
                     device_metadata.get(uid),
                     data,
                 )
+                passive_controllers = [
+                    controller_uid
+                    for controller_uid, controller_type in device_type.items()
+                    if controller_type == "re2020ControlPassive"
+                ]
+                if len(passive_controllers) == 1:
+                    controller_uid = passive_controllers[0]
+                    weather_device.group_with_registry_device(
+                        controller_uid,
+                        device_name.get(controller_uid, "Tywell Control"),
+                    )
+                return weather_device
             case "sensorDF":
                 return TydomWater(
                     tydom_client,
