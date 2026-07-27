@@ -201,6 +201,77 @@ class TydomSmoke(TydomDevice):
     """Represents an smoke detector sensor."""
 
 
+class TydomRemoteControl(TydomDevice):
+    """Represent one button endpoint of a physical remote control."""
+
+    def __init__(
+        self,
+        tydom_client: TydomClient,
+        uid: str,
+        device_id: str,
+        name: str,
+        device_type: str,
+        endpoint: str | None,
+        metadata: dict | None,
+        data: dict | None,
+        remote_info: dict | None = None,
+    ) -> None:
+        """Initialise a remote-control button endpoint."""
+        super().__init__(
+            tydom_client,
+            uid,
+            device_id,
+            name,
+            device_type,
+            endpoint,
+            metadata,
+            data,
+        )
+        info = remote_info or {}
+        self._physical_device_id = str(info.get("physical_device_id", device_id))
+        self._remote_name = str(
+            info.get("name", f"Remote control {self._physical_device_id}")
+        )
+        self._remote_model = str(
+            info.get("model", "Delta Dore remote control")
+        )
+        self._button_number = info.get("button_number")
+        self._configured_action = str(info.get("configured_action", "TOGGLE"))
+        self._event_sequence = 0
+
+    @property
+    def physical_device_id(self) -> str:
+        """Return the identifier shared by every button on the remote."""
+        return self._physical_device_id
+
+    @property
+    def remote_name(self) -> str:
+        """Return the configured name of the physical remote."""
+        return self._remote_name
+
+    @property
+    def remote_model(self) -> str:
+        """Return the remote-control model inferred from TYDOM configuration."""
+        return self._remote_model
+
+    @property
+    def button_number(self) -> int | None:
+        """Return the physical button number represented by this endpoint."""
+        return self._button_number
+
+    @property
+    def event_sequence(self) -> int:
+        """Return a monotonically increasing sequence for fresh button actions."""
+        return self._event_sequence
+
+    async def update_device(self, device) -> None:
+        """Record fresh remote actions before publishing the endpoint update."""
+        action = getattr(device, "action", None)
+        if action is not None and action != "IDLE":
+            self._event_sequence += 1
+        await super().update_device(device)
+
+
 class TydomBoiler(TydomDevice):
     """Represents a Boiler."""
 
