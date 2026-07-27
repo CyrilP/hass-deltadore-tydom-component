@@ -23,6 +23,7 @@ from .tydom_devices import (
     TydomGarage,
     TydomGate,
     TydomLight,
+    TydomOnOffSwitch,
     TydomPlug,
     TydomShutter,
     TydomSmoke,
@@ -53,9 +54,38 @@ device_name = {}
 device_endpoint = {}
 device_type = {}
 device_metadata = {}
+device_tutorial_id = {}
 scenario_metadata = {}  # Store scenario metadata from /configs/file
 groups_metadata = {}  # Store group metadata from /configs/file: {group_id: {"usage": "light", "name": "TOTAL"}}
 groups_data = {}  # Store groups data: {group_id: {"devices": [device_ids], "name": group_name}}
+
+
+def _is_tyxia_4910_other(uid: str) -> bool:
+    """Identify a binary TYXIA 4910 configured under the TYDOM 'others' usage."""
+    if str(device_tutorial_id.get(uid, "")).lower() != "9_tyxia_modulaire_serie4900":
+        return False
+
+    metadata = device_metadata.get(uid)
+    if not isinstance(metadata, dict):
+        return False
+
+    level = metadata.get("level")
+    level_cmd = metadata.get("levelCmd")
+    if not isinstance(level, dict) or not isinstance(level_cmd, dict):
+        return False
+
+    commands = level_cmd.get("enum_values")
+    if not isinstance(commands, list) or not {"ON", "OFF"}.issubset(commands):
+        return False
+
+    try:
+        return (
+            float(level.get("min")) == 0
+            and float(level.get("max")) == 100
+            and float(level.get("step")) == 100
+        )
+    except (TypeError, ValueError):
+        return False
 
 
 class Reply(TypedDict):
@@ -570,6 +600,17 @@ class MessageHandler:
                     device_metadata.get(uid),
                     data,
                 )
+            case "others" if _is_tyxia_4910_other(uid):
+                return TydomOnOffSwitch(
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata.get(uid),
+                    data,
+                )
             case _:
                 LOGGER.info(
                     "Unknown usage : %s for device_id %s, uid %s - creating generic sensor",
@@ -602,6 +643,10 @@ class MessageHandler:
             device_name[device_unique_id] = i["name"]
             device_type[device_unique_id] = i["last_usage"] or "unknown"
             device_endpoint[device_unique_id] = i["id_endpoint"]
+            widget_behavior = i.get("widget_behavior") or {}
+            device_tutorial_id[device_unique_id] = widget_behavior.get(
+                "tutorial_id", ""
+            )
 
             if i["last_usage"] == "alarm":
                 device_name[device_unique_id] = "Tyxal Alarm"
