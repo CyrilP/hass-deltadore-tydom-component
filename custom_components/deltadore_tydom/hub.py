@@ -545,9 +545,7 @@ class Hub:
         if self.add_event_callback is not None:
             self.add_event_callback([ha_device])
 
-        battery = self._interrupter_battery_entities.get(
-            device.physical_device_id
-        )
+        battery = self._interrupter_battery_entities.get(device.physical_device_id)
         if battery is None:
             battery = HAInterrupterBattery(device, self._hass)
             self._interrupter_battery_entities[device.physical_device_id] = battery

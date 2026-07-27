@@ -6121,9 +6121,7 @@ class HAInterrupterBattery(BinarySensorEntity, HAEntity):
         self._devices: dict[str, TydomInterrupter] = {}
         self._callbacks: dict[str, Any] = {}
         self._battery_defect: bool | None = None
-        self._attr_unique_id = (
-            f"interrupter_{device.physical_device_id}_battery_defect"
-        )
+        self._attr_unique_id = f"interrupter_{device.physical_device_id}_battery_defect"
         self.add_device(device)
 
     def add_device(self, device: TydomInterrupter) -> None:

@@ -267,9 +267,7 @@ def _refresh_interrupter_info() -> None:
             "physical_device_id": physical_device_id,
             "group_id": group_id,
             "name": group_name,
-            "model": _interrupter_model(
-                group_tutorial_id or endpoint_tutorial_id
-            ),
+            "model": _interrupter_model(group_tutorial_id or endpoint_tutorial_id),
             "button": config.get("button"),
             "configured_action": config.get("configured_action", "TOGGLE"),
         }

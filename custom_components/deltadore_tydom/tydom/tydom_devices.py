@@ -708,9 +708,7 @@ class TydomInterrupter(TydomDevice):
         self._interrupter_name = str(
             info.get("name", f"Wall switch {self._physical_device_id}")
         )
-        self._interrupter_model = str(
-            info.get("model", "Delta Dore wall switch")
-        )
+        self._interrupter_model = str(info.get("model", "Delta Dore wall switch"))
         self._button = info.get("button")
         self._configured_action = str(info.get("configured_action", "TOGGLE"))
         self._event_sequence = 0
