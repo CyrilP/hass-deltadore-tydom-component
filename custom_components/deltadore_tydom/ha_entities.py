@@ -3547,7 +3547,6 @@ class HaSun(SensorEntity, HAEntity):
     _attr_native_unit_of_measurement = "W/m²"
 
     sensor_classes = {"battDefect": BinarySensorDeviceClass.PROBLEM}
-    filtered_attrs = ["configSensor", "configTemp"]
 
     def __init__(self, device: TydomSun, hass) -> None:
         """Initialise a Tysense Sun sensor."""

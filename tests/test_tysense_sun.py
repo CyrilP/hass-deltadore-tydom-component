@@ -146,6 +146,8 @@ class TestTySenseSun(IsolatedAsyncioTestCase):
         self.assertEqual(devices[0].device_name, "Sonde Soleil Ouest")
         self.assertEqual(devices[0].lightPower, 45)
         self.assertFalse(devices[0].battDefect)
+        self.assertEqual(devices[0].configSensor, 8)
+        self.assertEqual(devices[0].configTemp, 0)
         self.assertEqual(devices[0]._metadata["lightPower"]["unit"], "W/m2")
         self.assertFalse(
             any(
