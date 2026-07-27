@@ -2392,9 +2392,7 @@ class HaClimate(ClimateEntity, HAEntity):
         registry_device_id = str(self._device.source_device_id)
         infos: DeviceInfo = {
             "identifiers": {(DOMAIN, registry_device_id)},
-            "name": str(
-                device_name.get(registry_device_id, self._device.device_name)
-            ),
+            "name": str(device_name.get(registry_device_id, self._device.device_name)),
             "manufacturer": device_info["manufacturer"],
         }
         if "model" in device_info:
