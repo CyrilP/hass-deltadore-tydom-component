@@ -239,14 +239,44 @@ def _interrupter_model(tutorial_id: str) -> str:
     return "Delta Dore wall switch"
 
 
+def _is_ungrouped_tyxia_2600(endpoint_configs: list[dict]) -> bool:
+    """Recognise a TYXIA 2600 whose two outputs were paired separately."""
+    if len(endpoint_configs) != 2:
+        return False
+
+    names = [str(config.get("name", "")) for config in endpoint_configs]
+    return any(
+        re.fullmatch(r"Interrupteur\s+\d+", name, flags=re.IGNORECASE) for name in names
+    ) and any(
+        re.fullmatch(r"CG_DD_COMMON_BUTTON[AB]", name, flags=re.IGNORECASE)
+        for name in names
+    )
+
+
 def _refresh_interrupter_info() -> None:
     """Combine button endpoint configuration with its physical device group."""
     interrupter_info.clear()
 
+    configs_by_device: dict[str, list[tuple[str, dict]]] = {}
     for unique_id, config in interrupter_endpoint_config.items():
-        physical_device_id = str(config["device_id"])
+        configs_by_device.setdefault(str(config["device_id"]), []).append(
+            (unique_id, config)
+        )
+
+    for physical_device_id, endpoint_items in configs_by_device.items():
+        endpoint_configs = [config for _, config in endpoint_items]
         group_id = None
-        group_name = f"Wall switch {physical_device_id}"
+        friendly_names = [
+            str(config.get("name", ""))
+            for config in endpoint_configs
+            if config.get("name")
+            and not re.fullmatch(
+                r"CG_DD_COMMON_BUTTON[A-Z0-9]+",
+                str(config["name"]),
+                flags=re.IGNORECASE,
+            )
+        ]
+        group_name = friendly_names[0] if friendly_names else "Wall switch"
         group_tutorial_id = ""
 
         for candidate_id, group in groups_data.items():
@@ -262,15 +292,38 @@ def _refresh_interrupter_info() -> None:
                 group_tutorial_id = str(group_metadata.get("tutorial_id", ""))
                 break
 
-        endpoint_tutorial_id = str(config.get("tutorial_id", ""))
-        interrupter_info[unique_id] = {
-            "physical_device_id": physical_device_id,
-            "group_id": group_id,
-            "name": group_name,
-            "model": _interrupter_model(group_tutorial_id or endpoint_tutorial_id),
-            "button": config.get("button"),
-            "configured_action": config.get("configured_action", "TOGGLE"),
+        if not group_tutorial_id and _is_ungrouped_tyxia_2600(endpoint_configs):
+            group_tutorial_id = "switch_tyxia2600"
+
+        assigned_buttons = {
+            str(config["button"])
+            for config in endpoint_configs
+            if config.get("button") in {"A", "B"}
         }
+        missing_buttons = {"A", "B"} - assigned_buttons
+        missing_configs = [
+            config for config in endpoint_configs if config.get("button") is None
+        ]
+        if (
+            len(endpoint_configs) == 2
+            and len(missing_configs) == 1
+            and len(missing_buttons) == 1
+        ):
+            missing_configs[0]["button"] = missing_buttons.pop()
+
+        for unique_id, config in endpoint_items:
+            endpoint_tutorial_id = str(config.get("tutorial_id", ""))
+            button = config.get("button")
+            if button is not None:
+                device_name[unique_id] = f"Button {button}"
+            interrupter_info[unique_id] = {
+                "physical_device_id": physical_device_id,
+                "group_id": group_id,
+                "name": group_name,
+                "model": _interrupter_model(group_tutorial_id or endpoint_tutorial_id),
+                "button": button,
+                "configured_action": config.get("configured_action", "TOGGLE"),
+            }
 
 
 class MessageHandler:
@@ -955,6 +1008,7 @@ class MessageHandler:
                 interrupter_endpoint_config[device_unique_id] = {
                     "device_id": i["id_device"],
                     "endpoint_id": i["id_endpoint"],
+                    "name": i.get("name", ""),
                     "tutorial_id": tutorial_id,
                     "configured_action": widget_behavior.get("action", "TOGGLE"),
                     "button": button,

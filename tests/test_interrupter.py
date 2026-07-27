@@ -138,8 +138,7 @@ class TestInterrupter(IsolatedAsyncioTestCase):
                             {
                                 "id": device_id,
                                 "endpoints": [
-                                    {"id": endpoint_id}
-                                    for endpoint_id in endpoint_ids
+                                    {"id": endpoint_id} for endpoint_id in endpoint_ids
                                 ],
                             }
                         ],
@@ -238,11 +237,53 @@ class TestInterrupter(IsolatedAsyncioTestCase):
             )
 
         self.assertEqual(
-            {
-                info["name"]
-                for info in handler_module.interrupter_info.values()
-            },
+            {info["name"] for info in handler_module.interrupter_info.values()},
             {"Portillon/Portail", "S à Manger/Esc Haut", "Cuisine / Esc Bas"},
+        )
+
+    async def test_separately_paired_outputs_rebuild_tyxia_2600_identity(
+        self,
+    ) -> None:
+        """A separately paired A output is combined with its raw B endpoint."""
+        device_id = 1759744899
+        endpoint_ids = [1759744899, 1759745026]
+
+        await self.handler.parse_config_data(
+            {
+                "endpoints": [
+                    {
+                        "id_device": device_id,
+                        "id_endpoint": endpoint_ids[0],
+                        "name": "Interrupteur 1",
+                        "first_usage": "interrupter",
+                        "last_usage": "interrupter",
+                    },
+                    {
+                        "id_device": device_id,
+                        "id_endpoint": endpoint_ids[1],
+                        "name": "CG_DD_COMMON_BUTTONB",
+                        "first_usage": "interrupter",
+                        "last_usage": "interrupter",
+                    },
+                ],
+                "groups": [],
+            },
+            None,
+        )
+
+        infos = [
+            handler_module.interrupter_info[f"{endpoint_id}_{device_id}"]
+            for endpoint_id in endpoint_ids
+        ]
+        self.assertEqual([info["button"] for info in infos], ["A", "B"])
+        self.assertEqual({info["name"] for info in infos}, {"Interrupteur 1"})
+        self.assertEqual({info["model"] for info in infos}, {"TYXIA 2600"})
+        self.assertEqual(
+            [
+                handler_module.device_name[f"{endpoint_id}_{device_id}"]
+                for endpoint_id in endpoint_ids
+            ],
+            ["Button A", "Button B"],
         )
 
     async def test_expired_action_does_not_repeat_last_press(self) -> None:
