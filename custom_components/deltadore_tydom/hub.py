@@ -27,6 +27,7 @@ from .tydom.tydom_devices import (
     TydomWeather,
     TydomWater,
     TydomThermo,
+    TydomSun,
     TydomDevice,
     TydomScene,
     TydomGroup,
@@ -50,6 +51,7 @@ from .ha_entities import (
     HaWeather,
     HaMoisture,
     HaThermo,
+    HaSun,
     HASensor,
     HAScene,
     HASwitch,
@@ -161,6 +163,7 @@ class Hub:
             TydomWeather: self._create_weather_device,
             TydomWater: self._create_water_device,
             TydomThermo: self._create_thermo_device,
+            TydomSun: self._create_sun_device,
             TydomScene: self._create_scene_device,
             TydomGroup: self._create_group_device,
             TydomMoment: self._create_moment_device,
@@ -572,6 +575,15 @@ class Hub:
         """Create thermostat device."""
         LOGGER.debug("Create thermo %s", device.device_id)
         ha_device = HaThermo(device, self._hass)
+        self.ha_devices[device.device_id] = ha_device
+        if self.add_sensor_callback is not None:
+            self.add_sensor_callback([ha_device])
+            self.add_sensor_callback(ha_device.get_sensors())
+
+    async def _create_sun_device(self, device: TydomSun) -> None:
+        """Create a Tysense Sun irradiance sensor."""
+        LOGGER.debug("Create Tysense Sun %s", device.device_id)
+        ha_device = HaSun(device, self._hass)
         self.ha_devices[device.device_id] = ha_device
         if self.add_sensor_callback is not None:
             self.add_sensor_callback([ha_device])
