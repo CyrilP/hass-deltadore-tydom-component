@@ -613,6 +613,17 @@ class MessageHandler:
                     device_metadata.get(uid),
                     data,
                 )
+            case "plug":
+                return TydomPlug(
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata.get(uid),
+                    data,
+                )
             case "remoteControl":
                 return TydomRemoteControl(
                     tydom_client,
@@ -624,17 +635,6 @@ class MessageHandler:
                     device_metadata.get(uid),
                     data,
                     remote_control_info.get(uid),
-                )
-            case "plug":
-                return TydomPlug(
-                    tydom_client,
-                    uid,
-                    device_id,
-                    name,
-                    last_usage,
-                    endpoint,
-                    device_metadata.get(uid),
-                    data,
                 )
             case _:
                 LOGGER.info(
