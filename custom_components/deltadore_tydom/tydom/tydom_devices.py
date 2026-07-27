@@ -232,9 +232,7 @@ class TydomRemoteControl(TydomDevice):
         self._remote_name = str(
             info.get("name", f"Remote control {self._physical_device_id}")
         )
-        self._remote_model = str(
-            info.get("model", "Delta Dore remote control")
-        )
+        self._remote_model = str(info.get("model", "Delta Dore remote control"))
         self._button_number = info.get("button_number")
         self._configured_action = str(info.get("configured_action", "TOGGLE"))
         self._event_sequence = 0

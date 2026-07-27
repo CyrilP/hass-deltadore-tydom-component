@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 import types
 from unittest import IsolatedAsyncioTestCase
+from unittest import TestCase
 from unittest.mock import MagicMock
 
 
@@ -33,6 +34,7 @@ for package_name in (
 logger = MagicMock()
 _module(
     "custom_components.deltadore_tydom.const",
+    DOMAIN="deltadore_tydom",
     LOGGER=logger,
     validate_value_with_metadata=MagicMock(return_value=(True, None)),
 )
@@ -62,6 +64,23 @@ handler_spec.loader.exec_module(handler_module)
 
 MessageHandler = handler_module.MessageHandler
 TydomRemoteControl = devices_module.TydomRemoteControl
+
+migration_name = "custom_components.deltadore_tydom.remote_registry_migration"
+migration_path = (
+    root
+    / "custom_components"
+    / "deltadore_tydom"
+    / "remote_registry_migration.py"
+)
+migration_spec = importlib.util.spec_from_file_location(migration_name, migration_path)
+assert migration_spec is not None and migration_spec.loader is not None
+migration_module = importlib.util.module_from_spec(migration_spec)
+_original_modules.setdefault(
+    migration_name, sys.modules.get(migration_name, _MISSING)
+)
+sys.modules[migration_name] = migration_module
+migration_spec.loader.exec_module(migration_module)
+remove_legacy_remote_endpoint = migration_module.remove_legacy_remote_endpoint
 
 for name, original in _original_modules.items():
     if original is _MISSING:
@@ -287,6 +306,134 @@ class TestRemoteControl(IsolatedAsyncioTestCase):
 
         self.assertEqual(device.event_sequence, 1)
         callback.assert_called_once_with()
+
+
+class _Registry:
+    """Minimal registry used by migration tests."""
+
+    def __init__(self, values) -> None:
+        """Initialise registry values."""
+        self.entities = values
+        self.devices = values
+        self.removed: list[str] = []
+
+    def async_get_device(self, *, identifiers):
+        """Return the device whose identifiers match."""
+        return next(
+            (
+                device
+                for device in self.devices.values()
+                if device.identifiers & identifiers
+            ),
+            None,
+        )
+
+    def async_remove(self, entity_id: str) -> None:
+        """Remove an entity."""
+        self.removed.append(entity_id)
+        self.entities.pop(entity_id)
+
+    def async_remove_device(self, device_id: str) -> None:
+        """Remove a device."""
+        self.removed.append(device_id)
+        self.devices.pop(device_id)
+
+
+class TestRemoteRegistryMigration(TestCase):
+    """Exercise guarded cleanup of obsolete generic endpoints."""
+
+    endpoint_unique_id = "100_100"
+
+    def _device(self, **overrides):
+        device = types.SimpleNamespace(
+            id="legacy-device",
+            identifiers={("deltadore_tydom", self.endpoint_unique_id)},
+            config_entries={"entry"},
+        )
+        for name, value in overrides.items():
+            setattr(device, name, value)
+        return device
+
+    def _entity(self, unique_id: str, **overrides):
+        entity = types.SimpleNamespace(
+            device_id="legacy-device",
+            platform="deltadore_tydom",
+            unique_id=unique_id,
+        )
+        for name, value in overrides.items():
+            setattr(entity, name, value)
+        return entity
+
+    def test_removes_only_expected_generic_entities_and_device(self) -> None:
+        """Known generic records are removed before dedicated entities load."""
+        device_registry = _Registry({"legacy-device": self._device()})
+        entity_registry = _Registry(
+            {
+                "sensor.button": self._entity(
+                    f"{self.endpoint_unique_id}_sensor"
+                ),
+                "sensor.action": self._entity(
+                    f"{self.endpoint_unique_id}_action"
+                ),
+                "sensor.battery": self._entity(
+                    f"{self.endpoint_unique_id}_battDefect"
+                ),
+            }
+        )
+
+        removed = remove_legacy_remote_endpoint(
+            device_registry,
+            entity_registry,
+            "entry",
+            self.endpoint_unique_id,
+        )
+
+        self.assertEqual(
+            removed,
+            ["sensor.button", "sensor.action", "sensor.battery"],
+        )
+        self.assertEqual(device_registry.removed, ["legacy-device"])
+
+    def test_keeps_device_with_unrecognised_entity(self) -> None:
+        """Unexpected entities prevent any destructive migration."""
+        device_registry = _Registry({"legacy-device": self._device()})
+        entity_registry = _Registry(
+            {
+                "sensor.custom": self._entity("custom_unique_id"),
+            }
+        )
+
+        removed = remove_legacy_remote_endpoint(
+            device_registry,
+            entity_registry,
+            "entry",
+            self.endpoint_unique_id,
+        )
+
+        self.assertEqual(removed, [])
+        self.assertEqual(entity_registry.removed, [])
+        self.assertEqual(device_registry.removed, [])
+
+    def test_keeps_device_from_another_config_entry(self) -> None:
+        """Migration cannot touch another configured gateway."""
+        device_registry = _Registry(
+            {
+                "legacy-device": self._device(
+                    config_entries={"another-entry"}
+                )
+            }
+        )
+        entity_registry = _Registry({})
+
+        removed = remove_legacy_remote_endpoint(
+            device_registry,
+            entity_registry,
+            "entry",
+            self.endpoint_unique_id,
+        )
+
+        self.assertEqual(removed, [])
+        self.assertEqual(device_registry.removed, [])
 
 
 if __name__ == "__main__":

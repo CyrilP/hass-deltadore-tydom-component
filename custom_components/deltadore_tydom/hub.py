@@ -60,6 +60,7 @@ from .ha_entities import (
 )
 
 from .const import LOGGER, get_polling_interval_for_validity, STRUCTURED_LOGGER
+from .remote_registry_migration import migrate_legacy_remote_endpoint
 
 
 class Hub:
@@ -573,11 +574,14 @@ class Hub:
         if self.add_switch_callback is not None:
             self.add_switch_callback([ha_device])
 
-    async def _create_remote_control_device(
-        self, device: TydomRemoteControl
-    ) -> None:
+    async def _create_remote_control_device(self, device: TydomRemoteControl) -> None:
         """Create an event entity for a remote button and one battery diagnostic."""
         LOGGER.debug("Create remote-control button %s", device.device_id)
+        migrate_legacy_remote_endpoint(
+            self._hass,
+            self._entry.entry_id,
+            device.device_id,
+        )
         ha_device = HARemoteEvent(device, self._hass)
         self.ha_devices[device.device_id] = ha_device
         if self.add_event_callback is not None:

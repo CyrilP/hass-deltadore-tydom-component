@@ -5721,7 +5721,9 @@ class HARemoteEvent(EventEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_remote_event"
         button_number = device.button_number
         self._attr_name = (
-            f"Button {button_number}" if button_number is not None else device.device_name
+            f"Button {button_number}"
+            if button_number is not None
+            else device.device_name
         )
 
     async def async_added_to_hass(self) -> None:
