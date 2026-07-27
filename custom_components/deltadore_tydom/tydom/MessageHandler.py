@@ -22,6 +22,7 @@ from .tydom_devices import (
     TydomEnergy,
     TydomGarage,
     TydomGate,
+    TydomInterrupter,
     TydomLight,
     TydomSwitch,
     TydomPlug,
@@ -86,6 +87,8 @@ device_endpoint = {}
 device_type = {}
 device_metadata = {}
 device_tutorial_id = {}
+interrupter_endpoint_config = {}
+interrupter_info = {}
 scenario_metadata = {}  # Store scenario metadata from /configs/file
 groups_metadata = {}  # Store group metadata from /configs/file: {group_id: {"usage": "light", "name": "TOTAL"}}
 groups_data = {}  # Store groups data: {group_id: {"devices": [device_ids], "name": group_name}}
@@ -227,6 +230,49 @@ class Reply(TypedDict):
     """Raw reply events."""
     done: bool
     """Whether all reply events have been received or not."""
+
+
+def _interrupter_model(tutorial_id: str) -> str:
+    """Return a friendly wall-switch model from its tutorial identifier."""
+    if tutorial_id.startswith("switch_tyxia2600"):
+        return "TYXIA 2600"
+    return "Delta Dore wall switch"
+
+
+def _refresh_interrupter_info() -> None:
+    """Combine button endpoint configuration with its physical device group."""
+    interrupter_info.clear()
+
+    for unique_id, config in interrupter_endpoint_config.items():
+        physical_device_id = str(config["device_id"])
+        group_id = None
+        group_name = f"Wall switch {physical_device_id}"
+        group_tutorial_id = ""
+
+        for candidate_id, group in groups_data.items():
+            group_metadata = groups_metadata.get(candidate_id, {})
+            group_usage = group.get("usage") or group_metadata.get("usage")
+            if group_usage != "interrupter":
+                continue
+            if physical_device_id in group.get("devices", []):
+                group_id = candidate_id
+                group_name = (
+                    group_metadata.get("name") or group.get("name") or group_name
+                )
+                group_tutorial_id = str(group_metadata.get("tutorial_id", ""))
+                break
+
+        endpoint_tutorial_id = str(config.get("tutorial_id", ""))
+        interrupter_info[unique_id] = {
+            "physical_device_id": physical_device_id,
+            "group_id": group_id,
+            "name": group_name,
+            "model": _interrupter_model(
+                group_tutorial_id or endpoint_tutorial_id
+            ),
+            "button": config.get("button"),
+            "configured_action": config.get("configured_action", "TOGGLE"),
+        }
 
 
 class MessageHandler:
@@ -723,6 +769,18 @@ class MessageHandler:
                     device_metadata.get(uid),
                     data,
                 )
+            case "interrupter":
+                return TydomInterrupter(
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata.get(uid),
+                    data,
+                    interrupter_info.get(uid),
+                )
             case "boiler" | "sh_hvac" | "electric" | "aeraulic":
                 return TydomBoiler(
                     tydom_client,
@@ -889,6 +947,23 @@ class MessageHandler:
             if i.get("last_usage") == "remoteControl" and button_match is not None:
                 device_name[device_unique_id] = f"Button {button_match.group(1)}"
 
+            if i.get("last_usage") == "interrupter":
+                widget_behavior = i.get("widget_behavior") or {}
+                tutorial_id = str(widget_behavior.get("tutorial_id", ""))
+                button_match = re.search(
+                    r"BUTTON([A-Z0-9]+)", str(i.get("name", ""))
+                ) or re.search(r"_btn_([a-z0-9]+)$", tutorial_id)
+                button = button_match.group(1).upper() if button_match else None
+                interrupter_endpoint_config[device_unique_id] = {
+                    "device_id": i["id_device"],
+                    "endpoint_id": i["id_endpoint"],
+                    "tutorial_id": tutorial_id,
+                    "configured_action": widget_behavior.get("action", "TOGGLE"),
+                    "button": button,
+                }
+                if button is not None:
+                    device_name[device_unique_id] = f"Button {button}"
+
             if i["last_usage"] == "alarm":
                 device_name[device_unique_id] = "Tyxal Alarm"
 
@@ -930,6 +1005,7 @@ class MessageHandler:
                     )
 
         _refresh_remote_control_info()
+        _refresh_interrupter_info()
         LOGGER.debug("Configuration updated")
         return []
 
@@ -1556,9 +1632,9 @@ class MessageHandler:
                             "usage": group_usage,
                         }
 
-                        if group_usage == "remoteControl":
+                        if group_usage in {"remoteControl", "interrupter"}:
                             LOGGER.debug(
-                                "Skipping non-controllable remote-control group %s",
+                                "Skipping non-controllable input group %s",
                                 group_id_str,
                             )
                             continue
@@ -1587,6 +1663,7 @@ class MessageHandler:
                     len(groups) if isinstance(groups, list) else 0,
                 )
                 _refresh_remote_control_info()
+                _refresh_interrupter_info()
         return devices
 
     async def parse_moments_file(self, parsed, transaction_id):

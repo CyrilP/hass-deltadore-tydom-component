@@ -22,6 +22,7 @@ from .tydom.tydom_devices import (
     TydomGarage,
     TydomLight,
     TydomSwitch,
+    TydomInterrupter,
     TydomPlug,
     TydomAlarm,
     TydomWeather,
@@ -47,6 +48,8 @@ from .ha_entities import (
     HaGate,
     HaGarage,
     HaLight,
+    HAInterrupterBattery,
+    HAInterrupterEvent,
     HaAlarm,
     HaWeather,
     HaMoisture,
@@ -136,6 +139,7 @@ class Hub:
         self.online = True
         self._reload_button_created = False
         self._remote_battery_entities: dict[str, HARemoteBattery] = {}
+        self._interrupter_battery_entities: dict[str, HAInterrupterBattery] = {}
         self._shutting_down = False
 
         # Polling cache for optimization
@@ -158,6 +162,7 @@ class Hub:
             TydomGarage: self._create_garage_device,
             TydomLight: self._create_light_device,
             TydomSwitch: self._create_switch_device,
+            TydomInterrupter: self._create_interrupter_device,
             TydomPlug: self._create_switch_device,
             TydomAlarm: self._create_alarm_device,
             TydomWeather: self._create_weather_device,
@@ -532,6 +537,25 @@ class Hub:
         if self.add_sensor_callback is not None:
             self.add_sensor_callback(ha_device.get_sensors())
 
+    async def _create_interrupter_device(self, device: TydomInterrupter) -> None:
+        """Create a wall-switch event entity and one battery diagnostic."""
+        LOGGER.debug("Create wall-switch button %s", device.device_id)
+        ha_device = HAInterrupterEvent(device, self._hass)
+        self.ha_devices[device.device_id] = ha_device
+        if self.add_event_callback is not None:
+            self.add_event_callback([ha_device])
+
+        battery = self._interrupter_battery_entities.get(
+            device.physical_device_id
+        )
+        if battery is None:
+            battery = HAInterrupterBattery(device, self._hass)
+            self._interrupter_battery_entities[device.physical_device_id] = battery
+            if self.add_binary_sensor_callback is not None:
+                self.add_binary_sensor_callback([battery])
+        else:
+            battery.add_device(device)
+
     async def _create_switch_device(self, device: TydomPlug | TydomSwitch) -> None:
         """Create a switch device for a controllable binary output."""
         LOGGER.debug("Create switch %s", device.device_id)
@@ -829,6 +853,7 @@ class Hub:
         self.devices.clear()
         self.ha_devices.clear()
         self._remote_battery_entities.clear()
+        self._interrupter_battery_entities.clear()
         # Réinitialiser le flag pour recréer le bouton après le rechargement
         self._reload_button_created = False
 
