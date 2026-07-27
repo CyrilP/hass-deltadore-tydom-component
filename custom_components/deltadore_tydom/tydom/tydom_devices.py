@@ -89,17 +89,17 @@ class TydomDevice:
     @property
     def registry_device_id(self) -> str:
         """Return the physical device identifier used by Home Assistant."""
-        return getattr(self, "_registry_device_id", self._uid)
+        return str(getattr(self, "_registry_device_id", self._uid))
 
     @property
     def registry_device_name(self) -> str:
         """Return the physical device name used by Home Assistant."""
-        return getattr(self, "_registry_device_name", self._name)
+        return str(getattr(self, "_registry_device_name", self._name))
 
     def group_with_registry_device(self, device_id: str, device_name: str) -> None:
         """Group this protocol endpoint with another physical HA device."""
-        self._registry_device_id = device_id
-        self._registry_device_name = device_name
+        self._registry_device_id = str(device_id)
+        self._registry_device_name = str(device_name)
 
     @property
     def battery_level_attributes(self) -> set[str]:

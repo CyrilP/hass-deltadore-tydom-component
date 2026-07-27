@@ -2389,10 +2389,12 @@ class HaClimate(ClimateEntity, HAEntity):
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
         device_info = self._get_device_info()
-        registry_device_id = self._device.source_device_id
+        registry_device_id = str(self._device.source_device_id)
         infos: DeviceInfo = {
             "identifiers": {(DOMAIN, registry_device_id)},
-            "name": device_name.get(registry_device_id, self._device.device_name),
+            "name": str(
+                device_name.get(registry_device_id, self._device.device_name)
+            ),
             "manufacturer": device_info["manufacturer"],
         }
         if "model" in device_info:
@@ -4701,11 +4703,12 @@ class HAScene(Scene, HAEntity):
                 if hub_instance and hasattr(hub_instance, "devices"):
                     tywell_device = hub_instance.devices.get(tywell_device_id)
                     if tywell_device is not None:
+                        registry_device_id = str(tywell_device_id)
                         device_info: DeviceInfo = {
-                            "identifiers": {(DOMAIN, tywell_device_id)},
-                            "name": tywell_device.device_name,
+                            "identifiers": {(DOMAIN, registry_device_id)},
+                            "name": str(tywell_device.device_name),
                             "manufacturer": "Delta Dore",
-                            "via_device": (DOMAIN, gateway_device_id),
+                            "via_device": (DOMAIN, str(gateway_device_id)),
                         }
                         product_name = getattr(tywell_device, "productName", None)
                         if product_name:

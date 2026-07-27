@@ -552,6 +552,27 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         self.assertEqual(weather.registry_device_id, "30_40")
         self.assertEqual(weather.registry_device_name, "Produit 1")
 
+    def test_registry_identity_is_always_a_string(self) -> None:
+        """Home Assistant registry identifiers and names are normalised."""
+        weather = TydomWeather(
+            self.client,
+            1749541099,
+            "1749541099",
+            1749541099,
+            "weather",
+            "1749541099",
+            {},
+            {},
+        )
+
+        self.assertEqual(weather.registry_device_id, "1749541099")
+        self.assertEqual(weather.registry_device_name, "1749541099")
+
+        weather.group_with_registry_device(123, 456)
+
+        self.assertEqual(weather.registry_device_id, "123")
+        self.assertEqual(weather.registry_device_name, "456")
+
     async def test_area_modes_include_only_advertised_cooling(self) -> None:
         """Cooling is exposed only when TYDOM advertises the capability."""
         handler_module.device_metadata["10_20"] = {
