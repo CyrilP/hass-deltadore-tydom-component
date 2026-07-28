@@ -476,7 +476,7 @@ class Hub:
                 self._hass,
                 "Toggle",
                 "toggle",
-                icon="mdi:arrow-left-right",
+                icon="mdi:arrow-expand-horizontal",
             )
             if self.add_button_callback is not None:
                 self.add_button_callback([ha_device])
@@ -497,7 +497,7 @@ class Hub:
                 self._hass,
                 "Toggle",
                 "toggle",
-                icon="mdi:arrow-up-down",
+                icon="mdi:arrow-expand-vertical",
             )
             if self.add_button_callback is not None:
                 self.add_button_callback([ha_device])
