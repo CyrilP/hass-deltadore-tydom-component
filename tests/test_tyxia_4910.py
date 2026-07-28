@@ -63,7 +63,7 @@ handler_spec.loader.exec_module(handler_module)
 MessageHandler = handler_module.MessageHandler
 TydomDevice = devices_module.TydomDevice
 TydomLight = devices_module.TydomLight
-TydomOnOffSwitch = devices_module.TydomOnOffSwitch
+TydomSwitch = devices_module.TydomSwitch
 
 for name, original in _original_modules.items():
     if original is _MISSING:
@@ -155,7 +155,7 @@ class Tyxia4910Tests(IsolatedAsyncioTestCase):
             {"level": 0},
         )
 
-        self.assertIsInstance(device, TydomOnOffSwitch)
+        self.assertIsInstance(device, TydomSwitch)
         self.assertEqual(device.productName, "TYXIA 4910")
         self.assertEqual(device.level, 0)
 

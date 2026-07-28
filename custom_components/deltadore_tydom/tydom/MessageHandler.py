@@ -23,7 +23,7 @@ from .tydom_devices import (
     TydomGarage,
     TydomGate,
     TydomLight,
-    TydomOnOffSwitch,
+    TydomSwitch,
     TydomPlug,
     TydomShutter,
     TydomSmoke,
@@ -601,7 +601,7 @@ class MessageHandler:
                     data,
                 )
             case "others" if _is_tyxia_4910_other(uid):
-                return TydomOnOffSwitch(
+                return TydomSwitch(
                     tydom_client,
                     uid,
                     device_id,

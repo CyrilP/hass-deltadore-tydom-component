@@ -708,7 +708,7 @@ class TydomPlug(TydomDevice):
         )
 
 
-class TydomOnOffSwitch(TydomDevice):
+class TydomSwitch(TydomDevice):
     """Represent a binary TYXIA output configured under the 'others' usage."""
 
     @property
