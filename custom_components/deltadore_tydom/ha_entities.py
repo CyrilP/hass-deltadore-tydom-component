@@ -5462,6 +5462,7 @@ class HAButton(ButtonEntity, HAEntity):
         action_name: str,
         action_method: str,
         icon: str | None = None,
+        primary: bool = False,
     ) -> None:
         """Initialize HAButton."""
         self.hass = hass
@@ -5470,7 +5471,7 @@ class HAButton(ButtonEntity, HAEntity):
         self._action_name = action_name
         self._action_method = action_method
         self._attr_unique_id = f"{self._device.device_id}_button_{action_name}"
-        self._attr_name = f"{action_name}"
+        self._attr_name = None if primary else action_name
         if icon is not None:
             self._attr_icon = icon
 
