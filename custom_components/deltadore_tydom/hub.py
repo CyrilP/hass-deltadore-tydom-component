@@ -471,7 +471,13 @@ class Hub:
         """Create gate device."""
         LOGGER.debug("Create gate %s", device.device_id)
         if device.is_toggle_only:
-            ha_device = HAButton(device, self._hass, "Toggle", "toggle")
+            ha_device = HAButton(
+                device,
+                self._hass,
+                "Toggle",
+                "toggle",
+                icon="mdi:arrow-left-right",
+            )
             if self.add_button_callback is not None:
                 self.add_button_callback([ha_device])
         else:
@@ -486,7 +492,13 @@ class Hub:
         """Create garage device."""
         LOGGER.debug("Create garage %s", device.device_id)
         if device.is_toggle_only:
-            ha_device = HAButton(device, self._hass, "Toggle", "toggle")
+            ha_device = HAButton(
+                device,
+                self._hass,
+                "Toggle",
+                "toggle",
+                icon="mdi:arrow-up-down",
+            )
             if self.add_button_callback is not None:
                 self.add_button_callback([ha_device])
         else:

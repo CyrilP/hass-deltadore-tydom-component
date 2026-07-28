@@ -5456,7 +5456,12 @@ class HAButton(ButtonEntity, HAEntity):
     _attr_icon = "mdi:button-cursor"
 
     def __init__(
-        self, device: TydomDevice, hass, action_name: str, action_method: str
+        self,
+        device: TydomDevice,
+        hass,
+        action_name: str,
+        action_method: str,
+        icon: str | None = None,
     ) -> None:
         """Initialize HAButton."""
         self.hass = hass
@@ -5466,6 +5471,8 @@ class HAButton(ButtonEntity, HAEntity):
         self._action_method = action_method
         self._attr_unique_id = f"{self._device.device_id}_button_{action_name}"
         self._attr_name = f"{action_name}"
+        if icon is not None:
+            self._attr_icon = icon
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
