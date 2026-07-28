@@ -84,34 +84,33 @@ def _cover(device_class, commands, *, level_metadata=None, data=None):
 class LevelCommandCoverTests(IsolatedAsyncioTestCase):
     """Exercise directional and pulse-only cover receivers."""
 
-    async def test_toggle_only_garage_maps_open_close_and_toggle_to_pulse(self) -> None:
-        """A Tyxia pulse receiver remains a cover and always sends TOGGLE."""
+    async def test_toggle_only_garage_only_exposes_stateless_pulse(self) -> None:
+        """A Tyxia pulse receiver does not claim directional commands."""
         garage, client = _cover(TydomGarage, ["TOGGLE"])
 
         self.assertEqual(
             garage.cover_capabilities,
             devices_module.TydomCoverCapabilities(
-                open=True,
-                close=True,
+                open=False,
+                close=False,
                 stop=False,
                 toggle=True,
                 set_position=False,
             ),
         )
+        self.assertTrue(garage.is_toggle_only)
 
-        await garage.open()
-        await garage.close()
         await garage.toggle()
+        with self.assertRaisesRegex(ValueError, "does not support ON"):
+            await garage.open()
+        with self.assertRaisesRegex(ValueError, "does not support OFF"):
+            await garage.close()
         with self.assertRaisesRegex(ValueError, "does not support STOP"):
             await garage.stop()
 
         self.assertEqual(
             client.put_devices_data.await_args_list,
-            [
-                call("20", "10", "levelCmd", "TOGGLE"),
-                call("20", "10", "levelCmd", "TOGGLE"),
-                call("20", "10", "levelCmd", "TOGGLE"),
-            ],
+            [call("20", "10", "levelCmd", "TOGGLE")],
         )
 
     async def test_full_garage_uses_each_advertised_command(self) -> None:
@@ -133,6 +132,7 @@ class LevelCommandCoverTests(IsolatedAsyncioTestCase):
                 set_position=True,
             ),
         )
+        self.assertFalse(garage.is_toggle_only)
 
         await garage.open()
         await garage.close()
@@ -184,23 +184,20 @@ class LevelCommandCoverTests(IsolatedAsyncioTestCase):
 
         self.assertFalse(garage.cover_capabilities.set_position)
 
-    async def test_gate_uses_the_same_toggle_only_capability_model(self) -> None:
-        """Gate and garage pulse receivers share identical command semantics."""
+    async def test_gate_uses_the_same_stateless_pulse_model(self) -> None:
+        """Gate and garage pulse receivers share identical semantics."""
         gate, client = _cover(TydomGate, ["TOGGLE"])
 
-        self.assertTrue(gate.cover_capabilities.open)
-        self.assertTrue(gate.cover_capabilities.close)
+        self.assertFalse(gate.cover_capabilities.open)
+        self.assertFalse(gate.cover_capabilities.close)
         self.assertTrue(gate.cover_capabilities.toggle)
+        self.assertTrue(gate.is_toggle_only)
 
-        await gate.open()
-        await gate.close()
+        await gate.toggle()
 
         self.assertEqual(
             client.put_devices_data.await_args_list,
-            [
-                call("20", "10", "levelCmd", "TOGGLE"),
-                call("20", "10", "levelCmd", "TOGGLE"),
-            ],
+            [call("20", "10", "levelCmd", "TOGGLE")],
         )
 
 

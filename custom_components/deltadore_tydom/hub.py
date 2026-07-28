@@ -51,6 +51,7 @@ from .ha_entities import (
     HASensor,
     HAScene,
     HASwitch,
+    HAButton,
     HAReloadButton,
     HAGroup,
     HAMoment,
@@ -469,20 +470,30 @@ class Hub:
     async def _create_gate_device(self, device: TydomGate) -> None:
         """Create gate device."""
         LOGGER.debug("Create gate %s", device.device_id)
-        ha_device = HaGate(device, self._hass)
+        if device.is_toggle_only:
+            ha_device = HAButton(device, self._hass, "Toggle", "toggle")
+            if self.add_button_callback is not None:
+                self.add_button_callback([ha_device])
+        else:
+            ha_device = HaGate(device, self._hass)
+            if self.add_cover_callback is not None:
+                self.add_cover_callback([ha_device])
         self.ha_devices[device.device_id] = ha_device
-        if self.add_cover_callback is not None:
-            self.add_cover_callback([ha_device])
         if self.add_sensor_callback is not None:
             self.add_sensor_callback(ha_device.get_sensors())
 
     async def _create_garage_device(self, device: TydomGarage) -> None:
         """Create garage device."""
         LOGGER.debug("Create garage %s", device.device_id)
-        ha_device = HaGarage(device, self._hass)
+        if device.is_toggle_only:
+            ha_device = HAButton(device, self._hass, "Toggle", "toggle")
+            if self.add_button_callback is not None:
+                self.add_button_callback([ha_device])
+        else:
+            ha_device = HaGarage(device, self._hass)
+            if self.add_cover_callback is not None:
+                self.add_cover_callback([ha_device])
         self.ha_devices[device.device_id] = ha_device
-        if self.add_cover_callback is not None:
-            self.add_cover_callback([ha_device])
         if self.add_sensor_callback is not None:
             self.add_sensor_callback(ha_device.get_sensors())
 

@@ -437,7 +437,6 @@ class TydomLevelCommandCover(TydomDevice):
         """Return cover capabilities derived from gateway metadata."""
         commands = self.level_commands
         has_command_metadata = bool(commands)
-        toggle = "TOGGLE" in commands
 
         level_metadata = (
             self._metadata.get("level", {}) if isinstance(self._metadata, dict) else {}
@@ -451,23 +450,25 @@ class TydomLevelCommandCover(TydomDevice):
         return TydomCoverCapabilities(
             # Preserve the historical open-only fallback when old gateways do
             # not describe levelCmd at all.
-            open=not has_command_metadata or "ON" in commands or toggle,
-            close="OFF" in commands or toggle,
+            open=not has_command_metadata or "ON" in commands,
+            close="OFF" in commands,
             stop="STOP" in commands,
-            toggle=toggle,
+            toggle="TOGGLE" in commands,
             set_position=hasattr(self, "level") and "w" in permission.lower(),
         )
 
+    @property
+    def is_toggle_only(self) -> bool:
+        """Return whether the receiver only offers a stateless movement pulse."""
+        commands = self.level_commands
+        return "TOGGLE" in commands and not commands.intersection({"ON", "OFF", "STOP"})
+
     def _command_for(self, preferred: str) -> str:
-        """Return a directional command or the receiver's pulse fallback."""
+        """Return a command only when the receiver explicitly advertises it."""
         commands = self.level_commands
         if not commands or preferred in commands:
             return preferred
-        if preferred in {"ON", "OFF"} and "TOGGLE" in commands:
-            return "TOGGLE"
-        raise ValueError(
-            f"Device {self.device_id} does not support {preferred} or TOGGLE"
-        )
+        raise ValueError(f"Device {self.device_id} does not support {preferred}")
 
     async def _send_level_command(self, command: str) -> None:
         """Send a capability-checked level command."""
@@ -476,11 +477,11 @@ class TydomLevelCommandCover(TydomDevice):
         )
 
     async def open(self) -> None:
-        """Open the cover, or pulse a toggle-only receiver."""
+        """Open the cover when a directional command is available."""
         await self._send_level_command(self._command_for("ON"))
 
     async def close(self) -> None:
-        """Close the cover, or pulse a toggle-only receiver."""
+        """Close the cover when a directional command is available."""
         await self._send_level_command(self._command_for("OFF"))
 
     async def stop(self) -> None:
