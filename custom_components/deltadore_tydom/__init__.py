@@ -20,6 +20,7 @@ from .const import (
     CONF_REFRESH_INTERVAL,
     LOGGER,
 )
+
 # Config schema for hassfest validation
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
