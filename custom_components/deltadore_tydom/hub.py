@@ -9,7 +9,6 @@ from aiohttp import ClientWebSocketResponse, ClientSession
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from .cover_registry_migration import migrate_toggle_only_cover
 from .tydom.tydom_client import TydomClient
 from .tydom.tydom_devices import (
     Tydom,
@@ -472,11 +471,6 @@ class Hub:
         """Create gate device."""
         LOGGER.debug("Create gate %s", device.device_id)
         if device.is_toggle_only:
-            migrate_toggle_only_cover(
-                self._hass,
-                self._entry.entry_id,
-                device.device_id,
-            )
             ha_device = HAButton(
                 device,
                 self._hass,
@@ -499,11 +493,6 @@ class Hub:
         """Create garage device."""
         LOGGER.debug("Create garage %s", device.device_id)
         if device.is_toggle_only:
-            migrate_toggle_only_cover(
-                self._hass,
-                self._entry.entry_id,
-                device.device_id,
-            )
             ha_device = HAButton(
                 device,
                 self._hass,
