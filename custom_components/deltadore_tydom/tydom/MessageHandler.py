@@ -49,16 +49,6 @@ Some firmwares never send an EOR flag; they mark the end of the enumeration
 with a last element carrying index 255 and invalid event data instead.
 """
 
-# Device dict for parsing
-device_name = {}
-device_endpoint = {}
-device_type = {}
-device_metadata = {}
-device_tutorial_id = {}
-scenario_metadata = {}  # Store scenario metadata from /configs/file
-groups_metadata = {}  # Store group metadata from /configs/file: {group_id: {"usage": "light", "name": "TOTAL"}}
-groups_data = {}  # Store groups data: {group_id: {"devices": [device_ids], "name": group_name}}
-
 
 def _is_tyxia_4910_other(uid: str) -> bool:
     """Identify a binary TYXIA 4910 configured under the TYDOM 'others' usage."""
@@ -86,6 +76,17 @@ def _is_tyxia_4910_other(uid: str) -> bool:
         )
     except (TypeError, ValueError):
         return False
+
+
+# Device dict for parsing
+device_name = {}
+device_endpoint = {}
+device_type = {}
+device_metadata = {}
+device_tutorial_id = {}
+scenario_metadata = {}  # Store scenario metadata from /configs/file
+groups_metadata = {}  # Store group metadata from /configs/file: {group_id: {"usage": "light", "name": "TOTAL"}}
+groups_data = {}  # Store groups data: {group_id: {"devices": [device_ids], "name": group_name}}
 
 
 class Reply(TypedDict):
@@ -589,8 +590,8 @@ class MessageHandler:
                     device_metadata.get(uid),
                     data,
                 )
-            case "plug":
-                return TydomPlug(
+            case "others" if _is_tyxia_4910_other(uid):
+                return TydomSwitch(
                     tydom_client,
                     uid,
                     device_id,
@@ -600,8 +601,8 @@ class MessageHandler:
                     device_metadata.get(uid),
                     data,
                 )
-            case "others" if _is_tyxia_4910_other(uid):
-                return TydomSwitch(
+            case "plug":
+                return TydomPlug(
                     tydom_client,
                     uid,
                     device_id,
@@ -639,14 +640,13 @@ class MessageHandler:
             LOGGER.debug(
                 "config_data device parsed : %s - %s", device_unique_id, i["name"]
             )
+            device_tutorial_id[device_unique_id] = (i.get("widget_behavior") or {}).get(
+                "tutorial_id", ""
+            )
 
             device_name[device_unique_id] = i["name"]
             device_type[device_unique_id] = i["last_usage"] or "unknown"
             device_endpoint[device_unique_id] = i["id_endpoint"]
-            widget_behavior = i.get("widget_behavior") or {}
-            device_tutorial_id[device_unique_id] = widget_behavior.get(
-                "tutorial_id", ""
-            )
 
             if i["last_usage"] == "alarm":
                 device_name[device_unique_id] = "Tyxal Alarm"
