@@ -9,6 +9,7 @@ from homeassistant.const import CONF_HOST, CONF_MAC, CONF_PIN, Platform
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.device_registry import DeviceEntry
 
 from . import hub
 from .const import (
@@ -20,6 +21,7 @@ from .const import (
     CONF_REFRESH_INTERVAL,
     LOGGER,
 )
+from .device_removal import can_remove_device
 
 # Config schema for hassfest validation
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -392,6 +394,33 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    device_entry: DeviceEntry,
+) -> bool:
+    """Allow the user to remove a device owned by this TYDOM config entry."""
+    can_remove = can_remove_device(
+        device_entry,
+        config_entry.entry_id,
+    )
+
+    if can_remove:
+        LOGGER.info(
+            "Allowing user-requested removal of TYDOM device registry entry %s; "
+            "it may be rediscovered if the gateway still advertises it",
+            device_entry.id,
+        )
+    else:
+        LOGGER.warning(
+            "Refusing removal of device registry entry %s because it is not "
+            "owned by this TYDOM config entry",
+            device_entry.id,
+        )
+
+    return can_remove
 
 
 async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
