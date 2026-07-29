@@ -9,6 +9,7 @@ from aiohttp import ClientWebSocketResponse, ClientSession
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from .cover_registry_migration import migrate_toggle_only_cover
 from .tydom.tydom_client import TydomClient
 from .tydom.tydom_devices import (
     Tydom,
@@ -58,7 +59,6 @@ from .ha_entities import (
 )
 
 from .const import LOGGER, get_polling_interval_for_validity, STRUCTURED_LOGGER
-from .cover_registry_migration import migrate_toggle_only_cover
 
 
 class Hub:
