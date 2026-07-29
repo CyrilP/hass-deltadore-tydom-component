@@ -58,6 +58,7 @@ from .ha_entities import (
 )
 
 from .const import LOGGER, get_polling_interval_for_validity, STRUCTURED_LOGGER
+from .cover_registry_migration import migrate_toggle_only_cover
 
 
 class Hub:
@@ -471,6 +472,11 @@ class Hub:
         """Create gate device."""
         LOGGER.debug("Create gate %s", device.device_id)
         if device.is_toggle_only:
+            migrate_toggle_only_cover(
+                self._hass,
+                self._entry.entry_id,
+                device.device_id,
+            )
             ha_device = HAButton(
                 device,
                 self._hass,
@@ -493,6 +499,11 @@ class Hub:
         """Create garage device."""
         LOGGER.debug("Create garage %s", device.device_id)
         if device.is_toggle_only:
+            migrate_toggle_only_cover(
+                self._hass,
+                self._entry.entry_id,
+                device.device_id,
+            )
             ha_device = HAButton(
                 device,
                 self._hass,
