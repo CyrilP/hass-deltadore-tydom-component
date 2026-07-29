@@ -20,8 +20,6 @@ from .const import (
     CONF_REFRESH_INTERVAL,
     LOGGER,
 )
-from .registry_migration import cleanup_malformed_orphan_devices
-
 # Config schema for hassfest validation
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -316,8 +314,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Delta Dore Tydom from a config entry."""
 
     entry.async_on_unload(entry.add_update_listener(update_listener))
-    cleanup_malformed_orphan_devices(hass, entry.entry_id)
-
     # Store an instance of the "connecting" class that does the work of speaking
     # with your actual devices.
     zone_home = entry.data.get(CONF_ZONES_HOME) or ""
