@@ -2183,6 +2183,7 @@ class HaClimate(ClimateEntity, HAEntity):
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_climate"
         self._attr_name = "Thermostat" if self._device.is_derived_area_climate else None
+        self._is_area_trv = self._device.is_area_trv
         self._enable_turn_on_off_backwards_compatibility = False
 
         self.dict_modes_ha_to_dd = {
@@ -2412,6 +2413,22 @@ class HaClimate(ClimateEntity, HAEntity):
         if self._supports_fan:
             self._attr_supported_features |= ClimateEntityFeature.FAN_MODE
 
+        if self._is_area_trv:
+            self._attr_hvac_modes = [HVACMode.HEAT]
+            self._attr_preset_modes = []
+            self._attr_fan_modes = []
+            self._supports_fan = False
+            self._attr_supported_features &= ~(
+                ClimateEntityFeature.TURN_OFF
+                | ClimateEntityFeature.TURN_ON
+                | ClimateEntityFeature.PRESET_MODE
+                | ClimateEntityFeature.FAN_MODE
+            )
+            # The reporter's physical TRV endpoints do not include
+            # localSetpoint metadata, but the linked area still accepts the
+            # local override command.
+            self._attr_supported_features |= ClimateEntityFeature.TARGET_TEMPERATURE
+
     def get_sensors(self):
         """Avoid duplicating the source controller's sensors on area proxies."""
         if self._device.is_derived_area_climate:
@@ -2479,6 +2496,9 @@ class HaClimate(ClimateEntity, HAEntity):
 
     def _resolve_hvac_mode(self) -> HVACMode:
         """Derive HA HVAC mode from Tydom thermostat registers."""
+        if self._is_area_trv:
+            return HVACMode.HEAT
+
         if getattr(self, "_is_filpilote", False):
             # Derive from thermicLevel (the live pilot-wire order), not hvacMode:
             # the app/schedule set thermicLevel while hvacMode stays NORMAL.
@@ -2524,6 +2544,13 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def hvac_action(self) -> HVACAction | None:
         """Return the current running action."""
+        if self._is_area_trv:
+            return (
+                HVACAction.HEATING
+                if getattr(self._device, "waterFlowReq", False)
+                else HVACAction.IDLE
+            )
+
         if getattr(self, "_is_filpilote", False):
             # No temperature feedback exists, so we cannot distinguish heating
             # from idle: report OFF when the order is STOP, HEATING otherwise.
@@ -2550,6 +2577,12 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def current_temperature(self) -> float | None:
         """Return the current temperature."""
+        if self._is_area_trv:
+            for attribute in ("regTemperature", "devTemperature"):
+                temperature = getattr(self._device, attribute, None)
+                if temperature is not None:
+                    return float(temperature)
+
         if hasattr(self._device, "temperature"):
             temp = getattr(self._device, "temperature", None)
             if temp is not None:
@@ -2615,6 +2648,9 @@ class HaClimate(ClimateEntity, HAEntity):
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
+        if self._is_area_trv:
+            return
+
         if getattr(self, "_is_filpilote", False):
             # OFF -> pilot-wire STOP. HEAT -> keep the current heating order, or
             # default to Comfort when coming from STOP; the level is chosen via

@@ -307,6 +307,11 @@ class TydomBoiler(TydomDevice):
     """Represents a Boiler."""
 
     @property
+    def is_area_trv(self) -> bool:
+        """Return whether this is a radiator thermostat linked to an area."""
+        return self._type == "sh_hvac" and hasattr(self, "area_id")
+
+    @property
     def is_derived_area_climate(self) -> bool:
         """Return whether this climate proxies a passive controller's area."""
         return self.device_id.endswith("_area_climate")
@@ -321,7 +326,14 @@ class TydomBoiler(TydomDevice):
     def area_setpoint_attribute(self) -> str:
         """Return the setpoint register advertised for the current area mode."""
         authorization = getattr(self, "authorization", None)
-        if authorization == "COOLING":
+        if self.is_area_trv:
+            candidates = (
+                "currentSetpoint",
+                "localSetpoint",
+                "masterAbsSetpoint",
+                "masterSchedSetpoint",
+            )
+        elif authorization == "COOLING":
             candidates = ("coolSetpoint", "setpoint", "heatSetpoint")
         elif authorization == "HEATING":
             candidates = ("heatSetpoint", "setpoint", "coolSetpoint")
@@ -342,6 +354,17 @@ class TydomBoiler(TydomDevice):
         """Return live area limits, falling back to controller metadata."""
         if not hasattr(self, "area_id"):
             return (None, None)
+
+        if self.is_area_trv:
+            local_setpoint = (self._metadata or {}).get("localSetpoint", {})
+            return (
+                float(local_setpoint["min"])
+                if local_setpoint.get("min") is not None
+                else None,
+                float(local_setpoint["max"])
+                if local_setpoint.get("max") is not None
+                else None,
+            )
 
         authorization = getattr(self, "authorization", None)
         if authorization == "COOLING":
@@ -395,6 +418,10 @@ class TydomBoiler(TydomDevice):
         if not hasattr(self, "area_id"):
             return None
 
+        if self.is_area_trv:
+            step = (self._metadata or {}).get("localSetpoint", {}).get("step")
+            return float(step) if step is not None else None
+
         authorization = getattr(self, "authorization", None)
         if authorization == "COOLING":
             metadata_names = ("coolSetpoint", "setpoint")
@@ -418,6 +445,9 @@ class TydomBoiler(TydomDevice):
         """Return the HVAC modes advertised by an area-backed thermostat."""
         if not hasattr(self, "area_id"):
             return set()
+
+        if self.is_area_trv:
+            return {"HEATING"}
 
         # A linked thermal receiver always provides stop and heating. Cooling is
         # exposed only when TYDOM reports it in metadata or live state.
@@ -477,6 +507,15 @@ class TydomBoiler(TydomDevice):
         LOGGER.debug("setting hvac mode to %s", mode)
         # Mode changes must not clear or replace the setpoint. TYDOM retains
         # the user's last setpoint and restores it when heating resumes.
+        if self.is_area_trv:
+            if mode not in ("NORMAL", "HEATING"):
+                LOGGER.warning(
+                    "Area TRV %s does not support individual HVAC mode %s",
+                    self.device_id,
+                    mode,
+                )
+            return
+
         if hasattr(self, "area_id"):
             area_modes = {
                 "NORMAL": "HEATING",
@@ -598,6 +637,26 @@ class TydomBoiler(TydomDevice):
 
     async def set_temperature(self, temperature):
         """Set target temperature."""
+        if self.is_area_trv:
+            is_valid, error_msg = validate_value_with_metadata(
+                self, "localSetpoint", temperature
+            )
+            if not is_valid:
+                from homeassistant.exceptions import HomeAssistantError
+
+                raise HomeAssistantError(
+                    error_msg or f"Température invalide: {temperature}"
+                )
+            await self._tydom_client.put_area_data_attributes(
+                self.area_id,
+                {
+                    "localSetpoint": temperature,
+                    "localSetpRemainingTimeStr": "UNTIL_SCHED",
+                    "localMode": "LOCAL_SETPOINT",
+                },
+            )
+            return
+
         setpoint_attribute = (
             self.area_setpoint_attribute()
             if hasattr(self, "area_id")
