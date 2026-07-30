@@ -1377,7 +1377,20 @@ class TydomClient:
 
     async def put_area_data(self, area_id, name, value, max_retries: int = 2) -> int:
         """Set one attribute on an area-backed device."""
-        body = json.dumps([{"name": name, "value": value}])
+        return await self.put_area_data_attributes(
+            area_id, {name: value}, max_retries=max_retries
+        )
+
+    async def put_area_data_attributes(
+        self,
+        area_id,
+        attributes: dict,
+        max_retries: int = 2,
+    ) -> int:
+        """Set one or more attributes atomically on an area-backed device."""
+        body = json.dumps(
+            [{"name": name, "value": value} for name, value in attributes.items()]
+        )
         safe_area_id = quote(str(area_id), safe="")
         path = f"/areas/{safe_area_id}/data"
         str_request = (
@@ -1389,10 +1402,9 @@ class TydomClient:
         )
         a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
         LOGGER.debug(
-            "Sending area command: area_id=%s, name=%s, value=%s",
+            "Sending area command: area_id=%s, attributes=%s",
             area_id,
-            name,
-            value,
+            list(attributes),
         )
         if not file_mode:
             await self.send_bytes(a_bytes, max_retries=max_retries)
