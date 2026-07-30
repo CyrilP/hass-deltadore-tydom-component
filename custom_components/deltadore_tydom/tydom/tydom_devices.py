@@ -475,6 +475,8 @@ class TydomBoiler(TydomDevice):
     async def set_hvac_mode(self, mode):
         """Set hvac mode (ANTI_FROST/NORMAL/STOP)."""
         LOGGER.debug("setting hvac mode to %s", mode)
+        # Mode changes must not clear or replace the setpoint. TYDOM retains
+        # the user's last setpoint and restores it when heating resumes.
         if hasattr(self, "area_id"):
             area_modes = {
                 "NORMAL": "HEATING",
@@ -508,15 +510,11 @@ class TydomBoiler(TydomDevice):
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "thermicLevel", ""
                 )
-                if self._metadata is not None and "setpoint" in self._metadata:
-                    await self.set_temperature("19.0")
             elif mode in ("NORMAL", "HEATING"):
                 await self._tydom_client.put_home_hvac_mode("HEATING")
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "thermicLevel", ""
                 )
-                if self._metadata is not None and "setpoint" in self._metadata:
-                    await self.set_temperature("19.0")
             elif mode == "ANTI_FROST":
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "thermicLevel", "ANTI_FROST"
@@ -527,9 +525,6 @@ class TydomBoiler(TydomDevice):
 
         if mode == "ANTI_FROST":
             if hasattr(self, "hvacMode"):
-                await self._tydom_client.put_devices_data(
-                    self._id, self._endpoint, "setpoint", None
-                )
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "thermicLevel", "STOP"
                 )
@@ -551,12 +546,6 @@ class TydomBoiler(TydomDevice):
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "hvacMode", "NORMAL"
                 )
-                # Only push a setpoint for devices that actually have one
-                # (real thermostats expose setpoint metadata). Fil-pilote zones
-                # have none; writing one is a phantom value ignored by the
-                # device (upstream #246).
-                if self._metadata is not None and "setpoint" in self._metadata:
-                    await self.set_temperature("19.0")
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "antifrostOn", False
                 )
@@ -587,9 +576,6 @@ class TydomBoiler(TydomDevice):
 
         elif mode == "STOP":
             if hasattr(self, "hvacMode"):
-                await self._tydom_client.put_devices_data(
-                    self._id, self._endpoint, "setpoint", None
-                )
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "hvacMode", "STOP"
                 )
