@@ -262,3 +262,43 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
 
         client._reconnect_with_backoff.assert_awaited_once()
         replacement.send_bytes.assert_awaited_once_with(b"request")
+
+
+class TestDevicePolling(IsolatedAsyncioTestCase):
+    """Exercise adaptive polling URL construction."""
+
+    def _client(self) -> TydomClient:
+        return TydomClient(None, "test", "001122334455", "password", host="local")
+
+    async def test_explicit_protocol_ids_use_correct_url_positions(self) -> None:
+        """Canonical device and endpoint ids must retain their URL positions."""
+        client = self._client()
+        client.get_poll_device_data = AsyncMock()
+
+        await client.poll_device_data(8, 0)
+
+        client.get_poll_device_data.assert_awaited_once_with(
+            "/devices/8/endpoints/0/data"
+        )
+
+    async def test_composite_key_uses_endpoint_then_device_order(self) -> None:
+        """A legacy registry-key call must use endpoint-then-device order."""
+        client = self._client()
+        client.get_poll_device_data = AsyncMock()
+
+        await client.poll_device_data("3_42")
+
+        client.get_poll_device_data.assert_awaited_once_with(
+            "/devices/42/endpoints/3/data"
+        )
+
+    async def test_plain_device_id_uses_same_endpoint_id(self) -> None:
+        """A plain device id must retain the legacy device endpoint form."""
+        client = self._client()
+        client.get_poll_device_data = AsyncMock()
+
+        await client.poll_device_data("8")
+
+        client.get_poll_device_data.assert_awaited_once_with(
+            "/devices/8/endpoints/8/data"
+        )
