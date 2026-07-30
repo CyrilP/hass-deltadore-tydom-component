@@ -469,6 +469,27 @@ class TydomGarage(TydomDevice):
 class TydomLight(TydomDevice):
     """represents a light."""
 
+    @property
+    def supports_brightness(self) -> bool:
+        """Return whether level metadata exposes intermediate light levels."""
+        if not isinstance(self._metadata, dict):
+            return False
+
+        level_metadata = self._metadata.get("level")
+        if not isinstance(level_metadata, dict):
+            return False
+
+        try:
+            minimum = float(level_metadata.get("min", 0))
+            maximum = float(level_metadata.get("max", 100))
+            step = float(level_metadata["step"])
+        except (KeyError, TypeError, ValueError):
+            # Preserve brightness support for gateways that advertise level
+            # without complete numeric constraints.
+            return True
+
+        return step > 0 and maximum - minimum > step
+
     async def turn_on(self, brightness) -> None:
         """Turn on the light with specified brightness."""
         # Validate brightness value with metadata
@@ -506,7 +527,7 @@ class TydomLight(TydomDevice):
                 self._id, self._endpoint, "level", str(brightness)
             )
         self._tydom_client.add_poll_device_url_1s(
-            f"/devices/{self._id}/endpoints/{self._endpoint}/cdata"
+            f"/devices/{self._id}/endpoints/{self._endpoint}/data"
         )
 
     async def turn_off(self) -> None:
@@ -530,7 +551,7 @@ class TydomLight(TydomDevice):
             )
 
         self._tydom_client.add_poll_device_url_1s(
-            f"/devices/{self._id}/endpoints/{self._endpoint}/cdata"
+            f"/devices/{self._id}/endpoints/{self._endpoint}/data"
         )
 
 

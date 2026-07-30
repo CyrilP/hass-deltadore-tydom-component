@@ -3111,7 +3111,7 @@ class HaLight(LightEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_light"
         self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
-        if self._device._metadata is not None and "level" in self._device._metadata:
+        if self._device.supports_brightness:
             self._attr_color_mode = ColorMode.BRIGHTNESS
             if self._attr_supported_color_modes is None:
                 self._attr_supported_color_modes = set()
@@ -3152,6 +3152,8 @@ class HaLight(LightEntity, HAEntity):
     @property
     def brightness(self) -> int | None:
         """Return the current brightness."""
+        if not self._device.supports_brightness:
+            return None
         if hasattr(self._device, "level"):
             level = getattr(self._device, "level", None)
             if level is not None:
@@ -3186,7 +3188,7 @@ class HaLight(LightEntity, HAEntity):
     async def async_turn_on(self, **kwargs):
         """Turn device on."""
         brightness = None
-        if ATTR_BRIGHTNESS in kwargs:
+        if self._device.supports_brightness and ATTR_BRIGHTNESS in kwargs:
             brightness = math.ceil(
                 ranged_value_to_percentage(
                     self.BRIGHTNESS_SCALE, kwargs[ATTR_BRIGHTNESS]

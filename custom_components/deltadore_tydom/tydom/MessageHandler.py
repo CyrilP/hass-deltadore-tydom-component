@@ -209,20 +209,22 @@ class MessageHandler:
                         event.set()
                 return None
 
-            if (
-                status is not None
-                and transaction_id
-                and transaction_id in self._end_reply_events
-            ):
-                if not parsed_message.body:
-                    # Empty acknowledgment of a pending request; the data
-                    # arrives in separate messages, so just wait for them.
-                    LOGGER.debug(
-                        "Empty acknowledgment received for request '%s' (%s).",
-                        transaction_id,
-                        uri_origin,
-                    )
-                    return None
+            if status is not None and not parsed_message.body:
+                # Successful GET/PUT requests can be acknowledged with an empty
+                # body while the updated state arrives in a separate push. This
+                # also happens for requests using the gateway's reserved
+                # transaction id "0", which are not tracked as pending replies.
+                # A ping is itself completed by this empty 200 response, so it
+                # must still reach the liveness bookkeeping even though there is
+                # no body to parse.
+                if uri_origin == "/ping":
+                    self.tydom_client.receive_pong()
+                LOGGER.debug(
+                    "Empty acknowledgment received for request '%s' (%s).",
+                    transaction_id,
+                    uri_origin,
+                )
+                return None
 
             try:
                 return await self.parse_response(
