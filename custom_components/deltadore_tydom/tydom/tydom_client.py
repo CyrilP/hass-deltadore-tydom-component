@@ -507,11 +507,11 @@ class TydomClient:
         # await self.post_refresh()
 
         # await self.get_info()
+        await self.post_refresh()
+        await self.get_configs_file()
         await self.get_groups()
         if self._shutting_down:
             return
-        await self.post_refresh()
-        await self.get_configs_file()
         await self.get_devices_meta()
         await self.get_devices_cmeta()
         await self.get_devices_data()

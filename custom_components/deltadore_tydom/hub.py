@@ -31,6 +31,7 @@ from .tydom.tydom_devices import (
     TydomScene,
     TydomGroup,
     TydomMoment,
+    TydomRemoteControl,
 )
 from .ha_entities import (
     HATydom,
@@ -55,9 +56,12 @@ from .ha_entities import (
     HAReloadButton,
     HAGroup,
     HAMoment,
+    HARemoteBattery,
+    HARemoteEvent,
 )
 
 from .const import LOGGER, get_polling_interval_for_validity, STRUCTURED_LOGGER
+from .remote_registry_migration import migrate_legacy_remote_endpoint
 
 
 class Hub:
@@ -128,6 +132,7 @@ class Hub:
 
         self.online = True
         self._reload_button_created = False
+        self._remote_battery_entities: dict[str, HARemoteBattery] = {}
         self._shutting_down = False
 
         # Polling cache for optimization
@@ -158,6 +163,7 @@ class Hub:
             TydomScene: self._create_scene_device,
             TydomGroup: self._create_group_device,
             TydomMoment: self._create_moment_device,
+            TydomRemoteControl: self._create_remote_control_device,
             TydomDevice: self._create_generic_device,
         }
 
@@ -570,6 +576,28 @@ class Hub:
         if self.add_switch_callback is not None:
             self.add_switch_callback([ha_device])
 
+    async def _create_remote_control_device(self, device: TydomRemoteControl) -> None:
+        """Create an event entity for a remote button and one battery diagnostic."""
+        LOGGER.debug("Create remote-control button %s", device.device_id)
+        migrate_legacy_remote_endpoint(
+            self._hass,
+            self._entry.entry_id,
+            device.device_id,
+        )
+        ha_device = HARemoteEvent(device, self._hass)
+        self.ha_devices[device.device_id] = ha_device
+        if self.add_event_callback is not None:
+            self.add_event_callback([ha_device])
+
+        battery = self._remote_battery_entities.get(device.physical_device_id)
+        if battery is None:
+            battery = HARemoteBattery(device, self._hass)
+            self._remote_battery_entities[device.physical_device_id] = battery
+            if self.add_binary_sensor_callback is not None:
+                self.add_binary_sensor_callback([battery])
+        else:
+            battery.add_device(device)
+
     async def _create_generic_device(self, device: TydomDevice) -> None:
         """Create generic sensor device."""
         LOGGER.debug("Create generic sensor %s", device.device_id)
@@ -651,9 +679,9 @@ class Hub:
         while not self._shutting_down:
             await self._tydom_client.get_info()
             await self._tydom_client.put_api_mode()
-            await self._tydom_client.get_groups()
             await self._tydom_client.post_refresh()
             await self._tydom_client.get_configs_file()
+            await self._tydom_client.get_groups()
             await self._tydom_client.get_devices_meta()
             await self._tydom_client.get_devices_cmeta()
             await self._tydom_client.get_devices_data()
@@ -763,6 +791,7 @@ class Hub:
         # Vider les dictionnaires d'appareils
         self.devices.clear()
         self.ha_devices.clear()
+        self._remote_battery_entities.clear()
         # Réinitialiser le flag pour recréer le bouton après le rechargement
         self._reload_button_created = False
 
@@ -789,9 +818,9 @@ class Hub:
         # Recharger toutes les métadonnées et données comme au démarrage
         await self._tydom_client.get_info()
         await self._tydom_client.put_api_mode()
-        await self._tydom_client.get_groups()
         await self._tydom_client.post_refresh()
         await self._tydom_client.get_configs_file()
+        await self._tydom_client.get_groups()
         await self._tydom_client.get_devices_meta()
         await self._tydom_client.get_devices_cmeta()
         await self._tydom_client.get_devices_data()

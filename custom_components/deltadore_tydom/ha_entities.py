@@ -83,7 +83,7 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.components.number import NumberEntity
 from homeassistant.components.select import SelectEntity
-from homeassistant.components.event import EventEntity
+from homeassistant.components.event import EventDeviceClass, EventEntity
 
 from .tydom.tydom_devices import (
     Tydom,
@@ -104,6 +104,7 @@ from .tydom.tydom_devices import (
     TydomScene,
     TydomGroup,
     TydomMoment,
+    TydomRemoteControl,
 )
 
 from .const import (
@@ -5701,6 +5702,148 @@ class HASelect(SelectEntity, HAEntity):
         """Change the selected option."""
         await self._device._tydom_client.put_devices_data(
             self._device._id, self._device._endpoint, self._attribute_name, option
+        )
+
+
+class HARemoteEvent(EventEntity, HAEntity):
+    """Representation of a physical remote-control button."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_device_class = EventDeviceClass.BUTTON
+    _attr_event_types = ["press_end", "long_press_end"]
+    _attr_icon = "mdi:remote"
+
+    def __init__(self, device: TydomRemoteControl, hass) -> None:
+        """Initialise a remote-control button event."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self
+        self._last_event_sequence = device.event_sequence
+        self._attr_unique_id = f"{self._device.device_id}_remote_event"
+        button_number = device.button_number
+        self._attr_name = (
+            f"Button {button_number}"
+            if button_number is not None
+            else device.device_name
+        )
+
+    async def async_added_to_hass(self) -> None:
+        """Listen for fresh actions from this physical button endpoint."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self._handle_device_update)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the remote-action callback."""
+        self._device.remove_callback(self._handle_device_update)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
+    def _handle_device_update(self) -> None:
+        """Emit one Home Assistant event for each fresh TYDOM action."""
+        sequence = self._device.event_sequence
+        if sequence <= self._last_event_sequence:
+            return
+
+        self._last_event_sequence = sequence
+        action = str(getattr(self._device, "action", "IDLE"))
+        if action == "IDLE":
+            return
+
+        event_type = "long_press_end" if action.endswith("_LONG") else "press_end"
+        self._trigger_event(
+            event_type,
+            {
+                "action": action,
+                "configured_action": self._device._configured_action,
+            },
+        )
+        self.async_write_ha_state()
+
+    def get_sensors(self) -> list:
+        """Do not expose transient actions as ordinary sensors."""
+        return []
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Group every button under the physical remote control."""
+        return self._enrich_device_info(
+            {
+                "identifiers": {
+                    (DOMAIN, f"remote_control_{self._device.physical_device_id}")
+                },
+                "name": self._device.remote_name,
+                "manufacturer": "Delta Dore",
+                "model": self._device.remote_model,
+            }
+        )
+
+
+class HARemoteBattery(BinarySensorEntity, HAEntity):
+    """Battery-defect diagnostic shared by all endpoints of one remote."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_device_class = BinarySensorDeviceClass.BATTERY
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_name = "Battery fault"
+
+    def __init__(self, device: TydomRemoteControl, hass) -> None:
+        """Initialise the physical remote battery diagnostic."""
+        self.hass = hass
+        self._device = device
+        self._devices: dict[str, TydomRemoteControl] = {}
+        self._callbacks: dict[str, Any] = {}
+        self._battery_defect: bool | None = None
+        self._attr_unique_id = (
+            f"remote_control_{device.physical_device_id}_battery_defect"
+        )
+        self.add_device(device)
+
+    def add_device(self, device: TydomRemoteControl) -> None:
+        """Include another button endpoint in the physical battery diagnostic."""
+        if device.device_id in self._devices:
+            return
+
+        self._devices[device.device_id] = device
+
+        def handle_update() -> None:
+            value = getattr(device, "battDefect", None)
+            if value is not None:
+                self._battery_defect = bool(value)
+            self.async_write_ha_state()
+
+        self._callbacks[device.device_id] = handle_update
+        device.register_callback(handle_update)
+        initial_value = getattr(device, "battDefect", None)
+        if initial_value is not None:
+            self._battery_defect = bool(initial_value)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove callbacks from every endpoint of the physical remote."""
+        for device_id, device in self._devices.items():
+            device.remove_callback(self._callbacks[device_id])
+        await super().async_will_remove_from_hass()
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return whether TYDOM reports a remote battery defect."""
+        return self._battery_defect
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Attach the diagnostic to the same physical remote as its buttons."""
+        return self._enrich_device_info(
+            {
+                "identifiers": {
+                    (DOMAIN, f"remote_control_{self._device.physical_device_id}")
+                },
+                "name": self._device.remote_name,
+                "manufacturer": "Delta Dore",
+                "model": self._device.remote_model,
+            }
         )
 
 

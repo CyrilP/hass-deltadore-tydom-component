@@ -25,6 +25,7 @@ from .tydom_devices import (
     TydomLight,
     TydomSwitch,
     TydomPlug,
+    TydomRemoteControl,
     TydomShutter,
     TydomSmoke,
     TydomWindow,
@@ -87,6 +88,59 @@ device_tutorial_id = {}
 scenario_metadata = {}  # Store scenario metadata from /configs/file
 groups_metadata = {}  # Store group metadata from /configs/file: {group_id: {"usage": "light", "name": "TOTAL"}}
 groups_data = {}  # Store groups data: {group_id: {"devices": [device_ids], "name": group_name}}
+endpoint_config = {}  # Store endpoint-specific configuration from /configs/file
+remote_control_info = {}  # Store physical remote and button details by endpoint UID
+
+_REMOTE_CONTROL_MODELS = {
+    "tl2000": "TL 2000 TYXAL+",
+    "rcu_tyxia1410": "TYXIA 1410",
+}
+
+
+def _remote_control_model(tutorial_id: str) -> str:
+    """Return a friendly model name from a TYDOM tutorial identifier."""
+    for prefix, model in _REMOTE_CONTROL_MODELS.items():
+        if tutorial_id.startswith(prefix):
+            return model
+    return "Delta Dore remote control"
+
+
+def _refresh_remote_control_info() -> None:
+    """Combine endpoint configuration with related-endpoint group metadata."""
+    remote_control_info.clear()
+
+    for unique_id, config in endpoint_config.items():
+        if config.get("usage") != "remoteControl":
+            continue
+
+        physical_device_id = str(config["device_id"])
+        group_id = None
+        group_name = f"Remote control {physical_device_id}"
+        group_tutorial_id = ""
+
+        for candidate_id, group in groups_data.items():
+            group_metadata = groups_metadata.get(candidate_id, {})
+            group_usage = group.get("usage") or group_metadata.get("usage")
+            if group_usage != "remoteControl":
+                continue
+            if physical_device_id in group.get("devices", []):
+                group_id = candidate_id
+                group_name = (
+                    group_metadata.get("name") or group.get("name") or group_name
+                )
+                group_tutorial_id = str(group_metadata.get("tutorial_id", ""))
+                break
+
+        endpoint_tutorial_id = str(config.get("tutorial_id", ""))
+        tutorial_id = group_tutorial_id or endpoint_tutorial_id
+        remote_control_info[unique_id] = {
+            "physical_device_id": physical_device_id,
+            "group_id": group_id,
+            "name": group_name,
+            "model": _remote_control_model(tutorial_id),
+            "button_number": config.get("button_number"),
+            "configured_action": config.get("configured_action", "TOGGLE"),
+        }
 
 
 class Reply(TypedDict):
@@ -614,6 +668,18 @@ class MessageHandler:
                     device_metadata.get(uid),
                     data,
                 )
+            case "remoteControl":
+                return TydomRemoteControl(
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata.get(uid),
+                    data,
+                    remote_control_info.get(uid),
+                )
             case _:
                 LOGGER.info(
                     "Unknown usage : %s for device_id %s, uid %s - creating generic sensor",
@@ -649,6 +715,24 @@ class MessageHandler:
             device_name[device_unique_id] = i["name"]
             device_type[device_unique_id] = i["last_usage"] or "unknown"
             device_endpoint[device_unique_id] = i["id_endpoint"]
+            widget_behavior = i.get("widget_behavior") or {}
+            tutorial_id = str(widget_behavior.get("tutorial_id", ""))
+            button_match = re.search(
+                r"BUTTON(\d+)", str(i.get("name", ""))
+            ) or re.search(r"_btn_(\d+)$", tutorial_id)
+            endpoint_config[device_unique_id] = {
+                "device_id": i["id_device"],
+                "endpoint_id": i["id_endpoint"],
+                "usage": i.get("last_usage") or "unknown",
+                "tutorial_id": tutorial_id,
+                "configured_action": widget_behavior.get("action", "TOGGLE"),
+                "button_number": (
+                    int(button_match.group(1)) if button_match is not None else None
+                ),
+            }
+
+            if i.get("last_usage") == "remoteControl" and button_match is not None:
+                device_name[device_unique_id] = f"Button {button_match.group(1)}"
 
             if i["last_usage"] == "alarm":
                 device_name[device_unique_id] = "Tyxal Alarm"
@@ -679,6 +763,9 @@ class MessageHandler:
                     groups_metadata[group_id_str] = {
                         "usage": group.get("usage", ""),
                         "name": group.get("name", f"Group {group_id}"),
+                        "tutorial_id": (group.get("widget_behavior") or {}).get(
+                            "tutorial_id", ""
+                        ),
                     }
                     LOGGER.debug(
                         "Stored group metadata: id=%s, usage=%s, name=%s",
@@ -687,6 +774,7 @@ class MessageHandler:
                         groups_metadata[group_id_str]["name"],
                     )
 
+        _refresh_remote_control_info()
         LOGGER.debug("Configuration updated")
         return []
 
@@ -1158,6 +1246,13 @@ class MessageHandler:
                             "usage": group_usage,
                         }
 
+                        if group_usage == "remoteControl":
+                            LOGGER.debug(
+                                "Skipping non-controllable remote-control group %s",
+                                group_id_str,
+                            )
+                            continue
+
                         # Create TydomGroup device
                         # Import here to avoid circular import
                         from .tydom_devices import TydomGroup
@@ -1181,6 +1276,7 @@ class MessageHandler:
                     "Found and created %d groups",
                     len(groups) if isinstance(groups, list) else 0,
                 )
+                _refresh_remote_control_info()
         return devices
 
     async def parse_moments_file(self, parsed, transaction_id):
