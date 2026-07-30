@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 
 from ..const import LOGGER, validate_value_with_metadata
@@ -473,60 +474,100 @@ class TydomDoor(TydomDevice):
         )
 
 
-class TydomGate(TydomDevice):
+@dataclass(frozen=True)
+class TydomCoverCapabilities:
+    """Commands and feedback exposed by a level-command cover receiver."""
+
+    open: bool
+    close: bool
+    stop: bool
+    toggle: bool
+    set_position: bool
+
+
+class TydomLevelCommandCover(TydomDevice):
+    """Cover controlled through the Tydom levelCmd register."""
+
+    @property
+    def level_commands(self) -> frozenset[str]:
+        """Return commands explicitly advertised by the gateway."""
+        if not isinstance(self._metadata, dict):
+            return frozenset()
+        level_command = self._metadata.get("levelCmd")
+        if not isinstance(level_command, dict):
+            return frozenset()
+        enum_values = level_command.get("enum_values")
+        if not isinstance(enum_values, (list, tuple, set)):
+            return frozenset()
+        return frozenset(str(value) for value in enum_values)
+
+    @property
+    def cover_capabilities(self) -> TydomCoverCapabilities:
+        """Return cover capabilities derived from gateway metadata."""
+        commands = self.level_commands
+        has_command_metadata = bool(commands)
+
+        level_metadata = (
+            self._metadata.get("level", {}) if isinstance(self._metadata, dict) else {}
+        )
+        permission = (
+            str(level_metadata.get("permission", ""))
+            if isinstance(level_metadata, dict)
+            else ""
+        )
+
+        return TydomCoverCapabilities(
+            # Preserve the historical open-only fallback when old gateways do
+            # not describe levelCmd at all.
+            open=not has_command_metadata or "ON" in commands,
+            close="OFF" in commands,
+            stop="STOP" in commands,
+            toggle="TOGGLE" in commands,
+            set_position=hasattr(self, "level") and "w" in permission.lower(),
+        )
+
+    @property
+    def is_toggle_only(self) -> bool:
+        """Return whether the receiver only offers a stateless movement pulse."""
+        commands = self.level_commands
+        return "TOGGLE" in commands and not commands.intersection({"ON", "OFF", "STOP"})
+
+    def _command_for(self, preferred: str) -> str:
+        """Return a command only when the receiver explicitly advertises it."""
+        commands = self.level_commands
+        if not commands or preferred in commands:
+            return preferred
+        raise ValueError(f"Device {self.device_id} does not support {preferred}")
+
+    async def _send_level_command(self, command: str) -> None:
+        """Send a capability-checked level command."""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "levelCmd", command
+        )
+
+    async def open(self) -> None:
+        """Open the cover when a directional command is available."""
+        await self._send_level_command(self._command_for("ON"))
+
+    async def close(self) -> None:
+        """Close the cover when a directional command is available."""
+        await self._send_level_command(self._command_for("OFF"))
+
+    async def stop(self) -> None:
+        """Stop the cover when the receiver advertises STOP."""
+        await self._send_level_command(self._command_for("STOP"))
+
+    async def toggle(self) -> None:
+        """Pulse the receiver without deriving direction from cover state."""
+        await self._send_level_command(self._command_for("TOGGLE"))
+
+
+class TydomGate(TydomLevelCommandCover):
     """represents a gate."""
 
-    async def open(self) -> None:
-        """Tell garage door to open."""
-        await self._tydom_client.put_devices_data(
-            self._id, self._endpoint, "levelCmd", "ON"
-        )
 
-    async def close(self) -> None:
-        """Tell garage door to close."""
-        await self._tydom_client.put_devices_data(
-            self._id, self._endpoint, "levelCmd", "OFF"
-        )
-
-    async def stop(self) -> None:
-        """Tell garage door to stop."""
-        await self._tydom_client.put_devices_data(
-            self._id, self._endpoint, "levelCmd", "STOP"
-        )
-
-    async def toggle(self) -> None:
-        """Tell garage door to stop."""
-        await self._tydom_client.put_devices_data(
-            self._id, self._endpoint, "levelCmd", "TOGGLE"
-        )
-
-
-class TydomGarage(TydomDevice):
+class TydomGarage(TydomLevelCommandCover):
     """represents a garage door."""
-
-    async def open(self) -> None:
-        """Tell garage door to open."""
-        await self._tydom_client.put_devices_data(
-            self._id, self._endpoint, "levelCmd", "ON"
-        )
-
-    async def close(self) -> None:
-        """Tell garage door to close."""
-        await self._tydom_client.put_devices_data(
-            self._id, self._endpoint, "levelCmd", "OFF"
-        )
-
-    async def stop(self) -> None:
-        """Tell garage door to stop."""
-        await self._tydom_client.put_devices_data(
-            self._id, self._endpoint, "levelCmd", "STOP"
-        )
-
-    async def toggle(self) -> None:
-        """Tell garage door to stop."""
-        await self._tydom_client.put_devices_data(
-            self._id, self._endpoint, "levelCmd", "TOGGLE"
-        )
 
     async def set_level(self, level: int) -> None:
         """Set garage door to the given level."""
