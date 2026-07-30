@@ -1588,6 +1588,8 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyIndexECSWatt": SensorDeviceClass.ENERGY,
         "energyIndexHeatGas": SensorDeviceClass.ENERGY,
         "energyIndex": SensorDeviceClass.ENERGY,
+        "energyDistrib": SensorDeviceClass.ENERGY,
+        "energyInstant_ELEC_A": SensorDeviceClass.CURRENT,
         "outTemperature": SensorDeviceClass.TEMPERATURE,
     }
 
@@ -1599,7 +1601,9 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyIndexHeatWatt": SensorStateClass.TOTAL_INCREASING,
         "energyIndexHeatGas": SensorStateClass.TOTAL_INCREASING,
         "energyIndex": SensorStateClass.TOTAL_INCREASING,
+        "energyDistrib": SensorStateClass.TOTAL_INCREASING,
         # Measurement for instant values
+        "energyInstant_ELEC_A": SensorStateClass.MEASUREMENT,
         "energyInstantTotElec": SensorStateClass.MEASUREMENT,
         "energyInstantTotElecP": SensorStateClass.MEASUREMENT,
         "energyInstantTi1P": SensorStateClass.MEASUREMENT,
@@ -1648,6 +1652,8 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyIndexECSWatt": UnitOfEnergy.WATT_HOUR,
         "energyIndexHeatGas": UnitOfEnergy.WATT_HOUR,
         "energyIndex": UnitOfEnergy.WATT_HOUR,
+        "energyDistrib": UnitOfEnergy.WATT_HOUR,
+        "energyInstant_ELEC_A": UnitOfElectricCurrent.AMPERE,
         "outTemperature": UnitOfTemperature.CELSIUS,
     }
 

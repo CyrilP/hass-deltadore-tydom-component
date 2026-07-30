@@ -53,6 +53,59 @@ Some firmwares never send an EOR flag; they mark the end of the enumeration
 with a last element carrying index 255 and invalid event data instead.
 """
 
+_ENERGY_INSTANT_DIVISORS = {
+    "ELEC_A": 100,
+}
+"""Divisors used by TYDOM for instantaneous energy measurements."""
+
+
+def _parse_energy_cdata_element(element: Any) -> dict[str, int | float]:
+    """Extract sensor values from one successful energy cdata element."""
+    if not isinstance(element, dict) or element.get("status", "OK") != "OK":
+        return {}
+
+    name = element.get("name")
+    parameters = element.get("parameters")
+    values = element.get("values")
+    if not isinstance(parameters, dict) or not isinstance(values, dict):
+        return {}
+
+    if name == "energyIndex":
+        destination = parameters.get("dest")
+        counter = values.get("counter")
+        if (
+            not isinstance(destination, str)
+            or destination.startswith("TEMP_")
+            or not isinstance(counter, (int, float))
+            or isinstance(counter, bool)
+        ):
+            return {}
+        return {f"{name}_{destination}": counter}
+
+    if name == "energyInstant":
+        unit = parameters.get("unit")
+        measure = values.get("measure")
+        if (
+            not isinstance(unit, str)
+            or unit not in _ENERGY_INSTANT_DIVISORS
+            or not isinstance(measure, (int, float))
+            or isinstance(measure, bool)
+        ):
+            return {}
+        return {f"{name}_{unit}": measure / _ENERGY_INSTANT_DIVISORS[unit]}
+
+    if name == "energyDistrib":
+        return {
+            f"{name}_{key}": value
+            for key, value in values.items()
+            if isinstance(key, str)
+            and key.isupper()
+            and isinstance(value, (int, float))
+            and not isinstance(value, bool)
+        }
+
+    return {}
+
 
 def _is_tyxia_4910_other(uid: str) -> bool:
     """Identify a binary TYXIA 4910 configured under the TYDOM 'others' usage."""
@@ -1466,45 +1519,7 @@ class MessageHandler:
 
                         for elem in endpoint["cdata"]:
                             if type_of_id == "conso":
-                                element_name = None
-                                if "parameters" in elem and elem["parameters"].get(
-                                    "dest"
-                                ):
-                                    element_name = (
-                                        elem["name"] + "_" + elem["parameters"]["dest"]
-                                    )
-                                    element_value = elem["values"]["counter"]
-                                    data[element_name] = element_value
-                                elif "parameters" in elem and elem["parameters"].get(
-                                    "period"
-                                ):
-                                    for key in elem["values"]:
-                                        if key.isupper():
-                                            element_name = elem["name"] + "_" + key
-                                            data[element_name] = elem["values"][key]
-                                else:
-                                    continue
-
-                                # Create the device
-                                device = await MessageHandler.get_device(
-                                    self.tydom_client,
-                                    type_of_id,
-                                    unique_id,
-                                    device_id,
-                                    name_of_id,
-                                    endpoint_id,
-                                    data,
-                                )
-
-                                if device is not None:
-                                    devices.append(device)
-                                    LOGGER.debug(
-                                        "Device update (id=%s, endpoint=%s, name=%s, type=%s)",
-                                        device_id,
-                                        endpoint_id,
-                                        name_of_id,
-                                        type_of_id,
-                                    )
+                                data.update(_parse_energy_cdata_element(elem))
 
                             elif type_of_id == "alarm" and transaction_id is not None:
                                 reply = None
@@ -1555,6 +1570,27 @@ class MessageHandler:
                             else:
                                 LOGGER.debug(
                                     "Ignore cdata message targetting '%s' (%s).",
+                                    name_of_id,
+                                    type_of_id,
+                                )
+
+                        if type_of_id == "conso" and data:
+                            device = await MessageHandler.get_device(
+                                self.tydom_client,
+                                type_of_id,
+                                unique_id,
+                                device_id,
+                                name_of_id,
+                                endpoint_id,
+                                data,
+                            )
+
+                            if device is not None:
+                                devices.append(device)
+                                LOGGER.debug(
+                                    "Device update (id=%s, endpoint=%s, name=%s, type=%s)",
+                                    device_id,
+                                    endpoint_id,
                                     name_of_id,
                                     type_of_id,
                                 )

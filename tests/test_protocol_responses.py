@@ -66,6 +66,7 @@ handler_spec.loader.exec_module(handler_module)
 
 MessageHandler = handler_module.MessageHandler
 TydomLight = devices_module.TydomLight
+TydomEnergy = devices_module.TydomEnergy
 
 for name, original in _original_modules.items():
     if original is _MISSING:
@@ -76,6 +77,11 @@ for name, original in _original_modules.items():
 
 class ProtocolResponseTests(IsolatedAsyncioTestCase):
     """Exercise response acknowledgements and light refresh polling."""
+
+    def setUp(self) -> None:
+        """Reset protocol state shared between tests."""
+        handler_module.device_name.clear()
+        handler_module.device_type.clear()
 
     def test_light_brightness_requires_intermediate_levels(self) -> None:
         """Binary level metadata must not advertise variable brightness."""
@@ -190,6 +196,103 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
                 call("/devices/20/endpoints/10/data"),
             ],
         )
+
+    async def test_energy_cdata_exposes_index_distribution_and_current(self) -> None:
+        """Captured TYWATT cdata shapes must become one energy device update."""
+        handler_module.device_name["20_10"] = "TYWATT"
+        handler_module.device_type["20_10"] = "conso"
+        handler = MessageHandler(MagicMock(), b"")
+
+        devices = await handler.parse_devices_cdata(
+            [
+                {
+                    "id": 10,
+                    "endpoints": [
+                        {
+                            "id": 20,
+                            "error": 0,
+                            "cdata": [
+                                {
+                                    "name": "energyIndex",
+                                    "status": "OK",
+                                    "parameters": {"dest": "ELEC_TOTAL"},
+                                    "values": {"counter": 66268504},
+                                },
+                                {
+                                    "name": "energyInstant",
+                                    "status": "OK",
+                                    "parameters": {"unit": "ELEC_A"},
+                                    "values": {"measure": 500},
+                                },
+                                {
+                                    "name": "energyDistrib",
+                                    "status": "OK",
+                                    "parameters": {
+                                        "src": "ELEC",
+                                        "period": "YEAR",
+                                        "periodOffset": 0,
+                                    },
+                                    "values": {
+                                        "date": "2095-10-07",
+                                        "ELEC_HEATING": 14484,
+                                        "ELEC_HOTWATER": 201117,
+                                        "ELEC_OUTLET": 25638,
+                                        "ELEC_OTHER": 176376,
+                                    },
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ]
+        )
+
+        self.assertEqual(len(devices), 1)
+        device = devices[0]
+        self.assertIsInstance(device, TydomEnergy)
+        self.assertEqual(device.energyIndex_ELEC_TOTAL, 66268504)
+        self.assertEqual(device.energyInstant_ELEC_A, 5)
+        self.assertEqual(device.energyDistrib_ELEC_HEATING, 14484)
+        self.assertEqual(device.energyDistrib_ELEC_HOTWATER, 201117)
+        self.assertEqual(device.energyDistrib_ELEC_OUTLET, 25638)
+        self.assertEqual(device.energyDistrib_ELEC_OTHER, 176376)
+
+    async def test_energy_cdata_ignores_failed_and_malformed_values(self) -> None:
+        """Unsupported cdata replies must not create misleading sensors."""
+        handler_module.device_name["20_10"] = "TYWATT"
+        handler_module.device_type["20_10"] = "conso"
+        handler = MessageHandler(MagicMock(), b"")
+
+        devices = await handler.parse_devices_cdata(
+            [
+                {
+                    "id": 10,
+                    "endpoints": [
+                        {
+                            "id": 20,
+                            "error": 0,
+                            "cdata": [
+                                {"name": "energyIndex", "status": "destNOK"},
+                                {
+                                    "name": "energyIndex",
+                                    "status": "OK",
+                                    "parameters": {"dest": "TEMP_OUTDOOR"},
+                                    "values": {"counter": 18},
+                                },
+                                {
+                                    "name": "energyInstant",
+                                    "status": "OK",
+                                    "parameters": {"unit": "UNKNOWN"},
+                                    "values": {"measure": 500},
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ]
+        )
+
+        self.assertEqual(devices, [])
 
 
 if __name__ == "__main__":
