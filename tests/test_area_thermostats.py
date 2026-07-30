@@ -118,6 +118,43 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         )
         return devices[0]
 
+    async def _discover_trv(self, metadata: dict | None = None):
+        """Return an area-linked TRV matching the issue #259 protocol shape."""
+        handler_module.device_name["10_20"] = "Radiator head"
+        handler_module.device_type["10_20"] = "sh_hvac"
+        handler_module.device_metadata["10_20"] = metadata or {
+            "regTemperature": {"permission": "r"},
+            "waterFlowReq": {"permission": "r"},
+        }
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [
+                        {
+                            "id": 10,
+                            "error": 0,
+                            "link": {"type": "area", "id": 7},
+                            "data": [
+                                {
+                                    "name": "regTemperature",
+                                    "value": 19.25,
+                                    "validity": "upToDate",
+                                },
+                                {
+                                    "name": "waterFlowReq",
+                                    "value": True,
+                                    "validity": "upToDate",
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+        return devices[0]
+
     async def test_area_link_discovers_re2020_thermostat(self) -> None:
         """The linked endpoint is retained as an area-backed boiler."""
         device = await self._discover()
@@ -748,6 +785,67 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         self.assertEqual(devices[0].device_id, "10_20")
         self.assertEqual(devices[0].authorization, "HEATING")
         self.assertEqual(devices[0].setpoint, 21.0)
+
+    async def test_trv_uses_shared_area_state_routing(self) -> None:
+        """TRV target state follows its area while retaining physical identity."""
+        trv = await self._discover_trv()
+
+        devices = await self.handler.parse_areas_data(
+            [
+                {
+                    "id": 7,
+                    "data": [
+                        {
+                            "name": "currentSetpoint",
+                            "value": 20.5,
+                            "validity": "upToDate",
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+
+        self.assertTrue(trv.is_area_trv)
+        self.assertEqual(trv.area_hvac_modes(), {"HEATING"})
+        self.assertEqual(trv.regTemperature, 19.25)
+        self.assertTrue(trv.waterFlowReq)
+        self.assertEqual(len(devices), 1)
+        self.assertEqual(devices[0].device_id, trv.device_id)
+        self.assertEqual(devices[0].area_setpoint_attribute(), "currentSetpoint")
+        self.assertEqual(devices[0].currentSetpoint, 20.5)
+
+    async def test_trv_override_does_not_require_local_setpoint_metadata(self) -> None:
+        """Issue #259 TRVs can set a target without device-level area metadata."""
+        trv = await self._discover_trv()
+        self.client.put_area_data_attributes = AsyncMock()
+
+        await trv.set_temperature("20.5")
+
+        self.client.put_area_data_attributes.assert_awaited_once_with(
+            "7",
+            {
+                "localSetpoint": "20.5",
+                "localSetpRemainingTimeStr": "UNTIL_SCHED",
+                "localMode": "LOCAL_SETPOINT",
+            },
+        )
+
+    async def test_trv_uses_local_setpoint_limits_when_advertised(self) -> None:
+        """Optional TRV metadata controls the Home Assistant range and step."""
+        trv = await self._discover_trv(
+            {
+                "localSetpoint": {
+                    "permission": "rw",
+                    "min": 5.0,
+                    "max": 30.0,
+                    "step": 0.5,
+                }
+            }
+        )
+
+        self.assertEqual(trv.area_temperature_limits(), (5.0, 30.0))
+        self.assertEqual(trv.area_temperature_step(), 0.5)
 
     async def test_single_area_uri_is_routed_as_area_data(self) -> None:
         """A pushed /areas/{id}/data update must not enter the device parser."""
