@@ -708,6 +708,40 @@ class TydomPlug(TydomDevice):
         )
 
 
+class TydomSwitch(TydomDevice):
+    """Represent a binary TYXIA output configured under the 'others' usage."""
+
+    @property
+    def productName(self) -> str:
+        """Return the model inferred from the binary series-4900 profile."""
+        return getattr(self, "_product_name", "TYXIA 4910")
+
+    @productName.setter
+    def productName(self, value: str) -> None:
+        """Retain a model explicitly supplied by TYDOM."""
+        self._product_name = value
+
+    async def turn_on(self) -> None:
+        """Turn the binary output on."""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "levelCmd", "ON"
+        )
+        self._schedule_state_refresh()
+
+    async def turn_off(self) -> None:
+        """Turn the binary output off."""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "levelCmd", "OFF"
+        )
+        self._schedule_state_refresh()
+
+    def _schedule_state_refresh(self) -> None:
+        """Poll the regular data endpoint after a command."""
+        self._tydom_client.add_poll_device_url_1s(
+            f"/devices/{self._id}/endpoints/{self._endpoint}/data"
+        )
+
+
 class TydomScene(TydomDevice):
     """Represents a scene/scenario."""
 

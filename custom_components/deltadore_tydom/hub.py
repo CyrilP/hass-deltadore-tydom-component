@@ -21,6 +21,7 @@ from .tydom.tydom_devices import (
     TydomGate,
     TydomGarage,
     TydomLight,
+    TydomSwitch,
     TydomPlug,
     TydomAlarm,
     TydomWeather,
@@ -148,6 +149,7 @@ class Hub:
             TydomGate: self._create_gate_device,
             TydomGarage: self._create_garage_device,
             TydomLight: self._create_light_device,
+            TydomSwitch: self._create_switch_device,
             TydomPlug: self._create_switch_device,
             TydomAlarm: self._create_alarm_device,
             TydomWeather: self._create_weather_device,
@@ -496,8 +498,8 @@ class Hub:
         if self.add_sensor_callback is not None:
             self.add_sensor_callback(ha_device.get_sensors())
 
-    async def _create_switch_device(self, device: TydomPlug) -> None:
-        """Create switch device for generic third-party plugs (e.g. Hue via Zigbee)."""
+    async def _create_switch_device(self, device: TydomPlug | TydomSwitch) -> None:
+        """Create a switch device for a controllable binary output."""
         LOGGER.debug("Create switch %s", device.device_id)
         ha_device = HASwitch(device, self._hass)
         self.ha_devices[device.device_id] = ha_device

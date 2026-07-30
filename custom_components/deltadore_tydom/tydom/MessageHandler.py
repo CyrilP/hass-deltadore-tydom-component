@@ -23,6 +23,7 @@ from .tydom_devices import (
     TydomGarage,
     TydomGate,
     TydomLight,
+    TydomSwitch,
     TydomPlug,
     TydomShutter,
     TydomSmoke,
@@ -48,11 +49,41 @@ Some firmwares never send an EOR flag; they mark the end of the enumeration
 with a last element carrying index 255 and invalid event data instead.
 """
 
+
+def _is_tyxia_4910_other(uid: str) -> bool:
+    """Identify a binary TYXIA 4910 configured under the TYDOM 'others' usage."""
+    if str(device_tutorial_id.get(uid, "")).lower() != "9_tyxia_modulaire_serie4900":
+        return False
+
+    metadata = device_metadata.get(uid)
+    if not isinstance(metadata, dict):
+        return False
+
+    level = metadata.get("level")
+    level_cmd = metadata.get("levelCmd")
+    if not isinstance(level, dict) or not isinstance(level_cmd, dict):
+        return False
+
+    commands = level_cmd.get("enum_values")
+    if not isinstance(commands, list) or not {"ON", "OFF"}.issubset(commands):
+        return False
+
+    try:
+        return (
+            float(level.get("min")) == 0
+            and float(level.get("max")) == 100
+            and float(level.get("step")) == 100
+        )
+    except (TypeError, ValueError):
+        return False
+
+
 # Device dict for parsing
 device_name = {}
 device_endpoint = {}
 device_type = {}
 device_metadata = {}
+device_tutorial_id = {}
 scenario_metadata = {}  # Store scenario metadata from /configs/file
 groups_metadata = {}  # Store group metadata from /configs/file: {group_id: {"usage": "light", "name": "TOTAL"}}
 groups_data = {}  # Store groups data: {group_id: {"devices": [device_ids], "name": group_name}}
@@ -559,6 +590,17 @@ class MessageHandler:
                     device_metadata.get(uid),
                     data,
                 )
+            case "others" if _is_tyxia_4910_other(uid):
+                return TydomSwitch(
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata.get(uid),
+                    data,
+                )
             case "plug":
                 return TydomPlug(
                     tydom_client,
@@ -597,6 +639,9 @@ class MessageHandler:
 
             LOGGER.debug(
                 "config_data device parsed : %s - %s", device_unique_id, i["name"]
+            )
+            device_tutorial_id[device_unique_id] = (i.get("widget_behavior") or {}).get(
+                "tutorial_id", ""
             )
 
             device_name[device_unique_id] = i["name"]
