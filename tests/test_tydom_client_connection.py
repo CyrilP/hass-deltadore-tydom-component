@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 import types
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, call
 
 _MISSING = object()
 _original_modules: dict[str, object] = {}
@@ -122,6 +122,51 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
 
     def _client(self) -> TydomClient:
         return TydomClient(None, "test", "001122334455", "password", host="local")
+
+    async def test_legacy_alarm_disarm_uses_global_alarm_command(self) -> None:
+        """A zone-capable legacy alarm must not drop a global disarm."""
+        client = self._client()
+        client._put_alarm_cdata = AsyncMock()
+
+        await client.put_alarm_cdata(
+            "20",
+            "10",
+            "123456",
+            "OFF",
+            None,
+            legacy_zones=True,
+        )
+
+        client._put_alarm_cdata.assert_awaited_once_with(
+            "20",
+            "10",
+            "123456",
+            "OFF",
+            None,
+            True,
+        )
+
+    async def test_legacy_alarm_zone_commands_are_still_split(self) -> None:
+        """Legacy arm commands must continue to address each configured part."""
+        client = self._client()
+        client._put_alarm_cdata = AsyncMock()
+
+        await client.put_alarm_cdata(
+            "20",
+            "10",
+            "123456",
+            "ON",
+            "1,3",
+            legacy_zones=True,
+        )
+
+        self.assertEqual(
+            client._put_alarm_cdata.await_args_list,
+            [
+                call("20", "10", "123456", "ON", "1", True),
+                call("20", "10", "123456", "ON", "3", True),
+            ],
+        )
 
     async def test_failed_initialisation_closes_candidate(self) -> None:
         """A socket that fails initialisation must never remain active."""

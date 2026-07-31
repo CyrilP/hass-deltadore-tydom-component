@@ -1447,17 +1447,19 @@ class TydomClient:
         legacy_zones=False,
     ):
         """Configure alarm mode."""
-        if legacy_zones:
-            if zone_id is not None:
-                zones_array = zone_id.split(",")
-                for zone in zones_array:
-                    await self._put_alarm_cdata(
-                        device_id, endpoint_id, alarm_pin, value, zone, legacy_zones
-                    )
-        else:
-            await self._put_alarm_cdata(
-                device_id, endpoint_id, alarm_pin, value, zone_id, legacy_zones
-            )
+        if legacy_zones and zone_id not in (None, ""):
+            zones_array = str(zone_id).split(",")
+            for zone in zones_array:
+                await self._put_alarm_cdata(
+                    device_id, endpoint_id, alarm_pin, value, zone, legacy_zones
+                )
+            return
+
+        # Global legacy commands such as disarm have no zone. They still use
+        # alarmCmd and must not be dropped by the legacy zone dispatcher.
+        await self._put_alarm_cdata(
+            device_id, endpoint_id, alarm_pin, value, zone_id, legacy_zones
+        )
 
     async def _put_alarm_cdata(
         self,
