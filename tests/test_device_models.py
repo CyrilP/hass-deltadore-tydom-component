@@ -103,6 +103,7 @@ class TestDeviceModels(TestCase):
             "switch_tyxia2600_btn_a": "TYXIA 2600",
             "rcu_tyxia1410_btn_4": "TYXIA 1410",
             "tl2000_btn_2": "TL 2000 TYXAL+",
+            "Volet_roulant_wellcom": "Well'com roller shutter",
         }
 
         for tutorial_id, expected_model in cases.items():
@@ -127,7 +128,6 @@ class TestDeviceModels(TestCase):
             "42_novoferm_novoport_novomatic",
             "TA5555_Zigbee_DD",
             "Tywatt_serie1000",
-            "Volet_roulant_wellcom",
         }
 
         for tutorial_id in tutorials:

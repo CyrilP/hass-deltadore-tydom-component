@@ -22,6 +22,7 @@ _CONFIRMED_TUTORIAL_MODELS = {
     "tysense_sun": "Tysense Sun",
     "tywell_control": "Tywell Control",
     "tywell_control_2050": "Tywell 2050",
+    "volet_roulant_wellcom": "Well'com roller shutter",
 }
 
 _TUTORIAL_PREFIX_MODELS = {
