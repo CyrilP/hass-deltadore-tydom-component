@@ -64,7 +64,6 @@ handler_spec.loader.exec_module(handler_module)
 
 is_binary_tyxia_receiver_profile = devices_module.is_binary_tyxia_receiver_profile
 is_trv_1_profile = devices_module.is_trv_1_profile
-is_tymoov_profile = devices_module.is_tymoov_profile
 is_tybox_1137_profile = devices_module.is_tybox_1137_profile
 is_tyxia_dimmer_profile = devices_module.is_tyxia_dimmer_profile
 resolve_device_model = devices_module.resolve_device_model
@@ -96,15 +95,9 @@ class TestDeviceModels(TestCase):
             "tywell_control": "Tywell Control",
             "tywell_control_2050": "Tywell 2050",
             "8_Tyxia6610": "TYXIA 6610",
-            "Tywatt_serie1000": "TYWATT 1000",
-            "4_dvi_kline": "DVI K-Line",
-            "6_pod_kline": "POD K-Line",
-            "7_dvi_kline_fenetre_coul_battant": "DVI K-Line",
-            "8_dvi_kline_fenetre_coul": "DVI K-Line",
             "smart_plug_DD": "Delta Dore Easy Plug",
             "split_takao_type_1": "Atlantic Naviclim 875311",
             "split_takao_type_2": "Atlantic Naviclim 875311",
-            "TA5555_Zigbee_DD": "Atlantic/Fujitsu split",
             "switch_tyxia2600_btn_a": "TYXIA 2600",
             "rcu_tyxia1410_btn_4": "TYXIA 1410",
             "tl2000_btn_2": "TL 2000 TYXAL+",
@@ -116,29 +109,29 @@ class TestDeviceModels(TestCase):
                     resolve_device_model(tutorial_id, "unknown"), expected_model
                 )
 
-    def test_family_tutorial_models(self) -> None:
-        """Family-only tutorial identifiers do not invent a product reference."""
-        cases = {
-            "14_TyxalPlus_high": "TYXAL+",
-            "25_tymoov": "TYMOOV",
-            "34_tywatt_54xx+": "TYWATT 54xx+",
-            "1_Calybox_Tybox_serie100_1": "CALYBOX/TYBOX 100 series",
-            "2_Calybox_TyboxRT_serie1000": "CALYBOX/TYBOX RT 1000 series",
-            "3_Calybox_TyboxRT_serie2000": "CALYBOX/TYBOX RT 2000 series",
-            "5_Tybox_serie5000": "TYBOX 5000 series",
-            "5_detectouverture_kline": "DVI K-Line",
-            "6_RecepteurRF_serie6000_1": "RF 6000 series receiver",
-            "6_RecepteurRF_serie6000_2_twc": "RF 6000 series receiver",
-            "kline_vr": "K-Line roller shutter",
-            "42_novoferm_novoport_novomatic": ("Novoferm NovoPort/Novomatic E.S."),
-            "Volet_roulant_wellcom": "Well'com roller shutter",
+    def test_family_tutorials_do_not_become_models(self) -> None:
+        """Family-only tutorial identifiers retain the existing fallback."""
+        tutorials = {
+            "14_TyxalPlus_high",
+            "25_tymoov",
+            "34_tywatt_54xx+",
+            "1_Calybox_Tybox_serie100_1",
+            "2_Calybox_TyboxRT_serie1000",
+            "3_Calybox_TyboxRT_serie2000",
+            "5_Tybox_serie5000",
+            "5_detectouverture_kline",
+            "6_RecepteurRF_serie6000_1",
+            "6_RecepteurRF_serie6000_2_twc",
+            "kline_vr",
+            "42_novoferm_novoport_novomatic",
+            "TA5555_Zigbee_DD",
+            "Tywatt_serie1000",
+            "Volet_roulant_wellcom",
         }
 
-        for tutorial_id, expected_model in cases.items():
+        for tutorial_id in tutorials:
             with self.subTest(tutorial_id=tutorial_id):
-                self.assertEqual(
-                    resolve_device_model(tutorial_id, "light"), expected_model
-                )
+                self.assertIsNone(resolve_device_model(tutorial_id, "light"))
 
     def test_legacy_tutorial_category_uses_the_endpoint_profile(self) -> None:
         """The legacy series-4000 tutorial name must not become the model."""
@@ -149,14 +142,10 @@ class TestDeviceModels(TestCase):
             resolve_device_model("7_Tyxia_serie4000", "garage_door"),
             "TYXIA 4620",
         )
-        self.assertEqual(
-            resolve_device_model("7_Tyxia_serie4000", "light", _binary_4900_metadata()),
-            "TYXIA on/off receiver",
+        self.assertIsNone(
+            resolve_device_model("7_Tyxia_serie4000", "light", _binary_4900_metadata())
         )
-        self.assertEqual(
-            resolve_device_model("7_Tyxia_serie4000", "shutter"),
-            "TYXIA shutter receiver",
-        )
+        self.assertIsNone(resolve_device_model("7_Tyxia_serie4000", "shutter"))
 
     def test_binary_series_4900_profile_is_tyxia_4910(self) -> None:
         """Binary series-4900 metadata narrows the family to TYXIA 4910."""
@@ -168,17 +157,16 @@ class TestDeviceModels(TestCase):
             "TYXIA 4910",
         )
 
-    def test_non_binary_series_4900_remains_a_family(self) -> None:
-        """A different series-4900 profile must not be labelled TYXIA 4910."""
+    def test_non_binary_series_4900_retains_fallback(self) -> None:
+        """A different series-4900 profile must not become a model."""
         metadata = {
             "level": {"min": 0, "max": 100, "step": 1},
             "levelCmd": {"enum_values": ["OFF", "ON"]},
         }
 
         self.assertFalse(is_binary_tyxia_receiver_profile(metadata))
-        self.assertEqual(
-            resolve_device_model("9_tyxia_modulaire_serie4900", "others", metadata),
-            "TYXIA 4900 series",
+        self.assertIsNone(
+            resolve_device_model("9_tyxia_modulaire_serie4900", "others", metadata)
         )
 
     def test_tyxia_dimmer_profile(self) -> None:
@@ -200,10 +188,9 @@ class TestDeviceModels(TestCase):
         }
 
         self.assertTrue(is_tyxia_dimmer_profile(metadata))
-        self.assertEqual(resolve_device_model(None, "light", metadata), "TYXIA dimmer")
-        self.assertEqual(
-            resolve_device_model("7_Tyxia_serie4000", "light", metadata),
-            "TYXIA dimmer",
+        self.assertIsNone(resolve_device_model(None, "light", metadata))
+        self.assertIsNone(
+            resolve_device_model("7_Tyxia_serie4000", "light", metadata)
         )
         self.assertEqual(
             resolve_device_model("9_Tyxia_modulaire_serie4900", "light", metadata),
@@ -215,8 +202,8 @@ class TestDeviceModels(TestCase):
         self.assertIsNone(resolve_device_model(None, "light"))
         self.assertIsNone(resolve_device_model("unknown_product", "light"))
 
-    def test_tymoov_firmware_profile_fills_a_missing_tutorial(self) -> None:
-        """Known TYMOOV firmware plans identify a motor with no tutorial id."""
+    def test_tymoov_firmware_family_does_not_become_a_model(self) -> None:
+        """A TYMOOV-family firmware tuple does not identify an exact motor."""
         data = {
             "softPlan0": "24.28.00.20",
             "softPlan1": "24.94.00.11",
@@ -224,18 +211,6 @@ class TestDeviceModels(TestCase):
             "softPlan3": "22.10.00.30",
         }
 
-        self.assertTrue(is_tymoov_profile(data))
-        self.assertEqual(resolve_device_model(None, "shutter", data=data), "TYMOOV")
-
-    def test_partial_tymoov_firmware_profile_is_not_guessed(self) -> None:
-        """An incomplete firmware resemblance must retain the fallback."""
-        data = {
-            "softPlan0": "24.28.00.20",
-            "softPlan2": "different-product",
-            "softPlan3": "22.10.00.30",
-        }
-
-        self.assertFalse(is_tymoov_profile(data))
         self.assertIsNone(resolve_device_model(None, "shutter", data=data))
 
     def test_trv_1_firmware_profile(self) -> None:
