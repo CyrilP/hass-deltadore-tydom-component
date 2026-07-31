@@ -504,8 +504,10 @@ class GenericSensor(SensorEntity):
     def device_info(self):
         """Return information to link this entity with the correct device."""
         device_info_dict = self._get_device_info_dict()
+        registry_device_id = self._device.registry_device_id
+        grouped_with_parent = registry_device_id != self._device.device_id
         info: DeviceInfo = {
-            "identifiers": {(DOMAIN, self._device.device_id)},
+            "identifiers": {(DOMAIN, registry_device_id)},
         }
 
         # Add name if available
@@ -519,7 +521,9 @@ class GenericSensor(SensorEntity):
             "appareil",
         ]
 
-        if hasattr(self._device, "device_name") and self._device.device_name:
+        if grouped_with_parent:
+            info["name"] = self._device.registry_device_name
+        elif hasattr(self._device, "device_name") and self._device.device_name:
             info["name"] = self._device.device_name
         elif "model" in device_info_dict:
             model_name = device_info_dict["model"]
@@ -539,23 +543,20 @@ class GenericSensor(SensorEntity):
             info["manufacturer"] = "Delta Dore"
 
         # Add model
-        if "model" in device_info_dict:
+        if "model" in device_info_dict and not grouped_with_parent:
             info["model"] = device_info_dict["model"]
 
         # Add hardware version
-        if "hw_version" in device_info_dict:
+        if "hw_version" in device_info_dict and not grouped_with_parent:
             info["hw_version"] = device_info_dict["hw_version"]
 
         # Add software version
-        if "sw_version" in device_info_dict:
+        if "sw_version" in device_info_dict and not grouped_with_parent:
             info["sw_version"] = device_info_dict["sw_version"]
 
         # Link device to Tydom gateway via via_device
         gateway_device_id = self._get_tydom_gateway_device_id()
-        if (
-            gateway_device_id is not None
-            and gateway_device_id != self._device.device_id
-        ):
+        if gateway_device_id is not None and gateway_device_id != registry_device_id:
             info["via_device"] = (DOMAIN, gateway_device_id)
 
         return info
@@ -650,8 +651,10 @@ class BinarySensorBase(BinarySensorEntity):
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
+        registry_device_id = self._device.registry_device_id
+        grouped_with_parent = registry_device_id != self._device.device_id
         info: DeviceInfo = {
-            "identifiers": {(DOMAIN, self._device.device_id)},
+            "identifiers": {(DOMAIN, registry_device_id)},
         }
         # Add name if available
         # Avoid using generic names like "Produit 1" from productName
@@ -664,7 +667,9 @@ class BinarySensorBase(BinarySensorEntity):
             "appareil",
         ]
 
-        if hasattr(self._device, "device_name") and self._device.device_name:
+        if grouped_with_parent:
+            info["name"] = self._device.registry_device_name
+        elif hasattr(self._device, "device_name") and self._device.device_name:
             info["name"] = self._device.device_name
         elif hasattr(self._device, "productName"):
             product_name = getattr(self._device, "productName", None)
@@ -687,16 +692,13 @@ class BinarySensorBase(BinarySensorEntity):
                 info["manufacturer"] = str(manufacturer)
         if "manufacturer" not in info:
             info["manufacturer"] = "Delta Dore"
-        if hasattr(self._device, "productName"):
+        if hasattr(self._device, "productName") and not grouped_with_parent:
             product_name = getattr(self._device, "productName", None)
             if product_name is not None:
                 info["model"] = str(product_name)
         # Link to gateway if available
         gateway_device_id = self._get_tydom_gateway_device_id()
-        if (
-            gateway_device_id is not None
-            and gateway_device_id != self._device.device_id
-        ):
+        if gateway_device_id is not None and gateway_device_id != registry_device_id:
             info["via_device"] = (DOMAIN, gateway_device_id)
         return info
 
@@ -2135,7 +2137,7 @@ class HaClimate(ClimateEntity, HAEntity):
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_climate"
-        self._attr_name = None  # primary entity inherits device name
+        self._attr_name = "Thermostat" if self._device.is_derived_area_climate else None
         self._enable_turn_on_off_backwards_compatibility = False
 
         self.dict_modes_ha_to_dd = {
@@ -2235,31 +2237,53 @@ class HaClimate(ClimateEntity, HAEntity):
             HVACMode.AUTO,
         ]
 
-        if self._device._metadata is not None and (
-            (
-                "comfortMode" in self._device._metadata
-                and "COOLING" in self._device._metadata["comfortMode"]["enum_values"]
-            )
-            or (
-                "hvacMode" in self._device._metadata
-                and "COOLING" in self._device._metadata["hvacMode"]["enum_values"]
+        if hasattr(self._device, "area_id"):
+            area_modes = self._device.area_hvac_modes()
+            self._attr_hvac_modes = [HVACMode.OFF]
+            if "HEATING" in area_modes or "NORMAL" in area_modes:
+                self._attr_hvac_modes.append(HVACMode.HEAT)
+            if "COOLING" in area_modes:
+                self._attr_hvac_modes.append(HVACMode.COOL)
+
+        if (
+            HVACMode.COOL not in self._attr_hvac_modes
+            and self._device._metadata is not None
+            and (
+                (
+                    "comfortMode" in self._device._metadata
+                    and "COOLING"
+                    in self._device._metadata["comfortMode"]["enum_values"]
+                )
+                or (
+                    "hvacMode" in self._device._metadata
+                    and "COOLING" in self._device._metadata["hvacMode"]["enum_values"]
+                )
             )
         ):
             self._attr_hvac_modes.append(HVACMode.COOL)
 
-        if self._device._metadata is not None and (
-            (
-                "comfortMode" in self._device._metadata
-                and "HEATING" in self._device._metadata["comfortMode"]["enum_values"]
-            )
-            or (
-                "hvacMode" in self._device._metadata
-                and "HEATING" in self._device._metadata["hvacMode"]["enum_values"]
+        if (
+            HVACMode.HEAT not in self._attr_hvac_modes
+            and self._device._metadata is not None
+            and (
+                (
+                    "comfortMode" in self._device._metadata
+                    and "HEATING"
+                    in self._device._metadata["comfortMode"]["enum_values"]
+                )
+                or (
+                    "hvacMode" in self._device._metadata
+                    and "HEATING" in self._device._metadata["hvacMode"]["enum_values"]
+                )
             )
         ):
             self._attr_hvac_modes.append(HVACMode.HEAT)
 
         self._registered_sensors = []
+        if self._device.device_id.endswith("_area_climate"):
+            # The source passive controller already exposes these as sensors;
+            # keep them only as the climate entity's current temperature.
+            self._registered_sensors.extend(["temperature", "ambientTemperature"])
 
         if (
             self._device._metadata is not None
@@ -2343,6 +2367,12 @@ class HaClimate(ClimateEntity, HAEntity):
         if self._supports_fan:
             self._attr_supported_features |= ClimateEntityFeature.FAN_MODE
 
+    def get_sensors(self):
+        """Avoid duplicating the source controller's sensors on area proxies."""
+        if self._device.is_derived_area_climate:
+            return []
+        return super().get_sensors()
+
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
         await super().async_added_to_hass()
@@ -2360,9 +2390,10 @@ class HaClimate(ClimateEntity, HAEntity):
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
         device_info = self._get_device_info()
+        registry_device_id = str(self._device.source_device_id)
         infos: DeviceInfo = {
-            "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self._device.device_name,
+            "identifiers": {(DOMAIN, registry_device_id)},
+            "name": str(device_name.get(registry_device_id, self._device.device_name)),
             "manufacturer": device_info["manufacturer"],
         }
         if "model" in device_info:
@@ -2373,6 +2404,33 @@ class HaClimate(ClimateEntity, HAEntity):
     def temperature_unit(self) -> str:
         """Return the unit of temperature measurement for the system."""
         return UnitOfTemperature.CELSIUS
+
+    @property
+    def min_temp(self) -> float:
+        """Return the live minimum target temperature when area-backed."""
+        if hasattr(self._device, "area_id"):
+            minimum, _ = self._device.area_temperature_limits()
+            if minimum is not None:
+                return minimum
+        return super().min_temp
+
+    @property
+    def max_temp(self) -> float:
+        """Return the live maximum target temperature when area-backed."""
+        if hasattr(self._device, "area_id"):
+            _, maximum = self._device.area_temperature_limits()
+            if maximum is not None:
+                return maximum
+        return super().max_temp
+
+    @property
+    def target_temperature_step(self) -> float | None:
+        """Return the area controller's advertised temperature step."""
+        if hasattr(self._device, "area_id"):
+            step = self._device.area_temperature_step()
+            if step is not None:
+                return step
+        return super().target_temperature_step
 
     def _resolve_hvac_mode(self) -> HVACMode:
         """Derive HA HVAC mode from Tydom thermostat registers."""
@@ -2460,6 +2518,13 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature currently set to be reached."""
+        if hasattr(self._device, "area_id"):
+            setpoint = getattr(
+                self._device, self._device.area_setpoint_attribute(), None
+            )
+            if setpoint is not None:
+                return float(setpoint)
+
         if hasattr(self._device, "hvacMode"):
             hvac_mode = getattr(self._device, "hvacMode", None)
             if hvac_mode in ("HEATING", "NORMAL"):
@@ -3416,14 +3481,16 @@ class HaWeather(WeatherEntity, HAEntity):
     def device_info(self):
         """Return information to link this entity with the correct device."""
         device_info = self._get_device_info()
+        registry_device_id = self._device.registry_device_id
+        grouped_with_parent = registry_device_id != self._device.device_id
         info: DeviceInfo = {
-            "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self._device.device_name,
+            "identifiers": {(DOMAIN, registry_device_id)},
+            "name": self._device.registry_device_name,
             "manufacturer": device_info["manufacturer"],
         }
-        if "model" in device_info:
+        if "model" in device_info and not grouped_with_parent:
             info["model"] = device_info["model"]
-        return info
+        return self._enrich_device_info(info)
 
 
 class HaMoisture(BinarySensorEntity, HAEntity):
@@ -3547,6 +3614,14 @@ class HASensor(SensorEntity, HAEntity):
         self.hass = hass
         self._device = device
         self._device._ha_device = self
+        battery_attributes = self._device.battery_level_attributes
+        self.sensor_classes = dict.fromkeys(
+            battery_attributes, SensorDeviceClass.BATTERY
+        )
+        self.state_classes = dict.fromkeys(
+            battery_attributes, SensorStateClass.MEASUREMENT
+        )
+        self.units = dict.fromkeys(battery_attributes, PERCENTAGE)
         self._attr_unique_id = f"{self._device.device_id}_sensor"
         self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
@@ -4125,7 +4200,7 @@ class HAScene(Scene, HAEntity):
             return set()
 
     def _find_tywell_device(self, zone: str | None = None) -> str | None:
-        """Find Tywell Control device from grpAct/epAct.
+        """Find the physical Tywell controller associated with a TWC scene.
 
         Args:
             zone: Optional zone filter ("day" or "night") to narrow search.
@@ -4145,13 +4220,6 @@ class HAScene(Scene, HAEntity):
 
             # Use the affected device IDs method
             affected_device_ids = self._get_affected_device_ids()
-
-            if not affected_device_ids:
-                LOGGER.debug(
-                    "No affected devices found for scene %s to search for Tywell Control",
-                    self._device.device_id,
-                )
-                return None
 
             # Search for Tywell Control in affected devices
             tywell_keywords = ["TYWELL", "CONTROL", "TYWELL CONTROL"]
@@ -4201,8 +4269,38 @@ class HAScene(Scene, HAEntity):
                         )
                         return device_id
 
+            # TWC_UP/DOWN/STOP scenes generally target shutter groups, not the
+            # controller endpoint itself. In that case grpAct/epAct cannot lead
+            # us back to the physical Tywell controller. The endpoint advertised
+            # as re2020ControlPassive is the controller which exposes the
+            # tywell_control widget in /configs/file.
+            passive_controllers = [
+                (device_id, device)
+                for device_id, device in hub_instance.devices.items()
+                if getattr(device, "device_type", None) == "re2020ControlPassive"
+            ]
+
+            if zone:
+                zone_controllers = [
+                    (device_id, device)
+                    for device_id, device in passive_controllers
+                    if self._get_zone_from_device(device) == zone
+                ]
+                if len(zone_controllers) == 1:
+                    passive_controllers = zone_controllers
+
+            if len(passive_controllers) == 1:
+                device_id = passive_controllers[0][0]
+                self._cached_tywell_device_id = device_id
+                LOGGER.debug(
+                    "Using physical Tywell controller %s for scene %s",
+                    device_id,
+                    self._device.device_id,
+                )
+                return device_id
+
             LOGGER.debug(
-                "No Tywell Control device found in affected devices for scene %s",
+                "No unambiguous physical Tywell controller found for scene %s",
                 self._device.device_id,
             )
             return None
@@ -4522,8 +4620,9 @@ class HAScene(Scene, HAEntity):
     def device_info(self) -> DeviceInfo | None:
         """Return information to link this entity with the correct device.
 
-        Scenes are grouped into virtual devices:
-        - TWC scenes are grouped by zone (Day/Night) into virtual "Tywell Control [Zone]" devices
+        Scenes are grouped into devices:
+        - TWC scenes use their physical Tywell controller when it is unambiguous
+        - Otherwise TWC scenes use virtual zone (Day/Night) devices
         - Other scenes are grouped into a virtual "Scènes Tydom" device
         """
         # Get gateway device ID for via_device fallback
@@ -4568,19 +4667,29 @@ class HAScene(Scene, HAEntity):
                 # Try to find any Tywell Control device
                 tywell_device_id = self._find_tywell_device(None)
 
-            # Determine via_device: use physical Tywell Control if found, otherwise gateway
-            if tywell_device_id and gateway_device_id:
-                # Verify the device exists in hub (it should be in device registry if it exists here)
+            # Prefer the physical controller's identifier so its TWC controls,
+            # room sensors and thermostat appear on the same HA device.
+            if tywell_device_id:
                 hub_instance = self._get_hub()
                 if hub_instance and hasattr(hub_instance, "devices"):
-                    if tywell_device_id in hub_instance.devices:
-                        via_device_id = tywell_device_id
-                    else:
-                        via_device_id = gateway_device_id
-                else:
-                    via_device_id = gateway_device_id
-            else:
-                via_device_id = gateway_device_id
+                    tywell_device = hub_instance.devices.get(tywell_device_id)
+                    if tywell_device is not None:
+                        registry_device_id = str(tywell_device_id)
+                        device_info: DeviceInfo = {
+                            "identifiers": {(DOMAIN, registry_device_id)},
+                            "name": str(tywell_device.device_name),
+                            "manufacturer": "Delta Dore",
+                            "via_device": (DOMAIN, str(gateway_device_id)),
+                        }
+                        product_name = getattr(tywell_device, "productName", None)
+                        if product_name:
+                            device_info["model"] = str(product_name)
+                        LOGGER.debug(
+                            "Attached TWC scene %s to physical controller %s",
+                            scene_name,
+                            tywell_device_id,
+                        )
+                        return device_info
 
             # Create DeviceInfo for virtual device grouping TWC scenes
             # IMPORTANT: All TWC scenes must use the same device_identifier to be grouped
@@ -4591,9 +4700,7 @@ class HAScene(Scene, HAEntity):
                 "model": "Tywell Control",
             }
 
-            # Link to physical device or gateway
-            if via_device_id:
-                device_info["via_device"] = (DOMAIN, via_device_id)
+            device_info["via_device"] = (DOMAIN, gateway_device_id)
 
             LOGGER.debug(
                 "TWC scene device_info: scene=%s, is_twc=%s, zone=%s, device_identifier=%s",
