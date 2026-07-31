@@ -49,8 +49,8 @@ _TUTORIAL_PREFIX_MODELS = {
 }
 
 
-def is_binary_tyxia_4900_profile(metadata: dict[str, Any] | None) -> bool:
-    """Return whether metadata identifies the binary TYXIA 4900 profile."""
+def is_binary_tyxia_receiver_profile(metadata: dict[str, Any] | None) -> bool:
+    """Return whether metadata identifies a fixed-output TYXIA receiver."""
     if not isinstance(metadata, dict):
         return False
 
@@ -95,8 +95,8 @@ def is_trv_1_profile(data: dict[str, Any] | None) -> bool:
     )
 
 
-def is_tyxia_4940_profile(metadata: dict[str, Any] | None) -> bool:
-    """Return whether issue #258's metadata identifies a TYXIA 4940 dimmer."""
+def is_tyxia_dimmer_profile(metadata: dict[str, Any] | None) -> bool:
+    """Return whether metadata identifies a variable-output TYXIA receiver."""
     if not isinstance(metadata, dict):
         return False
 
@@ -170,8 +170,8 @@ def resolve_device_model(
             return "TYMOOV"
         if usage == "sh_hvac" and is_trv_1_profile(data):
             return "TRV 1.0"
-        if usage == "light" and is_tyxia_4940_profile(metadata):
-            return "TYXIA 4940"
+        if usage == "light" and is_tyxia_dimmer_profile(metadata):
+            return "TYXIA dimmer"
         if usage in {"boiler", "hvac"} and is_tybox_1137_profile(metadata):
             return "TYBOX 1137"
         return None
@@ -183,12 +183,21 @@ def resolve_device_model(
     if tutorial == "7_tyxia_serie4000":
         if usage in {"garage_door", "gate"}:
             return "TYXIA 4620"
-        return "TYXIA 4000 series"
+        if usage == "light":
+            if is_tyxia_dimmer_profile(metadata):
+                return "TYXIA dimmer"
+            if is_binary_tyxia_receiver_profile(metadata):
+                return "TYXIA on/off receiver"
+        if usage == "shutter":
+            return "TYXIA shutter receiver"
+        if usage == "awning":
+            return "TYXIA awning receiver"
+        return "TYXIA receiver"
 
     if tutorial == "9_tyxia_modulaire_serie4900":
-        if is_tyxia_4940_profile(metadata):
+        if is_tyxia_dimmer_profile(metadata):
             return "TYXIA 4940"
-        if is_binary_tyxia_4900_profile(metadata):
+        if is_binary_tyxia_receiver_profile(metadata):
             return "TYXIA 4910"
         return "TYXIA 4900 series"
 

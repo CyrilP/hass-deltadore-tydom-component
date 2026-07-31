@@ -62,11 +62,11 @@ _original_modules.setdefault(handler_name, sys.modules.get(handler_name, _MISSIN
 sys.modules[handler_name] = handler_module
 handler_spec.loader.exec_module(handler_module)
 
-is_binary_tyxia_4900_profile = devices_module.is_binary_tyxia_4900_profile
+is_binary_tyxia_receiver_profile = devices_module.is_binary_tyxia_receiver_profile
 is_trv_1_profile = devices_module.is_trv_1_profile
 is_tymoov_profile = devices_module.is_tymoov_profile
 is_tybox_1137_profile = devices_module.is_tybox_1137_profile
-is_tyxia_4940_profile = devices_module.is_tyxia_4940_profile
+is_tyxia_dimmer_profile = devices_module.is_tyxia_dimmer_profile
 resolve_device_model = devices_module.resolve_device_model
 MessageHandler = handler_module.MessageHandler
 
@@ -129,7 +129,6 @@ class TestDeviceModels(TestCase):
             "5_detectouverture_kline": "DVI K-Line",
             "6_RecepteurRF_serie6000_1": "RF 6000 series receiver",
             "6_RecepteurRF_serie6000_2_twc": "RF 6000 series receiver",
-            "7_Tyxia_serie4000": "TYXIA 4000 series",
             "kline_vr": "K-Line roller shutter",
             "42_novoferm_novoport_novomatic": ("Novoferm NovoPort/Novomatic E.S."),
             "Volet_roulant_wellcom": "Well'com roller shutter",
@@ -141,8 +140,8 @@ class TestDeviceModels(TestCase):
                     resolve_device_model(tutorial_id, "light"), expected_model
                 )
 
-    def test_series_4000_gate_is_tyxia_4620(self) -> None:
-        """The series-4000 impulsional gate profile identifies a TYXIA 4620."""
+    def test_legacy_tutorial_category_uses_the_endpoint_profile(self) -> None:
+        """The legacy series-4000 tutorial name must not become the model."""
         self.assertEqual(
             resolve_device_model("7_Tyxia_serie4000", "gate"), "TYXIA 4620"
         )
@@ -150,12 +149,20 @@ class TestDeviceModels(TestCase):
             resolve_device_model("7_Tyxia_serie4000", "garage_door"),
             "TYXIA 4620",
         )
+        self.assertEqual(
+            resolve_device_model("7_Tyxia_serie4000", "light", _binary_4900_metadata()),
+            "TYXIA on/off receiver",
+        )
+        self.assertEqual(
+            resolve_device_model("7_Tyxia_serie4000", "shutter"),
+            "TYXIA shutter receiver",
+        )
 
     def test_binary_series_4900_profile_is_tyxia_4910(self) -> None:
         """Binary series-4900 metadata narrows the family to TYXIA 4910."""
         metadata = _binary_4900_metadata()
 
-        self.assertTrue(is_binary_tyxia_4900_profile(metadata))
+        self.assertTrue(is_binary_tyxia_receiver_profile(metadata))
         self.assertEqual(
             resolve_device_model("9_tyxia_modulaire_serie4900", "others", metadata),
             "TYXIA 4910",
@@ -168,14 +175,14 @@ class TestDeviceModels(TestCase):
             "levelCmd": {"enum_values": ["OFF", "ON"]},
         }
 
-        self.assertFalse(is_binary_tyxia_4900_profile(metadata))
+        self.assertFalse(is_binary_tyxia_receiver_profile(metadata))
         self.assertEqual(
             resolve_device_model("9_tyxia_modulaire_serie4900", "others", metadata),
             "TYXIA 4900 series",
         )
 
-    def test_tyxia_4940_dimmer_profile(self) -> None:
-        """The three reporter-confirmed dimmers share this command profile."""
+    def test_tyxia_dimmer_profile(self) -> None:
+        """Dimmers stay generic unless a narrower tutorial identifies them."""
         metadata = {
             "level": {"min": 0, "max": 100, "step": 1},
             "levelCmd": {
@@ -192,8 +199,12 @@ class TestDeviceModels(TestCase):
             },
         }
 
-        self.assertTrue(is_tyxia_4940_profile(metadata))
-        self.assertEqual(resolve_device_model(None, "light", metadata), "TYXIA 4940")
+        self.assertTrue(is_tyxia_dimmer_profile(metadata))
+        self.assertEqual(resolve_device_model(None, "light", metadata), "TYXIA dimmer")
+        self.assertEqual(
+            resolve_device_model("7_Tyxia_serie4000", "light", metadata),
+            "TYXIA dimmer",
+        )
         self.assertEqual(
             resolve_device_model("9_Tyxia_modulaire_serie4900", "light", metadata),
             "TYXIA 4940",

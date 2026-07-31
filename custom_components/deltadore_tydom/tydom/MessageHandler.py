@@ -36,7 +36,7 @@ from .tydom_devices import (
     TydomThermo,
     TydomSun,
     TydomScene,
-    is_binary_tyxia_4900_profile,
+    is_binary_tyxia_receiver_profile,
     resolve_device_model,
 )
 
@@ -129,7 +129,7 @@ def _is_tyxia_4910_other(uid: str) -> bool:
     """Identify a binary TYXIA 4910 configured under the TYDOM 'others' usage."""
     if str(device_tutorial_id.get(uid, "")).lower() != "9_tyxia_modulaire_serie4900":
         return False
-    return is_binary_tyxia_4900_profile(device_metadata.get(uid))
+    return is_binary_tyxia_receiver_profile(device_metadata.get(uid))
 
 
 # Device dict for parsing
