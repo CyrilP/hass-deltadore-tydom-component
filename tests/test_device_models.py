@@ -64,6 +64,7 @@ handler_spec.loader.exec_module(handler_module)
 
 is_binary_tyxia_receiver_profile = devices_module.is_binary_tyxia_receiver_profile
 is_trv_1_profile = devices_module.is_trv_1_profile
+is_tymoov_profile = devices_module.is_tymoov_profile
 is_tybox_1137_profile = devices_module.is_tybox_1137_profile
 is_tyxia_dimmer_profile = devices_module.is_tyxia_dimmer_profile
 resolve_device_model = devices_module.resolve_device_model
@@ -90,6 +91,7 @@ class TestDeviceModels(TestCase):
         """Exact product tutorial identifiers expose their product models."""
         cases = {
             "sensor_dfr": "DFR TYXAL+",
+            "25_tymoov": "TYMOOV",
             "35_se2000": "Tysense Thermo",
             "tysense_sun": "Tysense Sun",
             "tywell_control": "Tywell Control",
@@ -113,7 +115,6 @@ class TestDeviceModels(TestCase):
         """Family-only tutorial identifiers retain the existing fallback."""
         tutorials = {
             "14_TyxalPlus_high",
-            "25_tymoov",
             "34_tywatt_54xx+",
             "1_Calybox_Tybox_serie100_1",
             "2_Calybox_TyboxRT_serie1000",
@@ -202,8 +203,8 @@ class TestDeviceModels(TestCase):
         self.assertIsNone(resolve_device_model(None, "light"))
         self.assertIsNone(resolve_device_model("unknown_product", "light"))
 
-    def test_tymoov_firmware_family_does_not_become_a_model(self) -> None:
-        """A TYMOOV-family firmware tuple does not identify an exact motor."""
+    def test_tymoov_firmware_profile_identifies_the_confirmed_range(self) -> None:
+        """The complete TYMOOV firmware tuple supplies its confirmed range."""
         data = {
             "softPlan0": "24.28.00.20",
             "softPlan1": "24.94.00.11",
@@ -211,6 +212,18 @@ class TestDeviceModels(TestCase):
             "softPlan3": "22.10.00.30",
         }
 
+        self.assertTrue(is_tymoov_profile(data))
+        self.assertEqual(resolve_device_model(None, "shutter", data=data), "TYMOOV")
+
+    def test_partial_tymoov_firmware_profile_is_not_used(self) -> None:
+        """An incomplete TYMOOV resemblance retains the existing fallback."""
+        data = {
+            "softPlan0": "24.28.00.20",
+            "softPlan2": "different-product",
+            "softPlan3": "22.10.00.30",
+        }
+
+        self.assertFalse(is_tymoov_profile(data))
         self.assertIsNone(resolve_device_model(None, "shutter", data=data))
 
     def test_trv_1_firmware_profile(self) -> None:

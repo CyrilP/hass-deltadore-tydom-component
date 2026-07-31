@@ -11,7 +11,8 @@ if TYPE_CHECKING:
     from .tydom_client import TydomClient
 
 
-_EXACT_TUTORIAL_MODELS = {
+_CONFIRMED_TUTORIAL_MODELS = {
+    "25_tymoov": "TYMOOV",
     "35_se2000": "Tysense Thermo",
     "8_tyxia6610": "TYXIA 6610",
     "sensor_dfr": "DFR TYXAL+",
@@ -52,6 +53,17 @@ def is_binary_tyxia_receiver_profile(metadata: dict[str, Any] | None) -> bool:
         )
     except (TypeError, ValueError):
         return False
+
+
+def is_tymoov_profile(data: dict[str, Any] | None) -> bool:
+    """Return whether firmware descriptors identify the TYMOOV range."""
+    if not isinstance(data, dict):
+        return False
+    return (
+        data.get("softPlan0") == "24.28.00.20"
+        and data.get("softPlan2") == "24.28.00.31"
+        and data.get("softPlan3") == "22.10.00.30"
+    )
 
 
 def is_trv_1_profile(data: dict[str, Any] | None) -> bool:
@@ -130,12 +142,14 @@ def resolve_device_model(
 ) -> str | None:
     """Return the most specific model justified by TYDOM descriptors.
 
-    Only descriptors proven to identify an exact product are accepted. Broad
-    tutorial categories and capability profiles retain Home Assistant's
-    existing fallback instead of being presented as device models.
+    Only descriptors proven to identify an exact product or an explicitly
+    named product range are accepted. Broad capability profiles retain Home
+    Assistant's existing fallback instead of being presented as device models.
     """
     tutorial = str(tutorial_id or "").strip().casefold()
     if not tutorial:
+        if usage == "shutter" and is_tymoov_profile(data):
+            return "TYMOOV"
         if usage == "sh_hvac" and is_trv_1_profile(data):
             return "TRV 1.0"
         if usage in {"boiler", "hvac"} and is_tybox_1137_profile(metadata):
@@ -158,7 +172,7 @@ def resolve_device_model(
             return "TYXIA 4910"
         return None
 
-    return _EXACT_TUTORIAL_MODELS.get(tutorial)
+    return _CONFIRMED_TUTORIAL_MODELS.get(tutorial)
 
 
 class DeviceCallback(Protocol):
