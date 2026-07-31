@@ -1,159 +1,93 @@
 #!/usr/bin/env python3
-"""
-Script de test pour valider le parsing des messages capturés.
+# ruff: noqa: T201
+"""Validate and summarise a raw capture produced by the TYDOM capture tool."""
 
-Ce script teste que le parser amélioré peut correctement décoder
-les messages HTTP chunked depuis les fichiers de capture.
-"""
+from __future__ import annotations
 
-import json
-import sys
+from collections import Counter
 from pathlib import Path
-from http.client import HTTPResponse as CoreHTTPResponse
-from io import BytesIO
+import sys
+
+try:
+    from .capture_support import parse_tydom_message
+except ImportError:  # Direct execution: python tools/test_capture_parsing.py
+    from capture_support import parse_tydom_message
 
 
-class BytesIOSocket:
-    """Wrapper pour BytesIO pour simuler un socket."""
-
-    def __init__(self, content):
-        self.handle = BytesIO(content)
-
-    def makefile(self, mode):
-        return self.handle
-
-
-def parse_http_response(raw_message: bytes) -> tuple[dict, bytes]:
-    """
-    Parse une réponse HTTP et retourne les headers et le body décodé.
-    Gère automatiquement le format chunked.
-    """
-    sock = BytesIOSocket(raw_message)
-    response = CoreHTTPResponse(sock)  # type: ignore[arg-type]
-    response.begin()
-
-    headers = {}
-    for key, value in response.headers.items():
-        headers[key.lower()] = value
-
-    body = response.read()
-
-    return headers, body
+_SEPARATOR = b"=" * 80
+_HTTP_STARTS = (
+    b"HTTP/",
+    b"DELETE ",
+    b"GET ",
+    b"PATCH ",
+    b"POST ",
+    b"PUT ",
+)
 
 
-def test_parse_captured_messages(capture_dir: Path):
-    """Tester le parsing des messages capturés."""
+def _captured_frames(content: bytes):
+    """Yield protocol frames from the human-readable raw capture container."""
+    for block in content.split(_SEPARATOR):
+        starts = [block.find(marker) for marker in _HTTP_STARTS]
+        starts = [position for position in starts if position >= 0]
+        if not starts:
+            continue
+        yield block[min(starts) :].strip(b"\r\n")
+
+
+def validate_captured_messages(capture_dir: Path) -> bool:
+    """Parse every saved frame and report the resources represented."""
     raw_file = capture_dir / "raw_messages.txt"
-
     if not raw_file.exists():
         print(f"❌ Fichier non trouvé: {raw_file}")
         return False
 
     print(f"📖 Lecture de {raw_file}...")
-
-    with open(raw_file, "rb") as f:
-        content = f.read()
-
-    # Extraire les messages individuels (séparés par =====)
-    separator = b"=" * 80
-    parts = content.split(separator)
-
-    success_count = 0
-    error_count = 0
+    frames = list(_captured_frames(raw_file.read_bytes()))
     parsed_messages = []
+    error_count = 0
 
-    for i, message_block in enumerate(parts[1:], 1):  # Skip first empty split
-        if not message_block.strip():
-            continue
-
-        # Chercher le début du message HTTP
-        http_start = message_block.find(b"HTTP/")
-        if http_start == -1:
-            continue
-
-        # Extraire le message HTTP complet
-        http_message = message_block[http_start:]
-
-        # Trouver la fin du message (ligne vide suivie de séparateur ou fin de fichier)
-        # Pour simplifier, on prend jusqu'à la prochaine séparation ou 64KB
-        end_marker = http_message.find(separator)
-        if end_marker != -1:
-            http_message = http_message[:end_marker]
-        elif len(http_message) > 65536:
-            http_message = http_message[:65536]
-
+    for index, frame in enumerate(frames, 1):
         try:
-            headers, body = parse_http_response(http_message)
-            uri = headers.get("uri-origin", "")
-            content_type = headers.get("content-type", "")
-
-            # Essayer de parser le body comme JSON
-            if body and content_type and "json" in content_type.lower():
-                try:
-                    body_text = body.decode("utf-8", errors="replace")
-                    body_json = json.loads(body_text)
-                    parsed_messages.append({"uri": uri, "data": body_json})
-                    print(f"✅ Message #{i}: {uri} - Parsé avec succès")
-                    success_count += 1
-                except json.JSONDecodeError as e:
-                    print(f"⚠️  Message #{i}: {uri} - Erreur JSON: {e}")
-                    error_count += 1
-                except Exception as e:
-                    print(f"❌ Message #{i}: {uri} - Erreur: {e}")
-                    error_count += 1
-            elif body:
-                print(f"ℹ️  Message #{i}: {uri} - Body non-JSON ({len(body)} bytes)")
-                success_count += 1
-            else:
-                print(f"ℹ️  Message #{i}: {uri} - Pas de body")
-                success_count += 1
-
-        except Exception as e:
-            print(f"❌ Message #{i}: Erreur de parsing HTTP: {e}")
+            parsed = parse_tydom_message(frame)
+        except (ValueError, TypeError) as exception:
+            print(f"❌ Message #{index}: {exception}")
             error_count += 1
+            continue
 
+        if parsed is None:
+            print(f"⚠️  Message #{index}: format non reconnu")
+            error_count += 1
+            continue
+
+        parsed_messages.append(parsed)
+        detail = parsed.get("method") or parsed.get("status") or ""
+        print(f"✅ Message #{index}: {parsed['uri']} {detail}".rstrip())
+
+    counts = Counter(message["uri"] for message in parsed_messages)
     print("\n📊 Résultats:")
-    print(f"   ✅ Succès: {success_count}")
+    print(f"   ✅ Succès: {len(parsed_messages)}")
     print(f"   ❌ Erreurs: {error_count}")
-    print(f"   📝 Total parsé: {len(parsed_messages)}")
-
-    # Vérifier les types de messages parsés
-    uris = [msg["uri"] for msg in parsed_messages]
-    print("\n📋 Types de messages parsés:")
-    for uri in set(uris):
-        count = uris.count(uri)
+    print("\n📋 Ressources capturées:")
+    for uri, count in sorted(counts.items()):
         print(f"   - {uri}: {count}")
 
-    # Vérifier spécifiquement /info et /devices/meta
-    info_parsed = any(msg["uri"] == "/info" for msg in parsed_messages)
-    meta_parsed = any(msg["uri"] == "/devices/meta" for msg in parsed_messages)
-
+    required = ("/info", "/devices/meta")
     print("\n🎯 Messages critiques:")
-    print(f"   - /info: {'✅ Parsé' if info_parsed else '❌ Non parsé'}")
-    print(f"   - /devices/meta: {'✅ Parsé' if meta_parsed else '❌ Non parsé'}")
+    for uri in required:
+        print(f"   - {uri}: {'✅ Présent' if counts[uri] else '❌ Absent'}")
 
-    return error_count == 0 and info_parsed and meta_parsed
+    return error_count == 0 and all(counts[uri] for uri in required)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python3 test_capture_parsing.py <capture_dir>")
-        print(
-            "Exemple: python3 test_capture_parsing.py tools/captures/capture_20251205_233826"
-        )
+    if len(sys.argv) != 2:
+        print("Usage: python3 tools/test_capture_parsing.py <capture_dir>")
         sys.exit(1)
 
-    capture_dir = Path(sys.argv[1])
-
-    if not capture_dir.exists():
-        print(f"❌ Répertoire non trouvé: {capture_dir}")
+    directory = Path(sys.argv[1])
+    if not directory.exists():
+        print(f"❌ Répertoire non trouvé: {directory}")
         sys.exit(1)
 
-    success = test_parse_captured_messages(capture_dir)
-
-    if success:
-        print("\n✅ Tous les tests sont passés!")
-        sys.exit(0)
-    else:
-        print("\n❌ Certains tests ont échoué")
-        sys.exit(1)
+    sys.exit(0 if validate_captured_messages(directory) else 1)
