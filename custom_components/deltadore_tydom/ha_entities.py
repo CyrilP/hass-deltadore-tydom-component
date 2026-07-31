@@ -101,6 +101,7 @@ from .tydom.tydom_devices import (
     TydomWeather,
     TydomWater,
     TydomThermo,
+    TydomSun,
     TydomScene,
     TydomGroup,
     TydomMoment,
@@ -3601,6 +3602,59 @@ class HaThermo(SensorEntity, HAEntity):
         if "model" in device_info:
             info["model"] = device_info["model"]
         return info
+
+
+class HaSun(SensorEntity, HAEntity):
+    """Representation of a Tysense Sun irradiance sensor."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_device_class = SensorDeviceClass.IRRADIANCE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = "W/m²"
+
+    sensor_classes = {"battDefect": BinarySensorDeviceClass.PROBLEM}
+
+    def __init__(self, device: TydomSun, hass) -> None:
+        """Initialise a Tysense Sun sensor."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self
+        # Reuse the generic lightPower sensor identifier so its entity registry
+        # entry and recorder history can survive the dedicated implementation.
+        self._attr_unique_id = f"{self._device.device_id}_lightPower"
+        self._attr_name = None
+        self._registered_sensors = ["lightPower"]
+
+    async def async_added_to_hass(self) -> None:
+        """Refresh the entity on every device push."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the push callback."""
+        self._device.remove_callback(self.async_write_ha_state)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
+    @property
+    def native_value(self) -> float | int | None:
+        """Return solar irradiance in watts per square metre."""
+        return getattr(self._device, "lightPower", None)
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return information for the physical Tysense Sun probe."""
+        return self._enrich_device_info(
+            {
+                "identifiers": {(DOMAIN, self._device.device_id)},
+                "name": self._device.device_name,
+                "manufacturer": "Delta Dore",
+                "model": "Tysense Sun",
+            }
+        )
 
 
 class HASensor(SensorEntity, HAEntity):

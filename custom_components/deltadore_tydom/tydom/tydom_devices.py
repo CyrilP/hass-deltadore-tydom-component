@@ -997,6 +997,10 @@ class TydomThermo(TydomDevice):
     """Represents a thermometer."""
 
 
+class TydomSun(TydomDevice):
+    """Represents a Tysense Sun irradiance sensor."""
+
+
 class TydomPlug(TydomDevice):
     """Represents a generic third-party smart plug (e.g. Zigbee Philips Hue plug).
 

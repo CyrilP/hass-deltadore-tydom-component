@@ -32,6 +32,7 @@ from .tydom_devices import (
     TydomWeather,
     TydomWater,
     TydomThermo,
+    TydomSun,
     TydomScene,
 )
 
@@ -749,6 +750,17 @@ class MessageHandler:
                 )
             case "others" if _is_tyxia_4910_other(uid):
                 return TydomSwitch(
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata.get(uid),
+                    data,
+                )
+            case "sensorSun":
+                return TydomSun(
                     tydom_client,
                     uid,
                     device_id,
