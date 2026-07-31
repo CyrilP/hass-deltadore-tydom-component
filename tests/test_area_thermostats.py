@@ -66,6 +66,7 @@ handler_spec.loader.exec_module(handler_module)
 
 MessageHandler = handler_module.MessageHandler
 TydomBoiler = devices_module.TydomBoiler
+TydomDevice = devices_module.TydomDevice
 TydomWeather = devices_module.TydomWeather
 
 for name, original in _original_modules.items():
@@ -150,6 +151,70 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(devices, [])
+
+    async def test_unlinked_physical_tywell_control_remains_sensor_only(
+        self,
+    ) -> None:
+        """A physical Tywell controller keeps its sensors without an area link."""
+        handler_module.device_name["10_20"] = "Tywell Control"
+        handler_module.device_metadata["10_20"] = {
+            "synchroRadio": {"permission": "r"},
+            "battLevel": {"permission": "r"},
+            "ambientTemperature": {"permission": "r", "unit": "degC"},
+            "hygroIn": {"permission": "r", "unit": "%"},
+            "isReference": {"permission": "r"},
+            "shutterCmd": {"permission": "r"},
+        }
+
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [
+                        {
+                            "id": 10,
+                            "error": 0,
+                            "data": [
+                                {
+                                    "name": "synchroRadio",
+                                    "value": True,
+                                    "validity": "upToDate",
+                                },
+                                {
+                                    "name": "battLevel",
+                                    "value": 2,
+                                    "validity": "upToDate",
+                                },
+                                {
+                                    "name": "ambientTemperature",
+                                    "value": 23.97,
+                                    "validity": "upToDate",
+                                },
+                                {
+                                    "name": "hygroIn",
+                                    "value": 75.0,
+                                    "validity": "upToDate",
+                                },
+                                {
+                                    "name": "isReference",
+                                    "value": True,
+                                    "validity": "upToDate",
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+
+        self.assertEqual(len(devices), 1)
+        controller = devices[0]
+        self.assertIsInstance(controller, TydomDevice)
+        self.assertNotIsInstance(controller, TydomBoiler)
+        self.assertEqual(controller.ambientTemperature, 23.97)
+        self.assertEqual(controller.hygroIn, 75.0)
+        self.assertEqual(controller.battLevel, 2)
 
     async def test_linked_passive_control_keeps_sensor_and_adds_climate(self) -> None:
         """A passive Tywell retains its sensor device and gains a climate device."""
