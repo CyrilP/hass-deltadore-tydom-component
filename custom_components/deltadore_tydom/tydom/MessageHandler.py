@@ -169,15 +169,19 @@ _TYWELL_CONTROL_SENSOR_ATTRIBUTES = {
 
 
 def _is_physical_tywell_control_endpoint(
-    metadata: dict | None, data: dict | None
+    uid: str, metadata: dict | None, data: dict | None
 ) -> bool:
     """Return whether an unlinked endpoint exposes physical Tywell controls.
 
     Some installations advertise the wall controller itself as
-    ``re2020ControlBoiler`` without linking it to an area. Its controller-only
-    capabilities distinguish it from an orphaned thermal proxy, which must not
-    create a misleading climate entity.
+    ``re2020ControlBoiler`` without linking it to an area. Prefer Delta Dore's
+    explicit tutorial identifier, then fall back to controller-only
+    capabilities when configuration metadata is incomplete. Orphaned thermal
+    proxies must not create misleading climate entities.
     """
+    if str(device_tutorial_id.get(uid, "")).casefold() == "tywell_control":
+        return True
+
     attributes = set(metadata or {}) | set(data or {})
     return bool(attributes & _TYWELL_CONTROL_SENSOR_ATTRIBUTES)
 
@@ -676,7 +680,7 @@ class MessageHandler:
             case "re2020ControlBoiler":
                 if data is None or data.get("area_id") is None:
                     metadata = device_metadata.get(uid)
-                    if not _is_physical_tywell_control_endpoint(metadata, data):
+                    if not _is_physical_tywell_control_endpoint(uid, metadata, data):
                         LOGGER.debug(
                             "Ignoring unlinked Tywell thermal endpoint %s (%s)",
                             uid,

@@ -85,6 +85,7 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         handler_module.device_type.clear()
         handler_module.device_endpoint.clear()
         handler_module.device_metadata.clear()
+        handler_module.device_tutorial_id.clear()
         handler_module.device_name["10_20"] = "Living room"
         handler_module.device_type["10_20"] = "re2020ControlBoiler"
         handler_module.device_metadata["10_20"] = {}
@@ -215,6 +216,44 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         self.assertEqual(controller.ambientTemperature, 23.97)
         self.assertEqual(controller.hygroIn, 75.0)
         self.assertEqual(controller.battLevel, 2)
+
+    async def test_tywell_tutorial_id_preserves_sparse_physical_controller(
+        self,
+    ) -> None:
+        """The explicit Delta Dore tutorial identifies a physical controller."""
+        handler_module.device_name["10_20"] = "Tywell Control"
+        handler_module.device_tutorial_id["10_20"] = "tywell_control"
+        handler_module.device_metadata["10_20"] = {
+            "ambientTemperature": {"permission": "r", "unit": "degC"}
+        }
+
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [
+                        {
+                            "id": 10,
+                            "error": 0,
+                            "data": [
+                                {
+                                    "name": "ambientTemperature",
+                                    "value": 21.5,
+                                    "validity": "upToDate",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+
+        self.assertEqual(len(devices), 1)
+        controller = devices[0]
+        self.assertIsInstance(controller, TydomDevice)
+        self.assertNotIsInstance(controller, TydomBoiler)
+        self.assertEqual(controller.ambientTemperature, 21.5)
 
     async def test_linked_passive_control_keeps_sensor_and_adds_climate(self) -> None:
         """A passive Tywell retains its sensor device and gains a climate device."""
