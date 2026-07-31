@@ -12,14 +12,34 @@ if TYPE_CHECKING:
 
 
 _TUTORIAL_MODELS = {
+    "1_calybox_tybox_serie100_1": "CALYBOX/TYBOX 100 series",
+    "2_calybox_tyboxrt_serie1000": "CALYBOX/TYBOX RT 1000 series",
+    "3_calybox_tyboxrt_serie2000": "CALYBOX/TYBOX RT 2000 series",
     "14_tyxalplus_high": "TYXAL+",
     "25_tymoov": "TYMOOV",
-    "35_se2000": "STI 2000",
+    "34_tywatt_54xx+": "TYWATT 54xx+",
+    "35_se2000": "Tysense Thermo",
+    "42_novoferm_novoport_novomatic": "Novoferm NovoPort/Novomatic E.S.",
+    "4_dvi_kline": "DVI K-Line",
+    "5_tybox_serie5000": "TYBOX 5000 series",
     "5_detectouverture_kline": "DVI K-Line",
+    "6_pod_kline": "POD K-Line",
+    "6_recepteurrf_serie6000_1": "RF 6000 series receiver",
     "6_recepteurrf_serie6000_2_twc": "RF 6000 series receiver",
+    "7_dvi_kline_fenetre_coul_battant": "DVI K-Line",
+    "8_dvi_kline_fenetre_coul": "DVI K-Line",
+    "8_tyxia6610": "TYXIA 6610",
+    "kline_vr": "K-Line roller shutter",
     "sensor_dfr": "DFR TYXAL+",
+    "smart_plug_dd": "Delta Dore Easy Plug",
+    "split_takao_type_1": "Atlantic Naviclim 875311",
+    "split_takao_type_2": "Atlantic Naviclim 875311",
+    "ta5555_zigbee_dd": "Atlantic/Fujitsu split",
     "tysense_sun": "Tysense Sun",
+    "tywatt_serie1000": "TYWATT 1000",
     "tywell_control": "Tywell Control",
+    "tywell_control_2050": "Tywell 2050",
+    "volet_roulant_wellcom": "Well'com roller shutter",
 }
 
 _TUTORIAL_PREFIX_MODELS = {
@@ -64,6 +84,74 @@ def is_tymoov_profile(data: dict[str, Any] | None) -> bool:
     )
 
 
+def is_trv_1_profile(data: dict[str, Any] | None) -> bool:
+    """Return whether issue #259's firmware descriptors identify a TRV 1.0."""
+    if not isinstance(data, dict):
+        return False
+    return (
+        data.get("softPlan0") == "24.22.00.14"
+        and data.get("softPlan1") == "24.22.00.30"
+        and data.get("softPlan2") == "24.22.00.20"
+    )
+
+
+def is_tyxia_4940_profile(metadata: dict[str, Any] | None) -> bool:
+    """Return whether issue #258's metadata identifies a TYXIA 4940 dimmer."""
+    if not isinstance(metadata, dict):
+        return False
+
+    level = metadata.get("level")
+    level_cmd = metadata.get("levelCmd")
+    if not isinstance(level, dict) or not isinstance(level_cmd, dict):
+        return False
+
+    commands = level_cmd.get("enum_values")
+    if not isinstance(commands, list):
+        return False
+
+    try:
+        return (
+            float(level.get("min")) == 0
+            and float(level.get("max")) == 100
+            and float(level.get("step")) == 1
+            and {"ON", "OFF", "STOP", "ON_SLOW", "OFF_SLOW"}.issubset(commands)
+        )
+    except (TypeError, ValueError):
+        return False
+
+
+def is_tybox_1137_profile(metadata: dict[str, Any] | None) -> bool:
+    """Return whether issue #355's metadata identifies a TYBOX 1137."""
+    if not isinstance(metadata, dict):
+        return False
+
+    required_attributes = {
+        "authorization",
+        "heatSetpoint",
+        "overrideSetpoint",
+        "overrideThermicLevel",
+        "useMode",
+        "antiSeizurePeriod",
+        "invertOutput",
+    }
+    if not required_attributes.issubset(metadata):
+        return False
+
+    use_mode = metadata.get("useMode")
+    authorization = metadata.get("authorization")
+    if not isinstance(use_mode, dict) or not isinstance(authorization, dict):
+        return False
+
+    use_modes = use_mode.get("enum_values")
+    authorizations = authorization.get("enum_values")
+    return (
+        isinstance(use_modes, list)
+        and {"SCHED", "OVERRIDE", "MANUAL"}.issubset(use_modes)
+        and isinstance(authorizations, list)
+        and {"STOP", "HEATING"}.issubset(authorizations)
+    )
+
+
 def resolve_device_model(
     tutorial_id: str | None,
     usage: str,
@@ -80,6 +168,12 @@ def resolve_device_model(
     if not tutorial:
         if usage == "shutter" and is_tymoov_profile(data):
             return "TYMOOV"
+        if usage == "sh_hvac" and is_trv_1_profile(data):
+            return "TRV 1.0"
+        if usage == "light" and is_tyxia_4940_profile(metadata):
+            return "TYXIA 4940"
+        if usage in {"boiler", "hvac"} and is_tybox_1137_profile(metadata):
+            return "TYBOX 1137"
         return None
 
     for prefix, model in _TUTORIAL_PREFIX_MODELS.items():
@@ -92,6 +186,8 @@ def resolve_device_model(
         return "TYXIA 4000 series"
 
     if tutorial == "9_tyxia_modulaire_serie4900":
+        if is_tyxia_4940_profile(metadata):
+            return "TYXIA 4940"
         if is_binary_tyxia_4900_profile(metadata):
             return "TYXIA 4910"
         return "TYXIA 4900 series"

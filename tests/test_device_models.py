@@ -63,7 +63,10 @@ sys.modules[handler_name] = handler_module
 handler_spec.loader.exec_module(handler_module)
 
 is_binary_tyxia_4900_profile = devices_module.is_binary_tyxia_4900_profile
+is_trv_1_profile = devices_module.is_trv_1_profile
 is_tymoov_profile = devices_module.is_tymoov_profile
+is_tybox_1137_profile = devices_module.is_tybox_1137_profile
+is_tyxia_4940_profile = devices_module.is_tyxia_4940_profile
 resolve_device_model = devices_module.resolve_device_model
 MessageHandler = handler_module.MessageHandler
 
@@ -88,9 +91,20 @@ class TestDeviceModels(TestCase):
         """Exact product tutorial identifiers expose their product models."""
         cases = {
             "sensor_dfr": "DFR TYXAL+",
-            "35_se2000": "STI 2000",
+            "35_se2000": "Tysense Thermo",
             "tysense_sun": "Tysense Sun",
             "tywell_control": "Tywell Control",
+            "tywell_control_2050": "Tywell 2050",
+            "8_Tyxia6610": "TYXIA 6610",
+            "Tywatt_serie1000": "TYWATT 1000",
+            "4_dvi_kline": "DVI K-Line",
+            "6_pod_kline": "POD K-Line",
+            "7_dvi_kline_fenetre_coul_battant": "DVI K-Line",
+            "8_dvi_kline_fenetre_coul": "DVI K-Line",
+            "smart_plug_DD": "Delta Dore Easy Plug",
+            "split_takao_type_1": "Atlantic Naviclim 875311",
+            "split_takao_type_2": "Atlantic Naviclim 875311",
+            "TA5555_Zigbee_DD": "Atlantic/Fujitsu split",
             "switch_tyxia2600_btn_a": "TYXIA 2600",
             "rcu_tyxia1410_btn_4": "TYXIA 1410",
             "tl2000_btn_2": "TL 2000 TYXAL+",
@@ -107,9 +121,18 @@ class TestDeviceModels(TestCase):
         cases = {
             "14_TyxalPlus_high": "TYXAL+",
             "25_tymoov": "TYMOOV",
+            "34_tywatt_54xx+": "TYWATT 54xx+",
+            "1_Calybox_Tybox_serie100_1": "CALYBOX/TYBOX 100 series",
+            "2_Calybox_TyboxRT_serie1000": "CALYBOX/TYBOX RT 1000 series",
+            "3_Calybox_TyboxRT_serie2000": "CALYBOX/TYBOX RT 2000 series",
+            "5_Tybox_serie5000": "TYBOX 5000 series",
             "5_detectouverture_kline": "DVI K-Line",
+            "6_RecepteurRF_serie6000_1": "RF 6000 series receiver",
             "6_RecepteurRF_serie6000_2_twc": "RF 6000 series receiver",
             "7_Tyxia_serie4000": "TYXIA 4000 series",
+            "kline_vr": "K-Line roller shutter",
+            "42_novoferm_novoport_novomatic": ("Novoferm NovoPort/Novomatic E.S."),
+            "Volet_roulant_wellcom": "Well'com roller shutter",
         }
 
         for tutorial_id, expected_model in cases.items():
@@ -151,6 +174,31 @@ class TestDeviceModels(TestCase):
             "TYXIA 4900 series",
         )
 
+    def test_tyxia_4940_dimmer_profile(self) -> None:
+        """The three reporter-confirmed dimmers share this command profile."""
+        metadata = {
+            "level": {"min": 0, "max": 100, "step": 1},
+            "levelCmd": {
+                "enum_values": [
+                    "ON",
+                    "OFF",
+                    "STOP",
+                    "FAVORIT1",
+                    "FAVORIT2",
+                    "TOGGLE",
+                    "ON_SLOW",
+                    "OFF_SLOW",
+                ]
+            },
+        }
+
+        self.assertTrue(is_tyxia_4940_profile(metadata))
+        self.assertEqual(resolve_device_model(None, "light", metadata), "TYXIA 4940")
+        self.assertEqual(
+            resolve_device_model("9_Tyxia_modulaire_serie4900", "light", metadata),
+            "TYXIA 4940",
+        )
+
     def test_unknown_or_missing_tutorial_is_not_guessed(self) -> None:
         """Unknown descriptors retain Home Assistant's existing fallback."""
         self.assertIsNone(resolve_device_model(None, "light"))
@@ -178,6 +226,35 @@ class TestDeviceModels(TestCase):
 
         self.assertFalse(is_tymoov_profile(data))
         self.assertIsNone(resolve_device_model(None, "shutter", data=data))
+
+    def test_trv_1_firmware_profile(self) -> None:
+        """The firmware tuple reported for TRV 1.0 identifies the valve."""
+        data = {
+            "softPlan0": "24.22.00.14",
+            "softPlan1": "24.22.00.30",
+            "softPlan2": "24.22.00.20",
+        }
+
+        self.assertTrue(is_trv_1_profile(data))
+        self.assertEqual(resolve_device_model(None, "sh_hvac", data=data), "TRV 1.0")
+        self.assertFalse(is_trv_1_profile({"softPlan0": "24.22.00.14"}))
+
+    def test_tybox_1137_metadata_profile(self) -> None:
+        """The register set reported for TYBOX 1137 identifies the thermostat."""
+        metadata = {
+            "authorization": {"enum_values": ["STOP", "HEATING"]},
+            "heatSetpoint": {},
+            "overrideSetpoint": {},
+            "overrideThermicLevel": {},
+            "useMode": {"enum_values": ["SCHED", "OVERRIDE", "MANUAL"]},
+            "antiSeizurePeriod": {},
+            "invertOutput": {},
+        }
+
+        self.assertTrue(is_tybox_1137_profile(metadata))
+        self.assertEqual(resolve_device_model(None, "boiler", metadata), "TYBOX 1137")
+        metadata.pop("invertOutput")
+        self.assertFalse(is_tybox_1137_profile(metadata))
 
 
 class TestDeviceModelApplication(IsolatedAsyncioTestCase):
