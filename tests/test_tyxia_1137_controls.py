@@ -101,6 +101,12 @@ def _metadata() -> dict[str, dict]:
             "min": 5.0,
             "max": 30.0,
         },
+        "overrideSetpoint": {
+            "permission": "rw",
+            "type": "numeric",
+            "min": 5.0,
+            "max": 30.0,
+        },
         "thermicLevel": {
             "permission": "rw",
             "enum_values": ["STOP", "NO_REGUL", "ANTI_FROST"],
@@ -152,9 +158,51 @@ class Tyxia1137ControlTests(IsolatedAsyncioTestCase):
         )
         client.put_home_hvac_mode.assert_not_awaited()
 
-    async def test_temperature_uses_heat_setpoint(self) -> None:
-        """Heating targets must be written to the advertised heatSetpoint."""
-        boiler, client = _boiler(_metadata(), {"authorization": "HEATING"})
+    async def test_manual_temperature_uses_override_setpoint(self) -> None:
+        """Manual targets must use the writable override register."""
+        boiler, client = _boiler(
+            _metadata(), {"authorization": "HEATING", "useMode": "MANUAL"}
+        )
+
+        await boiler.set_temperature("20.0")
+
+        client.put_devices_data.assert_awaited_once_with(
+            "1715082810", "1715082810", "overrideSetpoint", "20.0"
+        )
+
+    async def test_active_override_uses_override_setpoint(self) -> None:
+        """An active timed override must continue through its override register."""
+        boiler, client = _boiler(
+            _metadata(), {"authorization": "HEATING", "useMode": "OVERRIDE"}
+        )
+
+        await boiler.set_temperature("20.0")
+
+        client.put_devices_data.assert_awaited_once_with(
+            "1715082810", "1715082810", "overrideSetpoint", "20.0"
+        )
+
+    async def test_scheduled_temperature_keeps_heat_setpoint(self) -> None:
+        """Scheduled heating targets must retain the advertised heat register."""
+        boiler, client = _boiler(
+            _metadata(), {"authorization": "HEATING", "useMode": "SCHED"}
+        )
+
+        await boiler.set_temperature("20.0")
+
+        client.put_devices_data.assert_awaited_once_with(
+            "1715082810", "1715082810", "heatSetpoint", "20.0"
+        )
+
+    async def test_read_only_override_setpoint_falls_back_to_heat_setpoint(
+        self,
+    ) -> None:
+        """A reported-only override register must not be used as a command."""
+        metadata = _metadata()
+        metadata["overrideSetpoint"]["permission"] = "r"
+        boiler, client = _boiler(
+            metadata, {"authorization": "HEATING", "useMode": "MANUAL"}
+        )
 
         await boiler.set_temperature("20.0")
 

@@ -463,6 +463,11 @@ class TydomBoiler(TydomDevice):
                 "coolSetpoint"
             ):
                 return "coolSetpoint"
+            if getattr(self, "useMode", None) in {
+                "MANUAL",
+                "OVERRIDE",
+            } and self._is_writable("overrideSetpoint"):
+                return "overrideSetpoint"
             if self._is_writable("heatSetpoint"):
                 return "heatSetpoint"
         return "setpoint"
