@@ -160,6 +160,31 @@ _AREA_CONTROL_ATTRIBUTES = {
     "coolSetpoint",
 }
 
+_TYWELL_CONTROL_SENSOR_ATTRIBUTES = {
+    "hygroIn",
+    "isReference",
+    "shutterCmd",
+    "synchroRadio",
+}
+
+
+def _is_physical_tywell_control_endpoint(
+    uid: str, metadata: dict | None, data: dict | None
+) -> bool:
+    """Return whether an unlinked endpoint exposes physical Tywell controls.
+
+    Some installations advertise the wall controller itself as
+    ``re2020ControlBoiler`` without linking it to an area. Prefer Delta Dore's
+    explicit tutorial identifier, then fall back to controller-only
+    capabilities when configuration metadata is incomplete. Orphaned thermal
+    proxies must not create misleading climate entities.
+    """
+    if str(device_tutorial_id.get(uid, "")).casefold() == "tywell_control":
+        return True
+
+    attributes = set(metadata or {}) | set(data or {})
+    return bool(attributes & _TYWELL_CONTROL_SENSOR_ATTRIBUTES)
+
 
 def _area_metadata_score(metadata: dict) -> int:
     """Measure how much writable HVAC information metadata contains."""
@@ -654,12 +679,29 @@ class MessageHandler:
                 )
             case "re2020ControlBoiler":
                 if data is None or data.get("area_id") is None:
+                    metadata = device_metadata.get(uid)
+                    if not _is_physical_tywell_control_endpoint(uid, metadata, data):
+                        LOGGER.debug(
+                            "Ignoring unlinked Tywell thermal endpoint %s (%s)",
+                            uid,
+                            name,
+                        )
+                        return None
                     LOGGER.debug(
-                        "Ignoring unlinked Tywell thermal endpoint %s (%s)",
+                        "Keeping unlinked physical Tywell Control %s (%s) as sensors",
                         uid,
                         name,
                     )
-                    return None
+                    return TydomDevice(
+                        tydom_client,
+                        uid,
+                        device_id,
+                        name,
+                        last_usage,
+                        endpoint,
+                        metadata,
+                        data,
+                    )
                 return TydomBoiler(
                     tydom_client,
                     uid,
@@ -1107,17 +1149,6 @@ class MessageHandler:
                             and passive_climate_uid is None
                         ):
                             data.update(self._area_data[area_id])
-
-                        if (
-                            type_of_id == "re2020ControlBoiler"
-                            and "area_id" not in data
-                        ):
-                            LOGGER.debug(
-                                "Ignoring unlinked Tywell thermal endpoint %s (%s)",
-                                unique_id,
-                                name_of_id,
-                            )
-                            continue
 
                         # Create the device (even without data)
                         device = await MessageHandler.get_device(
