@@ -5636,6 +5636,7 @@ class HALightGroup(LightEntity, HAGroupEntity):
 class HACoverGroup(CoverEntity, HAGroupEntity):
     """A non-empty TYDOM shutter or awning group represented as a cover."""
 
+    _ASSUMED_STATE_TIMEOUT = 30
     _attr_should_poll = False
     _attr_has_entity_name = True
     _attr_supported_features = (
@@ -5652,6 +5653,8 @@ class HACoverGroup(CoverEntity, HAGroupEntity):
         else:
             self._attr_device_class = CoverDeviceClass.SHUTTER
             self._attr_icon = "mdi:window-shutter"
+        self._assumed_is_closed: bool | None = None
+        self._assumed_state_task: asyncio.Task | None = None
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to member cover updates."""
@@ -5660,6 +5663,7 @@ class HACoverGroup(CoverEntity, HAGroupEntity):
 
     async def async_will_remove_from_hass(self) -> None:
         """Remove callbacks registered on member covers."""
+        self._clear_assumed_state()
         self._remove_member_callbacks()
         if self._device._ha_device is self:
             self._device._ha_device = None
@@ -5678,28 +5682,78 @@ class HACoverGroup(CoverEntity, HAGroupEntity):
     @property
     def is_closed(self) -> bool | None:
         """Report closed only when every member has closed-position feedback."""
+        if self._assumed_is_closed is not None:
+            return self._assumed_is_closed
+
+        members = self._member_devices()
+        states = self._reported_member_closed_states()
+        if not members or len(states) != len(members):
+            return None
+        return all(states)
+
+    def _reported_member_closed_states(self) -> list[bool]:
+        """Return the reported closed state of each member with feedback."""
         members = self._member_devices()
         if not members:
-            return None
+            return []
 
-        positions: list[float] = []
+        states: list[bool] = []
         for member in members:
             position = getattr(member, "position", None)
             if position is None:
-                return None
+                continue
             try:
-                positions.append(float(position))
+                states.append(float(position) == 0)
             except (TypeError, ValueError):
-                return None
-        return all(position == 0 for position in positions)
+                continue
+        return states
+
+    def _handle_member_update(self) -> None:
+        """Reconcile an assumed group state with reported member positions."""
+        if self._assumed_is_closed is not None:
+            members = self._member_devices()
+            states = self._reported_member_closed_states()
+            if len(states) == len(members) and all(
+                state is self._assumed_is_closed for state in states
+            ):
+                self._clear_assumed_state()
+        self.async_write_ha_state()
+
+    def _set_assumed_state(self, is_closed: bool) -> None:
+        """Publish an immediate state while TYDOM refreshes every member."""
+        self._clear_assumed_state()
+        self._assumed_is_closed = is_closed
+        create_task = getattr(self.hass, "async_create_task", asyncio.create_task)
+        self._assumed_state_task = create_task(self._expire_assumed_state())
+        self.async_write_ha_state()
+
+    def _clear_assumed_state(self) -> None:
+        """Clear an optimistic state and cancel its expiry task."""
+        task = self._assumed_state_task
+        self._assumed_state_task = None
+        self._assumed_is_closed = None
+        if task is not None and task is not asyncio.current_task():
+            task.cancel()
+
+    async def _expire_assumed_state(self) -> None:
+        """Fall back to member positions if refreshes do not converge."""
+        try:
+            await asyncio.sleep(self._ASSUMED_STATE_TIMEOUT)
+        except asyncio.CancelledError:
+            return
+        self._assumed_state_task = None
+        self._assumed_is_closed = None
+        self.async_write_ha_state()
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open every member cover."""
-        await self._control_group_devices("open", **kwargs)
+        if await self._control_group_devices("open", **kwargs):
+            self._set_assumed_state(False)
 
     async def async_close_cover(self, **kwargs: Any) -> None:
         """Close every member cover."""
-        await self._control_group_devices("close", **kwargs)
+        if await self._control_group_devices("close", **kwargs):
+            self._set_assumed_state(True)
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
         """Stop every member cover."""

@@ -237,6 +237,26 @@ class NativeGroupEntityTests(IsolatedAsyncioTestCase):
         second.up.assert_awaited_once_with()
         first.stop.assert_awaited_once_with()
         second.stop.assert_awaited_once_with()
+        entity._clear_assumed_state()
+
+    async def test_cover_group_enables_close_while_positions_catch_up(self) -> None:
+        """Do not leave Close disabled while TYDOM still reports old positions."""
+        first = MemberDevice("1", position=0)
+        second = MemberDevice("2", position=0)
+        entity = self._entity(HACoverGroup, "shutter", [first, second])
+
+        await entity.async_open_cover()
+
+        self.assertFalse(entity.is_closed)
+        first.position = 50
+        entity._handle_member_update()
+        self.assertFalse(entity.is_closed)
+        self.assertIsNotNone(entity._assumed_is_closed)
+
+        second.position = 25
+        entity._handle_member_update()
+        self.assertFalse(entity.is_closed)
+        self.assertIsNone(entity._assumed_is_closed)
 
     async def test_switch_group_reports_any_member_on(self) -> None:
         """Represent plug groups as switches with aggregate state."""
