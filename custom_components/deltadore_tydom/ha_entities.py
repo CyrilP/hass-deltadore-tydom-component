@@ -126,7 +126,7 @@ class HAEntity:
     units: dict[str, Any] = {}
     filtered_attrs: list[str] = []
     _device: Any = None
-    _registered_sensors: list[str] = []
+    _registered_sensors: list[str]
     hass: Any = None
 
     def _get_hub(self):
@@ -230,12 +230,16 @@ class HAEntity:
     def get_sensors(self):
         """Get available sensors for this entity."""
         sensors = []
+        # Some lightweight entity wrappers do not have their own sensor list.
+        # Keep registration state on the instance so one device cannot suppress
+        # an attribute already discovered on another device of the same type.
+        registered_sensors = self.__dict__.setdefault("_registered_sensors", [])
 
         for attribute, value in self._device.__dict__.items():
             if (
                 attribute[:1] != "_"
                 and value is not None
-                and attribute not in self._registered_sensors
+                and attribute not in registered_sensors
             ):
                 alt_name = attribute.split("_")[0]
                 if attribute in self.filtered_attrs or alt_name in self.filtered_attrs:
@@ -275,7 +279,7 @@ class HAEntity:
                             unit,
                         )
                     )
-                self._registered_sensors.append(attribute)
+                registered_sensors.append(attribute)
                 LOGGER.debug(
                     "Nouveau capteur créé: %s.%s (type: %s, valeur: %s)",
                     self._device.device_id,
