@@ -61,7 +61,7 @@ class EntitySensorRegistrationTests(TestCase):
     """Ensure generic sensor discovery is isolated between entity instances."""
 
     @staticmethod
-    def _entity(device_id: str):
+    def _entity(device_id: str, *, supports_generic_sensors: bool = True):
         class Device:
             def __init__(self) -> None:
                 self._device_id = device_id
@@ -73,6 +73,8 @@ class EntitySensorRegistrationTests(TestCase):
 
         entity = HAEntity()
         entity._device = Device()
+        if supports_generic_sensors:
+            entity._registered_sensors = []
         return entity
 
     def test_same_attribute_is_registered_for_each_device(self) -> None:
@@ -99,6 +101,13 @@ class EntitySensorRegistrationTests(TestCase):
         second.get_sensors()
 
         self.assertIsNot(first._registered_sensors, second._registered_sensors)
+
+    def test_non_sensor_entity_does_not_expose_internal_data(self) -> None:
+        """Scenes, groups and events must not gain generic sensors on updates."""
+        entity = self._entity("scene_1", supports_generic_sensors=False)
+
+        self.assertEqual(entity.get_sensors(), [])
+        self.assertNotIn("_registered_sensors", entity.__dict__)
 
 
 if __name__ == "__main__":

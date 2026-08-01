@@ -230,10 +230,11 @@ class HAEntity:
     def get_sensors(self):
         """Get available sensors for this entity."""
         sensors = []
-        # Some lightweight entity wrappers do not have their own sensor list.
-        # Keep registration state on the instance so one device cannot suppress
-        # an attribute already discovered on another device of the same type.
-        registered_sensors = self.__dict__.setdefault("_registered_sensors", [])
+        # Generic sensor discovery is opt-in. Entity wrappers such as scenes,
+        # groups and events must not expose their internal data as sensors.
+        registered_sensors = self.__dict__.get("_registered_sensors")
+        if registered_sensors is None:
+            return sensors
 
         for attribute, value in self._device.__dict__.items():
             if (
@@ -5133,6 +5134,7 @@ class HASwitch(SwitchEntity, HAEntity):
         """Initialize HASwitch."""
         self.hass = hass
         self._device = device
+        self._registered_sensors = []
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_switch"
         self._attr_name = None  # primary entity inherits device name
@@ -5635,6 +5637,7 @@ class HAButton(ButtonEntity, HAEntity):
         """Initialize HAButton."""
         self.hass = hass
         self._device = device
+        self._registered_sensors = []
         self._device._ha_device = self
         self._action_name = action_name
         self._action_method = action_method
