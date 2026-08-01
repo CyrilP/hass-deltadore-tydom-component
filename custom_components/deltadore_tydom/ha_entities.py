@@ -5252,8 +5252,12 @@ class HAGroupEntity(HAEntity):
     def _remove_member_callbacks(self) -> None:
         """Remove every member callback registered by this entity."""
         for member in self._member_callbacks.values():
-            member.remove_callback(self.async_write_ha_state)
+            member.remove_callback(self._handle_member_update)
         self._member_callbacks.clear()
+
+    def _handle_member_update(self) -> None:
+        """Refresh the native group after a member update."""
+        self.async_write_ha_state()
 
     def get_sensors(self) -> list:
         """Do not expose internal group membership as sensors."""
@@ -5295,7 +5299,7 @@ class HAGroupEntity(HAEntity):
             member_identity = id(member)
             if member_identity in self._member_callbacks:
                 continue
-            member.register_callback(self.async_write_ha_state)
+            member.register_callback(self._handle_member_update)
             self._member_callbacks[member_identity] = member
 
     @property
@@ -5329,7 +5333,7 @@ class HAGroupEntity(HAEntity):
 
         return attrs
 
-    async def _control_group_devices(self, action: str, **kwargs: Any) -> None:
+    async def _control_group_devices(self, action: str, **kwargs: Any) -> bool:
         """Control all devices in the group with a specific action.
 
         Args:
@@ -5344,7 +5348,7 @@ class HAGroupEntity(HAEntity):
             LOGGER.warning(
                 "Cannot control group %s: hub not available", self._device.device_name
             )
-            return
+            return False
 
         members = self._member_devices()
         LOGGER.info(
@@ -5465,8 +5469,10 @@ class HAGroupEntity(HAEntity):
         # Execute all commands concurrently
         if tasks:
             results = await asyncio.gather(*tasks, return_exceptions=True)
+            successful = len(tasks) == len(members)
             for result in results:
                 if isinstance(result, Exception):
+                    successful = False
                     LOGGER.warning(
                         "Group %s action %s failed for a member: %s",
                         self._device.device_name,
@@ -5476,12 +5482,14 @@ class HAGroupEntity(HAEntity):
             LOGGER.debug(
                 "Group %s action %s completed", self._device.device_name, action
             )
+            return successful
         else:
             LOGGER.warning(
                 "No devices could be controlled for group %s with action %s",
                 self._device.device_name,
                 action,
             )
+            return False
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn on all devices in the group (for lights/plugs)."""
@@ -5521,6 +5529,7 @@ class HAGroupEntity(HAEntity):
 class HALightGroup(LightEntity, HAGroupEntity):
     """A non-empty TYDOM light group represented as a native light."""
 
+    _ASSUMED_STATE_TIMEOUT = 30
     _attr_should_poll = False
     _attr_has_entity_name = True
     _attr_icon = "mdi:lightbulb-group"
@@ -5531,6 +5540,8 @@ class HALightGroup(LightEntity, HAGroupEntity):
         """Initialise the light group."""
         HAGroupEntity.__init__(self, device, hass)
         self._attr_unique_id = f"{device.device_id}_light_group"
+        self._assumed_is_on: bool | None = None
+        self._assumed_state_task: asyncio.Task | None = None
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to member light updates."""
@@ -5539,6 +5550,7 @@ class HALightGroup(LightEntity, HAGroupEntity):
 
     async def async_will_remove_from_hass(self) -> None:
         """Remove callbacks registered on member lights."""
+        self._clear_assumed_state()
         self._remove_member_callbacks()
         if self._device._ha_device is self:
             self._device._ha_device = None
@@ -5557,21 +5569,68 @@ class HALightGroup(LightEntity, HAGroupEntity):
     @property
     def is_on(self) -> bool | None:
         """Report on when any member light is on."""
+        if self._assumed_is_on is not None:
+            return self._assumed_is_on
+
+        states = self._reported_member_states()
+        return any(states) if states else None
+
+    def _reported_member_states(self) -> list[bool]:
+        """Return the currently reported on/off state of each known member."""
         states: list[bool] = []
         for member in self._member_devices():
             level = getattr(member, "level", None)
             if level is not None:
                 with suppress(TypeError, ValueError):
                     states.append(float(level) != 0)
-        return any(states) if states else None
+        return states
+
+    def _handle_member_update(self) -> None:
+        """Reconcile an assumed group state with reported member states."""
+        if self._assumed_is_on is not None:
+            members = self._member_devices()
+            states = self._reported_member_states()
+            if len(states) == len(members) and all(
+                state is self._assumed_is_on for state in states
+            ):
+                self._clear_assumed_state()
+        self.async_write_ha_state()
+
+    def _set_assumed_state(self, is_on: bool) -> None:
+        """Publish an immediate state while TYDOM refreshes every member."""
+        self._clear_assumed_state()
+        self._assumed_is_on = is_on
+        create_task = getattr(self.hass, "async_create_task", asyncio.create_task)
+        self._assumed_state_task = create_task(self._expire_assumed_state())
+        self.async_write_ha_state()
+
+    def _clear_assumed_state(self) -> None:
+        """Clear an optimistic state and cancel its expiry task."""
+        task = self._assumed_state_task
+        self._assumed_state_task = None
+        self._assumed_is_on = None
+        if task is not None and task is not asyncio.current_task():
+            task.cancel()
+
+    async def _expire_assumed_state(self) -> None:
+        """Fall back to reported member state if refreshes do not converge."""
+        try:
+            await asyncio.sleep(self._ASSUMED_STATE_TIMEOUT)
+        except asyncio.CancelledError:
+            return
+        self._assumed_state_task = None
+        self._assumed_is_on = None
+        self.async_write_ha_state()
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn on every member light."""
-        await self._control_group_devices("turn_on", **kwargs)
+        if await self._control_group_devices("turn_on", **kwargs):
+            self._set_assumed_state(True)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off every member light."""
-        await self._control_group_devices("turn_off", **kwargs)
+        if await self._control_group_devices("turn_off", **kwargs):
+            self._set_assumed_state(False)
 
 
 class HACoverGroup(CoverEntity, HAGroupEntity):

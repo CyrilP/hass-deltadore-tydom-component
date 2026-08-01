@@ -184,6 +184,41 @@ class NativeGroupEntityTests(IsolatedAsyncioTestCase):
 
         first.turn_off.assert_awaited_once_with()
         second.turn_off.assert_awaited_once_with()
+        self.assertFalse(entity.is_on)
+        entity._clear_assumed_state()
+
+    async def test_light_group_keeps_requested_state_until_members_converge(self) -> None:
+        """Avoid presenting a stale light state while TYDOM polls each member."""
+        first = MemberDevice("1", level=100)
+        second = MemberDevice("2", level=100)
+        entity = self._entity(HALightGroup, "light", [first, second])
+
+        await entity.async_turn_off()
+
+        self.assertFalse(entity.is_on)
+        first.level = 0
+        entity._handle_member_update()
+        self.assertFalse(entity.is_on)
+        self.assertIsNotNone(entity._assumed_is_on)
+
+        second.level = 0
+        entity._handle_member_update()
+        self.assertFalse(entity.is_on)
+        self.assertIsNone(entity._assumed_is_on)
+
+    async def test_light_group_assumed_state_expires(self) -> None:
+        """Fall back to member reports when they do not reach the requested state."""
+        member = MemberDevice("1", level=100)
+        entity = self._entity(HALightGroup, "light", [member])
+        entity._ASSUMED_STATE_TIMEOUT = 0
+
+        await entity.async_turn_off()
+        self.assertFalse(entity.is_on)
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+
+        self.assertTrue(entity.is_on)
+        self.assertIsNone(entity._assumed_is_on)
 
     async def test_cover_group_requires_all_members_to_be_closed(self) -> None:
         """Aggregate closed state and fan out native cover commands."""
