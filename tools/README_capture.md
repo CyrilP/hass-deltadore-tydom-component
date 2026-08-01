@@ -129,6 +129,10 @@ un proxy HTTPS dédié et ne fait pas partie de cet outil.
 
 ## Sécurité et nettoyage
 
+La connexion distante à `mediation.tydom.com` utilise la vérification TLS
+normale du système. La vérification du certificat est désactivée uniquement
+pour une passerelle locale, dont le certificat est auto-signé.
+
 Conservez les captures hors du contrôle de version. Supprimez-les dès que
 l'analyse est terminée, après avoir vérifié le chemin ciblé. Le répertoire
 `tools/captures/` est ignoré par Git.

@@ -10,6 +10,7 @@ from collections.abc import Iterable
 from contextlib import suppress
 import json
 import re
+import ssl
 from typing import Any
 
 
@@ -52,6 +53,18 @@ _NAMED_SECRET_PATTERN = re.compile(
     r'(?is)("name"\s*:\s*"(?:access_token|id_token|passwd|password|pwd|'
     r'refresh_token|token)"[^{}]*?"value"\s*:\s*")([^"]*)(")'
 )
+
+
+def create_tydom_ssl_context(cloud_mode: bool) -> ssl.SSLContext:
+    """Create a verified cloud or self-signed local TYDOM TLS context."""
+    context = ssl.create_default_context()
+    if not cloud_mode:
+        # Local TYDOM gateways use a self-signed certificate and may require
+        # the OpenSSL legacy server-connect compatibility option.
+        context.options |= getattr(ssl, "OP_LEGACY_SERVER_CONNECT", 0x4)
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+    return context
 
 
 def strip_tydom_prefix(raw_message: bytes) -> bytes:

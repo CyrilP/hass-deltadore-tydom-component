@@ -19,13 +19,13 @@ import json
 import os
 from pathlib import Path
 import re
-import ssl
 import sys
 import time
 
 try:
     from .capture_support import (
         INITIAL_GET_REQUESTS,
+        create_tydom_ssl_context,
         parse_tydom_message,
         redact_raw_message,
         sanitise_text,
@@ -35,6 +35,7 @@ try:
 except ImportError:  # Direct execution: python tools/capture_tydom_data.py
     from capture_support import (  # type: ignore[no-redef]
         INITIAL_GET_REQUESTS,
+        create_tydom_ssl_context,
         parse_tydom_message,
         redact_raw_message,
         sanitise_text,
@@ -169,10 +170,7 @@ async def capture(
 
         # Connexion WebSocket
         cloud_mode = "mediation" in host.lower()
-        sslcontext = ssl.create_default_context()
-        sslcontext.options |= 0x4
-        sslcontext.check_hostname = False
-        sslcontext.verify_mode = ssl.CERT_NONE
+        sslcontext = create_tydom_ssl_context(cloud_mode)
 
         # Étape 1: Obtenir le challenge
         sec_key = base64.b64encode(os.urandom(16)).decode()

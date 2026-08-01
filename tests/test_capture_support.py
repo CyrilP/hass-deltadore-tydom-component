@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+import ssl
 
 support_path = Path(__file__).parents[1] / "tools" / "capture_support.py"
 support_spec = importlib.util.spec_from_file_location("capture_support", support_path)
@@ -13,6 +14,7 @@ support = importlib.util.module_from_spec(support_spec)
 support_spec.loader.exec_module(support)
 
 INITIAL_GET_REQUESTS = support.INITIAL_GET_REQUESTS
+create_tydom_ssl_context = support.create_tydom_ssl_context
 parse_tydom_message = support.parse_tydom_message
 redact_raw_message = support.redact_raw_message
 sanitise_value = support.sanitise_value
@@ -38,6 +40,22 @@ def test_initial_capture_requests_cover_current_discovery_flow() -> None:
         "/groups/file",
         "/moments/file",
     )
+
+
+def test_cloud_tls_context_verifies_the_server_certificate() -> None:
+    """Remote mediation must retain the platform's normal TLS verification."""
+    context = create_tydom_ssl_context(cloud_mode=True)
+
+    assert context.check_hostname is True
+    assert context.verify_mode == ssl.CERT_REQUIRED
+
+
+def test_local_tls_context_accepts_the_gateway_self_signed_certificate() -> None:
+    """Only a local TYDOM gateway may bypass certificate verification."""
+    context = create_tydom_ssl_context(cloud_mode=False)
+
+    assert context.check_hostname is False
+    assert context.verify_mode == ssl.CERT_NONE
 
 
 def test_parse_chunked_http_response() -> None:
