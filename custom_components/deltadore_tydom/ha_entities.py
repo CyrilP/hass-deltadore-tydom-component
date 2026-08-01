@@ -5302,6 +5302,12 @@ class HAGroupEntity(HAEntity):
             member.register_callback(self._handle_member_update)
             self._member_callbacks[member_identity] = member
 
+    def refresh_members(self) -> None:
+        """Attach members discovered after the group and refresh its HA state."""
+        self._register_member_callbacks()
+        if getattr(self, "entity_id", None) is not None:
+            self._handle_member_update()
+
     @property
     def device_info(self) -> DeviceInfo:
         """Return information to link this entity with the gateway device."""

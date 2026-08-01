@@ -277,6 +277,24 @@ class NativeGroupEntityTests(IsolatedAsyncioTestCase):
 
         self.assertEqual(entity.get_sensors(), [])
 
+    def test_group_registers_members_discovered_after_entity_creation(self) -> None:
+        """Recover when TYDOM sends the group before its physical members."""
+        group = GroupDevice("light", ["1", "2"])
+        hass = SimpleNamespace(hub=SimpleNamespace(devices={}))
+        entity = HALightGroup(group, hass)
+        entity.entity_id = "light.all_lights"
+        entity.async_write_ha_state = MagicMock()
+        first = MemberDevice("1", level=0)
+        second = MemberDevice("2", level=0)
+        hass.hub.devices = {first.device_id: first, second.device_id: second}
+
+        entity.refresh_members()
+
+        first.register_callback.assert_called_once_with(entity._handle_member_update)
+        second.register_callback.assert_called_once_with(entity._handle_member_update)
+        entity.async_write_ha_state.assert_called_once_with()
+        self.assertFalse(entity.is_on)
+
 
 if __name__ == "__main__":
     import unittest

@@ -330,6 +330,16 @@ class Hub:
                         await self.update_ha_device(
                             self.devices[device.device_id], device
                         )
+                self._refresh_group_members()
+
+    def _refresh_group_members(self) -> None:
+        """Resolve group members again after each protocol message batch."""
+        for device in self.devices.values():
+            if not isinstance(device, TydomGroup):
+                continue
+            ha_device = getattr(device, "_ha_device", None)
+            if ha_device is not None and hasattr(ha_device, "refresh_members"):
+                ha_device.refresh_members()
 
     async def create_ha_device(self, device: TydomDevice) -> None:
         """Create a new HA device using factory pattern.
