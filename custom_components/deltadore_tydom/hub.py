@@ -57,7 +57,9 @@ from .ha_entities import (
     HASwitch,
     HAButton,
     HAReloadButton,
-    HAGroup,
+    HACoverGroup,
+    HALightGroup,
+    HASwitchGroup,
     HAMoment,
     HARemoteBattery,
     HARemoteEvent,
@@ -598,12 +600,28 @@ class Hub:
             self.add_scene_callback([ha_device])
 
     async def _create_group_device(self, device: TydomGroup) -> None:
-        """Create group device."""
-        LOGGER.debug("Create group %s", device.device_id)
-        ha_device = HAGroup(device, self._hass)
+        """Create a native Home Assistant entity for a controllable group."""
+        LOGGER.debug("Create %s group %s", device.group_usage, device.device_id)
+        if device.group_usage == "light":
+            ha_device = HALightGroup(device, self._hass)
+            callback = self.add_light_callback
+        elif device.group_usage in {"awning", "shutter"}:
+            ha_device = HACoverGroup(device, self._hass)
+            callback = self.add_cover_callback
+        elif device.group_usage == "plug":
+            ha_device = HASwitchGroup(device, self._hass)
+            callback = self.add_switch_callback
+        else:
+            LOGGER.debug(
+                "Ignore unsupported group %s (%s)",
+                device.device_id,
+                device.group_usage,
+            )
+            return
+
         self.ha_devices[device.device_id] = ha_device
-        if self.add_button_callback is not None:
-            self.add_button_callback([ha_device])
+        if callback is not None:
+            callback([ha_device])
 
     async def _create_moment_device(self, device: TydomMoment) -> None:
         """Create moment device."""
@@ -911,22 +929,16 @@ class Hub:
                 # Check grpAct
                 grp_act = getattr(device, "grpAct", None)
                 if grp_act and isinstance(grp_act, list):
+                    from .tydom.MessageHandler import groups_data
+
                     for grp_action in grp_act:
                         if isinstance(grp_action, dict):
                             grp_id = grp_action.get("id")
                             if grp_id:
                                 grp_id_str = str(grp_id)
-                                # Check if group exists
-                                group_found = False
-                                for _id, _device in self.devices.items():
-                                    if (
-                                        isinstance(_device, TydomGroup)
-                                        and _device.group_id == grp_id_str
-                                    ):
-                                        group_found = True
-                                        break
-
-                                if not group_found:
+                                # All groups remain in protocol metadata even
+                                # when no Home Assistant control is appropriate.
+                                if grp_id_str not in groups_data:
                                     issues.append(
                                         f"Scene {device.device_name} ({device_id}) references non-existent group: {grp_id_str}"
                                     )
