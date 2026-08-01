@@ -440,6 +440,38 @@ class TydomBoiler(TydomDevice):
             self._metadata is not None and "authorization" in self._metadata
         ) or hasattr(self, "authorization")
 
+    def _is_writable(self, name: str) -> bool:
+        """Return whether metadata advertises a writable register."""
+        if self._metadata is None:
+            return False
+        register = self._metadata.get(name)
+        return isinstance(register, dict) and "w" in register.get("permission", "")
+
+    def _supports_command_value(self, name: str, value: str) -> bool:
+        """Return whether metadata advertises a writable command value."""
+        command = (self._metadata or {}).get(name)
+        return (
+            self._is_writable(name)
+            and isinstance(command, dict)
+            and value in command.get("enum_values", [])
+        )
+
+    def _temperature_command_name(self) -> str:
+        """Select the writable setpoint register for the current HVAC direction."""
+        if self._uses_zone_authorization():
+            if getattr(self, "authorization", None) == "COOLING" and self._is_writable(
+                "coolSetpoint"
+            ):
+                return "coolSetpoint"
+            if getattr(self, "useMode", None) in {
+                "MANUAL",
+                "OVERRIDE",
+            } and self._is_writable("overrideSetpoint"):
+                return "overrideSetpoint"
+            if self._is_writable("heatSetpoint"):
+                return "heatSetpoint"
+        return "setpoint"
+
     async def set_hvac_mode(self, mode):
         """Set hvac mode (ANTI_FROST/NORMAL/STOP)."""
         LOGGER.debug("setting hvac mode to %s", mode)
@@ -460,6 +492,13 @@ class TydomBoiler(TydomDevice):
             return
 
         if self._uses_zone_authorization():
+            command_mode = "HEATING" if mode == "NORMAL" else mode
+            if self._supports_command_value("comfortMode", command_mode):
+                await self._tydom_client.put_devices_data(
+                    self._id, self._endpoint, "comfortMode", command_mode
+                )
+                return
+
             if mode == "STOP":
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "thermicLevel", "STOP"
@@ -574,7 +613,9 @@ class TydomBoiler(TydomDevice):
     async def set_temperature(self, temperature):
         """Set target temperature."""
         setpoint_attribute = (
-            self.area_setpoint_attribute() if hasattr(self, "area_id") else "setpoint"
+            self.area_setpoint_attribute()
+            if hasattr(self, "area_id")
+            else self._temperature_command_name()
         )
         # Validate value with metadata
         is_valid, error_msg = validate_value_with_metadata(
@@ -593,7 +634,7 @@ class TydomBoiler(TydomDevice):
             )
         else:
             await self._tydom_client.put_devices_data(
-                self._id, self._endpoint, "setpoint", temperature
+                self._id, self._endpoint, setpoint_attribute, temperature
             )
 
     async def set_thermic_level(self, level):
