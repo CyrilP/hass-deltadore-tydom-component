@@ -172,31 +172,20 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
             ],
         )
 
-    async def test_alarm_inventory_reads_product_info_and_labels(self) -> None:
-        """The alarm inventory must combine the two official read commands."""
+    async def test_alarm_inventory_uses_supported_label_command(self) -> None:
+        """Inventory must not depend on optional unsupported productInfo data."""
         client = self._client()
         client.get_reply_to_request = AsyncMock(
-            side_effect=[
-                [{"name": "productInfo", "values": {"products": []}}],
-                [{"name": "label", "values": {"products": [], "zones": []}}],
-            ]
+            return_value=[{"name": "label", "values": {"products": [], "zones": []}}]
         )
 
         result = await client.get_alarm_products_cdata("20", "10")
 
-        self.assertEqual(result["productInfo"]["name"], "productInfo")
+        self.assertIsNone(result["productInfo"])
         self.assertEqual(result["label"]["name"], "label")
         self.assertEqual(
             client.get_reply_to_request.await_args_list,
             [
-                call(
-                    "GET",
-                    "/devices/20/endpoints/10/cdata?name=productInfo",
-                    headers={
-                        "Content-Length": "0",
-                        "Content-Type": "application/json; charset=UTF-8",
-                    },
-                ),
                 call(
                     "GET",
                     "/devices/20/endpoints/10/cdata?name=label",

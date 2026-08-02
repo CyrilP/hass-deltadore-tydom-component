@@ -1606,7 +1606,13 @@ class TydomClient:
     async def get_alarm_products_cdata(
         self, device_id: str, endpoint_id: str
     ) -> dict[str, dict | None]:
-        """Get the TYXAL product inventory and its user-facing labels."""
+        """Get the TYXAL product inventory and its user-facing labels.
+
+        The documented ``label`` response contains both products and zones.
+        Some CS8000 firmware rejects the app's optional ``productInfo`` battery
+        enrichment command with HTTP 400, so inventory discovery must not
+        depend on it.
+        """
         safe_device_id = quote(str(device_id), safe="")
         safe_endpoint_id = quote(str(endpoint_id), safe="")
         base_url = f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
@@ -1614,14 +1620,11 @@ class TydomClient:
             "Content-Length": "0",
             "Content-Type": "application/json; charset=UTF-8",
         }
-        product_info = await self.get_reply_to_request(
-            "GET", f"{base_url}?name=productInfo", headers=headers.copy()
-        )
         labels = await self.get_reply_to_request(
             "GET", f"{base_url}?name=label", headers=headers.copy()
         )
         return {
-            "productInfo": self._first_cdata_value(product_info),
+            "productInfo": None,
             "label": self._first_cdata_value(labels),
         }
 
