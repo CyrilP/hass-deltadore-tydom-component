@@ -1167,13 +1167,26 @@ class TydomAlarm(TydomDevice):
         zone: int | None = None,
     ) -> None:
         """Enable, disable or reassign one TYXAL product."""
-        await self._tydom_client.put_alarm_product_configuration_cdata(
-            self._id,
-            self._require_endpoint(),
-            code,
-            product_id,
-            active=active,
-            zone=zone,
+        endpoint = self._require_endpoint()
+        if active is not None:
+            await self._tydom_client.put_alarm_product_active_cdata(
+                self._id, endpoint, code, product_id, active
+            )
+        if zone is not None:
+            await self._tydom_client.put_alarm_product_configuration_cdata(
+                self._id, endpoint, code, product_id, zone=zone
+            )
+
+    async def enter_alarm_maintenance(self, code: str) -> None:
+        """Put the TYXAL central unit into maintenance mode."""
+        await self._tydom_client.put_alarm_mode_cdata(
+            self._id, self._require_endpoint(), code, "MAINTENANCE"
+        )
+
+    async def exit_alarm_maintenance(self, code: str) -> None:
+        """Take the TYXAL central unit out of maintenance mode."""
+        await self._tydom_client.put_alarm_mode_cdata(
+            self._id, self._require_endpoint(), code, "OFF"
         )
 
     async def rename_alarm_zone(self, code: str, zone_id: int, name: str) -> None:

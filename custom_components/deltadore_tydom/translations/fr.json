@@ -174,17 +174,31 @@
         },
         "get_alarm_product_configuration": {
             "name": "Obtenir la configuration d'un produit d'alarme",
-            "description": "Récupérer l'état actif et la zone d'un produit d'alarme TYXAL.",
+            "description": "Récupérer l'état actif et la zone d'un produit TYXAL lorsque la CS8000 est en mode maintenance.",
             "fields": {
-                "code": {"name": "Code PIN de l'alarme", "description": "Code PIN permettant d'accéder à la configuration de l'alarme."},
+                "code": {"name": "Code installateur TYXAL", "description": "Code installateur utilisé lorsque la CS8000 est en mode maintenance."},
                 "product_id": {"name": "ID du produit", "description": "Identifiant renvoyé par le service d'obtention des produits et zones."}
+            }
+        },
+        "enter_alarm_maintenance": {
+            "name": "Passer l'alarme en mode maintenance",
+            "description": "Passer une CS8000 désarmée en mode maintenance avant de lire ou modifier sa configuration.",
+            "fields": {
+                "code": {"name": "Code installateur TYXAL", "description": "Code installateur de la CS8000. Ne pas utiliser un code utilisateur ordinaire."}
+            }
+        },
+        "exit_alarm_maintenance": {
+            "name": "Quitter le mode maintenance de l'alarme",
+            "description": "Faire revenir une CS8000 du mode maintenance à son état normal désarmé.",
+            "fields": {
+                "code": {"name": "Code installateur TYXAL", "description": "Code installateur de la CS8000."}
             }
         },
         "configure_alarm_product": {
             "name": "Configurer un produit d'alarme",
             "description": "Activer ou désactiver un produit TYXAL et modifier sa zone.",
             "fields": {
-                "code": {"name": "Code PIN de l'alarme", "description": "Code PIN permettant de modifier la configuration de l'alarme."},
+                "code": {"name": "Code installateur TYXAL", "description": "Code installateur utilisé lorsque la CS8000 est en mode maintenance."},
                 "product_id": {"name": "ID du produit", "description": "Identifiant renvoyé par le service d'obtention des produits et zones."},
                 "active": {"name": "Actif", "description": "Indique si le produit doit participer au système d'alarme."},
                 "zone": {"name": "Zone", "description": "Zone à laquelle le produit doit être affecté."}
@@ -194,7 +208,7 @@
             "name": "Renommer une zone d'alarme",
             "description": "Modifier le nom personnalisé d'une zone d'alarme TYXAL.",
             "fields": {
-                "code": {"name": "Code PIN de l'alarme", "description": "Code PIN permettant de modifier la configuration de l'alarme."},
+                "code": {"name": "Code installateur TYXAL", "description": "Code installateur utilisé lorsque la CS8000 est en mode maintenance."},
                 "zone_id": {"name": "ID de la zone", "description": "Identifiant renvoyé par le service d'obtention des produits et zones."},
                 "name": {"name": "Nom de la zone", "description": "Nouveau nom personnalisé de la zone."}
             }

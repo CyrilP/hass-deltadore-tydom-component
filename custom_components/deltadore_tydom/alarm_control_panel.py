@@ -19,6 +19,8 @@ SERVICE_GET_ALARM_PRODUCTS = "get_alarm_products"
 SERVICE_GET_ALARM_PRODUCT_CONFIGURATION = "get_alarm_product_configuration"
 SERVICE_CONFIGURE_ALARM_PRODUCT = "configure_alarm_product"
 SERVICE_RENAME_ALARM_ZONE = "rename_alarm_zone"
+SERVICE_ENTER_ALARM_MAINTENANCE = "enter_alarm_maintenance"
+SERVICE_EXIT_ALARM_MAINTENANCE = "exit_alarm_maintenance"
 
 ALARM_CODE_SCHEMA = vol.All(
     cv.string,
@@ -78,6 +80,18 @@ async def async_setup_entry(
         },
         "async_get_alarm_product_configuration",
         supports_response=SupportsResponse.ONLY,
+    )
+
+    platform.async_register_entity_service(
+        SERVICE_ENTER_ALARM_MAINTENANCE,
+        {vol.Required("code"): ALARM_CODE_SCHEMA},
+        "async_enter_alarm_maintenance",
+    )
+
+    platform.async_register_entity_service(
+        SERVICE_EXIT_ALARM_MAINTENANCE,
+        {vol.Required("code"): ALARM_CODE_SCHEMA},
+        "async_exit_alarm_maintenance",
     )
 
     platform.async_register_entity_service(

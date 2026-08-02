@@ -173,17 +173,31 @@
         },
         "get_alarm_product_configuration": {
             "name": "Get alarm product configuration",
-            "description": "Retrieve the active state and zone assignment of a TYXAL alarm product.",
+            "description": "Retrieve the active state and zone assignment of a TYXAL alarm product while the CS8000 is in maintenance mode.",
             "fields": {
-                "code": {"name": "Alarm PIN", "description": "PIN used to access the alarm configuration."},
+                "code": {"name": "TYXAL installer code", "description": "Installer code used while the CS8000 is in maintenance mode."},
                 "product_id": {"name": "Product ID", "description": "Identifier returned by Get alarm products and zones."}
+            }
+        },
+        "enter_alarm_maintenance": {
+            "name": "Enter alarm maintenance mode",
+            "description": "Put a disarmed TYXAL CS8000 into maintenance mode before reading or changing its configuration.",
+            "fields": {
+                "code": {"name": "TYXAL installer code", "description": "Installer code for the CS8000. Do not use an ordinary user alarm code."}
+            }
+        },
+        "exit_alarm_maintenance": {
+            "name": "Exit alarm maintenance mode",
+            "description": "Return a TYXAL CS8000 from maintenance mode to its normal disarmed state.",
+            "fields": {
+                "code": {"name": "TYXAL installer code", "description": "Installer code for the CS8000."}
             }
         },
         "configure_alarm_product": {
             "name": "Configure alarm product",
             "description": "Enable or disable a TYXAL product and change its zone assignment.",
             "fields": {
-                "code": {"name": "Alarm PIN", "description": "PIN used to change the alarm configuration."},
+                "code": {"name": "TYXAL installer code", "description": "Installer code used while the CS8000 is in maintenance mode."},
                 "product_id": {"name": "Product ID", "description": "Identifier returned by Get alarm products and zones."},
                 "active": {"name": "Active", "description": "Whether the product should participate in the alarm system."},
                 "zone": {"name": "Zone", "description": "Zone to which the product should be assigned."}
@@ -193,7 +207,7 @@
             "name": "Rename alarm zone",
             "description": "Change the custom name of one TYXAL alarm zone.",
             "fields": {
-                "code": {"name": "Alarm PIN", "description": "PIN used to change the alarm configuration."},
+                "code": {"name": "TYXAL installer code", "description": "Installer code used while the CS8000 is in maintenance mode."},
                 "zone_id": {"name": "Zone ID", "description": "Identifier returned by Get alarm products and zones."},
                 "name": {"name": "Zone name", "description": "New custom name for the zone."}
             }

@@ -235,13 +235,13 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
         )
         self.assertNotIn("12&34", sanitize_log_message("?pwd=12&34"))
 
-    async def test_alarm_product_update_sends_only_requested_fields(self) -> None:
-        """A partial update must not overwrite unrelated product settings."""
+    async def test_alarm_product_zone_update_sends_only_requested_field(self) -> None:
+        """A zone update must not overwrite unrelated product settings."""
         client = self._client()
         client.get_reply_to_request = AsyncMock(return_value=[])
 
         await client.put_alarm_product_configuration_cdata(
-            "20", "10", "123456", 4, active=False, zone=3
+            "20", "10", "123456", 4, zone=3
         )
 
         client.get_reply_to_request.assert_awaited_once_with(
@@ -250,8 +250,45 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
             body={
                 "pwd": "123456",
                 "id": 4,
-                "common": {"inactive": True, "zone": 3},
+                "common": {"zone": 3},
             },
+        )
+
+    async def test_alarm_product_activation_uses_dedicated_command(self) -> None:
+        """Activation must use activeProductConf instead of productConf."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+
+        await client.put_alarm_product_active_cdata("20", "10", "123456", 4, False)
+
+        client.get_reply_to_request.assert_awaited_once_with(
+            "PUT",
+            "/devices/20/endpoints/10/cdata?name=activeProductConf",
+            body={"pwd": "123456", "id": 4, "activeProduct": False},
+        )
+
+    async def test_alarm_maintenance_commands_await_gateway_reply(self) -> None:
+        """Entering and leaving maintenance must use global alarmCmd writes."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+
+        await client.put_alarm_mode_cdata("20", "10", "123456", "MAINTENANCE")
+        await client.put_alarm_mode_cdata("20", "10", "123456", "OFF")
+
+        self.assertEqual(
+            client.get_reply_to_request.await_args_list,
+            [
+                call(
+                    "PUT",
+                    "/devices/20/endpoints/10/cdata?name=alarmCmd",
+                    body={"pwd": "123456", "value": "MAINTENANCE"},
+                ),
+                call(
+                    "PUT",
+                    "/devices/20/endpoints/10/cdata?name=alarmCmd",
+                    body={"pwd": "123456", "value": "OFF"},
+                ),
+            ],
         )
 
     async def test_alarm_zone_rename_uses_custom_label_command(self) -> None:

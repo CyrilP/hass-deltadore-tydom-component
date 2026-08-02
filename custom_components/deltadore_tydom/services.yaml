@@ -38,15 +38,15 @@ get_alarm_products:
       domain: alarm_control_panel
 get_alarm_product_configuration:
   name: Get alarm product configuration
-  description: Retrieve the active state and zone assignment of a TYXAL alarm product.
+  description: Retrieve the active state and zone assignment of a TYXAL alarm product while the CS8000 is in maintenance mode.
   target:
     entity:
       integration: deltadore_tydom
       domain: alarm_control_panel
   fields:
     code:
-      name: Alarm PIN
-      description: PIN used to access the alarm configuration.
+      name: TYXAL installer code
+      description: Installer code used while the CS8000 is in maintenance mode.
       required: true
       selector:
         text:
@@ -59,6 +59,36 @@ get_alarm_product_configuration:
         number:
           min: 0
           mode: box
+enter_alarm_maintenance:
+  name: Enter alarm maintenance mode
+  description: Put a disarmed TYXAL CS8000 into maintenance mode before reading or changing its configuration.
+  target:
+    entity:
+      integration: deltadore_tydom
+      domain: alarm_control_panel
+  fields:
+    code:
+      name: TYXAL installer code
+      description: Installer code for the CS8000. Do not use an ordinary user alarm code.
+      required: true
+      selector:
+        text:
+          type: password
+exit_alarm_maintenance:
+  name: Exit alarm maintenance mode
+  description: Return a TYXAL CS8000 from maintenance mode to its normal disarmed state.
+  target:
+    entity:
+      integration: deltadore_tydom
+      domain: alarm_control_panel
+  fields:
+    code:
+      name: TYXAL installer code
+      description: Installer code for the CS8000.
+      required: true
+      selector:
+        text:
+          type: password
 configure_alarm_product:
   name: Configure alarm product
   description: Enable or disable a TYXAL product, assign it to a zone, or perform both changes together.
@@ -68,8 +98,8 @@ configure_alarm_product:
       domain: alarm_control_panel
   fields:
     code:
-      name: Alarm PIN
-      description: PIN used to change the alarm configuration.
+      name: TYXAL installer code
+      description: Installer code used while the CS8000 is in maintenance mode.
       required: true
       selector:
         text:
@@ -106,8 +136,8 @@ rename_alarm_zone:
       domain: alarm_control_panel
   fields:
     code:
-      name: Alarm PIN
-      description: PIN used to change the alarm configuration.
+      name: TYXAL installer code
+      description: Installer code used while the CS8000 is in maintenance mode.
       required: true
       selector:
         text:

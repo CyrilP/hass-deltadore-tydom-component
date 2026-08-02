@@ -1651,13 +1651,10 @@ class TydomClient:
         alarm_pin: str,
         product_id: int,
         *,
-        active: bool | None = None,
         zone: int | None = None,
     ) -> None:
         """Update selected common settings of one TYXAL product."""
-        common: dict[str, bool | int] = {}
-        if active is not None:
-            common["inactive"] = not active
+        common: dict[str, int] = {}
         if zone is not None:
             common["zone"] = int(zone)
         if not common:
@@ -1677,6 +1674,53 @@ class TydomClient:
                 "id": int(product_id),
                 "common": common,
             },
+        )
+
+    async def put_alarm_product_active_cdata(
+        self,
+        device_id: str,
+        endpoint_id: str,
+        installer_code: str,
+        product_id: int,
+        active: bool,
+    ) -> None:
+        """Activate or deactivate one TYXAL product."""
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        url = (
+            f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+            "?name=activeProductConf"
+        )
+        await self.get_reply_to_request(
+            "PUT",
+            url,
+            body={
+                "pwd": str(installer_code),
+                "id": int(product_id),
+                "activeProduct": bool(active),
+            },
+        )
+
+    async def put_alarm_mode_cdata(
+        self,
+        device_id: str,
+        endpoint_id: str,
+        installer_code: str,
+        mode: str,
+    ) -> None:
+        """Set a global TYXAL mode and await the gateway response."""
+        if mode not in {"MAINTENANCE", "OFF"}:
+            raise ValueError(f"Unsupported TYXAL maintenance mode: {mode}")
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        url = (
+            f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+            "?name=alarmCmd"
+        )
+        await self.get_reply_to_request(
+            "PUT",
+            url,
+            body={"pwd": str(installer_code), "value": mode},
         )
 
     async def put_alarm_zone_label_cdata(

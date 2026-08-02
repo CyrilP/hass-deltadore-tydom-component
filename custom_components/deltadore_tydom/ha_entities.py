@@ -3407,7 +3407,32 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         self, code: str, product_id: int
     ) -> dict[str, Any]:
         """Return the common configuration of one alarm product."""
-        return await self._device.get_alarm_product_configuration(code, product_id)
+        try:
+            return await self._device.get_alarm_product_configuration(code, product_id)
+        except Exception as err:
+            raise HomeAssistantError(
+                "The TYXAL rejected the configuration request. Ensure the CS8000 "
+                "is in maintenance mode and use its installer code."
+            ) from err
+
+    async def async_enter_alarm_maintenance(self, code: str) -> None:
+        """Put the TYXAL central unit into maintenance mode."""
+        try:
+            await self._device.enter_alarm_maintenance(code)
+        except Exception as err:
+            raise HomeAssistantError(
+                "The TYXAL could not enter maintenance mode. Check the installer code "
+                "and ensure the alarm is disarmed."
+            ) from err
+
+    async def async_exit_alarm_maintenance(self, code: str) -> None:
+        """Take the TYXAL central unit out of maintenance mode."""
+        try:
+            await self._device.exit_alarm_maintenance(code)
+        except Exception as err:
+            raise HomeAssistantError(
+                "The TYXAL could not leave maintenance mode. Check the installer code."
+            ) from err
 
     async def async_configure_alarm_product(
         self,
@@ -3419,13 +3444,25 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         """Enable, disable or reassign one alarm product."""
         if active is None and zone is None:
             raise HomeAssistantError("At least one of active or zone must be supplied")
-        await self._device.configure_alarm_product(
-            code, product_id, active=active, zone=zone
-        )
+        try:
+            await self._device.configure_alarm_product(
+                code, product_id, active=active, zone=zone
+            )
+        except Exception as err:
+            raise HomeAssistantError(
+                "The TYXAL rejected the product change. Ensure the CS8000 is in "
+                "maintenance mode and use its installer code."
+            ) from err
 
     async def async_rename_alarm_zone(self, code: str, zone_id: int, name: str) -> None:
         """Rename one alarm zone."""
-        await self._device.rename_alarm_zone(code, zone_id, name)
+        try:
+            await self._device.rename_alarm_zone(code, zone_id, name)
+        except Exception as err:
+            raise HomeAssistantError(
+                "The TYXAL rejected the zone change. Ensure the CS8000 is in "
+                "maintenance mode and use its installer code."
+            ) from err
 
 
 class HaWeather(WeatherEntity, HAEntity):
