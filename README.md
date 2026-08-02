@@ -131,7 +131,8 @@ useful in Home Assistant:
   state and zone assignment;
 - `deltadore_tydom.configure_alarm_product` enables or disables a product and
   can assign it to another zone;
-- `deltadore_tydom.rename_alarm_zone` changes a zone's custom name;
+- `deltadore_tydom.rename_alarm_zone` changes a zone's custom name, or clears
+  its label when supplied with an empty name;
 - `deltadore_tydom.exit_alarm_maintenance` returns the CS8000 to its normal
   disarmed state and unlocks the remote configuration session.
 

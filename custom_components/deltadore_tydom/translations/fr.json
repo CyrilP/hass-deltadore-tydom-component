@@ -206,11 +206,11 @@
         },
         "rename_alarm_zone": {
             "name": "Renommer une zone d'alarme",
-            "description": "Modifier le nom personnalisé d'une zone d'alarme TYXAL.",
+            "description": "Modifier le nom personnalisé d'une zone d'alarme TYXAL, ou l'effacer en fournissant un nom vide.",
             "fields": {
                 "code": {"name": "Code installateur TYXAL", "description": "Code installateur utilisé lorsque la CS8000 est en mode maintenance."},
                 "zone_id": {"name": "ID de la zone", "description": "Identifiant renvoyé par le service d'obtention des produits et zones."},
-                "name": {"name": "Nom de la zone", "description": "Nouveau nom personnalisé de la zone."}
+                "name": {"name": "Nom de la zone", "description": "Nouveau nom personnalisé de la zone. Fournir une chaîne vide pour effacer son libellé personnalisé ou standard."}
             }
         },
         "reload_devices": {

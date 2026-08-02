@@ -1762,7 +1762,7 @@ class TydomClient:
         zone_id: int,
         name: str,
     ) -> None:
-        """Rename a TYXAL zone using the official zone label command."""
+        """Rename or clear a TYXAL zone using the official label command."""
         safe_device_id = quote(str(device_id), safe="")
         safe_endpoint_id = quote(str(endpoint_id), safe="")
         url = (
@@ -1778,8 +1778,9 @@ class TydomClient:
                 # The Delta Dore app constructs nullable standard-name and
                 # number fields, but Gson omits them from the wire payload.
                 # Sending either field explicitly as JSON null is rejected by
-                # the CS8000 as a malformed request.
-                "label": {"nameCustom": name},
+                # the CS8000 as a malformed request.  The app clears all label
+                # fields by serialising their null values as an empty object.
+                "label": {"nameCustom": name} if name else {},
             },
         )
 

@@ -110,9 +110,7 @@ async def async_setup_entry(
         {
             vol.Required("code"): ALARM_CODE_SCHEMA,
             vol.Required("zone_id"): ZONE_ID_SCHEMA,
-            vol.Required("name"): vol.All(
-                cv.string, str.strip, vol.Length(min=1, max=64)
-            ),
+            vol.Required("name"): vol.All(cv.string, str.strip, vol.Length(max=64)),
         },
         "async_rename_alarm_zone",
     )

@@ -205,11 +205,11 @@
         },
         "rename_alarm_zone": {
             "name": "Rename alarm zone",
-            "description": "Change the custom name of one TYXAL alarm zone.",
+            "description": "Change the custom name of one TYXAL alarm zone, or clear it by supplying an empty name.",
             "fields": {
                 "code": {"name": "TYXAL installer code", "description": "Installer code used while the CS8000 is in maintenance mode."},
                 "zone_id": {"name": "Zone ID", "description": "Identifier returned by Get alarm products and zones."},
-                "name": {"name": "Zone name", "description": "New custom name for the zone."}
+                "name": {"name": "Zone name", "description": "New custom name for the zone. Supply an empty string to clear its custom or standard label."}
             }
         },
         "reload_devices": {
