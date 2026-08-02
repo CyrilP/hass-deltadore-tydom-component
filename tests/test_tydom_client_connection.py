@@ -189,8 +189,22 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
         self.assertEqual(
             client.get_reply_to_request.await_args_list,
             [
-                call("GET", "/devices/20/endpoints/10/cdata?name=productInfo"),
-                call("GET", "/devices/20/endpoints/10/cdata?name=label"),
+                call(
+                    "GET",
+                    "/devices/20/endpoints/10/cdata?name=productInfo",
+                    headers={
+                        "Content-Length": "0",
+                        "Content-Type": "application/json; charset=UTF-8",
+                    },
+                ),
+                call(
+                    "GET",
+                    "/devices/20/endpoints/10/cdata?name=label",
+                    headers={
+                        "Content-Length": "0",
+                        "Content-Type": "application/json; charset=UTF-8",
+                    },
+                ),
             ],
         )
 

@@ -1610,10 +1610,16 @@ class TydomClient:
         safe_device_id = quote(str(device_id), safe="")
         safe_endpoint_id = quote(str(endpoint_id), safe="")
         base_url = f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+        headers = {
+            "Content-Length": "0",
+            "Content-Type": "application/json; charset=UTF-8",
+        }
         product_info = await self.get_reply_to_request(
-            "GET", f"{base_url}?name=productInfo"
+            "GET", f"{base_url}?name=productInfo", headers=headers.copy()
         )
-        labels = await self.get_reply_to_request("GET", f"{base_url}?name=label")
+        labels = await self.get_reply_to_request(
+            "GET", f"{base_url}?name=label", headers=headers.copy()
+        )
         return {
             "productInfo": self._first_cdata_value(product_info),
             "label": self._first_cdata_value(labels),
