@@ -497,7 +497,8 @@ class MessageHandler:
                 msg_type = partial(no_op, "msg_html")
 
         if msg_type is None:
-            msg_type = MSG_MAPPING.get(uri_origin)
+            mapping_key = "/events" if uri_origin.startswith("/events/") else uri_origin
+            msg_type = MSG_MAPPING.get(mapping_key)
 
             if msg_type is None and uri_origin:
                 area_data = re.fullmatch(r"/areas/([^/]+)/data", uri_origin)
