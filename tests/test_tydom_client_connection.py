@@ -328,11 +328,7 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
             body={
                 "pwd": "123456",
                 "id": 2,
-                "label": {
-                    "nameStd": None,
-                    "number": None,
-                    "nameCustom": "Outbuildings",
-                },
+                "label": {"nameCustom": "Outbuildings"},
             },
         )
 

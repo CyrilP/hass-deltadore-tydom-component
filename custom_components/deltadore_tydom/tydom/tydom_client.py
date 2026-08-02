@@ -1766,11 +1766,11 @@ class TydomClient:
             body={
                 "pwd": str(alarm_pin),
                 "id": int(zone_id),
-                "label": {
-                    "nameStd": None,
-                    "number": None,
-                    "nameCustom": name,
-                },
+                # The Delta Dore app constructs nullable standard-name and
+                # number fields, but Gson omits them from the wire payload.
+                # Sending either field explicitly as JSON null is rejected by
+                # the CS8000 as a malformed request.
+                "label": {"nameCustom": name},
             },
         )
 
