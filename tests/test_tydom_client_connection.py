@@ -296,8 +296,8 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
         client = self._client()
         client.get_reply_to_request = AsyncMock(return_value=[])
 
-        await client.put_alarm_remote_control_cdata("20", "10", "123456", "LOCK")
-        await client.put_alarm_remote_control_cdata("20", "10", "123456", "UNLOCK")
+        await client.put_alarm_remote_control_cdata("20", "10", "123456", "lock")
+        await client.put_alarm_remote_control_cdata("20", "10", "123456", "unlock")
 
         self.assertEqual(
             client.get_reply_to_request.await_args_list,
@@ -305,12 +305,12 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
                 call(
                     "PUT",
                     "/devices/20/endpoints/10/cdata?name=remoteCtrl",
-                    body={"pwd": "123456", "control": "LOCK"},
+                    body={"pwd": "123456", "control": "lock"},
                 ),
                 call(
                     "PUT",
                     "/devices/20/endpoints/10/cdata?name=remoteCtrl",
-                    body={"pwd": "123456", "control": "UNLOCK"},
+                    body={"pwd": "123456", "control": "unlock"},
                 ),
             ],
         )

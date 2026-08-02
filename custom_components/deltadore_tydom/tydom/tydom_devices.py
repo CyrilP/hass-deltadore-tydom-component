@@ -1181,7 +1181,7 @@ class TydomAlarm(TydomDevice):
         """Put the TYXAL central unit into maintenance mode."""
         endpoint = self._require_endpoint()
         await self._tydom_client.put_alarm_remote_control_cdata(
-            self._id, endpoint, code, "LOCK"
+            self._id, endpoint, code, "lock"
         )
         try:
             await self._tydom_client.put_alarm_mode_cdata(
@@ -1189,7 +1189,7 @@ class TydomAlarm(TydomDevice):
             )
         except Exception:
             await self._tydom_client.put_alarm_remote_control_cdata(
-                self._id, endpoint, code, "UNLOCK"
+                self._id, endpoint, code, "unlock"
             )
             raise
 
@@ -1202,7 +1202,7 @@ class TydomAlarm(TydomDevice):
             )
         finally:
             await self._tydom_client.put_alarm_remote_control_cdata(
-                self._id, endpoint, code, "UNLOCK"
+                self._id, endpoint, code, "unlock"
             )
 
     async def rename_alarm_zone(self, code: str, zone_id: int, name: str) -> None:

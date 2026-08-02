@@ -1731,7 +1731,7 @@ class TydomClient:
         control: str,
     ) -> None:
         """Lock or unlock the TYXAL remote configuration session."""
-        if control not in {"LOCK", "UNLOCK"}:
+        if control not in {"lock", "unlock"}:
             raise ValueError(f"Unsupported TYXAL remote control action: {control}")
         safe_device_id = quote(str(device_id), safe="")
         safe_endpoint_id = quote(str(endpoint_id), safe="")
