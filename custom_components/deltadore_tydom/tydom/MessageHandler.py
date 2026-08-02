@@ -958,10 +958,6 @@ class MessageHandler:
                                         self.tydom_client.add_poll_device_url_5m(url)
                                         LOGGER.debug("Add poll device : %s", url)
                         elif elem["name"] == "energyInstant":
-                            # TODO(tywatt-debug): temporary WARNING trace to see
-                            # the real cmeta shape via the HA error log; remove
-                            # once the missing energyInstant sensor is fixed.
-                            LOGGER.warning("TYDOM_DEBUG energyInstant cmeta: %s", elem)
                             for params in elem["parameters"]:
                                 if params["name"] == "unit":
                                     for unit in params["enum_values"]:
@@ -980,9 +976,7 @@ class MessageHandler:
                                             + "&reset=false"
                                         )
                                         self.tydom_client.add_poll_device_url_5m(url)
-                                        LOGGER.warning(
-                                            "TYDOM_DEBUG Add poll device : %s", url
-                                        )
+                                        LOGGER.debug("Add poll device : " + url)
                         elif elem["name"] == "energyHisto":
                             for params in elem["parameters"]:
                                 if params["name"] == "dest":
@@ -1335,10 +1329,6 @@ class MessageHandler:
 
                         for elem in endpoint["cdata"]:
                             if type_of_id == "conso":
-                                # TODO(tywatt-debug): temporary WARNING trace,
-                                # remove once the missing energyInstant sensor
-                                # is fixed.
-                                LOGGER.warning("TYDOM_DEBUG conso cdata elem: %s", elem)
                                 element_name = None
                                 # "period" must be checked before "dest":
                                 # energyHisto is queried with both
@@ -1377,7 +1367,7 @@ class MessageHandler:
                                     elif "counter" in values:
                                         element_value = values["counter"]
                                     else:
-                                        LOGGER.warning(
+                                        LOGGER.debug(
                                             "TYDOM_DEBUG Skipping energyInstant cdata: "
                                             "unexpected values shape %s",
                                             values,

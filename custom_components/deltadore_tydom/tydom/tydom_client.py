@@ -1023,13 +1023,6 @@ class TydomClient:
 
     async def poll_devices_data_5m(self):
         """Poll devices data."""
-        # TODO(tywatt-debug): temporary WARNING trace, remove once the
-        # missing energyInstant sensor is fixed.
-        LOGGER.warning(
-            "TYDOM_DEBUG poll_devices_data_5m sending %d url(s): %s",
-            len(self.poll_device_urls_5m),
-            self.poll_device_urls_5m,
-        )
         for url in self.poll_device_urls_5m:
             await self.get_poll_device_data(url)
 
