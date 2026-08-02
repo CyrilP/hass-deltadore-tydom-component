@@ -126,7 +126,7 @@ class HAEntity:
     units: dict[str, Any] = {}
     filtered_attrs: list[str] = []
     _device: Any = None
-    _registered_sensors: list[str] = []
+    _registered_sensors: list[str]
     hass: Any = None
 
     def _get_hub(self):
@@ -230,12 +230,17 @@ class HAEntity:
     def get_sensors(self):
         """Get available sensors for this entity."""
         sensors = []
+        # Generic sensor discovery is opt-in. Entity wrappers such as scenes,
+        # groups and events must not expose their internal data as sensors.
+        registered_sensors = self.__dict__.get("_registered_sensors")
+        if registered_sensors is None:
+            return sensors
 
         for attribute, value in self._device.__dict__.items():
             if (
                 attribute[:1] != "_"
                 and value is not None
-                and attribute not in self._registered_sensors
+                and attribute not in registered_sensors
             ):
                 alt_name = attribute.split("_")[0]
                 if attribute in self.filtered_attrs or alt_name in self.filtered_attrs:
@@ -275,7 +280,7 @@ class HAEntity:
                             unit,
                         )
                     )
-                self._registered_sensors.append(attribute)
+                registered_sensors.append(attribute)
                 LOGGER.debug(
                     "Nouveau capteur créé: %s.%s (type: %s, valeur: %s)",
                     self._device.device_id,
@@ -5129,6 +5134,7 @@ class HASwitch(SwitchEntity, HAEntity):
         """Initialize HASwitch."""
         self.hass = hass
         self._device = device
+        self._registered_sensors = []
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_switch"
         self._attr_name = None  # primary entity inherits device name
@@ -5631,6 +5637,7 @@ class HAButton(ButtonEntity, HAEntity):
         """Initialize HAButton."""
         self.hass = hass
         self._device = device
+        self._registered_sensors = []
         self._device._ha_device = self
         self._action_name = action_name
         self._action_method = action_method
