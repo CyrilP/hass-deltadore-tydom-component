@@ -1723,6 +1723,28 @@ class TydomClient:
             body={"pwd": str(installer_code), "value": mode},
         )
 
+    async def put_alarm_remote_control_cdata(
+        self,
+        device_id: str,
+        endpoint_id: str,
+        installer_code: str,
+        control: str,
+    ) -> None:
+        """Lock or unlock the TYXAL remote configuration session."""
+        if control not in {"LOCK", "UNLOCK"}:
+            raise ValueError(f"Unsupported TYXAL remote control action: {control}")
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        url = (
+            f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+            "?name=remoteCtrl"
+        )
+        await self.get_reply_to_request(
+            "PUT",
+            url,
+            body={"pwd": str(installer_code), "control": control},
+        )
+
     async def put_alarm_zone_label_cdata(
         self,
         device_id: str,

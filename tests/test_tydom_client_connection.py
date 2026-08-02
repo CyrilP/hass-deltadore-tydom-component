@@ -291,6 +291,30 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
             ],
         )
 
+    async def test_alarm_remote_configuration_lock_uses_official_command(self) -> None:
+        """Remote TYXAL configuration must be explicitly locked and unlocked."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+
+        await client.put_alarm_remote_control_cdata("20", "10", "123456", "LOCK")
+        await client.put_alarm_remote_control_cdata("20", "10", "123456", "UNLOCK")
+
+        self.assertEqual(
+            client.get_reply_to_request.await_args_list,
+            [
+                call(
+                    "PUT",
+                    "/devices/20/endpoints/10/cdata?name=remoteCtrl",
+                    body={"pwd": "123456", "control": "LOCK"},
+                ),
+                call(
+                    "PUT",
+                    "/devices/20/endpoints/10/cdata?name=remoteCtrl",
+                    body={"pwd": "123456", "control": "UNLOCK"},
+                ),
+            ],
+        )
+
     async def test_alarm_zone_rename_uses_custom_label_command(self) -> None:
         """Zone renaming must use the official zoneLabelConf payload."""
         client = self._client()
