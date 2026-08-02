@@ -342,6 +342,51 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         await asyncio.wait_for(reply_event.wait(), timeout=0.2)
         self.assertEqual(handler.get_reply("request-1")["events"], [])
 
+    async def test_alarm_reply_cache_rollover_keeps_new_reply(self) -> None:
+        """Evicting an old reply must not redirect new data into that reply."""
+        handler = MessageHandler(MagicMock(), b"")
+        handler.get_type_from_id = MagicMock(return_value="alarm")
+        handler.get_name_from_id = MagicMock(return_value="Alarm")
+        for request_id in range(5):
+            handler._cdata_replies.append(
+                {
+                    "transaction_id": f"old-request-{request_id}",
+                    "events": [],
+                    "done": False,
+                }
+            )
+        reply_event = asyncio.Event()
+        handler._end_reply_events["new-request"] = reply_event
+
+        await handler.parse_devices_cdata(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [
+                        {
+                            "id": 10,
+                            "error": 0,
+                            "cdata": [
+                                {
+                                    "name": "productConf",
+                                    "values": {
+                                        "id": 2,
+                                        "common": {"inactive": False},
+                                    },
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            "new-request",
+        )
+
+        self.assertTrue(reply_event.is_set())
+        reply = handler.get_reply("new-request")
+        self.assertIsNotNone(reply)
+        self.assertEqual(reply["events"][0]["name"], "productConf")
+
     async def test_rejected_alarm_configuration_redacts_pin(self) -> None:
         """An alarm PIN in Uri-Origin must never be written to the log."""
         logger.reset_mock()

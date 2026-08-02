@@ -1551,13 +1551,13 @@ class MessageHandler:
                                     self._cdata_replies.insert(0, reply)
                                     # Limit the number of tracked replies
                                     if len(self._cdata_replies) > _MAX_REPLIES_SIZE:
-                                        reply = self._cdata_replies.pop()
+                                        forgotten_reply = self._cdata_replies.pop()
                                         LOGGER.warning(
                                             "Forget uncomplete request with transaction ID '%s'.",
-                                            reply["transaction_id"],
+                                            forgotten_reply["transaction_id"],
                                         )
                                         self._end_reply_events.pop(
-                                            reply["transaction_id"], None
+                                            forgotten_reply["transaction_id"], None
                                         )
 
                                 values = elem.get("values") or {}
