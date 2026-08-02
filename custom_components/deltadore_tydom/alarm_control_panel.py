@@ -15,6 +15,14 @@ from .const import DOMAIN
 
 SERVICE_ACKNOWLEDGE_EVENTS = "acknowledge_events"
 SERVICE_GET_EVENTS = "get_events"
+SERVICE_GET_ALARM_PRODUCTS = "get_alarm_products"
+SERVICE_GET_ALARM_PRODUCT_CONFIGURATION = "get_alarm_product_configuration"
+SERVICE_CONFIGURE_ALARM_PRODUCT = "configure_alarm_product"
+SERVICE_RENAME_ALARM_ZONE = "rename_alarm_zone"
+
+ALARM_CODE_SCHEMA = vol.All(cv.string, vol.Length(min=1))
+PRODUCT_ID_SCHEMA = vol.All(vol.Coerce(int), vol.Range(min=0))
+ZONE_ID_SCHEMA = vol.All(vol.Coerce(int), vol.Range(min=1, max=8))
 
 
 async def async_setup_entry(
@@ -47,4 +55,44 @@ async def async_setup_entry(
         },
         "async_get_events",
         supports_response=SupportsResponse.ONLY,
+    )
+
+    platform.async_register_entity_service(
+        SERVICE_GET_ALARM_PRODUCTS,
+        {},
+        "async_get_alarm_products",
+        supports_response=SupportsResponse.ONLY,
+    )
+
+    platform.async_register_entity_service(
+        SERVICE_GET_ALARM_PRODUCT_CONFIGURATION,
+        {
+            vol.Required("code"): ALARM_CODE_SCHEMA,
+            vol.Required("product_id"): PRODUCT_ID_SCHEMA,
+        },
+        "async_get_alarm_product_configuration",
+        supports_response=SupportsResponse.ONLY,
+    )
+
+    platform.async_register_entity_service(
+        SERVICE_CONFIGURE_ALARM_PRODUCT,
+        {
+            vol.Required("code"): ALARM_CODE_SCHEMA,
+            vol.Required("product_id"): PRODUCT_ID_SCHEMA,
+            vol.Optional("active"): cv.boolean,
+            vol.Optional("zone"): ZONE_ID_SCHEMA,
+        },
+        "async_configure_alarm_product",
+    )
+
+    platform.async_register_entity_service(
+        SERVICE_RENAME_ALARM_ZONE,
+        {
+            vol.Required("code"): ALARM_CODE_SCHEMA,
+            vol.Required("zone_id"): ZONE_ID_SCHEMA,
+            vol.Required("name"): vol.All(
+                cv.string, str.strip, vol.Length(min=1, max=64)
+            ),
+        },
+        "async_rename_alarm_zone",
     )

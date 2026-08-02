@@ -116,6 +116,24 @@ connection examples, output analysis, parser validation and security guidance.
 The separate [endpoint discovery guide](tools/README_discover_endpoints.md)
 describes how to probe available API resources and HTTP methods.
 
+## TYXAL+ remote management
+
+The alarm control panel provides services for the TYXAL+ functions that are
+useful in Home Assistant:
+
+- `deltadore_tydom.get_alarm_products` lists configured products and zones;
+- `deltadore_tydom.get_alarm_product_configuration` reads a product's active
+  state and zone assignment;
+- `deltadore_tydom.configure_alarm_product` enables or disables a product and
+  can assign it to another zone;
+- `deltadore_tydom.rename_alarm_zone` changes a zone's custom name.
+
+Use the first service to obtain the product and zone IDs required by the other
+services. Configuration changes require the alarm PIN supplied in the service
+call. The PIN is used only for that request and is redacted from logs. Product
+deletion, access codes, telephone settings and siren configuration are not
+exposed.
+
 ## Contributions are welcome!
 
 If you want to contribute to this please read the [Contribution guidelines](CONTRIBUTING.md)

@@ -1080,6 +1080,109 @@ class TydomAlarm(TydomDevice):
             if m.get("values", {}).get("event") is not None
         ]
 
+    def _require_endpoint(self) -> str:
+        """Return the alarm endpoint or fail before building a request."""
+        if self._endpoint is None:
+            raise ValueError(f"Alarm device {self._id} has no endpoint")
+        return self._endpoint
+
+    async def get_alarm_products(self) -> dict[str, list[dict[str, Any]]]:
+        """Return the TYXAL product inventory and configured zones."""
+        messages = await self._tydom_client.get_alarm_products_cdata(
+            self._id, self._require_endpoint()
+        )
+        label_values = (messages.get("label") or {}).get("values") or {}
+        info_values = (messages.get("productInfo") or {}).get("values") or {}
+
+        technical_products = {
+            product.get("id"): product
+            for product in info_values.get("products", [])
+            if isinstance(product, dict) and product.get("id") is not None
+        }
+        products = []
+        for product in label_values.get("products", []):
+            if not isinstance(product, dict) or product.get("id") is None:
+                continue
+            technical = technical_products.get(product["id"], {})
+            products.append(
+                {
+                    key: value
+                    for key, value in {
+                        "id": product["id"],
+                        "name_custom": product.get("nameCustom"),
+                        "name_standard": product.get("nameStd"),
+                        "number": product.get("number"),
+                        "type_short": product.get("typeShort"),
+                        "type_long": product.get("typeLong"),
+                        "zone": product.get("zone"),
+                        "uuid": technical.get("uuid"),
+                        "battery_level": technical.get("batteryLevel"),
+                    }.items()
+                    if value is not None
+                }
+            )
+
+        zones = [
+            {
+                key: value
+                for key, value in {
+                    "id": zone.get("id"),
+                    "name_custom": zone.get("nameCustom"),
+                    "name_standard": zone.get("nameStd"),
+                    "number": zone.get("number"),
+                }.items()
+                if value is not None
+            }
+            for zone in label_values.get("zones", [])
+            if isinstance(zone, dict) and zone.get("id") is not None
+        ]
+        return {"zones": zones, "products": products}
+
+    async def get_alarm_product_configuration(
+        self, code: str, product_id: int
+    ) -> dict[str, Any]:
+        """Return only the safe, common settings of one TYXAL product."""
+        message = (
+            await self._tydom_client.get_alarm_product_configuration_cdata(
+                self._id, self._require_endpoint(), code, product_id
+            )
+            or {}
+        )
+        values = message.get("values") or {}
+        common = values.get("common") or {}
+        response: dict[str, Any] = {"id": values.get("id", product_id)}
+        if common.get("inactive") is not None:
+            response["active"] = not common["inactive"]
+        if common.get("zone") is not None:
+            response["zone"] = common["zone"]
+        if common.get("autoProtectActive") is not None:
+            response["auto_protect_active"] = common["autoProtectActive"]
+        return response
+
+    async def configure_alarm_product(
+        self,
+        code: str,
+        product_id: int,
+        *,
+        active: bool | None = None,
+        zone: int | None = None,
+    ) -> None:
+        """Enable, disable or reassign one TYXAL product."""
+        await self._tydom_client.put_alarm_product_configuration_cdata(
+            self._id,
+            self._require_endpoint(),
+            code,
+            product_id,
+            active=active,
+            zone=zone,
+        )
+
+    async def rename_alarm_zone(self, code: str, zone_id: int, name: str) -> None:
+        """Rename one TYXAL zone."""
+        await self._tydom_client.put_alarm_zone_label_cdata(
+            self._id, self._require_endpoint(), code, zone_id, name
+        )
+
 
 class TydomWeather(TydomDevice):
     """Represents a weather sensor."""

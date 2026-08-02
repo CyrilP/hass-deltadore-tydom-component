@@ -34,6 +34,7 @@ from homeassistant.const import (
     PERCENTAGE,
 )
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.components.cover import (
     ATTR_POSITION,
@@ -3397,6 +3398,34 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
     async def async_get_events(self, event_type=None) -> list:
         """Get alarm events."""
         return await self._device.get_events(event_type or "UNACKED_EVENTS")
+
+    async def async_get_alarm_products(self) -> dict[str, list[dict[str, Any]]]:
+        """Return the products and zones configured on the alarm."""
+        return await self._device.get_alarm_products()
+
+    async def async_get_alarm_product_configuration(
+        self, code: str, product_id: int
+    ) -> dict[str, Any]:
+        """Return the common configuration of one alarm product."""
+        return await self._device.get_alarm_product_configuration(code, product_id)
+
+    async def async_configure_alarm_product(
+        self,
+        code: str,
+        product_id: int,
+        active: bool | None = None,
+        zone: int | None = None,
+    ) -> None:
+        """Enable, disable or reassign one alarm product."""
+        if active is None and zone is None:
+            raise HomeAssistantError("At least one of active or zone must be supplied")
+        await self._device.configure_alarm_product(
+            code, product_id, active=active, zone=zone
+        )
+
+    async def async_rename_alarm_zone(self, code: str, zone_id: int, name: str) -> None:
+        """Rename one alarm zone."""
+        await self._device.rename_alarm_zone(code, zone_id, name)
 
 
 class HaWeather(WeatherEntity, HAEntity):

@@ -1,5 +1,6 @@
 """Tests for Tydom protocol response handling."""
 
+import asyncio
 import importlib.util
 from pathlib import Path
 import sys
@@ -66,6 +67,7 @@ handler_spec.loader.exec_module(handler_module)
 
 MessageHandler = handler_module.MessageHandler
 TydomLight = devices_module.TydomLight
+TydomAlarm = devices_module.TydomAlarm
 
 for name, original in _original_modules.items():
     if original is _MISSING:
@@ -104,6 +106,82 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         self.assertFalse(binary_light.supports_brightness)
         self.assertTrue(dimmable_light.supports_brightness)
 
+    async def test_alarm_inventory_merges_labels_and_technical_data(self) -> None:
+        """Inventory responses should be useful without exposing other labels."""
+        client = MagicMock()
+        client.get_alarm_products_cdata = AsyncMock(
+            return_value={
+                "productInfo": {
+                    "values": {
+                        "products": [
+                            {"id": 4, "uuid": "product-uuid", "batteryLevel": 88}
+                        ]
+                    }
+                },
+                "label": {
+                    "values": {
+                        "products": [
+                            {
+                                "id": 4,
+                                "nameCustom": "Garage detector",
+                                "typeLong": "Movement detector",
+                                "zone": 2,
+                            }
+                        ],
+                        "zones": [{"id": 2, "nameCustom": "Garage"}],
+                        "accessCodes": [{"id": 1, "nameCustom": "Private"}],
+                    }
+                },
+            }
+        )
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+
+        result = await alarm.get_alarm_products()
+
+        self.assertEqual(
+            result,
+            {
+                "zones": [{"id": 2, "name_custom": "Garage"}],
+                "products": [
+                    {
+                        "id": 4,
+                        "name_custom": "Garage detector",
+                        "type_long": "Movement detector",
+                        "zone": 2,
+                        "uuid": "product-uuid",
+                        "battery_level": 88,
+                    }
+                ],
+            },
+        )
+        self.assertNotIn("accessCodes", result)
+
+    async def test_alarm_product_configuration_filters_sensitive_sections(self) -> None:
+        """Only common product settings should reach a service response."""
+        client = MagicMock()
+        client.get_alarm_product_configuration_cdata = AsyncMock(
+            return_value={
+                "values": {
+                    "id": 4,
+                    "common": {
+                        "inactive": False,
+                        "zone": 2,
+                        "autoProtectActive": True,
+                    },
+                    "transmitter": {"codePin": "secret"},
+                }
+            }
+        )
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+
+        result = await alarm.get_alarm_product_configuration("123456", 4)
+
+        self.assertEqual(
+            result,
+            {"id": 4, "active": True, "zone": 2, "auto_protect_active": True},
+        )
+        self.assertNotIn("transmitter", result)
+
     async def test_empty_success_response_is_treated_as_acknowledgement(self) -> None:
         """An empty successful response must not be reported as an unknown message."""
         logger.reset_mock()
@@ -119,6 +197,58 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
 
         self.assertIsNone(devices)
         logger.warning.assert_not_called()
+
+    async def test_single_alarm_configuration_cdata_completes_reply(self) -> None:
+        """Non-history cdata must complete without a streamed EOR sentinel."""
+        client = MagicMock()
+        handler = MessageHandler(client, b"")
+        handler.get_type_from_id = MagicMock(return_value="alarm")
+        handler.get_name_from_id = MagicMock(return_value="Alarm")
+        reply_event = asyncio.Event()
+        handler._end_reply_events["request-1"] = reply_event
+
+        await handler.parse_devices_cdata(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [
+                        {
+                            "id": 10,
+                            "error": 0,
+                            "cdata": [
+                                {
+                                    "name": "productConf",
+                                    "values": {"id": 4, "common": {"zone": 2}},
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            "request-1",
+        )
+
+        self.assertTrue(reply_event.is_set())
+        self.assertEqual(
+            handler.get_reply("request-1")["events"][0]["name"], "productConf"
+        )
+
+    async def test_rejected_alarm_configuration_redacts_pin(self) -> None:
+        """An alarm PIN in Uri-Origin must never be written to the log."""
+        logger.reset_mock()
+        handler = MessageHandler(MagicMock(), b"")
+
+        await handler.route_response(
+            b"HTTP/1.1 403 Forbidden\r\n"
+            b"Uri-Origin: /devices/20/endpoints/10/cdata?name=productConf&pwd=123456&id=4\r\n"
+            b"Content-Type: text/html\r\n"
+            b"Content-Length: 6\r\n"
+            b"Transac-Id: request-1\r\n\r\nDenied"
+        )
+
+        warning = str(logger.warning.call_args)
+        self.assertNotIn("123456", warning)
+        self.assertIn("pwd=***", warning)
 
     async def test_empty_ping_acknowledgement_updates_liveness(self) -> None:
         """The gateway's bodyless ping response must clear a pending ping."""

@@ -29,6 +29,104 @@ get_events:
               value: ON_OFF
             - label: All alarm events
               value: EVENTS
+get_alarm_products:
+  name: Get alarm products and zones
+  description: Retrieve the products and zones configured on a TYXAL alarm. This service does not require the alarm PIN.
+  target:
+    entity:
+      integration: deltadore_tydom
+      domain: alarm_control_panel
+get_alarm_product_configuration:
+  name: Get alarm product configuration
+  description: Retrieve the active state and zone assignment of a TYXAL alarm product.
+  target:
+    entity:
+      integration: deltadore_tydom
+      domain: alarm_control_panel
+  fields:
+    code:
+      name: Alarm PIN
+      description: PIN used to access the alarm configuration.
+      required: true
+      selector:
+        text:
+          type: password
+    product_id:
+      name: Product ID
+      description: Product identifier returned by Get alarm products and zones.
+      required: true
+      selector:
+        number:
+          min: 0
+          mode: box
+configure_alarm_product:
+  name: Configure alarm product
+  description: Enable or disable a TYXAL product, assign it to a zone, or perform both changes together.
+  target:
+    entity:
+      integration: deltadore_tydom
+      domain: alarm_control_panel
+  fields:
+    code:
+      name: Alarm PIN
+      description: PIN used to change the alarm configuration.
+      required: true
+      selector:
+        text:
+          type: password
+    product_id:
+      name: Product ID
+      description: Product identifier returned by Get alarm products and zones.
+      required: true
+      selector:
+        number:
+          min: 0
+          mode: box
+    active:
+      name: Active
+      description: Whether the product should participate in the alarm system. Leave empty to keep its current setting.
+      required: false
+      selector:
+        boolean:
+    zone:
+      name: Zone
+      description: Zone to which the product should be assigned. Leave empty to keep its current assignment.
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 8
+          mode: box
+rename_alarm_zone:
+  name: Rename alarm zone
+  description: Change the custom name of one TYXAL alarm zone.
+  target:
+    entity:
+      integration: deltadore_tydom
+      domain: alarm_control_panel
+  fields:
+    code:
+      name: Alarm PIN
+      description: PIN used to change the alarm configuration.
+      required: true
+      selector:
+        text:
+          type: password
+    zone_id:
+      name: Zone ID
+      description: Zone identifier returned by Get alarm products and zones.
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 8
+          mode: box
+    name:
+      name: Zone name
+      description: New custom name for the zone.
+      required: true
+      selector:
+        text:
 reload_devices:
   name: Reload devices
   description: Recharger tous les appareils et entités comme au démarrage initial. Cette action supprime toutes les entités existantes et les recrée depuis zéro.

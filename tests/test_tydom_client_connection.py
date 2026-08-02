@@ -96,6 +96,7 @@ _original_modules.setdefault(module_name, sys.modules.get(module_name, _MISSING)
 sys.modules[module_name] = client_module
 spec.loader.exec_module(client_module)
 TydomClient = client_module.TydomClient
+sanitize_log_message = client_module.sanitize_log_message
 
 for name, original in _original_modules.items():
     if original is _MISSING:
@@ -166,6 +167,86 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
                 call("20", "10", "123456", "ON", "1", True),
                 call("20", "10", "123456", "ON", "3", True),
             ],
+        )
+
+    async def test_alarm_inventory_reads_product_info_and_labels(self) -> None:
+        """The alarm inventory must combine the two official read commands."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(
+            side_effect=[
+                [{"name": "productInfo", "values": {"products": []}}],
+                [{"name": "label", "values": {"products": [], "zones": []}}],
+            ]
+        )
+
+        result = await client.get_alarm_products_cdata("20", "10")
+
+        self.assertEqual(result["productInfo"]["name"], "productInfo")
+        self.assertEqual(result["label"]["name"], "label")
+        self.assertEqual(
+            client.get_reply_to_request.await_args_list,
+            [
+                call("GET", "/devices/20/endpoints/10/cdata?name=productInfo"),
+                call("GET", "/devices/20/endpoints/10/cdata?name=label"),
+            ],
+        )
+
+    async def test_alarm_product_configuration_uses_encoded_pin(self) -> None:
+        """The read command must follow the official query-string protocol."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(
+            return_value=[{"name": "productConf", "values": {"id": 4}}]
+        )
+
+        result = await client.get_alarm_product_configuration_cdata(
+            "20", "10", "12&34", 4
+        )
+
+        self.assertEqual(result["values"]["id"], 4)
+        client.get_reply_to_request.assert_awaited_once_with(
+            "GET",
+            "/devices/20/endpoints/10/cdata?name=productConf&pwd=12%2634&id=4",
+        )
+        self.assertNotIn("12&34", sanitize_log_message("?pwd=12&34"))
+
+    async def test_alarm_product_update_sends_only_requested_fields(self) -> None:
+        """A partial update must not overwrite unrelated product settings."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+
+        await client.put_alarm_product_configuration_cdata(
+            "20", "10", "123456", 4, active=False, zone=3
+        )
+
+        client.get_reply_to_request.assert_awaited_once_with(
+            "PUT",
+            "/devices/20/endpoints/10/cdata?name=productConf",
+            body={
+                "pwd": "123456",
+                "id": 4,
+                "common": {"inactive": True, "zone": 3},
+            },
+        )
+
+    async def test_alarm_zone_rename_uses_custom_label_command(self) -> None:
+        """Zone renaming must use the official zoneLabelConf payload."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+
+        await client.put_alarm_zone_label_cdata("20", "10", "123456", 2, "Outbuildings")
+
+        client.get_reply_to_request.assert_awaited_once_with(
+            "PUT",
+            "/devices/20/endpoints/10/cdata?name=zoneLabelConf",
+            body={
+                "pwd": "123456",
+                "id": 2,
+                "label": {
+                    "nameStd": None,
+                    "number": None,
+                    "nameCustom": "Outbuildings",
+                },
+            },
         )
 
     async def test_failed_initialisation_closes_candidate(self) -> None:

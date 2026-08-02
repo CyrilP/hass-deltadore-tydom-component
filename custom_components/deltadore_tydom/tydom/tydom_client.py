@@ -871,6 +871,10 @@ class TydomClient:
 
         """
         event = asyncio.Event()
+        # Some official TYXAL configuration endpoints carry the alarm PIN in
+        # the query string.  Always redact sensitive query parameters before
+        # the URL reaches a log message or an exception.
+        safe_url = sanitize_log_message(url)
 
         transaction_id, request = self._message_handler.prepare_request(
             method, url, body, headers, reply_event=event
@@ -882,12 +886,12 @@ class TydomClient:
             LOGGER.error(
                 "Failed to send request %s %s: %s",
                 method,
-                url,
+                safe_url,
                 str(e),
                 exc_info=True,
             )
             raise TydomClientApiClientCommunicationError(
-                f"Failed to send request {method} {url}: {str(e)}"
+                f"Failed to send request {method} {safe_url}: {str(e)}"
             ) from e
 
         # Wait for the reply with timeout
@@ -898,14 +902,14 @@ class TydomClient:
             LOGGER.warning(
                 "Timeout waiting for reply to %s %s (transaction_id: %s, timeout: %.1fs)",
                 method,
-                url,
+                safe_url,
                 transaction_id,
                 timeout,
             )
             # Remove the pending reply to avoid memory leak
             self._message_handler.remove_reply(transaction_id)
             raise TydomClientApiClientCommunicationError(
-                f"Timeout waiting for reply to {method} {url}"
+                f"Timeout waiting for reply to {method} {safe_url}"
             )
 
         reply = self._message_handler.get_reply(transaction_id)
@@ -914,7 +918,7 @@ class TydomClient:
             LOGGER.warning(
                 "No reply received for %s %s (transaction_id: %s)",
                 method,
-                url,
+                safe_url,
                 transaction_id,
             )
             return None
@@ -1579,6 +1583,118 @@ class TydomClient:
         # apart), so the reply wait needs the long timeout; the default one
         # (10 s) cuts the stream off after a few events.
         return await self.get_reply_to_request("GET", url, timeout=TIMEOUT_LONG_REQUEST)
+
+    @staticmethod
+    def _first_cdata_value(messages: list[dict] | None) -> dict | None:
+        """Return the first non-sentinel cdata response."""
+        if not messages:
+            return None
+        return next(
+            (
+                message
+                for message in messages
+                if isinstance(message, dict) and not message.get("EOR", False)
+            ),
+            None,
+        )
+
+    async def get_alarm_products_cdata(
+        self, device_id: str, endpoint_id: str
+    ) -> dict[str, dict | None]:
+        """Get the TYXAL product inventory and its user-facing labels."""
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        base_url = f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+        product_info = await self.get_reply_to_request(
+            "GET", f"{base_url}?name=productInfo"
+        )
+        labels = await self.get_reply_to_request("GET", f"{base_url}?name=label")
+        return {
+            "productInfo": self._first_cdata_value(product_info),
+            "label": self._first_cdata_value(labels),
+        }
+
+    async def get_alarm_product_configuration_cdata(
+        self,
+        device_id: str,
+        endpoint_id: str,
+        alarm_pin: str,
+        product_id: int,
+    ) -> dict | None:
+        """Get the common configuration of one TYXAL product."""
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        safe_pin = quote(str(alarm_pin), safe="")
+        url = (
+            f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+            f"?name=productConf&pwd={safe_pin}&id={int(product_id)}"
+        )
+        messages = await self.get_reply_to_request("GET", url)
+        return self._first_cdata_value(messages)
+
+    async def put_alarm_product_configuration_cdata(
+        self,
+        device_id: str,
+        endpoint_id: str,
+        alarm_pin: str,
+        product_id: int,
+        *,
+        active: bool | None = None,
+        zone: int | None = None,
+    ) -> None:
+        """Update selected common settings of one TYXAL product."""
+        common: dict[str, bool | int] = {}
+        if active is not None:
+            common["inactive"] = not active
+        if zone is not None:
+            common["zone"] = int(zone)
+        if not common:
+            raise ValueError("At least one product setting must be supplied")
+
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        url = (
+            f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+            "?name=productConf"
+        )
+        await self.get_reply_to_request(
+            "PUT",
+            url,
+            body={
+                "pwd": str(alarm_pin),
+                "id": int(product_id),
+                "common": common,
+            },
+        )
+
+    async def put_alarm_zone_label_cdata(
+        self,
+        device_id: str,
+        endpoint_id: str,
+        alarm_pin: str,
+        zone_id: int,
+        name: str,
+    ) -> None:
+        """Rename a TYXAL zone using the official zone label command."""
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        url = (
+            f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+            "?name=zoneLabelConf"
+        )
+        await self.get_reply_to_request(
+            "PUT",
+            url,
+            body={
+                "pwd": str(alarm_pin),
+                "id": int(zone_id),
+                "label": {
+                    "nameStd": None,
+                    "number": None,
+                    "nameCustom": name,
+                },
+            },
+        )
 
     async def update_firmware(self):
         """Update Tydom firmware."""

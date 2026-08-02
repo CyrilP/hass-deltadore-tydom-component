@@ -167,6 +167,37 @@
                 }
             }
         },
+        "get_alarm_products": {
+            "name": "Get alarm products and zones",
+            "description": "Retrieve the products and zones configured on a TYXAL alarm."
+        },
+        "get_alarm_product_configuration": {
+            "name": "Get alarm product configuration",
+            "description": "Retrieve the active state and zone assignment of a TYXAL alarm product.",
+            "fields": {
+                "code": {"name": "Alarm PIN", "description": "PIN used to access the alarm configuration."},
+                "product_id": {"name": "Product ID", "description": "Identifier returned by Get alarm products and zones."}
+            }
+        },
+        "configure_alarm_product": {
+            "name": "Configure alarm product",
+            "description": "Enable or disable a TYXAL product and change its zone assignment.",
+            "fields": {
+                "code": {"name": "Alarm PIN", "description": "PIN used to change the alarm configuration."},
+                "product_id": {"name": "Product ID", "description": "Identifier returned by Get alarm products and zones."},
+                "active": {"name": "Active", "description": "Whether the product should participate in the alarm system."},
+                "zone": {"name": "Zone", "description": "Zone to which the product should be assigned."}
+            }
+        },
+        "rename_alarm_zone": {
+            "name": "Rename alarm zone",
+            "description": "Change the custom name of one TYXAL alarm zone.",
+            "fields": {
+                "code": {"name": "Alarm PIN", "description": "PIN used to change the alarm configuration."},
+                "zone_id": {"name": "Zone ID", "description": "Identifier returned by Get alarm products and zones."},
+                "name": {"name": "Zone name", "description": "New custom name for the zone."}
+            }
+        },
         "reload_devices": {
             "name": "Reload devices",
             "description": "Reload all devices and entities as at initial startup. This action removes all existing entities and recreates them from scratch."

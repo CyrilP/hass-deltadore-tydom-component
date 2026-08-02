@@ -38,6 +38,17 @@ from .tydom_devices import (
     TydomScene,
 )
 
+
+def _sanitize_uri(uri: str) -> str:
+    """Redact credentials carried by legacy TYDOM query parameters."""
+    return re.sub(
+        r"([?&](?:password|pwd|passwd|token|access_token)=)[^&\s]*",
+        r"\1***",
+        uri,
+        flags=re.IGNORECASE,
+    )
+
+
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
@@ -436,7 +447,7 @@ class MessageHandler:
                 LOGGER.warning(
                     "Request '%s' (%s) rejected with HTTP status %s: %s",
                     transaction_id,
-                    uri_origin,
+                    _sanitize_uri(uri_origin),
                     status,
                     (parsed_message.body or b"")[:500],
                 )
@@ -1552,6 +1563,17 @@ class MessageHandler:
                                         transaction_id,
                                     )
                                     reply["events"].append(elem)
+                                    # Configuration reads and writes return one
+                                    # cdata object. Unlike streamed history,
+                                    # they do not require an EOR sentinel.
+                                    if elem.get("name") != "histo":
+                                        reply["done"] = True
+                                        if (
+                                            event := self._end_reply_events.pop(
+                                                transaction_id, None
+                                            )
+                                        ) is not None:
+                                            event.set()
                             else:
                                 LOGGER.debug(
                                     "Ignore cdata message targetting '%s' (%s).",
