@@ -22,6 +22,7 @@ from .tydom.tydom_devices import (
     TydomGarage,
     TydomLight,
     TydomSwitch,
+    TydomInterrupter,
     TydomPlug,
     TydomAlarm,
     TydomWeather,
@@ -47,6 +48,8 @@ from .ha_entities import (
     HaGate,
     HaGarage,
     HaLight,
+    HAInterrupterBattery,
+    HAInterrupterEvent,
     HaAlarm,
     HaWeather,
     HaMoisture,
@@ -58,7 +61,9 @@ from .ha_entities import (
     HAButton,
     HAReloadButton,
     HARefreshEnergyButton,
-    HAGroup,
+    HACoverGroup,
+    HALightGroup,
+    HASwitchGroup,
     HAMoment,
     HARemoteBattery,
     HARemoteEvent,
@@ -138,6 +143,7 @@ class Hub:
         self._reload_button_created = False
         self._refresh_energy_button_created = False
         self._remote_battery_entities: dict[str, HARemoteBattery] = {}
+        self._interrupter_battery_entities: dict[str, HAInterrupterBattery] = {}
         self._shutting_down = False
 
         # Polling cache for optimization
@@ -161,6 +167,7 @@ class Hub:
             TydomGarage: self._create_garage_device,
             TydomLight: self._create_light_device,
             TydomSwitch: self._create_switch_device,
+            TydomInterrupter: self._create_interrupter_device,
             TydomPlug: self._create_switch_device,
             TydomAlarm: self._create_alarm_device,
             TydomWeather: self._create_weather_device,
@@ -331,6 +338,16 @@ class Hub:
                         await self.update_ha_device(
                             self.devices[device.device_id], device
                         )
+                self._refresh_group_members()
+
+    def _refresh_group_members(self) -> None:
+        """Resolve group members again after each protocol message batch."""
+        for device in self.devices.values():
+            if not isinstance(device, TydomGroup):
+                continue
+            ha_device = getattr(device, "_ha_device", None)
+            if ha_device is not None and hasattr(ha_device, "refresh_members"):
+                ha_device.refresh_members()
 
     async def create_ha_device(self, device: TydomDevice) -> None:
         """Create a new HA device using factory pattern.
@@ -565,6 +582,23 @@ class Hub:
         if self.add_sensor_callback is not None:
             self.add_sensor_callback(ha_device.get_sensors())
 
+    async def _create_interrupter_device(self, device: TydomInterrupter) -> None:
+        """Create a wall-switch event entity and one battery diagnostic."""
+        LOGGER.debug("Create wall-switch button %s", device.device_id)
+        ha_device = HAInterrupterEvent(device, self._hass)
+        self.ha_devices[device.device_id] = ha_device
+        if self.add_event_callback is not None:
+            self.add_event_callback([ha_device])
+
+        battery = self._interrupter_battery_entities.get(device.physical_device_id)
+        if battery is None:
+            battery = HAInterrupterBattery(device, self._hass)
+            self._interrupter_battery_entities[device.physical_device_id] = battery
+            if self.add_binary_sensor_callback is not None:
+                self.add_binary_sensor_callback([battery])
+        else:
+            battery.add_device(device)
+
     async def _create_switch_device(self, device: TydomPlug | TydomSwitch) -> None:
         """Create a switch device for a controllable binary output."""
         LOGGER.debug("Create switch %s", device.device_id)
@@ -631,12 +665,28 @@ class Hub:
             self.add_scene_callback([ha_device])
 
     async def _create_group_device(self, device: TydomGroup) -> None:
-        """Create group device."""
-        LOGGER.debug("Create group %s", device.device_id)
-        ha_device = HAGroup(device, self._hass)
+        """Create a native Home Assistant entity for a controllable group."""
+        LOGGER.debug("Create %s group %s", device.group_usage, device.device_id)
+        if device.group_usage == "light":
+            ha_device = HALightGroup(device, self._hass)
+            callback = self.add_light_callback
+        elif device.group_usage in {"awning", "shutter"}:
+            ha_device = HACoverGroup(device, self._hass)
+            callback = self.add_cover_callback
+        elif device.group_usage == "plug":
+            ha_device = HASwitchGroup(device, self._hass)
+            callback = self.add_switch_callback
+        else:
+            LOGGER.debug(
+                "Ignore unsupported group %s (%s)",
+                device.device_id,
+                device.group_usage,
+            )
+            return
+
         self.ha_devices[device.device_id] = ha_device
-        if self.add_button_callback is not None:
-            self.add_button_callback([ha_device])
+        if callback is not None:
+            callback([ha_device])
 
     async def _create_moment_device(self, device: TydomMoment) -> None:
         """Create moment device."""
@@ -892,6 +942,7 @@ class Hub:
         self.devices.clear()
         self.ha_devices.clear()
         self._remote_battery_entities.clear()
+        self._interrupter_battery_entities.clear()
         # Réinitialiser le flag pour recréer le bouton après le rechargement
         self._reload_button_created = False
         self._refresh_energy_button_created = False
@@ -977,22 +1028,16 @@ class Hub:
                 # Check grpAct
                 grp_act = getattr(device, "grpAct", None)
                 if grp_act and isinstance(grp_act, list):
+                    from .tydom.MessageHandler import groups_data
+
                     for grp_action in grp_act:
                         if isinstance(grp_action, dict):
                             grp_id = grp_action.get("id")
                             if grp_id:
                                 grp_id_str = str(grp_id)
-                                # Check if group exists
-                                group_found = False
-                                for _id, _device in self.devices.items():
-                                    if (
-                                        isinstance(_device, TydomGroup)
-                                        and _device.group_id == grp_id_str
-                                    ):
-                                        group_found = True
-                                        break
-
-                                if not group_found:
+                                # All groups remain in protocol metadata even
+                                # when no Home Assistant control is appropriate.
+                                if grp_id_str not in groups_data:
                                     issues.append(
                                         f"Scene {device.device_name} ({device_id}) references non-existent group: {grp_id_str}"
                                     )

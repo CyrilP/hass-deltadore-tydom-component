@@ -136,6 +136,25 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         self.assertIsNone(devices)
         client.receive_pong.assert_called_once_with()
 
+    async def test_nested_event_refreshes_devices(self) -> None:
+        """A specialised event URI must use the generic event handler."""
+        logger.reset_mock()
+        client = MagicMock()
+        client.get_devices_data = AsyncMock()
+        handler = MessageHandler(client, b"")
+        body = b'{"mode":"STOP","support":["STOP","HEATING"]}'
+
+        devices = await handler.route_response(
+            b"POST /events/home/hvac HTTP/1.1\r\n"
+            b"Content-Type: application/json\r\n"
+            + f"Content-Length: {len(body)}\r\n\r\n".encode()
+            + body
+        )
+
+        self.assertIsNone(devices)
+        client.get_devices_data.assert_awaited_once_with()
+        logger.warning.assert_not_called()
+
     async def test_light_commands_poll_regular_data_endpoint(self) -> None:
         """Light state refreshes must use the supported data endpoint."""
         client = MagicMock()

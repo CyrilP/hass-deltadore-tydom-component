@@ -475,6 +475,8 @@ class TydomBoiler(TydomDevice):
     async def set_hvac_mode(self, mode):
         """Set hvac mode (ANTI_FROST/NORMAL/STOP)."""
         LOGGER.debug("setting hvac mode to %s", mode)
+        # Mode changes must not clear or replace the setpoint. TYDOM retains
+        # the user's last setpoint and restores it when heating resumes.
         if hasattr(self, "area_id"):
             area_modes = {
                 "NORMAL": "HEATING",
@@ -508,15 +510,11 @@ class TydomBoiler(TydomDevice):
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "thermicLevel", ""
                 )
-                if self._metadata is not None and "setpoint" in self._metadata:
-                    await self.set_temperature("19.0")
             elif mode in ("NORMAL", "HEATING"):
                 await self._tydom_client.put_home_hvac_mode("HEATING")
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "thermicLevel", ""
                 )
-                if self._metadata is not None and "setpoint" in self._metadata:
-                    await self.set_temperature("19.0")
             elif mode == "ANTI_FROST":
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "thermicLevel", "ANTI_FROST"
@@ -527,9 +525,6 @@ class TydomBoiler(TydomDevice):
 
         if mode == "ANTI_FROST":
             if hasattr(self, "hvacMode"):
-                await self._tydom_client.put_devices_data(
-                    self._id, self._endpoint, "setpoint", None
-                )
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "thermicLevel", "STOP"
                 )
@@ -551,12 +546,6 @@ class TydomBoiler(TydomDevice):
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "hvacMode", "NORMAL"
                 )
-                # Only push a setpoint for devices that actually have one
-                # (real thermostats expose setpoint metadata). Fil-pilote zones
-                # have none; writing one is a phantom value ignored by the
-                # device (upstream #246).
-                if self._metadata is not None and "setpoint" in self._metadata:
-                    await self.set_temperature("19.0")
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "antifrostOn", False
                 )
@@ -587,9 +576,6 @@ class TydomBoiler(TydomDevice):
 
         elif mode == "STOP":
             if hasattr(self, "hvacMode"):
-                await self._tydom_client.put_devices_data(
-                    self._id, self._endpoint, "setpoint", None
-                )
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "hvacMode", "STOP"
                 )
@@ -675,6 +661,75 @@ class TydomBoiler(TydomDevice):
 
 class TydomWindow(TydomDevice):
     """represents a window."""
+
+
+class TydomInterrupter(TydomDevice):
+    """Represent one button endpoint of a physical wall switch."""
+
+    def __init__(
+        self,
+        tydom_client: TydomClient,
+        uid: str,
+        device_id: str,
+        name: str,
+        device_type: str,
+        endpoint: str | None,
+        metadata: dict | None,
+        data: dict | None,
+        interrupter_info: dict | None = None,
+    ) -> None:
+        """Initialise a wall-switch button endpoint."""
+        super().__init__(
+            tydom_client,
+            uid,
+            device_id,
+            name,
+            device_type,
+            endpoint,
+            metadata,
+            data,
+        )
+        info = interrupter_info or {}
+        self._physical_device_id = str(info.get("physical_device_id", device_id))
+        self._interrupter_name = str(
+            info.get("name", f"Wall switch {self._physical_device_id}")
+        )
+        self._interrupter_model = str(info.get("model", "Delta Dore wall switch"))
+        self._button = info.get("button")
+        self._configured_action = str(info.get("configured_action", "TOGGLE"))
+        self._event_sequence = 0
+
+    @property
+    def physical_device_id(self) -> str:
+        """Return the identifier shared by both wall-switch buttons."""
+        return self._physical_device_id
+
+    @property
+    def interrupter_name(self) -> str:
+        """Return the configured name of the physical wall switch."""
+        return self._interrupter_name
+
+    @property
+    def interrupter_model(self) -> str:
+        """Return the wall-switch model inferred from TYDOM configuration."""
+        return self._interrupter_model
+
+    @property
+    def button(self) -> str | None:
+        """Return the physical button represented by this endpoint."""
+        return self._button
+
+    @property
+    def event_sequence(self) -> int:
+        """Return a monotonically increasing sequence for fresh button actions."""
+        return self._event_sequence
+
+    async def update_device(self, device) -> None:
+        """Record fresh switch actions before publishing the endpoint update."""
+        action = getattr(device, "action", None)
+        if action is not None and action != "IDLE":
+            self._event_sequence += 1
+        await super().update_device(device)
 
 
 class TydomDoor(TydomDevice):
