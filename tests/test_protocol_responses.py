@@ -182,6 +182,68 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         )
         self.assertNotIn("transmitter", result)
 
+    async def test_unacknowledged_alarm_events_are_sanitised_and_cached(self) -> None:
+        """Pending history should provide a bounded dashboard-safe event list."""
+        client = MagicMock()
+        client.get_historic_cdata = AsyncMock(
+            return_value=[
+                {
+                    "values": {
+                        "event": {
+                            "name": "INTRUSION",
+                            "date": "2026-08-02T19:00:00",
+                            "zones": [2],
+                            "product": {
+                                "nameCustom": "Garage detector",
+                                "typeLong": "DMB",
+                                "privateRadioIdentifier": "hidden",
+                            },
+                            "accessCode": {"nameCustom": "Owner", "id": 12},
+                            "privateField": "hidden",
+                        }
+                    }
+                }
+            ]
+        )
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+        callback = MagicMock()
+        alarm.register_callback(callback)
+
+        result = await alarm.get_events("UNACKED_EVENTS")
+
+        self.assertEqual(
+            result,
+            [
+                {
+                    "name": "INTRUSION",
+                    "date": "2026-08-02T19:00:00",
+                    "zones": [2],
+                    "product": {
+                        "nameCustom": "Garage detector",
+                        "typeLong": "DMB",
+                    },
+                    "accessCode": {"nameCustom": "Owner"},
+                }
+            ],
+        )
+        self.assertEqual(alarm.pending_events, result)
+        callback.assert_called_once_with()
+
+    async def test_acknowledgement_clears_cached_alarm_events(self) -> None:
+        """A successful acknowledgement should clear the dashboard immediately."""
+        client = MagicMock()
+        client.put_ackevents_cdata = AsyncMock()
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+        alarm._pending_events = [{"name": "INTRUSION"}]
+        callback = MagicMock()
+        alarm.register_callback(callback)
+
+        await alarm.acknowledge_events()
+
+        client.put_ackevents_cdata.assert_awaited_once_with("20", "10", None)
+        self.assertEqual(alarm.pending_events, [])
+        callback.assert_called_once_with()
+
     async def test_empty_success_response_is_treated_as_acknowledgement(self) -> None:
         """An empty successful response must not be reported as an unknown message."""
         logger.reset_mock()

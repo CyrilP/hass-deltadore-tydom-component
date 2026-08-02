@@ -948,6 +948,20 @@ class TydomLight(TydomDevice):
 class TydomAlarm(TydomDevice):
     """represents an alarm."""
 
+    def __init__(self, *args, **kwargs) -> None:
+        """Initialise an alarm and its dashboard event cache."""
+        super().__init__(*args, **kwargs)
+        self._pending_events: list[dict[str, Any]] | None = None
+
+    @property
+    def pending_events(self) -> list[dict[str, Any]] | None:
+        """Return the most recently fetched unacknowledged events."""
+        return self._pending_events
+
+    def clear_pending_events(self) -> None:
+        """Clear the local event cache after acknowledgement or a clear state."""
+        self._pending_events = []
+
     def is_legacy_alarm(self) -> bool:
         """Check if alarm is legacy."""
         if hasattr(self, "part1State"):
@@ -1036,6 +1050,8 @@ class TydomAlarm(TydomDevice):
     async def acknowledge_events(self, code=None) -> None:
         """Acknowledge alarm events."""
         await self._tydom_client.put_ackevents_cdata(self._id, self._endpoint, code)
+        self.clear_pending_events()
+        await self.publish_updates()
 
     _KEPT_KEYS: ClassVar = {
         "": {"name", "date", "zones", "accessCode", "product"},
@@ -1074,11 +1090,15 @@ class TydomAlarm(TydomDevice):
         #   "parameters":{"type":"<event_type>","nbElem":10,"indexStart":0},
         #   "values":{"step":0,"nbElemTot":1,"index":0,"event":{...}}
         # }
-        return [
+        formatted_events = [
             self._format_alarm_event(m["values"]["event"])
             for m in (events or [])
             if m.get("values", {}).get("event") is not None
         ]
+        if event_type == "UNACKED_EVENTS":
+            self._pending_events = formatted_events
+            await self.publish_updates()
+        return formatted_events
 
     def _require_endpoint(self) -> str:
         """Return the alarm endpoint or fail before building a request."""

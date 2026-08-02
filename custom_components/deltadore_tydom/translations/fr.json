@@ -265,6 +265,9 @@
         "weather": {},
         "update": {},
         "sensor": {
+            "pending_alarm_events": {
+                "name": "Évènements d'alarme en attente"
+            },
             "temperature": {
                 "name": "Température"
             },

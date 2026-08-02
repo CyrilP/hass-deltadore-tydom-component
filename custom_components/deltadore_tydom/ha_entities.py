@@ -5997,6 +5997,103 @@ class HAAlarmAcknowledgeButton(ButtonEntity, HAEntity):
         await self._device.acknowledge_events()
 
 
+class HAAlarmPendingEventsSensor(SensorEntity, HAEntity):
+    """Dashboard-friendly view of unacknowledged TYXAL alarm events."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_translation_key = "pending_alarm_events"
+    _attr_icon = "mdi:shield-alert-outline"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, device: TydomAlarm, hass) -> None:
+        """Initialise the pending-events sensor."""
+        self.hass = hass
+        self._device = device
+        self._attr_unique_id = f"{device.device_id}_pending_alarm_events"
+        self._last_unacked_state = bool(getattr(device, "unackedEvent", False))
+        self._refresh_task = None
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the number of cached unacknowledged events."""
+        events = self._device.pending_events
+        return None if events is None else len(events)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the bounded TYXAL event list for dashboards and automations."""
+        events = self._device.pending_events
+        if events is None:
+            return {}
+        return {
+            "events": events,
+            "latest_event": events[0] if events else None,
+        }
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Link the sensor to the existing TYXAL alarm device."""
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
+        }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return self._enrich_device_info(info)
+
+    async def async_added_to_hass(self) -> None:
+        """Fetch pending events initially and react to alarm supervision pushes."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self._handle_alarm_update)
+        if self._last_unacked_state:
+            self._schedule_refresh()
+        else:
+            self._device.clear_pending_events()
+            self.async_write_ha_state()
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the alarm-state callback and cancel an outstanding refresh."""
+        self._device.remove_callback(self._handle_alarm_update)
+        if self._refresh_task is not None:
+            self._refresh_task.cancel()
+        await super().async_will_remove_from_hass()
+
+    def _handle_alarm_update(self) -> None:
+        """Refresh history when TYXAL reports a new unacknowledged condition."""
+        unacked = bool(getattr(self._device, "unackedEvent", False))
+        should_refresh = unacked and (
+            not self._last_unacked_state or self._device.pending_events is None
+        )
+        self._last_unacked_state = unacked
+
+        if not unacked:
+            self._device.clear_pending_events()
+        elif should_refresh:
+            self._schedule_refresh()
+        self.async_write_ha_state()
+
+    def _schedule_refresh(self) -> None:
+        """Schedule one history request without delaying entity setup."""
+        if self._refresh_task is None or self._refresh_task.done():
+            self._refresh_task = self.hass.async_create_task(
+                self._async_refresh_events(),
+                "Refresh TYXAL unacknowledged events",
+            )
+
+    async def _async_refresh_events(self) -> None:
+        """Fetch the bounded list advertised by the TYXAL history endpoint."""
+        try:
+            await self._device.get_events("UNACKED_EVENTS")
+        except Exception:
+            LOGGER.exception(
+                "Unable to refresh unacknowledged events for %s",
+                self._device.device_id,
+            )
+
+
 class HAReloadButton(ButtonEntity):
     """Button entity for reloading all devices."""
 

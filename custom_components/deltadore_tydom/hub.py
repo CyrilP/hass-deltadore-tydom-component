@@ -60,6 +60,7 @@ from .ha_entities import (
     HASwitch,
     HAButton,
     HAAlarmAcknowledgeButton,
+    HAAlarmPendingEventsSensor,
     HAReloadButton,
     HACoverGroup,
     HALightGroup,
@@ -587,7 +588,9 @@ class Hub:
         if self.add_button_callback is not None:
             self.add_button_callback([HAAlarmAcknowledgeButton(device, self._hass)])
         if self.add_sensor_callback is not None:
-            self.add_sensor_callback(ha_device.get_sensors())
+            self.add_sensor_callback(
+                [HAAlarmPendingEventsSensor(device, self._hass), *ha_device.get_sensors()]
+            )
 
     async def _create_weather_device(self, device: TydomWeather) -> None:
         """Create weather device."""
