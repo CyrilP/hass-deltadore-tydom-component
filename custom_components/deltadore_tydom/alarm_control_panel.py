@@ -22,7 +22,7 @@ SERVICE_RENAME_ALARM_ZONE = "rename_alarm_zone"
 
 ALARM_CODE_SCHEMA = vol.All(cv.string, vol.Length(min=1))
 PRODUCT_ID_SCHEMA = vol.All(vol.Coerce(int), vol.Range(min=0))
-ZONE_ID_SCHEMA = vol.All(vol.Coerce(int), vol.Range(min=1, max=8))
+ZONE_ID_SCHEMA = vol.All(vol.Coerce(int), vol.Range(min=0, max=7))
 
 
 async def async_setup_entry(

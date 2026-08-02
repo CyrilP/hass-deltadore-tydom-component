@@ -94,8 +94,8 @@ configure_alarm_product:
       required: false
       selector:
         number:
-          min: 1
-          max: 8
+          min: 0
+          max: 7
           mode: box
 rename_alarm_zone:
   name: Rename alarm zone
@@ -118,8 +118,8 @@ rename_alarm_zone:
       required: true
       selector:
         number:
-          min: 1
-          max: 8
+          min: 0
+          max: 7
           mode: box
     name:
       name: Zone name

@@ -125,10 +125,10 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
                                 "id": 4,
                                 "nameCustom": "Garage detector",
                                 "typeLong": "Movement detector",
-                                "zone": 2,
+                                "zone": 0,
                             }
                         ],
-                        "zones": [{"id": 2, "nameCustom": "Garage"}],
+                        "zones": [{"id": 0, "nameCustom": "Ground floor"}],
                         "accessCodes": [{"id": 1, "nameCustom": "Private"}],
                     }
                 },
@@ -141,13 +141,13 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         self.assertEqual(
             result,
             {
-                "zones": [{"id": 2, "name_custom": "Garage"}],
+                "zones": [{"id": 0, "name_custom": "Ground floor"}],
                 "products": [
                     {
                         "id": 4,
                         "name_custom": "Garage detector",
                         "type_long": "Movement detector",
-                        "zone": 2,
+                        "zone": 0,
                         "uuid": "product-uuid",
                         "battery_level": 88,
                     }
@@ -165,7 +165,7 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
                     "id": 4,
                     "common": {
                         "inactive": False,
-                        "zone": 2,
+                        "zone": 0,
                         "autoProtectActive": True,
                     },
                     "transmitter": {"codePin": "secret"},
@@ -178,7 +178,7 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
 
         self.assertEqual(
             result,
-            {"id": 4, "active": True, "zone": 2, "auto_protect_active": True},
+            {"id": 4, "active": True, "zone": 0, "auto_protect_active": True},
         )
         self.assertNotIn("transmitter", result)
 
