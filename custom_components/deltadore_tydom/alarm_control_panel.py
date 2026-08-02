@@ -20,7 +20,13 @@ SERVICE_GET_ALARM_PRODUCT_CONFIGURATION = "get_alarm_product_configuration"
 SERVICE_CONFIGURE_ALARM_PRODUCT = "configure_alarm_product"
 SERVICE_RENAME_ALARM_ZONE = "rename_alarm_zone"
 
-ALARM_CODE_SCHEMA = vol.All(cv.string, vol.Length(min=1))
+ALARM_CODE_SCHEMA = vol.All(
+    cv.string,
+    vol.Match(
+        r"^[0-9A-Fa-f]{6}$",
+        msg="The TYXAL access code must contain 6 hexadecimal characters",
+    ),
+)
 PRODUCT_ID_SCHEMA = vol.All(vol.Coerce(int), vol.Range(min=0))
 ZONE_ID_SCHEMA = vol.All(vol.Coerce(int), vol.Range(min=0, max=7))
 

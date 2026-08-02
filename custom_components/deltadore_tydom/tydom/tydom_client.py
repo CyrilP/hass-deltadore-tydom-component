@@ -912,6 +912,11 @@ class TydomClient:
                 f"Timeout waiting for reply to {method} {safe_url}"
             )
 
+        if error := self._message_handler.get_reply_error(transaction_id):
+            raise TydomClientApiClientCommunicationError(
+                f"Request {method} {safe_url} failed: {error}"
+            )
+
         reply = self._message_handler.get_reply(transaction_id)
 
         if reply is None:
@@ -1629,7 +1634,14 @@ class TydomClient:
             f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
             f"?name=productConf&pwd={safe_pin}&id={int(product_id)}"
         )
-        messages = await self.get_reply_to_request("GET", url)
+        messages = await self.get_reply_to_request(
+            "GET",
+            url,
+            headers={
+                "Content-Length": "0",
+                "Content-Type": "application/json; charset=UTF-8",
+            },
+        )
         return self._first_cdata_value(messages)
 
     async def put_alarm_product_configuration_cdata(

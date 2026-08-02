@@ -1142,12 +1142,11 @@ class TydomAlarm(TydomDevice):
         self, code: str, product_id: int
     ) -> dict[str, Any]:
         """Return only the safe, common settings of one TYXAL product."""
-        message = (
-            await self._tydom_client.get_alarm_product_configuration_cdata(
-                self._id, self._require_endpoint(), code, product_id
-            )
-            or {}
+        message = await self._tydom_client.get_alarm_product_configuration_cdata(
+            self._id, self._require_endpoint(), code, product_id
         )
+        if message is None:
+            raise ValueError("The TYXAL alarm returned no product configuration")
         values = message.get("values") or {}
         common = values.get("common") or {}
         response: dict[str, Any] = {"id": values.get("id", product_id)}

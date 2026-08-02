@@ -355,6 +355,7 @@ class MessageHandler:
         self.cmd_prefix = cmd_prefix
         self._cdata_replies: list[Reply] = []
         self._end_reply_events: dict[str, asyncio.Event] = {}
+        self._reply_errors: dict[str, str] = {}
         self._area_devices: dict[str, dict[str, AreaDeviceReference]] = {}
         self._area_data: dict[str, dict[str, Any]] = {}
         self._area_metadata: dict[str, dict] = {}
@@ -412,6 +413,10 @@ class MessageHandler:
         self._end_reply_events.pop(transaction_id, None)
         LOGGER.debug("Removed pending reply for transaction_id: %s", transaction_id)
 
+    def get_reply_error(self, transaction_id: str) -> str | None:
+        """Return and forget a protocol error for one pending request."""
+        return self._reply_errors.pop(transaction_id, None)
+
     async def route_response(self, bytes_str: bytes) -> list["TydomDevice"] | None:
         """
         Identify message type and dispatch the result.
@@ -452,6 +457,12 @@ class MessageHandler:
                     (parsed_message.body or b"")[:500],
                 )
                 if transaction_id and transaction_id in self._end_reply_events:
+                    detail = (parsed_message.body or b"").decode(
+                        "utf-8", errors="replace"
+                    )
+                    self._reply_errors[transaction_id] = (
+                        f"HTTP {status}: {re.sub(r'<[^>]+>', ' ', detail).strip()}"
+                    )
                     event = self._end_reply_events.get(transaction_id)
                     self.remove_reply(transaction_id)
                     if event is not None:

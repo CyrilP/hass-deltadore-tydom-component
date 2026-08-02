@@ -237,6 +237,8 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         """An alarm PIN in Uri-Origin must never be written to the log."""
         logger.reset_mock()
         handler = MessageHandler(MagicMock(), b"")
+        reply_event = asyncio.Event()
+        handler._end_reply_events["request-1"] = reply_event
 
         await handler.route_response(
             b"HTTP/1.1 403 Forbidden\r\n"
@@ -249,6 +251,10 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         warning = str(logger.warning.call_args)
         self.assertNotIn("123456", warning)
         self.assertIn("pwd=***", warning)
+        self.assertTrue(reply_event.is_set())
+        error = handler.get_reply_error("request-1")
+        self.assertIn("HTTP 403", error)
+        self.assertIn("Denied", error)
 
     async def test_empty_ping_acknowledgement_updates_liveness(self) -> None:
         """The gateway's bodyless ping response must clear a pending ping."""

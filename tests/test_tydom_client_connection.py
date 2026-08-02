@@ -96,6 +96,9 @@ _original_modules.setdefault(module_name, sys.modules.get(module_name, _MISSING)
 sys.modules[module_name] = client_module
 spec.loader.exec_module(client_module)
 TydomClient = client_module.TydomClient
+TydomClientApiClientCommunicationError = (
+    client_module.TydomClientApiClientCommunicationError
+)
 sanitize_log_message = client_module.sanitize_log_message
 
 for name, original in _original_modules.items():
@@ -191,6 +194,25 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
             ],
         )
 
+    async def test_rejected_tracked_request_raises_protocol_error(self) -> None:
+        """A gateway rejection must not be returned as an empty success."""
+        client = self._client()
+
+        def prepare_request(_method, _url, _body, _headers, reply_event):
+            reply_event.set()
+            return "request-1", b"request"
+
+        client._message_handler.prepare_request = MagicMock(side_effect=prepare_request)
+        client._message_handler.get_reply_error = MagicMock(
+            return_value="HTTP 403: The data is not writable"
+        )
+        client.send_bytes = AsyncMock()
+
+        with self.assertRaisesRegex(TydomClientApiClientCommunicationError, "HTTP 403"):
+            await client.get_reply_to_request(
+                "GET", "/cdata?name=productConf&pwd=123456"
+            )
+
     async def test_alarm_product_configuration_uses_encoded_pin(self) -> None:
         """The read command must follow the official query-string protocol."""
         client = self._client()
@@ -206,6 +228,10 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
         client.get_reply_to_request.assert_awaited_once_with(
             "GET",
             "/devices/20/endpoints/10/cdata?name=productConf&pwd=12%2634&id=4",
+            headers={
+                "Content-Length": "0",
+                "Content-Type": "application/json; charset=UTF-8",
+            },
         )
         self.assertNotIn("12&34", sanitize_log_message("?pwd=12&34"))
 
