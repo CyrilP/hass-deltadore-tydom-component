@@ -5965,6 +5965,38 @@ class HAButton(ButtonEntity, HAEntity):
             )
 
 
+class HAAlarmAcknowledgeButton(ButtonEntity, HAEntity):
+    """Button which acknowledges pending TYXAL alarm events."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_translation_key = "acknowledge_events"
+    _attr_icon = "mdi:notification-clear-all"
+
+    def __init__(self, device: TydomAlarm, hass) -> None:
+        """Initialise the alarm acknowledgement button."""
+        self.hass = hass
+        self._device = device
+        self._attr_unique_id = f"{device.device_id}_acknowledge_events"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Link the button to the existing TYXAL alarm device."""
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
+        }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return self._enrich_device_info(info)
+
+    async def async_press(self) -> None:
+        """Acknowledge every pending alarm event."""
+        await self._device.acknowledge_events()
+
+
 class HAReloadButton(ButtonEntity):
     """Button entity for reloading all devices."""
 

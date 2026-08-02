@@ -232,6 +232,9 @@
         "scene": {},
         "switch": {},
         "button": {
+            "acknowledge_events": {
+                "name": "Acquitter les évènements"
+            },
             "group_light": {
                 "name": "Groupe Lumières"
             },

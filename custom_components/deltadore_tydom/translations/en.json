@@ -231,6 +231,9 @@
         "scene": {},
         "switch": {},
         "button": {
+            "acknowledge_events": {
+                "name": "Acknowledge events"
+            },
             "group_light": {
                 "name": "Light Group"
             },

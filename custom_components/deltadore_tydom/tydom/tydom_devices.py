@@ -1033,7 +1033,7 @@ class TydomAlarm(TydomDevice):
             self._id, self._endpoint, code, "PANIC", None, self.is_legacy_alarm()
         )
 
-    async def acknowledge_events(self, code) -> None:
+    async def acknowledge_events(self, code=None) -> None:
         """Acknowledge alarm events."""
         await self._tydom_client.put_ackevents_cdata(self._id, self._endpoint, code)
 

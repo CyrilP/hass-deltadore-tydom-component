@@ -121,6 +121,9 @@ describes how to probe available API resources and HTTP methods.
 The alarm control panel provides services for the TYXAL+ functions that are
 useful in Home Assistant:
 
+- `deltadore_tydom.get_events` returns alarm history filtered as all,
+  alarm events, activation/deactivation events or unacknowledged events;
+- `deltadore_tydom.acknowledge_events` acknowledges pending alarm events;
 - `deltadore_tydom.get_alarm_products` lists configured products and zones;
 - `deltadore_tydom.enter_alarm_maintenance` opens a locked remote
   configuration session and puts a disarmed CS8000 into maintenance mode;
@@ -139,6 +142,9 @@ reading or changing product configuration, and always exit maintenance when
 finished. The installer code is used only for the request and is redacted from
 logs. Product deletion, access codes, telephone settings and siren
 configuration are not exposed.
+
+The TYXAL alarm device also provides an **Acknowledge events** button for the
+same operation when an action call or automation is not required.
 
 ## Contributions are welcome!
 
