@@ -2,6 +2,7 @@
 
 from typing import Any
 import asyncio
+from contextlib import suppress
 import inspect
 import math
 from datetime import datetime
@@ -80,7 +81,7 @@ from homeassistant.components.weather import (
 )
 from homeassistant.components.scene import Scene
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
+from homeassistant.components.button import ButtonEntity
 from homeassistant.components.number import NumberEntity
 from homeassistant.components.select import SelectEntity
 from homeassistant.components.event import EventDeviceClass, EventEntity
@@ -5229,215 +5230,123 @@ class HASwitch(SwitchEntity, HAEntity):
                 )
 
 
-class HAGroup(ButtonEntity, HAEntity):
-    """Representation of a Tydom Group."""
+class HAGroupEntity(HAEntity):
+    """Shared behaviour for native Home Assistant group entities."""
 
     _attr_should_poll = False
     _attr_has_entity_name = True
 
     def __init__(self, device: TydomGroup, hass) -> None:
-        """Initialize HAGroup."""
+        """Initialise common group entity state."""
         self.hass = hass
         self._device = device
         self._device._ha_device = self
-        self._attr_unique_id = f"{self._device.device_id}_group"
-
-        # Get usage for translation key and icon
-        group_usage = getattr(self._device, "group_usage", None) or ""
-
-        # Set icon based on usage
-        usage_icons = {
-            "light": "mdi:lightbulb-group",
-            "shutter": "mdi:window-shutter",
-            "awning": "mdi:window-shutter-open",
-            "plug": "mdi:power-socket-eu",
-            "heating": "mdi:radiator",
-            "alarm": "mdi:shield-home",
-        }
-        self._attr_icon = usage_icons.get(group_usage, "mdi:group")
-
-        # Create entity description with translation key
-        translation_key = f"group_{group_usage}" if group_usage else None
-        entity_description = ButtonEntityDescription(
-            key=f"group_{self._device.device_id}",
-            name=self._device.device_name,
-            translation_key=translation_key,
-        )
-        self.entity_description = entity_description
-        self._attr_name = None  # primary entity inherits device name
+        self._member_callbacks: dict[int, TydomDevice] = {}
+        self._attr_name = None
 
     async def async_added_to_hass(self) -> None:
-        """Refresh on every device push (see HACover for the MRO rationale)."""
+        """Subscribe to state updates from every current group member."""
         await super().async_added_to_hass()
-        self._device.register_callback(self.async_write_ha_state)
-        self._device._ha_device = self
+        self._register_member_callbacks()
 
     async def async_will_remove_from_hass(self) -> None:
-        """Remove the push callback registered in async_added_to_hass."""
-        self._device.remove_callback(self.async_write_ha_state)
+        """Remove callbacks registered on member devices."""
+        self._remove_member_callbacks()
         if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
             self._device._ha_device = None
         await super().async_will_remove_from_hass()
 
+    def _remove_member_callbacks(self) -> None:
+        """Remove every member callback registered by this entity."""
+        for member in self._member_callbacks.values():
+            member.remove_callback(self._handle_member_update)
+        self._member_callbacks.clear()
+
+    def _handle_member_update(self) -> None:
+        """Refresh the native group after a member update."""
+        self.async_write_ha_state()
+
+    def get_sensors(self) -> list:
+        """Do not expose internal group membership as sensors."""
+        return []
+
+    def _member_devices(self) -> list[TydomDevice]:
+        """Resolve and de-duplicate the protocol devices in this group."""
+        hub = self._get_hub()
+        if hub is None or not hasattr(hub, "devices"):
+            return []
+
+        members: list[TydomDevice] = []
+        seen: set[int] = set()
+        for member_id in self._device.device_ids:
+            member = hub.devices.get(member_id)
+            if member is None:
+                member = next(
+                    (
+                        candidate
+                        for stored_id, candidate in hub.devices.items()
+                        if stored_id == member_id
+                        or str(getattr(candidate, "device_id", "")) == member_id
+                        or str(getattr(candidate, "_id", "")) == member_id
+                    ),
+                    None,
+                )
+            if member is None or isinstance(member, TydomGroup):
+                continue
+            member_identity = id(member)
+            if member_identity in seen:
+                continue
+            seen.add(member_identity)
+            members.append(member)
+        return members
+
+    def _register_member_callbacks(self) -> None:
+        """Refresh aggregate state whenever any member publishes an update."""
+        for member in self._member_devices():
+            member_identity = id(member)
+            if member_identity in self._member_callbacks:
+                continue
+            member.register_callback(self._handle_member_update)
+            self._member_callbacks[member_identity] = member
+
+    def refresh_members(self) -> None:
+        """Attach members discovered after the group and refresh its HA state."""
+        self._register_member_callbacks()
+        if getattr(self, "entity_id", None) is not None:
+            self._handle_member_update()
+
     @property
     def device_info(self) -> DeviceInfo:
         """Return information to link this entity with the gateway device."""
-        return {
+        info: DeviceInfo = {
             "identifiers": {(DOMAIN, self._device.device_id)},
             "name": self._device.device_name,
             "manufacturer": "Delta Dore",
-            "model": "Tydom Group",
-            "via_device": (DOMAIN, self._get_tydom_gateway_device_id() or ""),
+            "model": f"Tydom {self._device.group_usage.title()} Group",
         }
+        gateway_device_id = self._get_tydom_gateway_device_id()
+        if gateway_device_id is not None:
+            info["via_device"] = (DOMAIN, gateway_device_id)
+        return info
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes for the group."""
+        members = self._member_devices()
         attrs: dict[str, Any] = {
             "group_id": self._device.group_id,
             "group_usage": getattr(self._device, "group_usage", None),
-            "device_count": len(self._device.device_ids),
+            "device_count": len(members),
         }
 
-        # Add device IDs
-        if self._device.device_ids:
-            attrs["device_ids"] = self._device.device_ids
-
-            # Try to get device names and types
-            hub_instance = self._get_hub()
-            if hub_instance and hasattr(hub_instance, "devices"):
-                device_names = []
-                device_types = []
-
-                for device_id in self._device.device_ids:
-                    # Try to find device by various ID formats
-                    found_device = None
-                    for _id, device in hub_instance.devices.items():
-                        if (
-                            _id == device_id
-                            or str(getattr(device, "device_id", "")) == device_id
-                            or str(getattr(device, "_id", "")) == device_id
-                        ):
-                            found_device = device
-                            break
-
-                    if found_device:
-                        # Get device name
-                        device_name = getattr(found_device, "device_name", None)
-                        if not device_name and hasattr(found_device, "productName"):
-                            device_name = getattr(found_device, "productName", None)
-                        if device_name:
-                            device_names.append(str(device_name))
-                        else:
-                            device_names.append(f"Device {device_id}")
-
-                        # Get device type
-                        device_type = getattr(found_device, "device_type", None)
-                        if device_type:
-                            device_types.append(str(device_type))
-                        else:
-                            device_types.append("unknown")
-
-                if device_names:
-                    attrs["device_names"] = device_names
-                if device_types:
-                    attrs["device_types"] = device_types
+        if members:
+            attrs["device_ids"] = [member.device_id for member in members]
+            attrs["device_names"] = [member.device_name for member in members]
+            attrs["device_types"] = [member.device_type for member in members]
 
         return attrs
 
-    async def async_press(self) -> None:
-        """Handle the button press.
-
-        Performs an action on all devices in the group based on the group usage:
-        - shutter/awning: Open all covers
-        - light: Turn on all lights
-        - plug: Turn on all plugs
-        - heating: Not implemented (would need specific commands)
-        - alarm: Not implemented (would need specific commands)
-        """
-        group_usage = getattr(self._device, "group_usage", None) or ""
-        hub_instance = self._get_hub()
-
-        if not hub_instance or not hasattr(hub_instance, "devices"):
-            LOGGER.warning(
-                "Cannot control group %s: hub not available", self._device.device_name
-            )
-            return
-
-        LOGGER.info(
-            "Group %s (%s) button pressed - controlling %d device(s)",
-            self._device.device_name,
-            group_usage,
-            len(self._device.device_ids),
-        )
-
-        # Control all devices in the group based on usage
-        tasks = []
-        for device_id in self._device.device_ids:
-            device = hub_instance.devices.get(device_id)
-            if not device:
-                continue
-
-            try:
-                if group_usage in ("shutter", "awning"):
-                    # Open all covers
-                    if hasattr(device, "up"):
-                        tasks.append(device.up())
-                    elif hasattr(device, "open"):
-                        tasks.append(device.open())
-                elif group_usage == "light":
-                    # Turn on all lights
-                    if hasattr(device, "turn_on"):
-                        tasks.append(
-                            device.turn_on(None)
-                        )  # None = toggle or default brightness
-                    elif (
-                        hasattr(device, "_tydom_client")
-                        and hasattr(device, "_id")
-                        and hasattr(device, "_endpoint")
-                    ):
-                        # Generic light control
-                        tasks.append(
-                            device._tydom_client.put_devices_data(
-                                device._id, device._endpoint, "levelCmd", "ON"
-                            )
-                        )
-                elif group_usage == "plug":
-                    # Turn on all plugs
-                    # Note: Some plug devices might be TydomLight instances which require brightness parameter
-                    if hasattr(device, "turn_on"):
-                        # Pass None as brightness to handle both TydomLight (requires brightness)
-                        # and other devices (brightness is optional)
-                        tasks.append(device.turn_on(None))
-                    elif (
-                        hasattr(device, "_tydom_client")
-                        and hasattr(device, "_id")
-                        and hasattr(device, "_endpoint")
-                    ):
-                        # Generic plug control
-                        tasks.append(
-                            device._tydom_client.put_devices_data(
-                                device._id, device._endpoint, "levelCmd", "ON"
-                            )
-                        )
-            except Exception as e:
-                LOGGER.warning(
-                    "Error controlling device %s in group %s: %s",
-                    device_id,
-                    self._device.device_name,
-                    e,
-                )
-
-        # Execute all commands concurrently
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
-            LOGGER.debug("Group %s control completed", self._device.device_name)
-        else:
-            LOGGER.warning(
-                "No devices could be controlled for group %s", self._device.device_name
-            )
-
-    async def _control_group_devices(self, action: str, **kwargs: Any) -> None:
+    async def _control_group_devices(self, action: str, **kwargs: Any) -> bool:
         """Control all devices in the group with a specific action.
 
         Args:
@@ -5452,22 +5361,19 @@ class HAGroup(ButtonEntity, HAEntity):
             LOGGER.warning(
                 "Cannot control group %s: hub not available", self._device.device_name
             )
-            return
+            return False
 
+        members = self._member_devices()
         LOGGER.info(
             "Group %s (%s) action %s - controlling %d device(s)",
             self._device.device_name,
             group_usage,
             action,
-            len(self._device.device_ids),
+            len(members),
         )
 
         tasks = []
-        for device_id in self._device.device_ids:
-            device = hub_instance.devices.get(device_id)
-            if not device:
-                continue
-
+        for device in members:
             try:
                 if group_usage in ("shutter", "awning"):
                     # Cover control
@@ -5537,8 +5443,10 @@ class HAGroup(ButtonEntity, HAEntity):
                     if action == "turn_on":
                         if hasattr(device, "turn_on"):
                             # For lights, try to get brightness from kwargs or use None
-                            brightness = kwargs.get("brightness")
-                            tasks.append(device.turn_on(brightness))
+                            if group_usage == "light":
+                                tasks.append(device.turn_on(kwargs.get("brightness")))
+                            else:
+                                tasks.append(device.turn_on())
                         elif (
                             hasattr(device, "_tydom_client")
                             and hasattr(device, "_id")
@@ -5565,7 +5473,7 @@ class HAGroup(ButtonEntity, HAEntity):
             except Exception as e:
                 LOGGER.warning(
                     "Error controlling device %s in group %s with action %s: %s",
-                    device_id,
+                    device.device_id,
                     self._device.device_name,
                     action,
                     e,
@@ -5573,16 +5481,28 @@ class HAGroup(ButtonEntity, HAEntity):
 
         # Execute all commands concurrently
         if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            successful = len(tasks) == len(members)
+            for result in results:
+                if isinstance(result, Exception):
+                    successful = False
+                    LOGGER.warning(
+                        "Group %s action %s failed for a member: %s",
+                        self._device.device_name,
+                        action,
+                        result,
+                    )
             LOGGER.debug(
                 "Group %s action %s completed", self._device.device_name, action
             )
+            return successful
         else:
             LOGGER.warning(
                 "No devices could be controlled for group %s with action %s",
                 self._device.device_name,
                 action,
             )
+            return False
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn on all devices in the group (for lights/plugs)."""
@@ -5617,6 +5537,295 @@ class HAGroup(ButtonEntity, HAEntity):
     async def async_activate_scenario(self, scenario_id: str) -> None:
         """Activate a scenario on this group."""
         await self._device.activate_scenario(scenario_id)
+
+
+class HALightGroup(LightEntity, HAGroupEntity):
+    """A non-empty TYDOM light group represented as a native light."""
+
+    _ASSUMED_STATE_TIMEOUT = 30
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:lightbulb-group"
+    _attr_color_mode = ColorMode.ONOFF
+    _attr_supported_color_modes = {ColorMode.ONOFF}
+
+    def __init__(self, device: TydomGroup, hass) -> None:
+        """Initialise the light group."""
+        HAGroupEntity.__init__(self, device, hass)
+        self._attr_unique_id = f"{device.device_id}_light_group"
+        self._assumed_is_on: bool | None = None
+        self._assumed_state_task: asyncio.Task | None = None
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to member light updates."""
+        await super().async_added_to_hass()
+        self._register_member_callbacks()
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove callbacks registered on member lights."""
+        self._clear_assumed_state()
+        self._remove_member_callbacks()
+        if self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the shared TYDOM group device information."""
+        return HAGroupEntity.device_info.fget(self)  # type: ignore[union-attr]
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return group membership details."""
+        return HAGroupEntity.extra_state_attributes.fget(self)  # type: ignore[union-attr]
+
+    @property
+    def is_on(self) -> bool | None:
+        """Report on when any member light is on."""
+        if self._assumed_is_on is not None:
+            return self._assumed_is_on
+
+        states = self._reported_member_states()
+        return any(states) if states else None
+
+    def _reported_member_states(self) -> list[bool]:
+        """Return the currently reported on/off state of each known member."""
+        states: list[bool] = []
+        for member in self._member_devices():
+            level = getattr(member, "level", None)
+            if level is not None:
+                with suppress(TypeError, ValueError):
+                    states.append(float(level) != 0)
+        return states
+
+    def _handle_member_update(self) -> None:
+        """Reconcile an assumed group state with reported member states."""
+        if self._assumed_is_on is not None:
+            members = self._member_devices()
+            states = self._reported_member_states()
+            if len(states) == len(members) and all(
+                state is self._assumed_is_on for state in states
+            ):
+                self._clear_assumed_state()
+        self.async_write_ha_state()
+
+    def _set_assumed_state(self, is_on: bool) -> None:
+        """Publish an immediate state while TYDOM refreshes every member."""
+        self._clear_assumed_state()
+        self._assumed_is_on = is_on
+        create_task = getattr(self.hass, "async_create_task", asyncio.create_task)
+        self._assumed_state_task = create_task(self._expire_assumed_state())
+        self.async_write_ha_state()
+
+    def _clear_assumed_state(self) -> None:
+        """Clear an optimistic state and cancel its expiry task."""
+        task = self._assumed_state_task
+        self._assumed_state_task = None
+        self._assumed_is_on = None
+        if task is not None and task is not asyncio.current_task():
+            task.cancel()
+
+    async def _expire_assumed_state(self) -> None:
+        """Fall back to reported member state if refreshes do not converge."""
+        try:
+            await asyncio.sleep(self._ASSUMED_STATE_TIMEOUT)
+        except asyncio.CancelledError:
+            return
+        self._assumed_state_task = None
+        self._assumed_is_on = None
+        self.async_write_ha_state()
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn on every member light."""
+        if await self._control_group_devices("turn_on", **kwargs):
+            self._set_assumed_state(True)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn off every member light."""
+        if await self._control_group_devices("turn_off", **kwargs):
+            self._set_assumed_state(False)
+
+
+class HACoverGroup(CoverEntity, HAGroupEntity):
+    """A non-empty TYDOM shutter or awning group represented as a cover."""
+
+    _ASSUMED_STATE_TIMEOUT = 30
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_supported_features = (
+        CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE | CoverEntityFeature.STOP
+    )
+
+    def __init__(self, device: TydomGroup, hass) -> None:
+        """Initialise the cover group."""
+        HAGroupEntity.__init__(self, device, hass)
+        self._attr_unique_id = f"{device.device_id}_cover_group"
+        if device.group_usage == "awning":
+            self._attr_device_class = CoverDeviceClass.AWNING
+            self._attr_icon = "mdi:awning-outline"
+        else:
+            self._attr_device_class = CoverDeviceClass.SHUTTER
+            self._attr_icon = "mdi:window-shutter"
+        self._assumed_is_closed: bool | None = None
+        self._assumed_state_task: asyncio.Task | None = None
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to member cover updates."""
+        await super().async_added_to_hass()
+        self._register_member_callbacks()
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove callbacks registered on member covers."""
+        self._clear_assumed_state()
+        self._remove_member_callbacks()
+        if self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the shared TYDOM group device information."""
+        return HAGroupEntity.device_info.fget(self)  # type: ignore[union-attr]
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return group membership details."""
+        return HAGroupEntity.extra_state_attributes.fget(self)  # type: ignore[union-attr]
+
+    @property
+    def is_closed(self) -> bool | None:
+        """Report closed only when every member has closed-position feedback."""
+        if self._assumed_is_closed is not None:
+            return self._assumed_is_closed
+
+        members = self._member_devices()
+        states = self._reported_member_closed_states()
+        if not members or len(states) != len(members):
+            return None
+        return all(states)
+
+    def _reported_member_closed_states(self) -> list[bool]:
+        """Return the reported closed state of each member with feedback."""
+        members = self._member_devices()
+        if not members:
+            return []
+
+        states: list[bool] = []
+        for member in members:
+            position = getattr(member, "position", None)
+            if position is None:
+                continue
+            try:
+                states.append(float(position) == 0)
+            except (TypeError, ValueError):
+                continue
+        return states
+
+    def _handle_member_update(self) -> None:
+        """Reconcile an assumed group state with reported member positions."""
+        if self._assumed_is_closed is not None:
+            members = self._member_devices()
+            states = self._reported_member_closed_states()
+            if len(states) == len(members) and all(
+                state is self._assumed_is_closed for state in states
+            ):
+                self._clear_assumed_state()
+        self.async_write_ha_state()
+
+    def _set_assumed_state(self, is_closed: bool) -> None:
+        """Publish an immediate state while TYDOM refreshes every member."""
+        self._clear_assumed_state()
+        self._assumed_is_closed = is_closed
+        create_task = getattr(self.hass, "async_create_task", asyncio.create_task)
+        self._assumed_state_task = create_task(self._expire_assumed_state())
+        self.async_write_ha_state()
+
+    def _clear_assumed_state(self) -> None:
+        """Clear an optimistic state and cancel its expiry task."""
+        task = self._assumed_state_task
+        self._assumed_state_task = None
+        self._assumed_is_closed = None
+        if task is not None and task is not asyncio.current_task():
+            task.cancel()
+
+    async def _expire_assumed_state(self) -> None:
+        """Fall back to member positions if refreshes do not converge."""
+        try:
+            await asyncio.sleep(self._ASSUMED_STATE_TIMEOUT)
+        except asyncio.CancelledError:
+            return
+        self._assumed_state_task = None
+        self._assumed_is_closed = None
+        self.async_write_ha_state()
+
+    async def async_open_cover(self, **kwargs: Any) -> None:
+        """Open every member cover."""
+        if await self._control_group_devices("open", **kwargs):
+            self._set_assumed_state(False)
+
+    async def async_close_cover(self, **kwargs: Any) -> None:
+        """Close every member cover."""
+        if await self._control_group_devices("close", **kwargs):
+            self._set_assumed_state(True)
+
+    async def async_stop_cover(self, **kwargs: Any) -> None:
+        """Stop every member cover."""
+        await self._control_group_devices("stop", **kwargs)
+
+
+class HASwitchGroup(SwitchEntity, HAGroupEntity):
+    """A non-empty TYDOM plug group represented as a native switch."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:power-socket-eu"
+
+    def __init__(self, device: TydomGroup, hass) -> None:
+        """Initialise the switch group."""
+        HAGroupEntity.__init__(self, device, hass)
+        self._attr_unique_id = f"{device.device_id}_switch_group"
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to member switch updates."""
+        await super().async_added_to_hass()
+        self._register_member_callbacks()
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove callbacks registered on member switches."""
+        self._remove_member_callbacks()
+        if self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the shared TYDOM group device information."""
+        return HAGroupEntity.device_info.fget(self)  # type: ignore[union-attr]
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return group membership details."""
+        return HAGroupEntity.extra_state_attributes.fget(self)  # type: ignore[union-attr]
+
+    @property
+    def is_on(self) -> bool | None:
+        """Report on when any member switch is on."""
+        states: list[bool] = []
+        for member in self._member_devices():
+            if hasattr(member, "on"):
+                states.append(bool(member.on))
+            elif hasattr(member, "level"):
+                with suppress(TypeError, ValueError):
+                    states.append(float(member.level) != 0)
+        return any(states) if states else None
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn on every member switch."""
+        await self._control_group_devices("turn_on", **kwargs)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn off every member switch."""
+        await self._control_group_devices("turn_off", **kwargs)
 
 
 class HAButton(ButtonEntity, HAEntity):

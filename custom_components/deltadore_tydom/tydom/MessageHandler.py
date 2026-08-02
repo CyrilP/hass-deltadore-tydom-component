@@ -22,6 +22,7 @@ from .tydom_devices import (
     TydomEnergy,
     TydomGarage,
     TydomGate,
+    TydomGroup,
     TydomInterrupter,
     TydomLight,
     TydomSwitch,
@@ -94,6 +95,14 @@ groups_metadata = {}  # Store group metadata from /configs/file: {group_id: {"us
 groups_data = {}  # Store groups data: {group_id: {"devices": [device_ids], "name": group_name}}
 endpoint_config = {}  # Store endpoint-specific configuration from /configs/file
 remote_control_info = {}  # Store physical remote and button details by endpoint UID
+
+SUPPORTED_CONTROL_GROUP_USAGES = {"awning", "light", "plug", "shutter"}
+TOTAL_GROUP_NAMES = {
+    "awning": "All awnings",
+    "light": "All lights",
+    "plug": "All plugs",
+    "shutter": "All shutters",
+}
 
 _REMOTE_CONTROL_MODELS = {
     "tl2000": "TL 2000 TYXAL+",
@@ -1046,6 +1055,8 @@ class MessageHandler:
                     groups_metadata[group_id_str] = {
                         "usage": group.get("usage", ""),
                         "name": group.get("name", f"Group {group_id}"),
+                        "group_all": bool(group.get("group_all", False)),
+                        "is_group_user": bool(group.get("is_group_user", False)),
                         "tutorial_id": (group.get("widget_behavior") or {}).get(
                             "tutorial_id", ""
                         ),
@@ -1666,16 +1677,15 @@ class MessageHandler:
                         group_usage = group_meta.get("usage", "")
                         config_name = group_meta.get("name", "")
 
-                        # Use config name if available and not default, otherwise use generic name
-                        # The actual display name will come from translation_key in HAGroup
                         if (
-                            config_name
-                            and config_name != f"Group {group_id}"
-                            and config_name != "TOTAL"
+                            config_name == "TOTAL"
+                            and group_meta.get("group_all", False)
+                            and group_usage in TOTAL_GROUP_NAMES
                         ):
+                            group_name = TOTAL_GROUP_NAMES[group_usage]
+                        elif config_name and config_name != f"Group {group_id}":
                             group_name = config_name
                         else:
-                            # Use generic name - translation will be handled by translation_key
                             group_name = f"Group {group_id}"
 
                         # Store group data
@@ -1685,6 +1695,14 @@ class MessageHandler:
                             "usage": group_usage,
                         }
 
+                        if not device_ids:
+                            LOGGER.debug(
+                                "Skipping empty %s group %s",
+                                group_usage or "unknown",
+                                group_id_str,
+                            )
+                            continue
+
                         if group_usage in {"remoteControl", "interrupter"}:
                             LOGGER.debug(
                                 "Skipping non-controllable input group %s",
@@ -1692,9 +1710,13 @@ class MessageHandler:
                             )
                             continue
 
-                        # Create TydomGroup device
-                        # Import here to avoid circular import
-                        from .tydom_devices import TydomGroup
+                        if group_usage not in SUPPORTED_CONTROL_GROUP_USAGES:
+                            LOGGER.debug(
+                                "Skipping unsupported %s group %s",
+                                group_usage or "unknown",
+                                group_id_str,
+                            )
+                            continue
 
                         group_device = TydomGroup(
                             self.tydom_client,
