@@ -64,6 +64,9 @@ Some firmwares never send an EOR flag; they mark the end of the enumeration
 with a last element carrying index 255 and invalid event data instead.
 """
 
+_EMPTY_CDATA_EOR_GRACE = 0.1
+"""Seconds to wait for TYXAL data sent just after an early empty EOR."""
+
 
 def _is_tyxia_4910_other(uid: str) -> bool:
     """Identify a binary TYXIA 4910 configured under the TYDOM 'others' usage."""
@@ -416,6 +419,11 @@ class MessageHandler:
     def get_reply_error(self, transaction_id: str) -> str | None:
         """Return and forget a protocol error for one pending request."""
         return self._reply_errors.pop(transaction_id, None)
+
+    def _complete_empty_cdata_reply(self, transaction_id: str) -> None:
+        """Complete an EOR-only reply unless late TYXAL data completed it first."""
+        if event := self._end_reply_events.pop(transaction_id, None):
+            event.set()
 
     async def route_response(self, bytes_str: bytes) -> list["TydomDevice"] | None:
         """
@@ -1561,13 +1569,27 @@ class MessageHandler:
                                         "End of reply for request '%s'.", transaction_id
                                     )
                                     reply["done"] = True
-                                    # Set the end reply event and forget about it
-                                    if (
-                                        event := self._end_reply_events.pop(
-                                            transaction_id, None
+                                    if reply["events"]:
+                                        # A streamed response has already
+                                        # supplied its data, so EOR completes
+                                        # it immediately.
+                                        if (
+                                            event := self._end_reply_events.pop(
+                                                transaction_id, None
+                                            )
+                                        ) is not None:
+                                            event.set()
+                                    elif transaction_id in self._end_reply_events:
+                                        # Some CS8000 firmware emits EOR a few
+                                        # milliseconds before its single cdata
+                                        # object. Give that object a brief
+                                        # chance to arrive before treating the
+                                        # response as genuinely empty.
+                                        asyncio.get_running_loop().call_later(
+                                            _EMPTY_CDATA_EOR_GRACE,
+                                            self._complete_empty_cdata_reply,
+                                            transaction_id,
                                         )
-                                    ) is not None:
-                                        event.set()
                                 else:
                                     LOGGER.debug(
                                         "Catching new reply for request '%s'.",

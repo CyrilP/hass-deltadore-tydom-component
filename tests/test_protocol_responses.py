@@ -295,6 +295,53 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
             handler.get_reply("request-1")["events"][0]["name"], "productConf"
         )
 
+    async def test_alarm_data_after_early_eor_is_not_lost(self) -> None:
+        """A TYXAL cdata object arriving just after EOR must win the race."""
+        handler = MessageHandler(MagicMock(), b"")
+        handler.get_type_from_id = MagicMock(return_value="alarm")
+        handler.get_name_from_id = MagicMock(return_value="Alarm")
+        reply_event = asyncio.Event()
+        handler._end_reply_events["request-1"] = reply_event
+        envelope = {"id": 20, "endpoints": [{"id": 10, "error": 0, "cdata": []}]}
+
+        envelope["endpoints"][0]["cdata"] = [{"EOR": True}]
+        await handler.parse_devices_cdata([envelope], "request-1")
+        self.assertFalse(reply_event.is_set())
+
+        envelope["endpoints"][0]["cdata"] = [
+            {
+                "name": "productConf",
+                "values": {"id": 2, "common": {"inactive": False}},
+            }
+        ]
+        await handler.parse_devices_cdata([envelope], "request-1")
+
+        self.assertTrue(reply_event.is_set())
+        self.assertEqual(
+            handler.get_reply("request-1")["events"][0]["name"], "productConf"
+        )
+
+    async def test_alarm_eor_only_reply_completes_after_grace_period(self) -> None:
+        """A genuinely empty TYXAL reply must still complete promptly."""
+        handler = MessageHandler(MagicMock(), b"")
+        handler.get_type_from_id = MagicMock(return_value="alarm")
+        handler.get_name_from_id = MagicMock(return_value="Alarm")
+        reply_event = asyncio.Event()
+        handler._end_reply_events["request-1"] = reply_event
+
+        await handler.parse_devices_cdata(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [{"id": 10, "error": 0, "cdata": [{"EOR": True}]}],
+                }
+            ],
+            "request-1",
+        )
+
+        await asyncio.wait_for(reply_event.wait(), timeout=0.2)
+        self.assertEqual(handler.get_reply("request-1")["events"], [])
+
     async def test_rejected_alarm_configuration_redacts_pin(self) -> None:
         """An alarm PIN in Uri-Origin must never be written to the log."""
         logger.reset_mock()
