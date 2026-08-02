@@ -677,6 +677,75 @@ class TydomWindow(TydomDevice):
     """represents a window."""
 
 
+class TydomInterrupter(TydomDevice):
+    """Represent one button endpoint of a physical wall switch."""
+
+    def __init__(
+        self,
+        tydom_client: TydomClient,
+        uid: str,
+        device_id: str,
+        name: str,
+        device_type: str,
+        endpoint: str | None,
+        metadata: dict | None,
+        data: dict | None,
+        interrupter_info: dict | None = None,
+    ) -> None:
+        """Initialise a wall-switch button endpoint."""
+        super().__init__(
+            tydom_client,
+            uid,
+            device_id,
+            name,
+            device_type,
+            endpoint,
+            metadata,
+            data,
+        )
+        info = interrupter_info or {}
+        self._physical_device_id = str(info.get("physical_device_id", device_id))
+        self._interrupter_name = str(
+            info.get("name", f"Wall switch {self._physical_device_id}")
+        )
+        self._interrupter_model = str(info.get("model", "Delta Dore wall switch"))
+        self._button = info.get("button")
+        self._configured_action = str(info.get("configured_action", "TOGGLE"))
+        self._event_sequence = 0
+
+    @property
+    def physical_device_id(self) -> str:
+        """Return the identifier shared by both wall-switch buttons."""
+        return self._physical_device_id
+
+    @property
+    def interrupter_name(self) -> str:
+        """Return the configured name of the physical wall switch."""
+        return self._interrupter_name
+
+    @property
+    def interrupter_model(self) -> str:
+        """Return the wall-switch model inferred from TYDOM configuration."""
+        return self._interrupter_model
+
+    @property
+    def button(self) -> str | None:
+        """Return the physical button represented by this endpoint."""
+        return self._button
+
+    @property
+    def event_sequence(self) -> int:
+        """Return a monotonically increasing sequence for fresh button actions."""
+        return self._event_sequence
+
+    async def update_device(self, device) -> None:
+        """Record fresh switch actions before publishing the endpoint update."""
+        action = getattr(device, "action", None)
+        if action is not None and action != "IDLE":
+            self._event_sequence += 1
+        await super().update_device(device)
+
+
 class TydomDoor(TydomDevice):
     """represents a door."""
 

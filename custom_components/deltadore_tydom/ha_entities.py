@@ -106,6 +106,7 @@ from .tydom.tydom_devices import (
     TydomGroup,
     TydomMoment,
     TydomRemoteControl,
+    TydomInterrupter,
 )
 
 from .const import (
@@ -6034,3 +6035,142 @@ class HAEvent(EventEntity, HAEntity):
         if "model" in device_info:
             info["model"] = device_info["model"]
         return self._enrich_device_info(info)
+
+
+class HAInterrupterEvent(EventEntity, HAEntity):
+    """Representation of a physical wall-switch button."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_device_class = EventDeviceClass.BUTTON
+    _attr_event_types = ["press_end", "long_press_end"]
+    _attr_icon = "mdi:light-switch"
+
+    def __init__(self, device: TydomInterrupter, hass) -> None:
+        """Initialise a wall-switch button event."""
+        self.hass = hass
+        self._device = device
+        self._device._ha_device = self
+        self._last_event_sequence = device.event_sequence
+        self._attr_unique_id = f"{self._device.device_id}_interrupter_event"
+        self._attr_name = (
+            f"Button {device.button}"
+            if device.button is not None
+            else device.device_name
+        )
+
+    async def async_added_to_hass(self) -> None:
+        """Listen for fresh actions from this physical button endpoint."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self._handle_device_update)
+        self._device._ha_device = self
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the wall-switch action callback."""
+        self._device.remove_callback(self._handle_device_update)
+        if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
+            self._device._ha_device = None
+        await super().async_will_remove_from_hass()
+
+    def _handle_device_update(self) -> None:
+        """Emit one Home Assistant event for each fresh TYDOM action."""
+        sequence = self._device.event_sequence
+        if sequence <= self._last_event_sequence:
+            return
+
+        self._last_event_sequence = sequence
+        action = str(getattr(self._device, "action", "IDLE"))
+        if action == "IDLE":
+            return
+
+        event_type = "long_press_end" if action.endswith("_LONG") else "press_end"
+        self._trigger_event(
+            event_type,
+            {
+                "action": action,
+                "configured_action": self._device._configured_action,
+            },
+        )
+        self.async_write_ha_state()
+
+    def get_sensors(self) -> list:
+        """Do not expose transient actions as ordinary sensors."""
+        return []
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Group both buttons under the physical wall switch."""
+        return self._enrich_device_info(
+            {
+                "identifiers": {
+                    (DOMAIN, f"interrupter_{self._device.physical_device_id}")
+                },
+                "name": self._device.interrupter_name,
+                "manufacturer": "Delta Dore",
+                "model": self._device.interrupter_model,
+            }
+        )
+
+
+class HAInterrupterBattery(BinarySensorEntity, HAEntity):
+    """Battery-defect diagnostic shared by both wall-switch endpoints."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_device_class = BinarySensorDeviceClass.BATTERY
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_name = "Battery fault"
+
+    def __init__(self, device: TydomInterrupter, hass) -> None:
+        """Initialise the physical wall-switch battery diagnostic."""
+        self.hass = hass
+        self._device = device
+        self._devices: dict[str, TydomInterrupter] = {}
+        self._callbacks: dict[str, Any] = {}
+        self._battery_defect: bool | None = None
+        self._attr_unique_id = f"interrupter_{device.physical_device_id}_battery_defect"
+        self.add_device(device)
+
+    def add_device(self, device: TydomInterrupter) -> None:
+        """Include another button endpoint in the battery diagnostic."""
+        if device.device_id in self._devices:
+            return
+
+        self._devices[device.device_id] = device
+
+        def handle_update() -> None:
+            value = getattr(device, "battDefect", None)
+            if value is not None:
+                self._battery_defect = bool(value)
+            self.async_write_ha_state()
+
+        self._callbacks[device.device_id] = handle_update
+        device.register_callback(handle_update)
+        initial_value = getattr(device, "battDefect", None)
+        if initial_value is not None:
+            self._battery_defect = bool(initial_value)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove callbacks from both physical button endpoints."""
+        for device_id, device in self._devices.items():
+            device.remove_callback(self._callbacks[device_id])
+        await super().async_will_remove_from_hass()
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return whether TYDOM reports a wall-switch battery defect."""
+        return self._battery_defect
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Attach the diagnostic to the same physical wall switch."""
+        return self._enrich_device_info(
+            {
+                "identifiers": {
+                    (DOMAIN, f"interrupter_{self._device.physical_device_id}")
+                },
+                "name": self._device.interrupter_name,
+                "manufacturer": "Delta Dore",
+                "model": self._device.interrupter_model,
+            }
+        )
