@@ -1777,10 +1777,10 @@ class TydomClient:
                 "id": int(zone_id),
                 # The Delta Dore app constructs nullable standard-name and
                 # number fields, but Gson omits them from the wire payload.
-                # Sending either field explicitly as JSON null is rejected by
-                # the CS8000 as a malformed request.  The app clears all label
-                # fields by serialising their null values as an empty object.
-                "label": {"nameCustom": name} if name else {},
+                # Sending the unused standard-name or number fields explicitly
+                # as JSON null is rejected by the CS8000. The app keeps an
+                # explicitly blank custom name when clearing a label.
+                "label": {"nameCustom": name},
             },
         )
 

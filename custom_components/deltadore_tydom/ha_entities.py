@@ -3411,8 +3411,8 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
             return await self._device.get_alarm_product_configuration(code, product_id)
         except Exception as err:
             raise HomeAssistantError(
-                "The TYXAL rejected the configuration request. Ensure the CS8000 "
-                "is in maintenance mode and use its installer code."
+                "The CS8000 rejected the configuration request. Ensure it is in "
+                "maintenance mode and use its installer code."
             ) from err
 
     async def async_enter_alarm_maintenance(self, code: str) -> None:
@@ -3421,7 +3421,7 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
             await self._device.enter_alarm_maintenance(code)
         except Exception as err:
             raise HomeAssistantError(
-                "The TYXAL could not enter maintenance mode. Check the installer code "
+                "The CS8000 could not enter maintenance mode. Check the installer code "
                 "and ensure the alarm is disarmed."
             ) from err
 
@@ -3431,7 +3431,7 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
             await self._device.exit_alarm_maintenance(code)
         except Exception as err:
             raise HomeAssistantError(
-                "The TYXAL could not leave maintenance mode. Check the installer code."
+                "The CS8000 could not leave maintenance mode. Check the installer code."
             ) from err
 
     async def async_configure_alarm_product(
@@ -3450,7 +3450,7 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
             )
         except Exception as err:
             raise HomeAssistantError(
-                "The TYXAL rejected the product change. Ensure the CS8000 is in "
+                "The CS8000 rejected the product change. Ensure it is in "
                 "maintenance mode and use its installer code."
             ) from err
 
@@ -3460,7 +3460,7 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
             await self._device.rename_alarm_zone(code, zone_id, name)
         except Exception as err:
             raise HomeAssistantError(
-                "The TYXAL rejected the zone change. Ensure the CS8000 is in "
+                "The CS8000 rejected the zone change. Ensure it is in "
                 "maintenance mode and use its installer code."
             ) from err
 

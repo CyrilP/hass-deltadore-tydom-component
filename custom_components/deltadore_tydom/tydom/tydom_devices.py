@@ -1166,7 +1166,7 @@ class TydomAlarm(TydomDevice):
             self._id, self._require_endpoint(), code, product_id
         )
         if message is None:
-            raise ValueError("The TYXAL alarm returned no product configuration")
+            raise ValueError("The CS8000 returned no product configuration")
         values = message.get("values") or {}
         common = values.get("common") or {}
         response: dict[str, Any] = {"id": values.get("id", product_id)}

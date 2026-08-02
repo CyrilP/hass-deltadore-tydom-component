@@ -336,7 +336,7 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
         )
 
     async def test_alarm_zone_empty_name_clears_label(self) -> None:
-        """An empty name must match the app's empty label reset payload."""
+        """An empty name must remain explicit in the app's reset payload."""
         client = self._client()
         client.get_reply_to_request = AsyncMock(return_value=[])
 
@@ -345,7 +345,7 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
         client.get_reply_to_request.assert_awaited_once_with(
             "PUT",
             "/devices/20/endpoints/10/cdata?name=zoneLabelConf",
-            body={"pwd": "123456", "id": 4, "label": {}},
+            body={"pwd": "123456", "id": 4, "label": {"nameCustom": ""}},
         )
 
     async def test_failed_initialisation_closes_candidate(self) -> None:
