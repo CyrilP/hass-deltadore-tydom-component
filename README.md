@@ -122,17 +122,23 @@ The alarm control panel provides services for the TYXAL+ functions that are
 useful in Home Assistant:
 
 - `deltadore_tydom.get_alarm_products` lists configured products and zones;
+- `deltadore_tydom.enter_alarm_maintenance` opens a locked remote
+  configuration session and puts a disarmed CS8000 into maintenance mode;
 - `deltadore_tydom.get_alarm_product_configuration` reads a product's active
   state and zone assignment;
 - `deltadore_tydom.configure_alarm_product` enables or disables a product and
   can assign it to another zone;
-- `deltadore_tydom.rename_alarm_zone` changes a zone's custom name.
+- `deltadore_tydom.rename_alarm_zone` changes a zone's custom name;
+- `deltadore_tydom.exit_alarm_maintenance` returns the CS8000 to its normal
+  disarmed state and unlocks the remote configuration session.
 
 Use the first service to obtain the product and zone IDs required by the other
-services. Configuration changes require the alarm PIN supplied in the service
-call. The PIN is used only for that request and is redacted from logs. Product
-deletion, access codes, telephone settings and siren configuration are not
-exposed.
+services. Product configuration requires the CS8000 to be disarmed and the
+TYXAL installer code supplied in each service call. Enter maintenance before
+reading or changing product configuration, and always exit maintenance when
+finished. The installer code is used only for the request and is redacted from
+logs. Product deletion, access codes, telephone settings and siren
+configuration are not exposed.
 
 ## Contributions are welcome!
 
