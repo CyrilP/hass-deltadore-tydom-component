@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: T201
 """
 Script pour capturer toutes les données brutes de Delta Dore Tydom.
 
@@ -13,14 +14,34 @@ Usage:
 import argparse
 import asyncio
 import base64
-import json
-import ssl
-import sys
-import re
 from datetime import datetime
+import json
+import os
 from pathlib import Path
-from http.client import HTTPResponse as CoreHTTPResponse
-from io import BytesIO
+import re
+import sys
+import time
+
+try:
+    from .capture_support import (
+        INITIAL_GET_REQUESTS,
+        create_tydom_ssl_context,
+        parse_tydom_message,
+        redact_raw_message,
+        sanitise_text,
+        sanitise_value,
+        strip_tydom_prefix,
+    )
+except ImportError:  # Direct execution: python tools/capture_tydom_data.py
+    from capture_support import (  # type: ignore[no-redef]
+        INITIAL_GET_REQUESTS,
+        create_tydom_ssl_context,
+        parse_tydom_message,
+        redact_raw_message,
+        sanitise_text,
+        sanitise_value,
+        strip_tydom_prefix,
+    )
 
 try:
     import aiohttp
@@ -40,40 +61,7 @@ def sanitize_error_message(
     message: str, password: str | None = None, email: str | None = None
 ) -> str:
     """Masquer les informations sensibles dans les messages d'erreur."""
-    sanitized = str(message)
-
-    # Masquer le mot de passe s'il est présent
-    if password:
-        sanitized = sanitized.replace(password, "***")
-        # Masquer aussi les variantes (avec quotes, etc.)
-        sanitized = sanitized.replace(f'"{password}"', '"***"')
-        sanitized = sanitized.replace(f"'{password}'", "'***'")
-
-    # Masquer l'email s'il est présent
-    if email:
-        sanitized = sanitized.replace(email, "***@***")
-        sanitized = sanitized.replace(f'"{email}"', '"***@***"')
-        sanitized = sanitized.replace(f"'{email}'", "'***@***'")
-
-    # Masquer les patterns communs de mots de passe dans les erreurs
-    import re
-
-    # Masquer les patterns comme "password=xxx" ou "pwd=xxx"
-    sanitized = re.sub(
-        r'(password|pwd|passwd)\s*[=:]\s*[^\s"\'<>]+',
-        r"\1=***",
-        sanitized,
-        flags=re.IGNORECASE,
-    )
-    # Masquer les patterns comme "email=xxx" ou "mail=xxx"
-    sanitized = re.sub(
-        r'(email|mail|username|user)\s*[=:]\s*[^\s"\'<>@]+@[^\s"\'<>]+',
-        r"\1=***@***",
-        sanitized,
-        flags=re.IGNORECASE,
-    )
-
-    return sanitized
+    return sanitise_text(message, (password, email))
 
 
 DELTADORE_AUTH_GRANT_TYPE = "password"
@@ -82,34 +70,6 @@ DELTADORE_AUTH_SCOPE = "openid profile offline_access https://deltadoreadb2ciot.
 DELTADORE_API_SITES = (
     "https://prod.iotdeltadore.com/sitesmanagement/api/v1/sites?gateway_mac="
 )
-
-
-class BytesIOSocket:
-    """Wrapper pour BytesIO pour simuler un socket."""
-
-    def __init__(self, content):
-        self.handle = BytesIO(content)
-
-    def makefile(self, mode):
-        return self.handle
-
-
-def parse_http_response(raw_message: bytes) -> tuple[dict, bytes]:
-    """
-    Parse une réponse HTTP et retourne les headers et le body décodé.
-    Gère automatiquement le format chunked.
-    """
-    sock = BytesIOSocket(raw_message)
-    response = CoreHTTPResponse(sock)  # type: ignore[arg-type]
-    response.begin()
-
-    headers = {}
-    for key, value in response.headers.items():
-        headers[key.lower()] = value
-
-    body = response.read()
-
-    return headers, body
 
 
 async def get_tydom_password(session, email: str, password: str, mac: str) -> str:
@@ -182,7 +142,7 @@ async def capture(
     duration: int,
     output_dir: Path,
 ):
-    """Capturer les messages WebSocket."""
+    """Capture les messages WebSocket."""
     session = aiohttp.ClientSession()
 
     try:
@@ -210,14 +170,9 @@ async def capture(
 
         # Connexion WebSocket
         cloud_mode = "mediation" in host.lower()
-        sslcontext = ssl.create_default_context()
-        sslcontext.options |= 0x4
-        sslcontext.check_hostname = False
-        sslcontext.verify_mode = ssl.CERT_NONE
+        sslcontext = create_tydom_ssl_context(cloud_mode)
 
         # Étape 1: Obtenir le challenge
-        import os
-
         sec_key = base64.b64encode(os.urandom(16)).decode()
 
         http_headers = {
@@ -269,22 +224,20 @@ async def capture(
 
         print("✅ Connecté!")
 
-        # Envoyer les requêtes initiales
+        # Envoyer le flux de découverte actuel de l'intégration. Ces requêtes
+        # sont toutes en lecture seule afin que la capture ne modifie jamais
+        # l'installation.
         prefix = b"\x02" if cloud_mode else b""
-        import time
 
-        requests = [
-            "/info",
-            "/devices/meta",
-            "/devices/cdata",
-            "/scenarios/file",
-            "/groups/file",
-            "/configs/file",
-        ]
-
-        for uri in requests:
-            trans_id = str(time.time_ns())[:13]
-            msg = f"GET {uri} HTTP/1.1\r\nHost: {host}\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: {trans_id}\r\nContent-Length: 0\r\n\r\n"
+        for uri in INITIAL_GET_REQUESTS:
+            trans_id = str(time.time_ns())
+            msg = (
+                f"GET {uri} HTTP/1.1\r\n"
+                f"Host: {host}\r\n"
+                "Content-Type: application/json; charset=UTF-8\r\n"
+                f"Transac-Id: {trans_id}\r\n"
+                "Content-Length: 0\r\n\r\n"
+            )
             await ws.send_bytes(prefix + msg.encode("ascii"))
             await asyncio.sleep(0.3)
 
@@ -293,7 +246,8 @@ async def capture(
         # Écouter les messages
         start_time = asyncio.get_event_loop().time()
         message_count = 0
-        parsed_messages = []
+        parsed_messages: list[dict] = []
+        secrets = (password, delta_password, email)
 
         try:
             while True:
@@ -320,91 +274,36 @@ async def capture(
                     data = (
                         msg.data if isinstance(msg.data, bytes) else msg.data.encode()
                     )
+                    data = strip_tydom_prefix(data)
 
-                    # Retirer le préfixe
-                    if data.startswith(b"\x02"):
-                        data = data[1:]
-
-                    # Sauvegarder le message brut
+                    # Conserver une trame brute rejouable, mais jamais les
+                    # identifiants transmis au script ni les champs secrets.
                     timestamp = datetime.now().isoformat()
-                    with open(raw_file, "ab") as f:
-                        f.write(
+                    safe_raw_data = redact_raw_message(data, secrets)
+                    with raw_file.open("ab") as capture_file:
+                        capture_file.write(
                             f"\n{'=' * 80}\n[{timestamp}] Message #{message_count}\n{'=' * 80}\n".encode()
                         )
-                        f.write(data)
-                        f.write(b"\n")
+                        capture_file.write(safe_raw_data)
+                        capture_file.write(b"\n")
 
-                    # Parser et sauvegarder
+                    # Les réponses HTTP classiques et les événements PUT/POST
+                    # émis par la passerelle suivent deux formes différentes.
                     try:
-                        # Utiliser le parser HTTP pour gérer le chunked
-                        if data.startswith(b"HTTP/"):
-                            headers, body = parse_http_response(data)
-                            uri = headers.get("uri-origin", "")
-                            content_type = headers.get("content-type", "")
+                        parsed = parse_tydom_message(data)
+                        if parsed is None:
+                            print(f"⚠️  #{message_count}: trame non HTTP conservée")
+                            continue
 
-                            # Essayer de parser le body comme JSON
-                            if body and content_type and "json" in content_type.lower():
-                                try:
-                                    # Le body est déjà décodé du chunked par CoreHTTPResponse
-                                    body_text = body.decode("utf-8", errors="replace")
-                                    body_json = json.loads(body_text)
-                                    parsed_messages.append(
-                                        {
-                                            "timestamp": timestamp,
-                                            "uri": uri,
-                                            "data": body_json,
-                                        }
-                                    )
-                                    print(f"📥 #{message_count}: {uri or 'unknown'}")
-                                except json.JSONDecodeError as e:
-                                    print(
-                                        f"⚠️  #{message_count}: {uri or 'unknown'} - Erreur JSON: {e}"
-                                    )
-                                except Exception as e:
-                                    error_msg = sanitize_error_message(
-                                        str(e), password, email
-                                    )
-                                    print(
-                                        f"⚠️  #{message_count}: {uri or 'unknown'} - Erreur: {error_msg}"
-                                    )
-                            elif body:
-                                # Body non-JSON, sauvegarder quand même
-                                parsed_messages.append(
-                                    {
-                                        "timestamp": timestamp,
-                                        "uri": uri,
-                                        "data": body.decode("utf-8", errors="replace"),
-                                    }
-                                )
-                                print(
-                                    f"📥 #{message_count}: {uri or 'unknown'} (non-JSON)"
-                                )
-                        else:
-                            # Format non-HTTP, essayer l'ancienne méthode
-                            text = data.decode("utf-8", errors="replace")
-                            uri = None
-                            for line in text.split("\n"):
-                                if (
-                                    "Uri-Origin:" in line
-                                    or "uri-origin:" in line.lower()
-                                ):
-                                    uri = line.split(":", 1)[1].strip()
-                                    break
-
-                            if "\r\n\r\n" in text:
-                                body_text = text.split("\r\n\r\n", 1)[1]
-                                try:
-                                    body_json = json.loads(body_text)
-                                    parsed_messages.append(
-                                        {
-                                            "timestamp": timestamp,
-                                            "uri": uri,
-                                            "data": body_json,
-                                        }
-                                    )
-                                    print(f"📥 #{message_count}: {uri or 'unknown'}")
-                                except Exception:
-                                    pass
+                        safe_parsed = sanitise_value(parsed, secrets)
+                        parsed_messages.append({"timestamp": timestamp, **safe_parsed})
+                        method = safe_parsed.get("method")
+                        status = safe_parsed.get("status")
+                        detail = method or status or ""
+                        print(
+                            f"📥 #{message_count}: {safe_parsed['uri']}"
+                            f" {detail}".rstrip()
+                        )
                     except Exception as e:
                         error_msg = sanitize_error_message(str(e), password, email)
                         print(
@@ -415,8 +314,13 @@ async def capture(
             print("\n⏹️  Arrêt demandé")
         finally:
             # Sauvegarder les messages parsés
-            with open(parsed_file, "w") as f:
-                json.dump(parsed_messages, f, indent=2, ensure_ascii=False)
+            with parsed_file.open("w", encoding="utf-8") as capture_file:
+                json.dump(
+                    parsed_messages,
+                    capture_file,
+                    indent=2,
+                    ensure_ascii=False,
+                )
 
             await ws.close()
             print(f"\n✅ Capture terminée: {message_count} messages")
@@ -427,6 +331,7 @@ async def capture(
 
 
 async def main():
+    """Run the command-line capture client."""
     parser = argparse.ArgumentParser(description="Capture simple des messages Tydom")
     parser.add_argument("--host", required=True)
     parser.add_argument("--mac", required=True)
