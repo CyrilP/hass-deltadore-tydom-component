@@ -203,6 +203,9 @@
             },
             "group_alarm": {
                 "name": "Alarm Group"
+            },
+            "refresh_energy": {
+                "name": "Refresh energy data"
             }
         },
         "number": {},

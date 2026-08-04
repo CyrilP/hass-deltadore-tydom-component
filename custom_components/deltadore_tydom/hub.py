@@ -141,7 +141,7 @@ class Hub:
 
         self.online = True
         self._reload_button_created = False
-        self._refresh_energy_button_created = False
+        self._refresh_energy_buttons_created: set[str] = set()
         self._remote_battery_entities: dict[str, HARemoteBattery] = {}
         self._interrupter_battery_entities: dict[str, HAInterrupterBattery] = {}
         self._shutting_down = False
@@ -152,7 +152,7 @@ class Hub:
         ] = {}  # (device_key, attr_name) -> interval
         self._polling_cache_timestamp = 0
         self._polling_cache_ttl = 300  # 5 minutes
-        self._next_poll_due: dict[int, float] = {}  # interval -> next due timestamp
+        self._next_poll_due: dict[int, float] = {}  # interval -> monotonic due time
 
         # Device factory registry for create_ha_device
         self._device_factories: dict[type, Callable] = {
@@ -424,7 +424,7 @@ class Hub:
     def _maybe_create_refresh_energy_button(
         self, device: TydomEnergy, ha_device: HAEnergy
     ) -> None:
-        """Create the on-demand energy refresh button, once, on the real Tywatt.
+        """Create one on-demand refresh button per real Tywatt device.
 
         Some TydomEnergy devices only carry outTemperature (e.g. an outdoor
         probe reusing this class), not real Tywatt consumption data -- only
@@ -435,15 +435,16 @@ class Hub:
         has_energy_attrs = any(
             key.startswith("energy") for key in vars(device) if not key.startswith("_")
         )
+        device_key = device.device_id
         if (
             has_energy_attrs
-            and not self._refresh_energy_button_created
+            and device_key not in self._refresh_energy_buttons_created
             and self.add_button_callback is not None
         ):
             refresh_energy_button = HARefreshEnergyButton(self, self._hass, ha_device)
             self.add_button_callback([refresh_energy_button])
-            self._refresh_energy_button_created = True
-            LOGGER.debug("Bouton de rafraîchissement énergie créé")
+            self._refresh_energy_buttons_created.add(device_key)
+            LOGGER.debug("Created energy refresh button for %s", device_key)
 
     async def _create_smoke_device(self, device: TydomSmoke) -> None:
         """Create smoke detector device."""
@@ -859,7 +860,7 @@ class Hub:
         metadata changes.
         """
         while not self._shutting_down:
-            current_time = time.time()
+            current_time = time.monotonic()
 
             # Rebuild cache only if expired
             if current_time - self._polling_cache_timestamp > self._polling_cache_ttl:
@@ -867,11 +868,16 @@ class Hub:
                 self._polling_cache_timestamp = current_time
 
             # Group devices by interval from cache
-            interval_groups: dict[int, list[tuple[str, str]]] = {}
-            for (device_key, attr_name), interval in self._polling_cache.items():
-                if interval not in interval_groups:
-                    interval_groups[interval] = []
-                interval_groups[interval].append((device_key, attr_name))
+            interval_groups: dict[int, set[str]] = {}
+            for (device_key, _attr_name), interval in self._polling_cache.items():
+                interval_groups.setdefault(interval, set()).add(device_key)
+
+            active_intervals = set(interval_groups)
+            self._next_poll_due = {
+                interval: due
+                for interval, due in self._next_poll_due.items()
+                if interval in active_intervals
+            }
 
             # Poll devices according to their intervals
             if interval_groups:
@@ -883,11 +889,11 @@ class Hub:
                 # the shortest one - otherwise ES_SUPERVISION/SENSOR_SUPERVISION
                 # devices are starved forever as soon as any device needs
                 # SYNCHRO_SUPERVISION (shortest_interval always wins otherwise).
-                for interval, keys in interval_groups.items():
+                for interval, device_keys in interval_groups.items():
                     if current_time < self._next_poll_due.get(interval, 0):
                         continue
                     self._next_poll_due[interval] = current_time + interval
-                    for device_key, _attr_name in keys:
+                    for device_key in device_keys:
                         if device_key in self.devices:
                             device = self.devices[device_key]
                             if hasattr(device, "_tydom_client"):
@@ -910,9 +916,11 @@ class Hub:
                 else:
                     await self._interruptible_sleep(60)
 
-    async def refresh_energy_now(self) -> None:
-        """Poll the Tywatt cdata endpoints immediately, on demand."""
-        await self._tydom_client.poll_devices_data_5m()
+    async def refresh_energy_now(
+        self, device_id: str, endpoint_id: str | None
+    ) -> None:
+        """Poll one Tywatt cdata endpoint immediately, on demand."""
+        await self._tydom_client.poll_devices_data_5m(device_id, endpoint_id)
 
     async def refresh_data_5m(self) -> None:
         """Periodically poll the cdata endpoints registered for devices like Tywatt.
@@ -927,9 +935,11 @@ class Hub:
         consumption sensor) would never be queried.
         """
         while not self._shutting_down:
-            await self._tydom_client.poll_devices_data_5m()
-            interval = self._refresh_interval if self._refresh_interval > 0 else 300
-            await self._interruptible_sleep(interval)
+            try:
+                await self._tydom_client.poll_devices_data_5m()
+            except Exception:
+                LOGGER.exception("Error polling registered cdata endpoints")
+            await self._interruptible_sleep(300)
 
     async def reload_devices(self) -> None:
         """Recharger tous les appareils et entités comme au démarrage initial.
@@ -945,7 +955,7 @@ class Hub:
         self._interrupter_battery_entities.clear()
         # Réinitialiser le flag pour recréer le bouton après le rechargement
         self._reload_button_created = False
-        self._refresh_energy_button_created = False
+        self._refresh_energy_buttons_created.clear()
 
         # Supprimer toutes les entités existantes via l'Entity Registry
         from homeassistant.helpers import entity_registry as er

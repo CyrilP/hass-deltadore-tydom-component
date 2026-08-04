@@ -5946,16 +5946,18 @@ class HARefreshEnergyButton(ButtonEntity):
     _attr_should_poll = False
     _attr_has_entity_name = True
     _attr_icon = "mdi:refresh"
+    _attr_translation_key = "refresh_energy"
 
     def __init__(self, hub, hass, energy_ha_device: "HAEnergy") -> None:
         """Initialize HARefreshEnergyButton."""
         self.hass = hass
         self._hub = hub
         self._energy_ha_device = energy_ha_device
+        self._device_id = energy_ha_device._device._id
+        self._endpoint_id = energy_ha_device._device.device_endpoint
         self._attr_unique_id = (
             f"{energy_ha_device._device.device_id}_refresh_energy_data"
         )
-        self._attr_name = "Actualiser la consommation instantanée"
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -5964,7 +5966,7 @@ class HARefreshEnergyButton(ButtonEntity):
 
     async def async_press(self) -> None:
         """Handle the button press."""
-        await self._hub.refresh_energy_now()
+        await self._hub.refresh_energy_now(self._device_id, self._endpoint_id)
 
 
 class HANumber(NumberEntity, HAEntity):

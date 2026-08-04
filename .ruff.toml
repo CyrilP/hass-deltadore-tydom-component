@@ -2,9 +2,6 @@
 
 target-version = "py312"
 
-[format]
-indent-style = "space"
-
 [lint]
 select = [
     "B007", # Loop control variable {name} not used within loop body
