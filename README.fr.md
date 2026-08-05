@@ -294,7 +294,7 @@ privé qui y est décrite.
 ## Contribuer
 
 Si vous souhaitez contribuer, consultez les
-[consignes de contribution](CONTRIBUTING.md).
+[consignes de contribution](CONTRIBUTING.fr.md).
 
 ***
 

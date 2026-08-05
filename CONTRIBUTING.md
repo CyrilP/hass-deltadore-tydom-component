@@ -1,5 +1,7 @@
 # Contributing
 
+**English** | [Français](CONTRIBUTING.fr.md)
+
 Contributions are welcome, including bug reports, documentation improvements,
 device support and fixes to existing behaviour.
 
