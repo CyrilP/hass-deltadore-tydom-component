@@ -1,5 +1,7 @@
 # Security policy
 
+**English** | [Français](SECURITY.fr.md)
+
 ## Supported versions
 
 Security fixes are applied to the latest published release and the `main`

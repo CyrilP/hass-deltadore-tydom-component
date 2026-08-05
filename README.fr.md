@@ -288,7 +288,7 @@ service ni automatisation.
 ## Sécurité
 
 Ne signalez pas une vulnérabilité présumée dans un ticket public. Consultez la
-[politique de sécurité](SECURITY.md) et utilisez la procédure de signalement
+[politique de sécurité](SECURITY.fr.md) et utilisez la procédure de signalement
 privé qui y est décrite.
 
 ## Contribuer
