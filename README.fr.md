@@ -193,7 +193,7 @@ en charge :
 ```bash
 python3 tools/capture_tydom_data.py \
   --host 192.168.1.100 \
-  --mac 001A2502419B \
+  --mac AABBCCDDEEFF \
   --password '<Mot de passe de la passerelle Tydom>' \
   --duration 120
 ```
