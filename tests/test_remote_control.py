@@ -224,7 +224,7 @@ class TestRemoteControl(IsolatedAsyncioTestCase):
             {device.remote_name for device in devices}, {"Télécommande Jo"}
         )
         self.assertEqual(
-            {device.remote_model for device in devices}, {"TL 2000 TYXAL+"}
+            {device.remote_model for device in devices}, {"TL 2000 Tyxal+"}
         )
 
     async def test_tyxia_1410_has_four_button_endpoints(self) -> None:

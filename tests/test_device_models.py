@@ -102,7 +102,7 @@ class TestDeviceModels(TestCase):
             "split_takao_type_2": "Atlantic Naviclim 875311",
             "switch_tyxia2600_btn_a": "TYXIA 2600",
             "rcu_tyxia1410_btn_4": "TYXIA 1410",
-            "tl2000_btn_2": "TL 2000 TYXAL+",
+            "tl2000_btn_2": "TL 2000 Tyxal+",
             "Volet_roulant_wellcom": "Well'com roller shutter",
         }
 

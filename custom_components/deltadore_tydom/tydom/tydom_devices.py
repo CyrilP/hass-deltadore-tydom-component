@@ -28,7 +28,7 @@ _CONFIRMED_TUTORIAL_MODELS = {
 _TUTORIAL_PREFIX_MODELS = {
     "rcu_tyxia1410": "TYXIA 1410",
     "switch_tyxia2600": "TYXIA 2600",
-    "tl2000": "TL 2000 TYXAL+",
+    "tl2000": "TL 2000 Tyxal+",
 }
 
 
