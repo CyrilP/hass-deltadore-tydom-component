@@ -96,6 +96,10 @@ _original_modules.setdefault(module_name, sys.modules.get(module_name, _MISSING)
 sys.modules[module_name] = client_module
 spec.loader.exec_module(client_module)
 TydomClient = client_module.TydomClient
+TydomClientApiClientCommunicationError = (
+    client_module.TydomClientApiClientCommunicationError
+)
+sanitize_log_message = client_module.sanitize_log_message
 
 for name, original in _original_modules.items():
     if original is _MISSING:
@@ -166,6 +170,211 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
                 call("20", "10", "123456", "ON", "1", True),
                 call("20", "10", "123456", "ON", "3", True),
             ],
+        )
+
+    async def test_alarm_inventory_uses_supported_label_command(self) -> None:
+        """Inventory must not depend on optional unsupported productInfo data."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(
+            return_value=[{"name": "label", "values": {"products": [], "zones": []}}]
+        )
+
+        result = await client.get_alarm_products_cdata("20", "10")
+
+        self.assertIsNone(result["productInfo"])
+        self.assertEqual(result["label"]["name"], "label")
+        self.assertEqual(
+            client.get_reply_to_request.await_args_list,
+            [
+                call(
+                    "GET",
+                    "/devices/20/endpoints/10/cdata?name=label",
+                    headers={
+                        "Content-Length": "0",
+                        "Content-Type": "application/json; charset=UTF-8",
+                    },
+                ),
+            ],
+        )
+
+    async def test_rejected_tracked_request_raises_protocol_error(self) -> None:
+        """A gateway rejection must not be returned as an empty success."""
+        client = self._client()
+
+        def prepare_request(_method, _url, _body, _headers, reply_event):
+            reply_event.set()
+            return "request-1", b"request"
+
+        client._message_handler.prepare_request = MagicMock(side_effect=prepare_request)
+        client._message_handler.get_reply_error = MagicMock(
+            return_value="HTTP 403: The data is not writable"
+        )
+        client.send_bytes = AsyncMock()
+
+        with self.assertRaisesRegex(TydomClientApiClientCommunicationError, "HTTP 403"):
+            await client.get_reply_to_request(
+                "GET", "/cdata?name=productConf&pwd=123456"
+            )
+
+    async def test_alarm_product_configuration_uses_encoded_pin(self) -> None:
+        """The read command must follow the official query-string protocol."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(
+            return_value=[{"name": "productConf", "values": {"id": 4}}]
+        )
+
+        result = await client.get_alarm_product_configuration_cdata(
+            "20", "10", "12&34", 4
+        )
+
+        self.assertEqual(result["values"]["id"], 4)
+        client.get_reply_to_request.assert_awaited_once_with(
+            "GET",
+            "/devices/20/endpoints/10/cdata?name=productConf&pwd=12%2634&id=4",
+            headers={
+                "Content-Length": "0",
+                "Content-Type": "application/json; charset=UTF-8",
+            },
+        )
+        self.assertNotIn("12&34", sanitize_log_message("?pwd=12&34"))
+
+    async def test_alarm_product_zone_update_sends_only_requested_field(self) -> None:
+        """A zone update must not overwrite unrelated product settings."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+
+        await client.put_alarm_product_configuration_cdata(
+            "20", "10", "123456", 4, zone=3
+        )
+
+        client.get_reply_to_request.assert_awaited_once_with(
+            "PUT",
+            "/devices/20/endpoints/10/cdata?name=productConf",
+            body={
+                "pwd": "123456",
+                "id": 4,
+                "common": {"zone": 3},
+            },
+        )
+
+    async def test_alarm_product_activation_uses_dedicated_command(self) -> None:
+        """Activation must use activeProductConf instead of productConf."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+
+        await client.put_alarm_product_active_cdata("20", "10", "123456", 4, False)
+
+        client.get_reply_to_request.assert_awaited_once_with(
+            "PUT",
+            "/devices/20/endpoints/10/cdata?name=activeProductConf",
+            body={"pwd": "123456", "id": 4, "activeProduct": False},
+        )
+
+    async def test_alarm_maintenance_commands_await_gateway_reply(self) -> None:
+        """Entering and leaving maintenance must use global alarmCmd writes."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+
+        await client.put_alarm_mode_cdata("20", "10", "123456", "MAINTENANCE")
+        await client.put_alarm_mode_cdata("20", "10", "123456", "OFF")
+
+        self.assertEqual(
+            client.get_reply_to_request.await_args_list,
+            [
+                call(
+                    "PUT",
+                    "/devices/20/endpoints/10/cdata?name=alarmCmd",
+                    body={"pwd": "123456", "value": "MAINTENANCE"},
+                ),
+                call(
+                    "PUT",
+                    "/devices/20/endpoints/10/cdata?name=alarmCmd",
+                    body={"pwd": "123456", "value": "OFF"},
+                ),
+            ],
+        )
+
+    async def test_alarm_acknowledgement_prefers_authenticated_cdata(self) -> None:
+        """A configured code must use the controlled command advertised by TYXAL."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+        client.put_devices_data = AsyncMock()
+
+        await client.put_ackevents_cdata("20", "10", "123456")
+
+        client.get_reply_to_request.assert_awaited_once_with(
+            "PUT",
+            "/devices/20/endpoints/10/cdata?name=ackEventCmd",
+            body={"pwd": "123456"},
+        )
+        client.put_devices_data.assert_not_awaited()
+
+    async def test_alarm_acknowledgement_falls_back_to_data_channel(self) -> None:
+        """Firmware rejecting authenticated cdata must retain the proven fallback."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(
+            side_effect=TydomClientApiClientCommunicationError("HTTP 500")
+        )
+        client.put_devices_data = AsyncMock()
+
+        await client.put_ackevents_cdata("20", "10", "123456")
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "ackEventCmd", "ACK"
+        )
+
+    async def test_alarm_remote_configuration_lock_uses_official_command(self) -> None:
+        """Remote TYXAL configuration must be explicitly locked and unlocked."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+
+        await client.put_alarm_remote_control_cdata("20", "10", "123456", "lock")
+        await client.put_alarm_remote_control_cdata("20", "10", "123456", "unlock")
+
+        self.assertEqual(
+            client.get_reply_to_request.await_args_list,
+            [
+                call(
+                    "PUT",
+                    "/devices/20/endpoints/10/cdata?name=remoteCtrl",
+                    body={"pwd": "123456", "control": "lock"},
+                ),
+                call(
+                    "PUT",
+                    "/devices/20/endpoints/10/cdata?name=remoteCtrl",
+                    body={"pwd": "123456", "control": "unlock"},
+                ),
+            ],
+        )
+
+    async def test_alarm_zone_rename_uses_custom_label_command(self) -> None:
+        """Zone renaming must use the official zoneLabelConf payload."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+
+        await client.put_alarm_zone_label_cdata("20", "10", "123456", 2, "Outbuildings")
+
+        client.get_reply_to_request.assert_awaited_once_with(
+            "PUT",
+            "/devices/20/endpoints/10/cdata?name=zoneLabelConf",
+            body={
+                "pwd": "123456",
+                "id": 2,
+                "label": {"nameCustom": "Outbuildings"},
+            },
+        )
+
+    async def test_alarm_zone_empty_name_clears_label(self) -> None:
+        """An empty name must remain explicit in the app's reset payload."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+
+        await client.put_alarm_zone_label_cdata("20", "10", "123456", 4, "")
+
+        client.get_reply_to_request.assert_awaited_once_with(
+            "PUT",
+            "/devices/20/endpoints/10/cdata?name=zoneLabelConf",
+            body={"pwd": "123456", "id": 4, "label": {"nameCustom": ""}},
         )
 
     async def test_failed_initialisation_closes_candidate(self) -> None:

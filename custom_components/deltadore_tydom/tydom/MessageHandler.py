@@ -38,6 +38,17 @@ from .tydom_devices import (
     TydomScene,
 )
 
+
+def _sanitize_uri(uri: str) -> str:
+    """Redact credentials carried by legacy TYDOM query parameters."""
+    return re.sub(
+        r"([?&](?:password|pwd|passwd|token|access_token)=)[^&\s]*",
+        r"\1***",
+        uri,
+        flags=re.IGNORECASE,
+    )
+
+
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
@@ -106,6 +117,10 @@ def _parse_energy_cdata_element(element: Any) -> dict[str, int | float]:
         }
 
     return {}
+
+
+_EMPTY_CDATA_EOR_GRACE = 0.1
+"""Seconds to wait for TYXAL data sent just after an early empty EOR."""
 
 
 def _is_tyxia_4910_other(uid: str) -> bool:
@@ -398,6 +413,7 @@ class MessageHandler:
         self.cmd_prefix = cmd_prefix
         self._cdata_replies: list[Reply] = []
         self._end_reply_events: dict[str, asyncio.Event] = {}
+        self._reply_errors: dict[str, str] = {}
         self._area_devices: dict[str, dict[str, AreaDeviceReference]] = {}
         self._area_data: dict[str, dict[str, Any]] = {}
         self._area_metadata: dict[str, dict] = {}
@@ -455,6 +471,15 @@ class MessageHandler:
         self._end_reply_events.pop(transaction_id, None)
         LOGGER.debug("Removed pending reply for transaction_id: %s", transaction_id)
 
+    def get_reply_error(self, transaction_id: str) -> str | None:
+        """Return and forget a protocol error for one pending request."""
+        return self._reply_errors.pop(transaction_id, None)
+
+    def _complete_empty_cdata_reply(self, transaction_id: str) -> None:
+        """Complete an EOR-only reply unless late TYXAL data completed it first."""
+        if event := self._end_reply_events.pop(transaction_id, None):
+            event.set()
+
     async def route_response(self, bytes_str: bytes) -> list["TydomDevice"] | None:
         """
         Identify message type and dispatch the result.
@@ -490,11 +515,17 @@ class MessageHandler:
                 LOGGER.warning(
                     "Request '%s' (%s) rejected with HTTP status %s: %s",
                     transaction_id,
-                    uri_origin,
+                    _sanitize_uri(uri_origin),
                     status,
                     (parsed_message.body or b"")[:500],
                 )
                 if transaction_id and transaction_id in self._end_reply_events:
+                    detail = (parsed_message.body or b"").decode(
+                        "utf-8", errors="replace"
+                    )
+                    self._reply_errors[transaction_id] = (
+                        f"HTTP {status}: {re.sub(r'<[^>]+>', ' ', detail).strip()}"
+                    )
                     event = self._end_reply_events.get(transaction_id)
                     self.remove_reply(transaction_id)
                     if event is not None:
@@ -1540,13 +1571,13 @@ class MessageHandler:
                                     self._cdata_replies.insert(0, reply)
                                     # Limit the number of tracked replies
                                     if len(self._cdata_replies) > _MAX_REPLIES_SIZE:
-                                        reply = self._cdata_replies.pop()
+                                        forgotten_reply = self._cdata_replies.pop()
                                         LOGGER.warning(
                                             "Forget uncomplete request with transaction ID '%s'.",
-                                            reply["transaction_id"],
+                                            forgotten_reply["transaction_id"],
                                         )
                                         self._end_reply_events.pop(
-                                            reply["transaction_id"], None
+                                            forgotten_reply["transaction_id"], None
                                         )
 
                                 values = elem.get("values") or {}
@@ -1558,19 +1589,44 @@ class MessageHandler:
                                         "End of reply for request '%s'.", transaction_id
                                     )
                                     reply["done"] = True
-                                    # Set the end reply event and forget about it
-                                    if (
-                                        event := self._end_reply_events.pop(
-                                            transaction_id, None
+                                    if reply["events"]:
+                                        # A streamed response has already
+                                        # supplied its data, so EOR completes
+                                        # it immediately.
+                                        if (
+                                            event := self._end_reply_events.pop(
+                                                transaction_id, None
+                                            )
+                                        ) is not None:
+                                            event.set()
+                                    elif transaction_id in self._end_reply_events:
+                                        # Some CS8000 firmware emits EOR a few
+                                        # milliseconds before its single cdata
+                                        # object. Give that object a brief
+                                        # chance to arrive before treating the
+                                        # response as genuinely empty.
+                                        asyncio.get_running_loop().call_later(
+                                            _EMPTY_CDATA_EOR_GRACE,
+                                            self._complete_empty_cdata_reply,
+                                            transaction_id,
                                         )
-                                    ) is not None:
-                                        event.set()
                                 else:
                                     LOGGER.debug(
                                         "Catching new reply for request '%s'.",
                                         transaction_id,
                                     )
                                     reply["events"].append(elem)
+                                    # Configuration reads and writes return one
+                                    # cdata object. Unlike streamed history,
+                                    # they do not require an EOR sentinel.
+                                    if elem.get("name") != "histo":
+                                        reply["done"] = True
+                                        if (
+                                            event := self._end_reply_events.pop(
+                                                transaction_id, None
+                                            )
+                                        ) is not None:
+                                            event.set()
                             else:
                                 LOGGER.debug(
                                     "Ignore cdata message targetting '%s' (%s).",

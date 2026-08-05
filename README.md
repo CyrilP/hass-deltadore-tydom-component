@@ -76,6 +76,77 @@ Email/Password are you Dela Dore credentials
 
 The alarm PIN is optional and used to set your alarm mode
 
+## Capturing data for unsupported devices
+
+The repository includes a read-only capture tool for documenting devices and
+protocol behaviour that the integration does not yet support:
+
+```bash
+python3 tools/capture_tydom_data.py \
+  --host 192.168.1.100 \
+  --mac 001A2502419B \
+  --password '<Tydom gateway password>' \
+  --duration 120
+```
+
+The tool requests the current configuration, device, area, scenario, group and
+moment resources, including `/devices/meta`, `/devices/cmeta`, `/devices/data`,
+`/areas/meta`, `/areas/cmeta` and `/areas/data`. It then continues listening for
+events while the equipment is operated physically or from the Tydom app.
+
+Each run produces:
+
+- `raw_messages.txt`, containing timestamped and replayable WebSocket frames;
+- `parsed_messages.json`, containing normalised URIs, methods or response
+  statuses, and decoded payloads.
+
+Passwords, tokens, authorisation headers and email addresses are redacted before
+the files are written. Device identifiers, names, topology and state values are
+retained because they are needed for protocol analysis, so captures must still
+be reviewed before being shared publicly.
+
+For a useful device capture, perform one clearly identifiable action, wait about
+ten seconds, perform the reverse action, and record both timestamps. The capture
+sees responses and events published by the gateway; it cannot necessarily reveal
+the exact outbound request sent by another client such as the official mobile
+application.
+
+See the [complete capture guide](tools/README_capture.md) for local and remote
+connection examples, output analysis, parser validation and security guidance.
+The separate [endpoint discovery guide](tools/README_discover_endpoints.md)
+describes how to probe available API resources and HTTP methods.
+
+## TYXAL+ remote management
+
+The alarm control panel provides services for the TYXAL+ functions that are
+useful in Home Assistant:
+
+- `deltadore_tydom.get_events` returns alarm history filtered as all,
+  alarm events, activation/deactivation events or unacknowledged events;
+- `deltadore_tydom.acknowledge_events` acknowledges pending alarm events;
+- `deltadore_tydom.get_alarm_products` lists configured products and zones;
+- `deltadore_tydom.enter_alarm_maintenance` opens a locked remote
+  configuration session and puts a disarmed CS8000 into maintenance mode;
+- `deltadore_tydom.get_alarm_product_configuration` reads a product's active
+  state and zone assignment;
+- `deltadore_tydom.configure_alarm_product` enables or disables a product and
+  can assign it to another zone;
+- `deltadore_tydom.rename_alarm_zone` changes a zone's custom name, or clears
+  its label when supplied with an empty name;
+- `deltadore_tydom.exit_alarm_maintenance` returns the CS8000 to its normal
+  disarmed state and unlocks the remote configuration session.
+
+Use the first service to obtain the product and zone IDs required by the other
+services. Product configuration requires the CS8000 to be disarmed and the
+TYXAL installer code supplied in each service call. Enter maintenance before
+reading or changing product configuration, and always exit maintenance when
+finished. The installer code is used only for the request and is redacted from
+logs. Product deletion, access codes, telephone settings and siren
+configuration are not exposed.
+
+The TYXAL alarm device also provides an **Acknowledge events** button for the
+same operation when an action call or automation is not required.
+
 ## Contributions are welcome!
 
 If you want to contribute to this please read the [Contribution guidelines](CONTRIBUTING.md)

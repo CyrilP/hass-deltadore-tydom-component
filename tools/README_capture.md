@@ -1,199 +1,138 @@
-# Script de capture des données Tydom
+# Capture des données TYDOM
 
-## 📋 Description
+`capture_tydom_data.py` ouvre une connexion WebSocket en lecture seule vers une
+passerelle Delta Dore, demande les principales ressources du protocole et
+enregistre les réponses et événements reçus. Il sert notamment à documenter un
+équipement encore inconnu avant d'ajouter sa prise en charge à l'intégration.
 
-Ce script permet de capturer **toutes les données brutes** de votre passerelle Delta Dore Tydom et de les sauvegarder dans des fichiers texte organisés pour analyse.
+`capture_simple.py` est conservé comme alias compatible et lance désormais le
+même outil afin que les deux commandes ne puissent plus diverger.
 
-## 🚀 Utilisation
+## Prérequis
 
-### Prérequis
-
-```bash
-pip install aiohttp requests urllib3
-```
-
-### Commandes de base
-
-#### Mode cloud avec identifiants Delta Dore (recommandé)
+Depuis la racine du dépôt :
 
 ```bash
-python3 tools/capture_tydom_data.py \
-  --host mediation.tydom.com \
-  --mac 001122334455 \
-  --email votre_email@example.com \
-  --delta-password votre_mot_de_passe_delta_dore
+python3 -m pip install aiohttp async-timeout requests urllib3
 ```
 
-#### Mode local avec mot de passe Tydom direct
+## Utilisation
+
+### Connexion locale avec le mot de passe de la passerelle
 
 ```bash
 python3 tools/capture_tydom_data.py \
   --host 192.168.1.100 \
   --mac 001A2502419B \
-  --password votre_mot_de_passe_tydom
-```
-
-#### Capturer pendant une durée spécifique
-
-```bash
-# Capturer pendant 60 secondes
-python3 tools/capture_tydom_data.py \
-  --host mediation.tydom.com \
-  --mac 001122334455 \
-  --email votre_email@example.com \
-  --delta-password votre_mot_de_passe \
-  --duration 60
-```
-
-#### Changer le répertoire de sortie
-
-```bash
-python3 tools/capture_tydom_data.py \
-  --host mediation.tydom.com \
-  --mac 001122334455 \
-  --email votre_email@example.com \
-  --delta-password votre_mot_de_passe \
-  --output /chemin/vers/sortie
-```
-
-## 📁 Fichiers générés
-
-Chaque capture crée un dossier avec timestamp : `capture_YYYYMMDD_HHMMSS/`
-
-### Fichiers créés :
-
-- **`raw_messages.txt`** : Tous les messages WebSocket bruts avec timestamps
-- **`parsed_messages.json`** : Messages parsés en JSON avec URI et données
-
-## 🔍 Analyse des données
-
-### Exemple : Analyser les scénarios
-
-```bash
-# Extraire les scénarios depuis les messages parsés
-cat tools/captures/capture_*/parsed_messages.json | jq '.[] | select(.uri == "/scenarios/file") | .data.scn'
-
-# Compter le nombre de scénarios
-cat tools/captures/capture_*/parsed_messages.json | jq '[.[] | select(.uri == "/scenarios/file") | .data.scn[]] | length'
-
-# Extraire les IDs des scénarios
-cat tools/captures/capture_*/parsed_messages.json | jq '.[] | select(.uri == "/scenarios/file") | .data.scn[] | .id'
-```
-
-### Exemple : Analyser les appareils
-
-```bash
-# Voir tous les messages de devices
-cat tools/captures/capture_*/parsed_messages.json | jq '.[] | select(.uri | contains("devices"))'
-
-# Chercher dans les messages bruts
-grep "Uri-Origin: /devices" tools/captures/capture_*/raw_messages.txt -A 50
-```
-
-### Exemple : Chercher dans tous les messages
-
-```bash
-# Chercher un terme dans tous les messages
-grep -r "terme_recherché" tools/captures/capture_*/raw_messages.txt
-
-# Voir les messages d'un type spécifique
-grep "Uri-Origin: /scenarios/file" tools/captures/capture_*/raw_messages.txt -A 20
-```
-
-## 📊 Statistiques
-
-Le script affiche en temps réel :
-- Le nombre de messages capturés
-- Les types de données sauvegardés
-- Les événements détectés
-
-À la fin, un rapport complet est généré dans `README.md`.
-
-## ⚙️ Options disponibles
-
-| Option | Description | Défaut |
-|--------|-------------|--------|
-| `--host` | Adresse IP ou hostname de la passerelle | **Requis** |
-| `--mac` | Adresse MAC de la passerelle | **Requis** |
-| `--password` | Mot de passe Tydom (ou utiliser --email + --delta-password) | Optionnel |
-| `--email` | Email du compte Delta Dore | Optionnel |
-| `--delta-password` | Mot de passe du compte Delta Dore | Optionnel |
-| `--output` | Répertoire de sortie | `tools/captures` |
-| `--duration` | Durée de capture (secondes) | `300` |
-
-## 🎯 Cas d'usage
-
-### 1. Déboguer un problème spécifique
-
-```bash
-# Capturer pendant 2 minutes pour analyser un problème
-python3 tools/capture_tydom_data.py \
-  --host 192.168.1.100 \
-  --mac 001A2502419B \
-  --password votre_mot_de_passe \
+  --password '<mot-de-passe-passerelle>' \
   --duration 120
 ```
 
-### 2. Capturer toutes les données au démarrage
+### Connexion distante avec le compte Delta Dore
 
 ```bash
-# Capturer pendant 10 minutes pour avoir une vue complète
 python3 tools/capture_tydom_data.py \
-  --host 192.168.1.100 \
+  --host mediation.tydom.com \
   --mac 001A2502419B \
-  --password votre_mot_de_passe \
-  --duration 600
+  --email utilisateur@example.com \
+  --delta-password '<mot-de-passe-compte>' \
+  --duration 120
 ```
 
-### 3. Analyser les scènes
+Les arguments contenant un mot de passe peuvent rester dans l'historique du
+terminal. Utilisez une session temporaire et effacez son historique si cela est
+nécessaire sur votre système.
+
+Par défaut, les captures sont placées dans
+`tools/captures/capture_YYYYMMDD_HHMMSS/`. Un autre emplacement peut être
+fourni avec `--output`.
+
+## Flux de découverte
+
+L'outil envoie uniquement des requêtes `GET`. Il ne modifie donc ni les
+équipements ni la configuration de l'installation.
+
+Les ressources demandées sont :
+
+- `/info`
+- `/configs/file`
+- `/devices/meta`
+- `/areas/meta`
+- `/devices/cmeta`
+- `/areas/cmeta`
+- `/devices/data`
+- `/areas/data`
+- `/scenarios/file`
+- `/groups/file`
+- `/moments/file`
+
+Après ces requêtes initiales, la connexion reste ouverte pendant la durée
+choisie afin de recevoir les événements publiés par la passerelle. Il est alors
+possible d'actionner l'équipement depuis l'application Tydom ou physiquement.
+
+## Fichiers produits
+
+- `raw_messages.txt` contient les trames WebSocket avec leur horodatage. Les
+  réponses HTTP et les événements `PUT`/`POST` de la passerelle y restent dans
+  un format analysable.
+- `parsed_messages.json` contient une représentation JSON normalisée avec
+  l'URI, la méthode ou le statut HTTP et les données décodées.
+
+Les mots de passe, jetons, en-têtes d'autorisation et adresses électroniques
+sont masqués avant leur écriture. La taille des valeurs masquées dans le fichier
+brut est conservée pour ne pas invalider les longueurs HTTP et les blocs
+`chunked`.
+
+Les identifiants techniques des appareils, les noms, la topologie et certaines
+valeurs d'état sont volontairement conservés car ils sont nécessaires pour
+comprendre le protocole. Une capture reste donc sensible et ne doit pas être
+publiée sans vérification.
+
+## Procédure conseillée pour un nouvel équipement
+
+1. Démarrer une capture de 90 à 120 secondes.
+2. Attendre la fin des réponses initiales.
+3. Effectuer une seule action identifiable sur l'équipement.
+4. Attendre dix secondes et effectuer l'action inverse.
+5. Noter les horaires exacts des deux actions.
+6. Arrêter la capture avec `Ctrl+C` ou attendre la fin programmée.
+7. Vérifier les fichiers avant de les transmettre.
+
+Pour valider et résumer le fichier brut :
 
 ```bash
-# Capturer et analyser les scénarios
-python3 tools/capture_tydom_data.py \
-  --host 192.168.1.100 \
-  --mac 001A2502419B \
-  --password votre_mot_de_passe \
-  --duration 60
-
-# Puis analyser
-cat tools/captures/capture_*/scenarios.json | jq '.[0].data.scn[] | {id, name: .name // "N/A"}'
+python3 tools/test_capture_parsing.py tools/captures/capture_YYYYMMDD_HHMMSS
 ```
 
-## 🔧 Dépannage
+Quelques recherches utiles :
 
-### Erreur de connexion
-
-Si vous obtenez une erreur de connexion :
-1. Vérifiez que la passerelle est accessible : `ping <IP>`
-2. Vérifiez que le MAC et le mot de passe sont corrects
-3. Essayez le mode cloud avec `--cloud`
-
-### Pas de données capturées
-
-Si aucun message n'est capturé :
-1. Vérifiez que la passerelle répond (LEDs actives)
-2. Augmentez la durée avec `--duration`
-3. Vérifiez les logs dans la console
-
-### Authentification échouée
-
-Si l'authentification échoue :
-- Vérifiez le mot de passe Tydom (pas le mot de passe WiFi)
-- Le mot de passe peut être récupéré depuis l'API Delta Dore
-
-## 📝 Notes
-
-- Les données sont sauvegardées en temps réel
-- Le script continue à capturer même si certaines requêtes échouent
-- Appuyez sur `Ctrl+C` pour arrêter la capture à tout moment
-- Chaque capture crée un nouveau dossier avec timestamp
-
-## 🔒 Sécurité
-
-⚠️ **Attention** : Les fichiers de capture contiennent des données sensibles (mots de passe, configurations). Ne les partagez pas publiquement.
-
-Pour supprimer les captures :
 ```bash
-rm -rf tools/captures/capture_*
+jq '.[] | select(.uri == "/devices/data")' \
+  tools/captures/capture_*/parsed_messages.json
+
+jq '.[] | select(.uri == "/areas/data")' \
+  tools/captures/capture_*/parsed_messages.json
+
+grep -n "1715082810" tools/captures/capture_*/raw_messages.txt
 ```
 
+## Limite importante
+
+Cette connexion observe les réponses et événements émis par la passerelle. Elle
+ne capture pas nécessairement la requête sortante d'un autre client, par exemple
+la commande exacte envoyée par l'application mobile officielle.
+
+Une modification effectuée dans l'application peut donc apparaître sous la
+forme d'une mise à jour regroupant plusieurs attributs sans indiquer lequel a
+été écrit par le téléphone. L'interception directe du trafic mobile nécessite
+un proxy HTTPS dédié et ne fait pas partie de cet outil.
+
+## Sécurité et nettoyage
+
+La connexion distante à `mediation.tydom.com` utilise la vérification TLS
+normale du système. La vérification du certificat est désactivée uniquement
+pour une passerelle locale, dont le certificat est auto-signé.
+
+Conservez les captures hors du contrôle de version. Supprimez-les dès que
+l'analyse est terminée, après avoir vérifié le chemin ciblé. Le répertoire
+`tools/captures/` est ignoré par Git.
