@@ -925,9 +925,7 @@ class Hub:
                 else:
                     await self._interruptible_sleep(60)
 
-    async def refresh_energy_now(
-        self, device_id: str, endpoint_id: str | None
-    ) -> None:
+    async def refresh_energy_now(self, device_id: str, endpoint_id: str | None) -> None:
         """Poll one Tywatt cdata endpoint immediately, on demand."""
         await self._tydom_client.poll_devices_data_5m(device_id, endpoint_id)
 
