@@ -154,6 +154,7 @@ TOTAL_GROUP_NAMES = {
     "shutter": "All shutters",
 }
 
+
 def _remote_control_model(tutorial_id: str) -> str:
     """Return a friendly model name from a TYDOM tutorial identifier."""
     return (
