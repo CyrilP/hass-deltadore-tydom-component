@@ -556,3 +556,35 @@ class TestDevicePolling(IsolatedAsyncioTestCase):
         client.get_poll_device_data.assert_awaited_once_with(
             "/devices/8/endpoints/8/data"
         )
+
+    async def test_cdata_poll_can_target_one_energy_endpoint(self) -> None:
+        """An entity refresh button must poll only its own TYWATT endpoint."""
+        client = self._client()
+        client.get_poll_device_data = AsyncMock()
+        client.poll_device_urls_5m = [
+            "/devices/10/endpoints/20/cdata?name=energyInstant&unit=ELEC_A",
+            "/devices/11/endpoints/21/cdata?name=energyInstant&unit=ELEC_A",
+        ]
+
+        await client.poll_devices_data_5m("10", "20")
+
+        client.get_poll_device_data.assert_awaited_once_with(
+            "/devices/10/endpoints/20/cdata?name=energyInstant&unit=ELEC_A"
+        )
+
+    async def test_cdata_poll_continues_after_one_endpoint_fails(self) -> None:
+        """One rejected cdata request must not prevent later URLs from polling."""
+        client = self._client()
+        first_url = "/devices/10/endpoints/20/cdata?name=energyIndex"
+        second_url = "/devices/11/endpoints/21/cdata?name=energyIndex"
+        client.poll_device_urls_5m = [first_url, second_url]
+        client.get_poll_device_data = AsyncMock(
+            side_effect=[RuntimeError("rejected"), None]
+        )
+
+        await client.poll_devices_data_5m()
+
+        self.assertEqual(
+            client.get_poll_device_data.await_args_list,
+            [call(first_url), call(second_url)],
+        )

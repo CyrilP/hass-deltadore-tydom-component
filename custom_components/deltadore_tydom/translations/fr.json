@@ -252,6 +252,9 @@
             },
             "group_alarm": {
                 "name": "Groupe Alarme"
+            },
+            "refresh_energy": {
+                "name": "Actualiser les données énergétiques"
             }
         },
         "number": {},

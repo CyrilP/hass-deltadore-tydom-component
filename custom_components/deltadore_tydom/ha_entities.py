@@ -1589,7 +1589,13 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyIndexECSWatt": SensorDeviceClass.ENERGY,
         "energyIndexHeatGas": SensorDeviceClass.ENERGY,
         "energyIndex": SensorDeviceClass.ENERGY,
+        "energyDistrib": SensorDeviceClass.ENERGY,
         "outTemperature": SensorDeviceClass.TEMPERATURE,
+        # Instant consumption reading (see energyInstant in
+        # MessageHandler.parse_cmeta_data/parse_devices_cdata), suffix is the
+        # cmeta "unit" enum value (e.g. ELEC_A, ELEC_W).
+        "energyInstant_ELEC_A": SensorDeviceClass.CURRENT,
+        "energyInstant_ELEC_W": SensorDeviceClass.POWER,
     }
 
     state_classes = {
@@ -1600,6 +1606,9 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyIndexHeatWatt": SensorStateClass.TOTAL_INCREASING,
         "energyIndexHeatGas": SensorStateClass.TOTAL_INCREASING,
         "energyIndex": SensorStateClass.TOTAL_INCREASING,
+        "energyDistrib": SensorStateClass.TOTAL_INCREASING,
+        "energyInstant_ELEC_A": SensorStateClass.MEASUREMENT,
+        "energyInstant_ELEC_W": SensorStateClass.MEASUREMENT,
         # Measurement for instant values
         "energyInstantTotElec": SensorStateClass.MEASUREMENT,
         "energyInstantTotElecP": SensorStateClass.MEASUREMENT,
@@ -1649,7 +1658,10 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyIndexECSWatt": UnitOfEnergy.WATT_HOUR,
         "energyIndexHeatGas": UnitOfEnergy.WATT_HOUR,
         "energyIndex": UnitOfEnergy.WATT_HOUR,
+        "energyDistrib": UnitOfEnergy.WATT_HOUR,
         "outTemperature": UnitOfTemperature.CELSIUS,
+        "energyInstant_ELEC_A": UnitOfElectricCurrent.AMPERE,
+        "energyInstant_ELEC_W": UnitOfPower.WATT,
     }
 
     def __init__(self, device: TydomEnergy, hass) -> None:
@@ -6117,6 +6129,39 @@ class HAReloadButton(ButtonEntity):
     async def async_press(self) -> None:
         """Handle the button press."""
         await self._hub.reload_devices()
+
+
+class HARefreshEnergyButton(ButtonEntity):
+    """Button entity to poll Tywatt energy cdata (energyInstant, etc.) on demand.
+
+    Attached to the Tywatt device itself (not the Tydom gateway), as a regular
+    control -- not a config/diagnostic entity.
+    """
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:refresh"
+    _attr_translation_key = "refresh_energy"
+
+    def __init__(self, hub, hass, energy_ha_device: "HAEnergy") -> None:
+        """Initialize HARefreshEnergyButton."""
+        self.hass = hass
+        self._hub = hub
+        self._energy_ha_device = energy_ha_device
+        self._device_id = energy_ha_device._device._id
+        self._endpoint_id = energy_ha_device._device.device_endpoint
+        self._attr_unique_id = (
+            f"{energy_ha_device._device.device_id}_refresh_energy_data"
+        )
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Attach to the same device as the Tywatt sensors."""
+        return self._energy_ha_device.device_info
+
+    async def async_press(self) -> None:
+        """Handle the button press."""
+        await self._hub.refresh_energy_now(self._device_id, self._endpoint_id)
 
 
 class HANumber(NumberEntity, HAEntity):

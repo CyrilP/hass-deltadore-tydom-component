@@ -366,6 +366,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.async_create_background_task(
             target=tydom_hub.refresh_data(), hass=hass, name="Tydom refresh data"
         )
+        entry.async_create_background_task(
+            target=tydom_hub.refresh_data_5m(),
+            hass=hass,
+            name="Tydom refresh cdata 5m",
+        )
 
     except asyncio.CancelledError:
         await _teardown_hub(hass, entry, tydom_hub)

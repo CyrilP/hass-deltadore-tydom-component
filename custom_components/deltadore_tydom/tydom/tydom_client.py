@@ -1030,10 +1030,20 @@ class TydomClient:
             url = self.poll_device_urls_1s.pop()
             await self.get_poll_device_data(url)
 
-    async def poll_devices_data_5m(self):
-        """Poll devices data."""
-        for url in self.poll_device_urls_5m:
-            await self.get_poll_device_data(url)
+    async def poll_devices_data_5m(
+        self, device_id: str | None = None, endpoint_id: str | None = None
+    ) -> None:
+        """Poll all registered cdata URLs, or those for one endpoint."""
+        urls = self.poll_device_urls_5m
+        if device_id is not None and endpoint_id is not None:
+            prefix = f"/devices/{device_id}/endpoints/{endpoint_id}/"
+            urls = [url for url in urls if url.startswith(prefix)]
+
+        for url in urls:
+            try:
+                await self.get_poll_device_data(url)
+            except Exception:
+                LOGGER.exception("Error polling cdata endpoint %s", url)
 
     async def get_configs_file(self):
         """List the devices to get the endpoint id."""

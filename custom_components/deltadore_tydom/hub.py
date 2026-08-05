@@ -62,6 +62,7 @@ from .ha_entities import (
     HAAlarmAcknowledgeButton,
     HAAlarmPendingEventsSensor,
     HAReloadButton,
+    HARefreshEnergyButton,
     HACoverGroup,
     HALightGroup,
     HASwitchGroup,
@@ -142,6 +143,7 @@ class Hub:
 
         self.online = True
         self._reload_button_created = False
+        self._refresh_energy_buttons_created: set[str] = set()
         self._remote_battery_entities: dict[str, HARemoteBattery] = {}
         self._interrupter_battery_entities: dict[str, HAInterrupterBattery] = {}
         self._shutting_down = False
@@ -152,6 +154,7 @@ class Hub:
         ] = {}  # (device_key, attr_name) -> interval
         self._polling_cache_timestamp = 0
         self._polling_cache_ttl = 300  # 5 minutes
+        self._next_poll_due: dict[int, float] = {}  # interval -> monotonic due time
 
         # Device factory registry for create_ha_device
         self._device_factories: dict[type, Callable] = {
@@ -410,9 +413,40 @@ class Hub:
         LOGGER.debug("Create conso %s", device.device_id)
         ha_device = HAEnergy(device, self._hass)
         self.ha_devices[device.device_id] = ha_device
+        # HAEnergy itself carries no device_class/unit/value: it only groups
+        # the per-attribute sensors below and must not be added as an entity,
+        # or it shows up as a useless "unknown" sensor (e.g. sensor.tywatt_tywatt).
         if self.add_sensor_callback is not None:
-            self.add_sensor_callback([ha_device])
             self.add_sensor_callback(ha_device.get_sensors())
+        # The device has no energy* attribute yet at first discovery (they only
+        # appear once the first cdata poll response is parsed), so this rarely
+        # creates the button here -- update_ha_device() does it once data arrives.
+        self._maybe_create_refresh_energy_button(device, ha_device)
+
+    def _maybe_create_refresh_energy_button(
+        self, device: TydomEnergy, ha_device: HAEnergy
+    ) -> None:
+        """Create one on-demand refresh button per real Tywatt device.
+
+        Some TydomEnergy devices only carry outTemperature (e.g. an outdoor
+        probe reusing this class), not real Tywatt consumption data -- only
+        attach the button to a device that actually exposes one of the polled
+        cdata attributes (energyIndex/energyInstant/energyHisto/energyDistrib),
+        or it ends up on the wrong HA device.
+        """
+        has_energy_attrs = any(
+            key.startswith("energy") for key in vars(device) if not key.startswith("_")
+        )
+        device_key = device.device_id
+        if (
+            has_energy_attrs
+            and device_key not in self._refresh_energy_buttons_created
+            and self.add_button_callback is not None
+        ):
+            refresh_energy_button = HARefreshEnergyButton(self, self._hass, ha_device)
+            self.add_button_callback([refresh_energy_button])
+            self._refresh_energy_buttons_created.add(device_key)
+            LOGGER.debug("Created energy refresh button for %s", device_key)
 
     async def _create_smoke_device(self, device: TydomSmoke) -> None:
         """Create smoke detector device."""
@@ -748,6 +782,8 @@ class Hub:
                     [s._attr_name for s in new_sensors],
                 )
                 self.add_sensor_callback(new_sensors)
+            if isinstance(ha_device, HAEnergy):
+                self._maybe_create_refresh_energy_button(stored_device, ha_device)
             # ha_device.publish_updates()
             # ha_device.update()
         except KeyError as e:
@@ -833,7 +869,7 @@ class Hub:
         metadata changes.
         """
         while not self._shutting_down:
-            current_time = time.time()
+            current_time = time.monotonic()
 
             # Rebuild cache only if expired
             if current_time - self._polling_cache_timestamp > self._polling_cache_ttl:
@@ -841,11 +877,16 @@ class Hub:
                 self._polling_cache_timestamp = current_time
 
             # Group devices by interval from cache
-            interval_groups: dict[int, list[tuple[str, str]]] = {}
-            for (device_key, attr_name), interval in self._polling_cache.items():
-                if interval not in interval_groups:
-                    interval_groups[interval] = []
-                interval_groups[interval].append((device_key, attr_name))
+            interval_groups: dict[int, set[str]] = {}
+            for (device_key, _attr_name), interval in self._polling_cache.items():
+                interval_groups.setdefault(interval, set()).add(device_key)
+
+            active_intervals = set(interval_groups)
+            self._next_poll_due = {
+                interval: due
+                for interval, due in self._next_poll_due.items()
+                if interval in active_intervals
+            }
 
             # Poll devices according to their intervals
             if interval_groups:
@@ -853,29 +894,59 @@ class Hub:
                 sorted_intervals = sorted(interval_groups.keys())
                 shortest_interval = sorted_intervals[0]
 
-                # Poll devices that need the shortest interval
-                for device_key, _attr_name in interval_groups[shortest_interval]:
-                    if device_key in self.devices:
-                        device = self.devices[device_key]
-                        if hasattr(device, "_tydom_client"):
-                            try:
-                                await device._tydom_client.poll_device_data(
-                                    device._id, device.device_endpoint
-                                )
-                            except Exception as e:
-                                LOGGER.warning(
-                                    "Error polling device %s: %s", device_key, e
-                                )
+                # Poll every interval group whose due time has elapsed, not just
+                # the shortest one - otherwise ES_SUPERVISION/SENSOR_SUPERVISION
+                # devices are starved forever as soon as any device needs
+                # SYNCHRO_SUPERVISION (shortest_interval always wins otherwise).
+                for interval, device_keys in interval_groups.items():
+                    if current_time < self._next_poll_due.get(interval, 0):
+                        continue
+                    self._next_poll_due[interval] = current_time + interval
+                    for device_key in device_keys:
+                        if device_key in self.devices:
+                            device = self.devices[device_key]
+                            if hasattr(device, "_tydom_client"):
+                                try:
+                                    await device._tydom_client.poll_device_data(
+                                        device._id, device.device_endpoint
+                                    )
+                                except Exception as e:
+                                    LOGGER.warning(
+                                        "Error polling device %s: %s", device_key, e
+                                    )
 
-                # Sleep for the shortest interval
+                # Sleep for the shortest interval so due longer-interval groups
+                # still get checked promptly on the next wake-up.
                 await self._interruptible_sleep(shortest_interval)
             else:
-                # No devices need polling, use default refresh interval
+                # No devices need validity-based polling, use default refresh interval
                 if self._refresh_interval > 0:
-                    await self._tydom_client.poll_devices_data_5m()
                     await self._interruptible_sleep(self._refresh_interval)
                 else:
                     await self._interruptible_sleep(60)
+
+    async def refresh_energy_now(self, device_id: str, endpoint_id: str | None) -> None:
+        """Poll one Tywatt cdata endpoint immediately, on demand."""
+        await self._tydom_client.poll_devices_data_5m(device_id, endpoint_id)
+
+    async def refresh_data_5m(self) -> None:
+        """Periodically poll the cdata endpoints registered for devices like Tywatt.
+
+        Endpoints such as energyIndex, energyInstant, energyHisto and
+        energyDistrib are registered via add_poll_device_url_5m() while parsing
+        /devices/cmeta (see MessageHandler.parse_cmeta_data) and must be polled
+        on their own schedule. They must NOT be polled only from within
+        refresh_data()'s "no validity-based polling needed" branch: as soon as
+        any other device exposes validity metadata (the common case), that
+        branch never runs and these cdata endpoints (e.g. the Tywatt instant
+        consumption sensor) would never be queried.
+        """
+        while not self._shutting_down:
+            try:
+                await self._tydom_client.poll_devices_data_5m()
+            except Exception:
+                LOGGER.exception("Error polling registered cdata endpoints")
+            await self._interruptible_sleep(300)
 
     async def reload_devices(self) -> None:
         """Recharger tous les appareils et entités comme au démarrage initial.
@@ -891,6 +962,7 @@ class Hub:
         self._interrupter_battery_entities.clear()
         # Réinitialiser le flag pour recréer le bouton après le rechargement
         self._reload_button_created = False
+        self._refresh_energy_buttons_created.clear()
 
         # Supprimer toutes les entités existantes via l'Entity Registry
         from homeassistant.helpers import entity_registry as er
@@ -925,6 +997,8 @@ class Hub:
         await self._tydom_client.get_moments()
 
         # Recréer le bouton de rechargement après le rechargement
+        # (le bouton d'actualisation énergie est recréé par _create_energy_device
+        # quand le device Tywatt est redécouvert)
         if self.add_button_callback is not None:
             reload_button = HAReloadButton(self, self._hass)
             self.add_button_callback([reload_button])
