@@ -83,18 +83,66 @@ Add the integration from Home Assistant's **Settings > Devices & services** page
 
 ## Configuration
 
-Configuration is performed through the Home Assistant user interface. The
-hostname or IP address can be:
+Configuration is performed through the Home Assistant user interface.
 
-* The hostname or IP address of your TYDOM (local mode only). Cloud access is
-  still used to retrieve the gateway credentials.
-* `mediation.tydom.com` to use the integration through the cloud.
+### Connection modes
 
-The MAC address is the MAC address of your TYDOM gateway.
+The selected configuration mode determines how the TYDOM gateway password is
+obtained. The host determines whether the connection itself is local or uses
+Delta Dore's mediation service.
 
-The email address and password are your Delta Dore account credentials.
+Mode | Credentials | Connection
+-- | -- | --
+Cloud | Enter the Delta Dore account email address and password. The integration retrieves the matching gateway password automatically. | Use the gateway hostname or IP address for a local connection, or `mediation.tydom.com` for a cloud connection.
+Manual | Enter the TYDOM gateway password directly. A Delta Dore account is not required during setup. | Normally the local gateway hostname or IP address; any compatible explicitly configured host is accepted.
 
-The alarm PIN is optional and is used when changing the alarm mode.
+### Configuration fields
+
+Field | Required | Description
+-- | -- | --
+Host | Yes | Local TYDOM hostname or IP address, or `mediation.tydom.com` for a cloud connection.
+MAC address | Yes | The gateway MAC address as 12 hexadecimal characters without separators.
+Delta Dore email and password | Cloud mode | Credentials for the Delta Dore account containing the gateway. These are used to retrieve its gateway password.
+TYDOM password | Manual mode | The gateway password, which is different from the ordinary Delta Dore account password.
+Refresh interval | Yes | Periodic refresh interval from 1 to 1,440 minutes; the default is 30 minutes. Push events remain active between refreshes.
+Home, Away and Night zones | No | Comma-separated TYXAL zone IDs from 0 to 8, for example `1,2,4`. Each field defines the zones armed by that Home Assistant alarm mode.
+Alarm PIN | No | Required when using Home Assistant to change the alarm mode; not required for read-only alarm state.
+
+After setup, open the integration's **Configure** menu to change the refresh
+interval, alarm zones or PIN.
+
+## Troubleshooting
+
+### Enable debug logging
+
+Open **Settings > Devices & services**, select **Delta Dore Tydom**, open the
+three-dot menu and select **Enable debug logging**. Reproduce the problem, then
+use the same menu to disable debug logging and download the resulting log.
+
+To capture startup behaviour, add the following to `configuration.yaml` and
+restart Home Assistant:
+
+```yaml
+logger:
+  default: info
+  logs:
+    custom_components.deltadore_tydom: debug
+```
+
+### Authentication and communication errors
+
+Error | Meaning | Checks
+-- | -- | --
+Authentication error | The supplied or retrieved credentials were rejected. | In Cloud mode, verify the Delta Dore email address, account password and gateway MAC. In Manual mode, verify that the TYDOM gateway password—not the Delta Dore account password—was entered.
+Communication error | Home Assistant could not reach the configured host or complete the connection. | Verify the hostname or IP address, local network access, DNS, gateway power and, when using cloud access, connectivity to `mediation.tydom.com`.
+
+### Remove obsolete devices
+
+Open **Settings > Devices & services > Delta Dore Tydom > Devices**, open the
+obsolete device's menu and select **Remove device**. This removes its Home
+Assistant device-registry entry; it does not delete anything from the TYDOM
+gateway or official application. A device may be discovered again if the
+gateway still advertises it.
 
 ## Capturing data for unsupported devices
 
