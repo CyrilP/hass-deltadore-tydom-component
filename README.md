@@ -1,14 +1,16 @@
 # Delta Dore Tydom
 
+**English** | [Français](README.fr.md)
+
 [![License][license-shield]](LICENSE)
 
 [![BuyMeCoffee][buymecoffeebadge]][buymecoffee]
 
 This is a *custom component* for [Home Assistant](https://www.home-assistant.io/).
 
-The `Delta Dore Tydom` integration allows you to observe and control a [Delta Dore Tydom smart home gateway](https://www.deltadore.fr/).
+The `Delta Dore Tydom` integration allows you to monitor and control your [Delta Dore Tydom smart home gateway](https://www.deltadore.fr/).
 
-This integration can work in local or cloud mode, depending on its configuration.
+The integration works in local or cloud mode, depending on its configuration.
 The Delta Dore gateway can be detected using DHCP discovery.
 
 ![GitHub release](https://img.shields.io/github/release/CyrilP/hass-deltadore-tydom-component)
@@ -20,7 +22,7 @@ Platform | Description
 -- | --
 `alarm_control_panel` | Controls a TYXAL alarm.
 `binary_sensor` | Reports binary states and diagnostics.
-`button` | Exposes stateless controls such as gate, garage and alarm actions.
+`button` | Exposes stateless controls such as gate, garage door and alarm actions.
 `climate` | Controls heating, cooling and ventilation.
 `cover` | Controls shutters, blinds and awnings.
 `event` | Reports physical remote-control and wall-switch button presses.
@@ -37,7 +39,7 @@ Platform | Description
 ### Tested hardware
 
 The integration is capability-driven: compatible devices are discovered from
-the usages and metadata advertised by TYDOM rather than from a fixed model
+the usage types and metadata advertised by TYDOM rather than from a fixed model
 allowlist. The following hardware and configurations have been tested by
 contributors; this is not an exhaustive compatibility list.
 
@@ -45,7 +47,7 @@ Category | Confirmed hardware or configuration | Home Assistant support
 -- | -- | --
 Alarm and safety | TYXAL+, CS8000, CSX40 and DFR smoke detectors | Alarm control, zone modes, diagnostics, event history, acknowledgement and supported remote product/zone management.
 Climate and heating | Tybox 5101 with Typass ATL, Tywell Control, TYXIA 1137, Calybox and RF 6600 FP | Area-backed climate control, temperatures, setpoints, operating modes, humidity, battery and capability-driven heating commands where advertised.
-Energy monitoring | TYWATT 1000, TYWATT 2000 and TYWATT 5400 with EMIC | Power, current and energy measurements, including heating and domestic-hot-water channels where advertised.
+Energy monitoring | TYWATT 1000, TYWATT 2000 and TYWATT 5400 with EMIC | Power, current and energy measurements, including heating and domestic hot water channels where advertised.
 Gates and garage doors | TYXIA 4620 dry-contact receivers | Stateless toggle buttons matching the receiver's open/stop/close pulse sequence, without claiming unavailable position feedback.
 Lighting and switching | TYXIA 4910 configured under TYDOM's `Others` usage, TYXIA 6610 and compatible X3D lights, dimmers and plugs | Lights, brightness, switches and plugs according to the capabilities reported by the endpoint.
 Openings and covers | TYMOOV roller shutters, BSO installations, K-Line DVI windows and doors, and compatible X3D shutters and awnings | Up, down and stop cover control; opening/contact state where the hardware provides feedback.
@@ -61,33 +63,38 @@ untested device so support can be extended without hard-coding one installation.
 
 The preferred way to install the Delta Dore Tydom integration is through HACS.
 
-Add your device via the Integration menu
+Add the integration from Home Assistant's **Settings > Devices & services** page.
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=deltadore_tydom)
 
-Manual method :
+### Manual installation
 
-1. Using the tool of choice open the directory (folder) for your HA configuration (where you find `configuration.yaml`).
-1. If you do not have a `custom_components` directory (folder) there, you need to create it.
-1. In the `custom_components` directory (folder) create a new folder called `deltadore_tydom`.
-1. Download _all_ the files from the `custom_components/deltadore_tydom/` directory (folder) in this repository.
-1. Place the files you downloaded in the new directory (folder) you created.
-1. Restart Home Assistant
-1. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "Delta Dore Tydom"
+1. Open the Home Assistant configuration directory containing
+   `configuration.yaml`.
+1. Create the `custom_components` directory if it does not already exist.
+1. Inside `custom_components`, create a directory named `deltadore_tydom`.
+1. Download all files from this repository's
+   `custom_components/deltadore_tydom` directory.
+1. Place the downloaded files in the new
+   `custom_components/deltadore_tydom` directory.
+1. Restart Home Assistant.
+1. Open **Settings > Devices & services**, select **Add Integration**, and
+   search for **Delta Dore Tydom**.
 
-## Configuration is done in the UI
+## Configuration
 
-<!---->
-The hostname or IP address can be:
+Configuration is performed through the Home Assistant user interface. The
+hostname or IP address can be:
 
-* The hostname or IP address of your TYDOM (local mode only). Cloud access is still used to retrieve the gateway credentials.
+* The hostname or IP address of your TYDOM (local mode only). Cloud access is
+  still used to retrieve the gateway credentials.
 * `mediation.tydom.com` to use the integration through the cloud.
 
 The MAC address is the MAC address of your TYDOM gateway.
 
 The email address and password are your Delta Dore account credentials.
 
-The alarm PIN is optional and is used to set the alarm mode.
+The alarm PIN is optional and is used when changing the alarm mode.
 
 ## Capturing data for unsupported devices
 
@@ -120,9 +127,9 @@ be reviewed before being shared publicly.
 
 For a useful device capture, perform one clearly identifiable action, wait about
 ten seconds, perform the reverse action, and record both timestamps. The capture
-sees responses and events published by the gateway; it cannot necessarily reveal
-the exact outbound request sent by another client such as the official mobile
-application.
+records responses and events published by the gateway; it cannot necessarily
+reveal the exact outbound request sent by another client such as the official
+mobile application.
 
 See the [complete capture guide](tools/README_capture.md) for local and remote
 connection examples, output analysis, parser validation and security guidance.
@@ -134,12 +141,12 @@ describes how to probe available API resources and HTTP methods.
 The alarm control panel provides services for the TYXAL+ functions that are
 useful in Home Assistant:
 
-- `deltadore_tydom.get_events` returns alarm history filtered as all,
-  alarm events, activation/deactivation events or unacknowledged events;
+- `deltadore_tydom.get_events` returns alarm history and can filter it to alarm,
+  activation/deactivation or unacknowledged events;
 - `deltadore_tydom.acknowledge_events` acknowledges pending alarm events;
 - `deltadore_tydom.get_alarm_products` lists configured products and zones;
-- `deltadore_tydom.enter_alarm_maintenance` opens a locked remote
-  configuration session and puts a disarmed CS8000 into maintenance mode;
+- `deltadore_tydom.enter_alarm_maintenance` unlocks remote configuration and
+  puts a disarmed CS8000 into maintenance mode;
 - `deltadore_tydom.get_alarm_product_configuration` reads a product's active
   state and zone assignment;
 - `deltadore_tydom.configure_alarm_product` enables or disables a product and
@@ -147,7 +154,7 @@ useful in Home Assistant:
 - `deltadore_tydom.rename_alarm_zone` changes a zone's custom name, or clears
   its label when supplied with an empty name;
 - `deltadore_tydom.exit_alarm_maintenance` returns the CS8000 to its normal
-  disarmed state and unlocks the remote configuration session.
+  disarmed state and locks remote configuration again.
 
 Use the first service to obtain the product and zone IDs required by the other
 services. Product configuration requires the CS8000 to be disarmed and the
@@ -157,18 +164,15 @@ finished. The installer code is used only for the request and is redacted from
 logs. Product deletion, access codes, telephone settings and siren
 configuration are not exposed.
 
-The TYXAL alarm device also provides an **Acknowledge events** button for the
-same operation when an action call or automation is not required.
+The TYXAL alarm device also provides an **Acknowledge events** button for
+convenient dashboard use without requiring a service call or automation.
 
 ## Contributions are welcome!
 
-If you want to contribute to this please read the [Contribution guidelines](CONTRIBUTING.md)
+If you would like to contribute, please read the [contribution guidelines](CONTRIBUTING.md).
 
 ***
 
-[integration_blueprint]: https://github.com/CyrilP/hass-deltadore-tydom-component
 [buymecoffee]: https://www.buymeacoffee.com/cyrilp
 [buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg?style=for-the-badge
-[exampleimg]: example.png
-[forum]: https://community.home-assistant.io/
 [license-shield]: https://img.shields.io/github/license/CyrilP/hass-deltadore-tydom-component.svg?style=for-the-badge
