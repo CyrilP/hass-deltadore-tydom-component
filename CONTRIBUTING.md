@@ -1,61 +1,48 @@
-# Contribution guidelines
+# Contributing
 
-Contributing to this project should be as easy and transparent as possible, whether it's:
+Contributions are welcome, including bug reports, documentation improvements,
+device support and fixes to existing behaviour.
 
-- Reporting a bug
-- Discussing the current state of the code
-- Submitting a fix
-- Proposing new features
+## Reporting issues
 
-## Github is used for everything
+Use [GitHub Issues](../../issues) for reproducible bugs and feature requests.
+Before opening an issue, search the existing open and closed issues and provide
+the information requested by the relevant template.
 
-Github is used to host code, to track issues and feature requests, as well as accept pull requests.
+Do not disclose a security vulnerability in a public issue. Follow the private
+reporting process in [SECURITY.md](SECURITY.md) instead.
 
-Pull requests are the best way to propose changes to the codebase.
+## Pull requests
 
-1. Fork the repo and create your branch from `main`.
-2. If you've changed something, update the documentation.
-3. Make sure your code lints (using `scripts/lint`).
-4. Test you contribution.
-5. Issue that pull request!
+1. Fork the repository and create a focused branch from `main`.
+2. Keep unrelated fixes in separate pull requests.
+3. Add or update tests where practical.
+4. Run the lint and formatting checks.
+5. Test the change against relevant Delta Dore hardware when possible.
+6. Update the documentation. If a change affects the README, update both
+   `README.md` and `README.fr.md`.
+7. Open a pull request and complete its checklist.
 
-## Any contributions you make will be under the MIT Software License
+Please describe the observed behaviour, the proposed change and the testing
+performed. Remove credentials, PINs, tokens, MAC addresses and other personal
+information from logs before attaching them.
 
-In short, when you submit code changes, your submissions are understood to be under the same [MIT License](http://choosealicense.com/licenses/mit/) that covers the project. Feel free to contact the maintainers if that's a concern.
+## Code quality
 
-## Report bugs using Github's [issues](../../issues)
+The continuous-integration workflow uses Ruff. Run the same checks locally:
 
-GitHub issues are used to track public bugs.
-Report a bug by [opening a new issue](../../issues/new/choose); it's that easy!
+```bash
+python3 -m pip install -r requirements.txt
+python3 -m ruff check custom_components/
+python3 -m ruff format custom_components/ --check
+```
 
-## Write bug reports with detail, background, and sample code
+Run the tests relevant to your change in your development environment. New
+protocol or entity behaviour should normally include a regression test under
+`tests/`. For hardware-dependent changes, include sanitised logs and state
+which device and operations were tested.
 
-**Great Bug Reports** tend to have:
+## Licence
 
-- A quick summary and/or background
-- Steps to reproduce
-  - Be specific!
-  - Give sample code if you can.
-- What you expected would happen
-- What actually happens
-- Notes (possibly including why you think this might be happening, or stuff you tried that didn't work)
-
-People *love* thorough bug reports. I'm not even kidding.
-
-## Use a Consistent Coding Style
-
-Use [black](https://github.com/ambv/black) to make sure the code follows the style.
-
-## Test your code modification
-
-This custom component is based on [integration_blueprint template](https://github.com/ludeeus/integration_blueprint).
-
-It comes with development environment in a container, easy to launch
-if you use Visual Studio Code. With this container you will have a stand alone
-Home Assistant instance running and already configured with the included
-[`configuration.yaml`](./config/configuration.yaml)
-file.
-
-## License
-
-By contributing, you agree that your contributions will be licensed under its MIT License.
+By contributing, you agree that your contribution will be licensed under the
+repository's [MIT Licence](LICENSE).

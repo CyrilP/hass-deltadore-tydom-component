@@ -12,9 +12,9 @@ body:
     options:
       - label: I have filled out the template to the best of my ability.
         required: true
-      - label: This only contains 1 feature request (if you have multiple feature requests, open one feature request for each feature request).
+      - label: This report contains one feature request only. Open a separate issue for each additional request.
         required: true
-      - label: This issue is not a duplicate feature request of [previous feature requests](https://github.com/ludeeus/integration_blueprint/issues?q=is%3Aissue+label%3A%22Feature+Request%22+).
+      - label: I have searched the [existing open and closed issues](https://github.com/CyrilP/hass-deltadore-tydom-component/issues?q=is%3Aissue) and found no duplicate feature request.
         required: true
 
 - type: textarea
