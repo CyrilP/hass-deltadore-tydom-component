@@ -89,19 +89,69 @@ Home Assistant.
 
 ## Configuration
 
-La configuration s'effectue depuis l'interface de Home Assistant. Le nom
-d'hôte ou l'adresse IP peut être :
+La configuration s'effectue depuis l'interface de Home Assistant.
 
-* Le nom d'hôte ou l'adresse IP de votre TYDOM (mode local uniquement). Un
-  accès au cloud reste nécessaire pour récupérer les identifiants de la
-  passerelle.
-* `mediation.tydom.com` pour utiliser l'intégration à travers le cloud.
+### Modes de connexion
 
-L'adresse MAC est celle de votre passerelle TYDOM.
+Le mode de configuration sélectionné détermine la manière dont le mot de passe
+de la passerelle TYDOM est obtenu. L'hôte détermine si la connexion elle-même
+est locale ou utilise le service de médiation Delta Dore.
 
-L'adresse e-mail et le mot de passe sont ceux de votre compte Delta Dore.
+Mode | Identifiants | Connexion
+-- | -- | --
+Cloud | Saisissez l'adresse e-mail et le mot de passe du compte Delta Dore. L'intégration récupère automatiquement le mot de passe de la passerelle correspondante. | Utilisez le nom d'hôte ou l'adresse IP de la passerelle pour une connexion locale, ou `mediation.tydom.com` pour une connexion cloud.
+Manuel | Saisissez directement le mot de passe de la passerelle TYDOM. Aucun compte Delta Dore n'est nécessaire pendant la configuration. | Normalement le nom d'hôte ou l'adresse IP de la passerelle locale ; tout hôte compatible explicitement configuré est accepté.
 
-Le code PIN de l'alarme est facultatif et sert à modifier son mode.
+### Champs de configuration
+
+Champ | Obligatoire | Description
+-- | -- | --
+Hôte | Oui | Nom d'hôte ou adresse IP du TYDOM local, ou `mediation.tydom.com` pour une connexion cloud.
+Adresse MAC | Oui | Adresse MAC de la passerelle sous la forme de 12 caractères hexadécimaux sans séparateurs.
+E-mail et mot de passe Delta Dore | Mode cloud | Identifiants du compte Delta Dore contenant la passerelle. Ils servent à récupérer son mot de passe de passerelle.
+Mot de passe TYDOM | Mode manuel | Mot de passe de la passerelle, différent du mot de passe ordinaire du compte Delta Dore.
+Intervalle de rafraîchissement | Oui | Intervalle de rafraîchissement périodique compris entre 1 et 1 440 minutes ; la valeur par défaut est de 30 minutes. Les événements transmis en temps réel restent actifs entre les rafraîchissements.
+Zones Présent, Absent et Nuit | Non | Identifiants de zones TYXAL compris entre 0 et 8, séparés par des virgules, par exemple `1,2,4`. Chaque champ définit les zones armées par le mode d'alarme Home Assistant correspondant.
+Code PIN de l'alarme | Non | Nécessaire pour modifier le mode de l'alarme depuis Home Assistant ; inutile pour consulter uniquement son état.
+
+Après la configuration, ouvrez le menu **Configurer** de l'intégration pour
+modifier l'intervalle de rafraîchissement, les zones d'alarme ou le code PIN.
+
+## Dépannage
+
+### Activer la journalisation de débogage
+
+Ouvrez **Paramètres > Appareils et services**, sélectionnez **Delta Dore
+Tydom**, ouvrez le menu à trois points et sélectionnez **Activer la
+journalisation de débogage**. Reproduisez le problème, puis utilisez le même
+menu pour désactiver la journalisation de débogage et télécharger le journal
+obtenu.
+
+Pour enregistrer le comportement au démarrage, ajoutez la configuration
+suivante à `configuration.yaml`, puis redémarrez Home Assistant :
+
+```yaml
+logger:
+  default: info
+  logs:
+    custom_components.deltadore_tydom: debug
+```
+
+### Erreurs d'authentification et de communication
+
+Erreur | Signification | Vérifications
+-- | -- | --
+Erreur d'authentification | Les identifiants fournis ou récupérés ont été refusés. | En mode Cloud, vérifiez l'adresse e-mail Delta Dore, le mot de passe du compte et l'adresse MAC de la passerelle. En mode Manuel, vérifiez que vous avez saisi le mot de passe de la passerelle TYDOM, et non celui du compte Delta Dore.
+Erreur de communication | Home Assistant n'a pas pu joindre l'hôte configuré ou terminer la connexion. | Vérifiez le nom d'hôte ou l'adresse IP, l'accès au réseau local, le DNS, l'alimentation de la passerelle et, pour un accès cloud, la connectivité avec `mediation.tydom.com`.
+
+### Supprimer les appareils obsolètes
+
+Ouvrez **Paramètres > Appareils et services > Delta Dore Tydom > Appareils**,
+ouvrez le menu de l'appareil obsolète et sélectionnez **Supprimer l'appareil**.
+Cette opération supprime son entrée du registre des appareils Home Assistant ;
+elle ne supprime rien de la passerelle TYDOM ni de l'application officielle.
+L'appareil peut être découvert de nouveau si la passerelle continue à
+l'annoncer.
 
 ## Capturer les données d'un appareil non pris en charge
 
