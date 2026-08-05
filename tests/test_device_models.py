@@ -93,16 +93,22 @@ class TestDeviceModels(TestCase):
             "sensor_dfr": "DFR TYXAL+",
             "25_tymoov": "TYMOOV",
             "35_se2000": "Tysense Thermo",
+            "4_dvi_kline": "DVI K-Line",
+            "5_detectouverture_kline": "DVI K-Line",
+            "6_pod_kline": "POD K-Line",
+            "7_dvi_kline_fenetre_coul_battant": "DVI K-Line",
             "tysense_sun": "Tysense Sun",
             "tywell_control": "Tywell Control",
             "tywell_control_2050": "Tywell 2050",
             "8_Tyxia6610": "TYXIA 6610",
+            "8_dvi_kline_fenetre_coul": "DVI K-Line",
             "smart_plug_DD": "Delta Dore Easy Plug",
             "split_takao_type_1": "Atlantic Naviclim 875311",
             "split_takao_type_2": "Atlantic Naviclim 875311",
             "switch_tyxia2600_btn_a": "TYXIA 2600",
             "rcu_tyxia1410_btn_4": "TYXIA 1410",
             "tl2000_btn_2": "TL 2000 Tyxal+",
+            "Tywatt_serie1000": "TYWATT 1000",
             "Volet_roulant_wellcom": "Well'com roller shutter",
         }
 
@@ -121,13 +127,11 @@ class TestDeviceModels(TestCase):
             "2_Calybox_TyboxRT_serie1000",
             "3_Calybox_TyboxRT_serie2000",
             "5_Tybox_serie5000",
-            "5_detectouverture_kline",
             "6_RecepteurRF_serie6000_1",
             "6_RecepteurRF_serie6000_2_twc",
             "kline_vr",
             "42_novoferm_novoport_novomatic",
             "TA5555_Zigbee_DD",
-            "Tywatt_serie1000",
         }
 
         for tutorial_id in tutorials:
