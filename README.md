@@ -26,6 +26,7 @@ The Delta Dore gateway can be detected using DHCP discovery.
 - [Capturing data for unsupported devices](#capturing-data-for-unsupported-devices)
 - [TYXAL+ remote management](#tyxal-remote-management)
 - [Known limitations](#known-limitations)
+- [Security](#security)
 - [Contributing](#contributing)
 
 **This integration sets up the following platforms.**
@@ -263,6 +264,12 @@ convenient dashboard use without requiring a service call or automation.
 - TYXAL remote management exposes the safe, confirmed operations documented
   above. Product deletion, access codes, telephone settings and siren
   configuration are not supported.
+
+## Security
+
+Do not report suspected vulnerabilities in a public issue. Read the
+[security policy](SECURITY.md) and use the private reporting process described
+there.
 
 ## Contributing
 

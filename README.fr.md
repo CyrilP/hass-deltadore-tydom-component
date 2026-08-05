@@ -28,6 +28,7 @@ passerelle Delta Dore peut être détectée par découverte DHCP.
 - [Capturer les données d'un appareil non pris en charge](#capturer-les-données-dun-appareil-non-pris-en-charge)
 - [Gestion à distance TYXAL+](#gestion-à-distance-tyxal)
 - [Limites connues](#limites-connues)
+- [Sécurité](#sécurité)
 - [Contribuer](#contribuer)
 
 **Cette intégration configure les plateformes suivantes.**
@@ -283,6 +284,12 @@ service ni automatisation.
   confirmées décrites ci-dessus. La suppression de produits, les codes d'accès,
   les réglages téléphoniques et la configuration des sirènes ne sont pas pris
   en charge.
+
+## Sécurité
+
+Ne signalez pas une vulnérabilité présumée dans un ticket public. Consultez la
+[politique de sécurité](SECURITY.md) et utilisez la procédure de signalement
+privé qui y est décrite.
 
 ## Contribuer
 
