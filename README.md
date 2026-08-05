@@ -182,7 +182,7 @@ protocol behaviour that the integration does not yet support:
 ```bash
 python3 tools/capture_tydom_data.py \
   --host 192.168.1.100 \
-  --mac 001A2502419B \
+  --mac AABBCCDDEEFF \
   --password '<Tydom gateway password>' \
   --duration 120
 ```

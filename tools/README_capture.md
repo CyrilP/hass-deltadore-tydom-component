@@ -23,7 +23,7 @@ python3 -m pip install aiohttp async-timeout requests urllib3
 ```bash
 python3 tools/capture_tydom_data.py \
   --host 192.168.1.100 \
-  --mac 001A2502419B \
+  --mac AABBCCDDEEFF \
   --password '<mot-de-passe-passerelle>' \
   --duration 120
 ```
@@ -33,7 +33,7 @@ python3 tools/capture_tydom_data.py \
 ```bash
 python3 tools/capture_tydom_data.py \
   --host mediation.tydom.com \
-  --mac 001A2502419B \
+  --mac AABBCCDDEEFF \
   --email utilisateur@example.com \
   --delta-password '<mot-de-passe-compte>' \
   --duration 120
