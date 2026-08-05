@@ -16,6 +16,18 @@ The Delta Dore gateway can be detected using DHCP discovery.
 ![GitHub release](https://img.shields.io/github/release/CyrilP/hass-deltadore-tydom-component)
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration)
 
+## Contents
+
+- [Tested hardware](#tested-hardware)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Troubleshooting](#troubleshooting)
+- [Capturing data for unsupported devices](#capturing-data-for-unsupported-devices)
+- [TYXAL+ remote management](#tyxal-remote-management)
+- [Known limitations](#known-limitations)
+- [Contributing](#contributing)
+
 **This integration sets up the following platforms.**
 
 Platform | Description
@@ -59,6 +71,13 @@ Devices not listed above may still work fully or expose a useful subset of
 their attributes. Please include sanitised debug data when reporting an
 untested device so support can be extended without hard-coding one installation.
 
+## Requirements
+
+- Home Assistant 2024.7.0 or newer.
+- HACS 2.0.1 or newer when installing or updating through HACS.
+- Network access from Home Assistant to the local TYDOM gateway or to
+  `mediation.tydom.com`, according to the configured host.
+
 ## Installation
 
 The preferred way to install the Delta Dore Tydom integration is through HACS.
@@ -80,6 +99,17 @@ Add the integration from Home Assistant's **Settings > Devices & services** page
 1. Restart Home Assistant.
 1. Open **Settings > Devices & services**, select **Add Integration**, and
    search for **Delta Dore Tydom**.
+
+### Upgrading
+
+For a HACS installation, install the update offered by HACS. Releases include
+a generated `deltadore_tydom.zip` archive containing a consistent integration
+version.
+
+For a manual installation, replace the complete
+`custom_components/deltadore_tydom` directory with the files from one release,
+then restart Home Assistant. Do not combine individual files from different
+releases or test branches.
 
 ## Configuration
 
@@ -215,7 +245,26 @@ configuration are not exposed.
 The TYXAL alarm device also provides an **Acknowledge events** button for
 convenient dashboard use without requiring a service call or automation.
 
-## Contributions are welcome!
+## Known limitations
+
+- TYXIA 4620 gate and garage receivers provide an impulse command but no
+  position or direction feedback. Home Assistant therefore exposes a stateless
+  toggle button and cannot determine whether the next pulse will open, stop or
+  close the motor.
+- Battery-powered and radio devices report according to their own schedule.
+  Refreshing or polling the gateway cannot force a sleeping device to transmit
+  a newer value.
+- An exact model name is displayed only when TYDOM provides reliable product or
+  tutorial metadata. Other compatible devices retain a generic Delta Dore
+  model name rather than being guessed from broad capabilities.
+- The capture tool records messages returned or published by the gateway. It
+  cannot always reveal the exact outbound request sent by the official mobile
+  application.
+- TYXAL remote management exposes the safe, confirmed operations documented
+  above. Product deletion, access codes, telephone settings and siren
+  configuration are not supported.
+
+## Contributing
 
 If you would like to contribute, please read the [contribution guidelines](CONTRIBUTING.md).
 

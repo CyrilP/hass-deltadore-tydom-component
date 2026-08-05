@@ -18,6 +18,18 @@ passerelle Delta Dore peut être détectée par découverte DHCP.
 ![Version GitHub](https://img.shields.io/github/release/CyrilP/hass-deltadore-tydom-component)
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration)
 
+## Sommaire
+
+- [Matériel testé](#matériel-testé)
+- [Prérequis](#prérequis)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Dépannage](#dépannage)
+- [Capturer les données d'un appareil non pris en charge](#capturer-les-données-dun-appareil-non-pris-en-charge)
+- [Gestion à distance TYXAL+](#gestion-à-distance-tyxal)
+- [Limites connues](#limites-connues)
+- [Contribuer](#contribuer)
+
 **Cette intégration configure les plateformes suivantes.**
 
 Plateforme | Description
@@ -63,6 +75,14 @@ ou exposer une partie utile de leurs attributs. Lorsque vous signalez un
 appareil non testé, joignez des données de débogage anonymisées afin d'étendre
 la prise en charge sans coder en dur une installation particulière.
 
+## Prérequis
+
+- Home Assistant 2024.7.0 ou version ultérieure.
+- HACS 2.0.1 ou version ultérieure pour une installation ou une mise à jour
+  effectuée avec HACS.
+- Un accès réseau depuis Home Assistant vers la passerelle TYDOM locale ou
+  `mediation.tydom.com`, selon l'hôte configuré.
+
 ## Installation
 
 La méthode recommandée consiste à installer l'intégration Delta Dore Tydom
@@ -86,6 +106,17 @@ Home Assistant.
 1. Redémarrez Home Assistant.
 1. Ouvrez **Paramètres > Appareils et services**, sélectionnez
    **Ajouter une intégration**, puis recherchez **Delta Dore Tydom**.
+
+### Mise à jour
+
+Pour une installation HACS, installez la mise à jour proposée par HACS. Chaque
+version publiée fournit une archive `deltadore_tydom.zip` générée, contenant
+une version cohérente de l'intégration.
+
+Pour une installation manuelle, remplacez la totalité du répertoire
+`custom_components/deltadore_tydom` par les fichiers d'une même version, puis
+redémarrez Home Assistant. Ne mélangez pas des fichiers individuels provenant
+de versions ou de branches de test différentes.
 
 ## Configuration
 
@@ -232,7 +263,28 @@ L'appareil d'alarme TYXAL fournit également un bouton **Acquitter les
 événements** utilisable directement dans un tableau de bord, sans appel de
 service ni automatisation.
 
-## Contributions bienvenues !
+## Limites connues
+
+- Les récepteurs de portail et de porte de garage TYXIA 4620 fournissent une
+  commande impulsionnelle, mais aucun retour de position ou de direction. Home
+  Assistant expose donc un bouton sans état et ne peut pas déterminer si
+  l'impulsion suivante ouvrira, arrêtera ou fermera la motorisation.
+- Les appareils radio ou alimentés par batterie transmettent selon leur propre
+  cadence. L'actualisation ou l'interrogation de la passerelle ne peut pas
+  forcer un appareil endormi à transmettre une valeur plus récente.
+- Un nom de modèle exact n'est affiché que lorsque TYDOM fournit des métadonnées
+  produit ou tutoriel fiables. Les autres appareils compatibles conservent un
+  nom de modèle Delta Dore générique plutôt que d'être identifiés à partir de
+  capacités trop générales.
+- L'outil de capture enregistre les messages renvoyés ou publiés par la
+  passerelle. Il ne permet pas toujours d'identifier la requête sortante exacte
+  envoyée par l'application mobile officielle.
+- La gestion à distance TYXAL expose uniquement les opérations sûres et
+  confirmées décrites ci-dessus. La suppression de produits, les codes d'accès,
+  les réglages téléphoniques et la configuration des sirènes ne sont pas pris
+  en charge.
+
+## Contribuer
 
 Si vous souhaitez contribuer, consultez les
 [consignes de contribution](CONTRIBUTING.md).
