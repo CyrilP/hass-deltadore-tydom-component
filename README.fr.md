@@ -67,7 +67,7 @@ Suivi énergétique | TYWATT 1000, TYWATT 2000 et TYWATT 5400 avec EMIC | Mesure
 Portails et portes de garage | Récepteurs à contact sec TYXIA 4620 | Boutons impulsionnels reproduisant la séquence ouverture/arrêt/fermeture du récepteur, sans prétendre connaître une position qui n'est pas remontée.
 Éclairage et commutation | TYXIA 4910 configuré dans l'usage `Autres` de TYDOM, TYXIA 6610, éclairages, variateurs et prises X3D compatibles | Éclairages, luminosité, interrupteurs et prises selon les capacités annoncées par le point de terminaison.
 Ouvertures et protections solaires | Moteurs de volets roulants TYMOOV, installations BSO, fenêtres et portes K-Line DVI, volets et bannes X3D compatibles | Commandes montée, descente et arrêt ; état d'ouverture ou de contact lorsque le matériel fournit un retour.
-Commandes physiques | Interrupteurs muraux TYXIA 2600, télécommandes TYXIA 1410, télécommandes TL 2000 et télécommandes TYXAL+ | Événements Home Assistant natifs utilisables dans les automatisations, avec diagnostic de batterie lorsqu'il est fourni.
+Commandes physiques | Interrupteurs muraux TYXIA 2600, télécommandes TYXIA 1410 et télécommandes TL 2000 Tyxal+ | Événements Home Assistant natifs utilisables dans les automatisations, avec diagnostic de batterie lorsqu'il est fourni.
 Capteurs solaires | TySense Sun | Irradiance solaire en W/m² et diagnostics associés.
 Ventilation | Naviclim Atlantic 875311 | Régulation, modes de fonctionnement et vitesses de ventilation prises en charge.
 

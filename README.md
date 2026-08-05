@@ -64,7 +64,7 @@ Energy monitoring | TYWATT 1000, TYWATT 2000 and TYWATT 5400 with EMIC | Power, 
 Gates and garage doors | TYXIA 4620 dry-contact receivers | Stateless toggle buttons matching the receiver's open/stop/close pulse sequence, without claiming unavailable position feedback.
 Lighting and switching | TYXIA 4910 configured under TYDOM's `Others` usage, TYXIA 6610 and compatible X3D lights, dimmers and plugs | Lights, brightness, switches and plugs according to the capabilities reported by the endpoint.
 Openings and covers | TYMOOV roller shutters, BSO installations, K-Line DVI windows and doors, and compatible X3D shutters and awnings | Up, down and stop cover control; opening/contact state where the hardware provides feedback.
-Physical controls | TYXIA 2600 wall switches, TYXIA 1410 remote controls, TL 2000 remote controls and TYXAL+ remote controls | Native Home Assistant button events for automations, with battery diagnostics where supplied.
+Physical controls | TYXIA 2600 wall switches, TYXIA 1410 remote controls and TL 2000 Tyxal+ remote controls | Native Home Assistant button events for automations, with battery diagnostics where supplied.
 Solar sensors | TySense Sun | Solar irradiance in W/m² and associated diagnostics.
 Ventilation | Naviclim Atlantic 875311 | Climate control, operating modes and supported fan speeds.
 
