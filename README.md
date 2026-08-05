@@ -4,50 +4,62 @@
 
 [![BuyMeCoffee][buymecoffeebadge]][buymecoffee]
 
-This a *custom component* for [Home Assistant](https://www.home-assistant.io/).
+This is a *custom component* for [Home Assistant](https://www.home-assistant.io/).
 
-The `Delta Dore Tydom` integration allows you to observe and control [Delta Dore Tydom smart home gateway](https://www.deltadore.fr/).
+The `Delta Dore Tydom` integration allows you to observe and control a [Delta Dore Tydom smart home gateway](https://www.deltadore.fr/).
 
-This integration can work in local mode or cloud mode depending on how the integration is configured (see Configuration part)
-The Delta Dore gateway can be detected using dhcp discovery.
+This integration can work in local or cloud mode, depending on its configuration.
+The Delta Dore gateway can be detected using DHCP discovery.
 
 ![GitHub release](https://img.shields.io/github/release/CyrilP/hass-deltadore-tydom-component)
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration)
 
-**This integration will set up the following platforms.**
+**This integration sets up the following platforms.**
 
 Platform | Description
 -- | --
-`binary_sensor` | Show something `True` or `False`.
-`sensor` | Show info.
-`switch` | Switch something `True` or `False`.
-`cover` | controls an opening or cover.
-`climate` | controls temperature, humidity, or fans.
-`light` | controls a light.
-`lock` | controls a lock.
-`alarm_control_panel` | controls an alarm.
-`weather` | provides meteorological data
-`update` | firmware update
+`alarm_control_panel` | Controls a TYXAL alarm.
+`binary_sensor` | Reports binary states and diagnostics.
+`button` | Exposes stateless controls such as gate, garage and alarm actions.
+`climate` | Controls heating, cooling and ventilation.
+`cover` | Controls shutters, blinds and awnings.
+`event` | Reports physical remote-control and wall-switch button presses.
+`light` | Controls lights and dimmers.
+`lock` | Controls a lock.
+`number` | Controls writable numeric settings exposed by a device.
+`scene` | Activates TYDOM scenes.
+`select` | Controls writable enumerated settings exposed by a device.
+`sensor` | Reports measurements and device information.
+`switch` | Controls binary outputs, plugs and TYDOM moments.
+`update` | Installs supported TYDOM firmware updates.
+`weather` | Reports weather information.
 
-**This integration has been tested with the following hardware.**
+### Tested hardware
 
-- Cover (Up/Down/Stop)
-- Tywatt 5400, Tywatt 1000
-- Tyxal+ DFR
-- K-Line DVI (windows, door)
-- Typass ATL (zones temperatures, target temperature, mode (Auto mode is used for antifrost), water/heat power usage) with Tybox 5101
-- Calybox
-- Tyxal+, Tyxal CSX40
-- TYXIA 6610
-- BSO
-- Naviclim Atlantic 875311
-- RF 6600 FP : partial issue #92
+The integration is capability-driven: compatible devices are discovered from
+the usages and metadata advertised by TYDOM rather than from a fixed model
+allowlist. The following hardware and configurations have been tested by
+contributors; this is not an exhaustive compatibility list.
 
-Some other functions may also work or only report attributes.
+Category | Confirmed hardware or configuration | Home Assistant support
+-- | -- | --
+Alarm and safety | TYXAL+, CS8000, CSX40 and DFR smoke detectors | Alarm control, zone modes, diagnostics, event history, acknowledgement and supported remote product/zone management.
+Climate and heating | Tybox 5101 with Typass ATL, Tywell Control, TYXIA 1137, Calybox and RF 6600 FP | Area-backed climate control, temperatures, setpoints, operating modes, humidity, battery and capability-driven heating commands where advertised.
+Energy monitoring | TYWATT 1000, TYWATT 2000 and TYWATT 5400 with EMIC | Power, current and energy measurements, including heating and domestic-hot-water channels where advertised.
+Gates and garage doors | TYXIA 4620 dry-contact receivers | Stateless toggle buttons matching the receiver's open/stop/close pulse sequence, without claiming unavailable position feedback.
+Lighting and switching | TYXIA 4910 configured under TYDOM's `Others` usage, TYXIA 6610 and compatible X3D lights, dimmers and plugs | Lights, brightness, switches and plugs according to the capabilities reported by the endpoint.
+Openings and covers | TYMOOV roller shutters, BSO installations, K-Line DVI windows and doors, and compatible X3D shutters and awnings | Up, down and stop cover control; opening/contact state where the hardware provides feedback.
+Physical controls | TYXIA 2600 wall switches, TYXIA 1410 remote controls and TL 2000 TYXAL+ remote controls | Native Home Assistant button events for automations, with battery diagnostics where supplied.
+Solar sensors | TySense Sun | Solar irradiance in W/m² and associated diagnostics.
+Ventilation | Naviclim Atlantic 875311 | Climate control, operating modes and supported fan speeds.
+
+Devices not listed above may still work fully or expose a useful subset of
+their attributes. Please include sanitised debug data when reporting an
+untested device so support can be extended without hard-coding one installation.
 
 ## Installation
 
-The preferred way to install the Delta Dore Tydom integration is by addig it using HACS.
+The preferred way to install the Delta Dore Tydom integration is through HACS.
 
 Add your device via the Integration menu
 
@@ -66,15 +78,16 @@ Manual method :
 ## Configuration is done in the UI
 
 <!---->
-The hostname/ip can be :
-* The hostname/ip of your Tydom (local mode only). An access to the cloud is done to retrieve the Tydom credentials
-* mediation.tydom.com. Using this configuration makes the integration work through the cloud
+The hostname or IP address can be:
 
-The Mac address is the Mac of you Tydom
+* The hostname or IP address of your TYDOM (local mode only). Cloud access is still used to retrieve the gateway credentials.
+* `mediation.tydom.com` to use the integration through the cloud.
 
-Email/Password are you Dela Dore credentials
+The MAC address is the MAC address of your TYDOM gateway.
 
-The alarm PIN is optional and used to set your alarm mode
+The email address and password are your Delta Dore account credentials.
+
+The alarm PIN is optional and is used to set the alarm mode.
 
 ## Capturing data for unsupported devices
 
