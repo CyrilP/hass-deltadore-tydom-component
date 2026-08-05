@@ -34,6 +34,7 @@ from homeassistant.const import (
     PERCENTAGE,
 )
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.components.cover import (
     ATTR_POSITION,
@@ -3398,6 +3399,71 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         """Get alarm events."""
         return await self._device.get_events(event_type or "UNACKED_EVENTS")
 
+    async def async_get_alarm_products(self) -> dict[str, list[dict[str, Any]]]:
+        """Return the products and zones configured on the alarm."""
+        return await self._device.get_alarm_products()
+
+    async def async_get_alarm_product_configuration(
+        self, code: str, product_id: int
+    ) -> dict[str, Any]:
+        """Return the common configuration of one alarm product."""
+        try:
+            return await self._device.get_alarm_product_configuration(code, product_id)
+        except Exception as err:
+            raise HomeAssistantError(
+                "The CS8000 rejected the configuration request. Ensure it is in "
+                "maintenance mode and use its installer code."
+            ) from err
+
+    async def async_enter_alarm_maintenance(self, code: str) -> None:
+        """Put the TYXAL central unit into maintenance mode."""
+        try:
+            await self._device.enter_alarm_maintenance(code)
+        except Exception as err:
+            raise HomeAssistantError(
+                "The CS8000 could not enter maintenance mode. Check the installer code "
+                "and ensure the alarm is disarmed."
+            ) from err
+
+    async def async_exit_alarm_maintenance(self, code: str) -> None:
+        """Take the TYXAL central unit out of maintenance mode."""
+        try:
+            await self._device.exit_alarm_maintenance(code)
+        except Exception as err:
+            raise HomeAssistantError(
+                "The CS8000 could not leave maintenance mode. Check the installer code."
+            ) from err
+
+    async def async_configure_alarm_product(
+        self,
+        code: str,
+        product_id: int,
+        active: bool | None = None,
+        zone: int | None = None,
+    ) -> None:
+        """Enable, disable or reassign one alarm product."""
+        if active is None and zone is None:
+            raise HomeAssistantError("At least one of active or zone must be supplied")
+        try:
+            await self._device.configure_alarm_product(
+                code, product_id, active=active, zone=zone
+            )
+        except Exception as err:
+            raise HomeAssistantError(
+                "The CS8000 rejected the product change. Ensure it is in "
+                "maintenance mode and use its installer code."
+            ) from err
+
+    async def async_rename_alarm_zone(self, code: str, zone_id: int, name: str) -> None:
+        """Rename one alarm zone."""
+        try:
+            await self._device.rename_alarm_zone(code, zone_id, name)
+        except Exception as err:
+            raise HomeAssistantError(
+                "The CS8000 rejected the zone change. Ensure it is in "
+                "maintenance mode and use its installer code."
+            ) from err
+
 
 class HaWeather(WeatherEntity, HAEntity):
     """Representation of a weather entity."""
@@ -5896,6 +5962,135 @@ class HAButton(ButtonEntity, HAEntity):
             # Generic approach: send a command
             await self._device._tydom_client.put_devices_data(
                 self._device._id, self._device._endpoint, self._action_method, "ON"
+            )
+
+
+class HAAlarmAcknowledgeButton(ButtonEntity, HAEntity):
+    """Button which acknowledges pending TYXAL alarm events."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_translation_key = "acknowledge_events"
+    _attr_icon = "mdi:notification-clear-all"
+
+    def __init__(self, device: TydomAlarm, hass) -> None:
+        """Initialise the alarm acknowledgement button."""
+        self.hass = hass
+        self._device = device
+        self._attr_unique_id = f"{device.device_id}_acknowledge_events"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Link the button to the existing TYXAL alarm device."""
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
+        }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return self._enrich_device_info(info)
+
+    async def async_press(self) -> None:
+        """Acknowledge every pending alarm event."""
+        await self._device.acknowledge_events()
+
+
+class HAAlarmPendingEventsSensor(SensorEntity, HAEntity):
+    """Dashboard-friendly view of unacknowledged TYXAL alarm events."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_translation_key = "pending_alarm_events"
+    _attr_icon = "mdi:shield-alert-outline"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, device: TydomAlarm, hass) -> None:
+        """Initialise the pending-events sensor."""
+        self.hass = hass
+        self._device = device
+        self._attr_unique_id = f"{device.device_id}_pending_alarm_events"
+        self._last_unacked_state = bool(getattr(device, "unackedEvent", False))
+        self._refresh_task = None
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the number of cached unacknowledged events."""
+        events = self._device.pending_events
+        return None if events is None else len(events)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the bounded TYXAL event list for dashboards and automations."""
+        events = self._device.pending_events
+        if events is None:
+            return {}
+        return {
+            "events": events,
+            "latest_event": events[0] if events else None,
+        }
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Link the sensor to the existing TYXAL alarm device."""
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
+        }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return self._enrich_device_info(info)
+
+    async def async_added_to_hass(self) -> None:
+        """Fetch pending events initially and react to alarm supervision pushes."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self._handle_alarm_update)
+        if self._last_unacked_state:
+            self._schedule_refresh()
+        else:
+            self._device.clear_pending_events()
+            self.async_write_ha_state()
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the alarm-state callback and cancel an outstanding refresh."""
+        self._device.remove_callback(self._handle_alarm_update)
+        if self._refresh_task is not None:
+            self._refresh_task.cancel()
+        await super().async_will_remove_from_hass()
+
+    def _handle_alarm_update(self) -> None:
+        """Refresh history when TYXAL reports a new unacknowledged condition."""
+        unacked = bool(getattr(self._device, "unackedEvent", False))
+        should_refresh = unacked and (
+            not self._last_unacked_state or self._device.pending_events is None
+        )
+        self._last_unacked_state = unacked
+
+        if not unacked:
+            self._device.clear_pending_events()
+        elif should_refresh:
+            self._schedule_refresh()
+        self.async_write_ha_state()
+
+    def _schedule_refresh(self) -> None:
+        """Schedule one history request without delaying entity setup."""
+        if self._refresh_task is None or self._refresh_task.done():
+            self._refresh_task = self.hass.async_create_task(
+                self._async_refresh_events(),
+                "Refresh TYXAL unacknowledged events",
+            )
+
+    async def _async_refresh_events(self) -> None:
+        """Fetch the bounded list advertised by the TYXAL history endpoint."""
+        try:
+            await self._device.get_events("UNACKED_EVENTS")
+        except Exception:
+            LOGGER.exception(
+                "Unable to refresh unacknowledged events for %s",
+                self._device.device_id,
             )
 
 

@@ -871,6 +871,10 @@ class TydomClient:
 
         """
         event = asyncio.Event()
+        # Some official TYXAL configuration endpoints carry the alarm PIN in
+        # the query string.  Always redact sensitive query parameters before
+        # the URL reaches a log message or an exception.
+        safe_url = sanitize_log_message(url)
 
         transaction_id, request = self._message_handler.prepare_request(
             method, url, body, headers, reply_event=event
@@ -882,12 +886,12 @@ class TydomClient:
             LOGGER.error(
                 "Failed to send request %s %s: %s",
                 method,
-                url,
+                safe_url,
                 str(e),
                 exc_info=True,
             )
             raise TydomClientApiClientCommunicationError(
-                f"Failed to send request {method} {url}: {str(e)}"
+                f"Failed to send request {method} {safe_url}: {str(e)}"
             ) from e
 
         # Wait for the reply with timeout
@@ -898,14 +902,19 @@ class TydomClient:
             LOGGER.warning(
                 "Timeout waiting for reply to %s %s (transaction_id: %s, timeout: %.1fs)",
                 method,
-                url,
+                safe_url,
                 transaction_id,
                 timeout,
             )
             # Remove the pending reply to avoid memory leak
             self._message_handler.remove_reply(transaction_id)
             raise TydomClientApiClientCommunicationError(
-                f"Timeout waiting for reply to {method} {url}"
+                f"Timeout waiting for reply to {method} {safe_url}"
+            )
+
+        if error := self._message_handler.get_reply_error(transaction_id):
+            raise TydomClientApiClientCommunicationError(
+                f"Request {method} {safe_url} failed: {error}"
             )
 
         reply = self._message_handler.get_reply(transaction_id)
@@ -914,7 +923,7 @@ class TydomClient:
             LOGGER.warning(
                 "No reply received for %s %s (transaction_id: %s)",
                 method,
-                url,
+                safe_url,
                 transaction_id,
             )
             return None
@@ -1548,16 +1557,34 @@ class TydomClient:
             LOGGER.error("put_alarm_cdata ERROR !", exc_info=True)
 
     async def put_ackevents_cdata(self, device_id, endpoint_id=None, alarm_pin=None):
-        """Acknowledge the alarm events.
+        """Acknowledge alarm events using the command supported by the gateway.
 
-        The box acknowledges through the data channel: /devices/meta declares
-        ackEventCmd as a writable attribute with enum ["ACK"], and no pin is
-        required (alarm_pin is kept for signature compatibility). The cdata
-        form with a pwd body inherited from tydom2mqtt is rejected with an
-        HTTP 500 (verified on a Tyxal+ via Tydom 1.0, right pin or not, pwd
-        in the body or in the query string), while this data write is
-        accepted and clears the unacked events.
+        TYXAL gateways expose two incompatible forms in the field. Some
+        advertise ``ackEventCmd`` as authenticated cdata requiring ``pwd``;
+        others accept the pin-free ``ACK`` value through the regular data
+        endpoint and reject the cdata form. Prefer the authenticated command
+        whenever an alarm code is available, then retain the proven data form
+        as a compatibility fallback.
         """
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        pin = alarm_pin or self._alarm_pin
+
+        if pin:
+            try:
+                await self.get_reply_to_request(
+                    "PUT",
+                    f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+                    "?name=ackEventCmd",
+                    body={"pwd": str(pin)},
+                )
+                return
+            except TydomClientApiClientCommunicationError:
+                LOGGER.debug(
+                    "Authenticated TYXAL acknowledgement was rejected; "
+                    "trying the data-channel form"
+                )
+
         await self.put_devices_data(device_id, endpoint_id, "ackEventCmd", "ACK")
 
     async def get_historic_cdata(
@@ -1579,6 +1606,201 @@ class TydomClient:
         # apart), so the reply wait needs the long timeout; the default one
         # (10 s) cuts the stream off after a few events.
         return await self.get_reply_to_request("GET", url, timeout=TIMEOUT_LONG_REQUEST)
+
+    @staticmethod
+    def _first_cdata_value(messages: list[dict] | None) -> dict | None:
+        """Return the first non-sentinel cdata response."""
+        if not messages:
+            return None
+        return next(
+            (
+                message
+                for message in messages
+                if isinstance(message, dict) and not message.get("EOR", False)
+            ),
+            None,
+        )
+
+    async def get_alarm_products_cdata(
+        self, device_id: str, endpoint_id: str
+    ) -> dict[str, dict | None]:
+        """Get the TYXAL product inventory and its user-facing labels.
+
+        The documented ``label`` response contains both products and zones.
+        Some CS8000 firmware rejects the app's optional ``productInfo`` battery
+        enrichment command with HTTP 400, so inventory discovery must not
+        depend on it.
+        """
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        base_url = f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+        headers = {
+            "Content-Length": "0",
+            "Content-Type": "application/json; charset=UTF-8",
+        }
+        labels = await self.get_reply_to_request(
+            "GET", f"{base_url}?name=label", headers=headers.copy()
+        )
+        return {
+            "productInfo": None,
+            "label": self._first_cdata_value(labels),
+        }
+
+    async def get_alarm_product_configuration_cdata(
+        self,
+        device_id: str,
+        endpoint_id: str,
+        alarm_pin: str,
+        product_id: int,
+    ) -> dict | None:
+        """Get the common configuration of one TYXAL product."""
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        safe_pin = quote(str(alarm_pin), safe="")
+        url = (
+            f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+            f"?name=productConf&pwd={safe_pin}&id={int(product_id)}"
+        )
+        messages = await self.get_reply_to_request(
+            "GET",
+            url,
+            headers={
+                "Content-Length": "0",
+                "Content-Type": "application/json; charset=UTF-8",
+            },
+        )
+        return self._first_cdata_value(messages)
+
+    async def put_alarm_product_configuration_cdata(
+        self,
+        device_id: str,
+        endpoint_id: str,
+        alarm_pin: str,
+        product_id: int,
+        *,
+        zone: int | None = None,
+    ) -> None:
+        """Update selected common settings of one TYXAL product."""
+        common: dict[str, int] = {}
+        if zone is not None:
+            common["zone"] = int(zone)
+        if not common:
+            raise ValueError("At least one product setting must be supplied")
+
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        url = (
+            f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+            "?name=productConf"
+        )
+        await self.get_reply_to_request(
+            "PUT",
+            url,
+            body={
+                "pwd": str(alarm_pin),
+                "id": int(product_id),
+                "common": common,
+            },
+        )
+
+    async def put_alarm_product_active_cdata(
+        self,
+        device_id: str,
+        endpoint_id: str,
+        installer_code: str,
+        product_id: int,
+        active: bool,
+    ) -> None:
+        """Activate or deactivate one TYXAL product."""
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        url = (
+            f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+            "?name=activeProductConf"
+        )
+        await self.get_reply_to_request(
+            "PUT",
+            url,
+            body={
+                "pwd": str(installer_code),
+                "id": int(product_id),
+                "activeProduct": bool(active),
+            },
+        )
+
+    async def put_alarm_mode_cdata(
+        self,
+        device_id: str,
+        endpoint_id: str,
+        installer_code: str,
+        mode: str,
+    ) -> None:
+        """Set a global TYXAL mode and await the gateway response."""
+        if mode not in {"MAINTENANCE", "OFF"}:
+            raise ValueError(f"Unsupported TYXAL maintenance mode: {mode}")
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        url = (
+            f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+            "?name=alarmCmd"
+        )
+        await self.get_reply_to_request(
+            "PUT",
+            url,
+            body={"pwd": str(installer_code), "value": mode},
+        )
+
+    async def put_alarm_remote_control_cdata(
+        self,
+        device_id: str,
+        endpoint_id: str,
+        installer_code: str,
+        control: str,
+    ) -> None:
+        """Lock or unlock the TYXAL remote configuration session."""
+        if control not in {"lock", "unlock"}:
+            raise ValueError(f"Unsupported TYXAL remote control action: {control}")
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        url = (
+            f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+            "?name=remoteCtrl"
+        )
+        await self.get_reply_to_request(
+            "PUT",
+            url,
+            body={"pwd": str(installer_code), "control": control},
+        )
+
+    async def put_alarm_zone_label_cdata(
+        self,
+        device_id: str,
+        endpoint_id: str,
+        alarm_pin: str,
+        zone_id: int,
+        name: str,
+    ) -> None:
+        """Rename or clear a TYXAL zone using the official label command."""
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        url = (
+            f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+            "?name=zoneLabelConf"
+        )
+        await self.get_reply_to_request(
+            "PUT",
+            url,
+            body={
+                "pwd": str(alarm_pin),
+                "id": int(zone_id),
+                # The Delta Dore app constructs nullable standard-name and
+                # number fields, but Gson omits them from the wire payload.
+                # Sending the unused standard-name or number fields explicitly
+                # as JSON null is rejected by the CS8000. The app keeps an
+                # explicitly blank custom name when clearing a label.
+                "label": {"nameCustom": name},
+            },
+        )
 
     async def update_firmware(self):
         """Update Tydom firmware."""

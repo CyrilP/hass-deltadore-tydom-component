@@ -168,6 +168,51 @@
                 }
             }
         },
+        "get_alarm_products": {
+            "name": "Obtenir les produits et zones d'alarme",
+            "description": "Récupérer les produits et les zones configurés sur une alarme TYXAL."
+        },
+        "get_alarm_product_configuration": {
+            "name": "Obtenir la configuration d'un produit d'alarme",
+            "description": "Récupérer l'état actif et la zone d'un produit TYXAL lorsque la CS8000 est en mode maintenance.",
+            "fields": {
+                "code": {"name": "Code installateur TYXAL", "description": "Code installateur utilisé lorsque la CS8000 est en mode maintenance."},
+                "product_id": {"name": "ID du produit", "description": "Identifiant renvoyé par le service d'obtention des produits et zones."}
+            }
+        },
+        "enter_alarm_maintenance": {
+            "name": "Passer l'alarme en mode maintenance",
+            "description": "Passer une CS8000 désarmée en mode maintenance avant de lire ou modifier sa configuration.",
+            "fields": {
+                "code": {"name": "Code installateur TYXAL", "description": "Code installateur de la CS8000. Ne pas utiliser un code utilisateur ordinaire."}
+            }
+        },
+        "exit_alarm_maintenance": {
+            "name": "Quitter le mode maintenance de l'alarme",
+            "description": "Faire revenir une CS8000 du mode maintenance à son état normal désarmé.",
+            "fields": {
+                "code": {"name": "Code installateur TYXAL", "description": "Code installateur de la CS8000."}
+            }
+        },
+        "configure_alarm_product": {
+            "name": "Configurer un produit d'alarme",
+            "description": "Activer ou désactiver un produit TYXAL et modifier sa zone.",
+            "fields": {
+                "code": {"name": "Code installateur TYXAL", "description": "Code installateur utilisé lorsque la CS8000 est en mode maintenance."},
+                "product_id": {"name": "ID du produit", "description": "Identifiant renvoyé par le service d'obtention des produits et zones."},
+                "active": {"name": "Actif", "description": "Indique si le produit doit participer au système d'alarme."},
+                "zone": {"name": "Zone", "description": "Zone à laquelle le produit doit être affecté."}
+            }
+        },
+        "rename_alarm_zone": {
+            "name": "Renommer une zone d'alarme",
+            "description": "Modifier le nom personnalisé d'une zone d'alarme TYXAL, ou l'effacer en fournissant un nom vide.",
+            "fields": {
+                "code": {"name": "Code installateur TYXAL", "description": "Code installateur utilisé lorsque la CS8000 est en mode maintenance."},
+                "zone_id": {"name": "ID de la zone", "description": "Identifiant renvoyé par le service d'obtention des produits et zones."},
+                "name": {"name": "Nom de la zone", "description": "Nouveau nom personnalisé de la zone. Fournir une chaîne vide pour effacer son libellé personnalisé ou standard."}
+            }
+        },
         "reload_devices": {
             "name": "Recharger les appareils",
             "description": "Recharger tous les appareils et entités comme au démarrage initial. Cette action supprime toutes les entités existantes et les recrée depuis zéro."
@@ -187,6 +232,9 @@
         "scene": {},
         "switch": {},
         "button": {
+            "acknowledge_events": {
+                "name": "Acquitter les évènements"
+            },
             "group_light": {
                 "name": "Groupe Lumières"
             },
@@ -217,6 +265,9 @@
         "weather": {},
         "update": {},
         "sensor": {
+            "pending_alarm_events": {
+                "name": "Évènements d'alarme en attente"
+            },
             "temperature": {
                 "name": "Température"
             },
@@ -380,4 +431,3 @@
         "moment": {}
     }
 }
-
