@@ -229,10 +229,11 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         self.assertEqual(alarm.pending_events, result)
         callback.assert_called_once_with()
 
-    async def test_acknowledgement_clears_cached_alarm_events(self) -> None:
-        """A successful acknowledgement should clear the dashboard immediately."""
+    async def test_acknowledgement_refreshes_cached_alarm_events(self) -> None:
+        """Acknowledgement must replace optimistic state with gateway history."""
         client = MagicMock()
         client.put_ackevents_cdata = AsyncMock()
+        client.get_historic_cdata = AsyncMock(return_value=[])
         alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
         alarm._pending_events = [{"name": "INTRUSION"}]
         callback = MagicMock()
@@ -241,8 +242,37 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         await alarm.acknowledge_events()
 
         client.put_ackevents_cdata.assert_awaited_once_with("20", "10", None)
+        client.get_historic_cdata.assert_awaited_once_with(
+            "20", "10", "UNACKED_EVENTS"
+        )
         self.assertEqual(alarm.pending_events, [])
         callback.assert_called_once_with()
+
+    async def test_ignored_acknowledgement_keeps_pending_alarm_events(self) -> None:
+        """A transport acknowledgement must not hide an uncleared gateway event."""
+        client = MagicMock()
+        client.put_ackevents_cdata = AsyncMock()
+        client.get_historic_cdata = AsyncMock(
+            return_value=[
+                {
+                    "values": {
+                        "event": {
+                            "name": "alarmIntrusion",
+                            "date": "2026-08-05T09:59:00",
+                        }
+                    }
+                }
+            ]
+        )
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+        alarm._pending_events = [{"name": "alarmIntrusion"}]
+
+        await alarm.acknowledge_events()
+
+        self.assertEqual(
+            alarm.pending_events,
+            [{"name": "alarmIntrusion", "date": "2026-08-05T09:59:00"}],
+        )
 
     async def test_empty_success_response_is_treated_as_acknowledgement(self) -> None:
         """An empty successful response must not be reported as an unknown message."""

@@ -294,6 +294,35 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
             ],
         )
 
+    async def test_alarm_acknowledgement_prefers_authenticated_cdata(self) -> None:
+        """A configured code must use the controlled command advertised by TYXAL."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+        client.put_devices_data = AsyncMock()
+
+        await client.put_ackevents_cdata("20", "10", "123456")
+
+        client.get_reply_to_request.assert_awaited_once_with(
+            "PUT",
+            "/devices/20/endpoints/10/cdata?name=ackEventCmd",
+            body={"pwd": "123456"},
+        )
+        client.put_devices_data.assert_not_awaited()
+
+    async def test_alarm_acknowledgement_falls_back_to_data_channel(self) -> None:
+        """Firmware rejecting authenticated cdata must retain the proven fallback."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(
+            side_effect=TydomClientApiClientCommunicationError("HTTP 500")
+        )
+        client.put_devices_data = AsyncMock()
+
+        await client.put_ackevents_cdata("20", "10", "123456")
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "ackEventCmd", "ACK"
+        )
+
     async def test_alarm_remote_configuration_lock_uses_official_command(self) -> None:
         """Remote TYXAL configuration must be explicitly locked and unlocked."""
         client = self._client()

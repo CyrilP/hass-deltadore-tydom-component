@@ -1557,16 +1557,34 @@ class TydomClient:
             LOGGER.error("put_alarm_cdata ERROR !", exc_info=True)
 
     async def put_ackevents_cdata(self, device_id, endpoint_id=None, alarm_pin=None):
-        """Acknowledge the alarm events.
+        """Acknowledge alarm events using the command supported by the gateway.
 
-        The box acknowledges through the data channel: /devices/meta declares
-        ackEventCmd as a writable attribute with enum ["ACK"], and no pin is
-        required (alarm_pin is kept for signature compatibility). The cdata
-        form with a pwd body inherited from tydom2mqtt is rejected with an
-        HTTP 500 (verified on a Tyxal+ via Tydom 1.0, right pin or not, pwd
-        in the body or in the query string), while this data write is
-        accepted and clears the unacked events.
+        TYXAL gateways expose two incompatible forms in the field. Some
+        advertise ``ackEventCmd`` as authenticated cdata requiring ``pwd``;
+        others accept the pin-free ``ACK`` value through the regular data
+        endpoint and reject the cdata form. Prefer the authenticated command
+        whenever an alarm code is available, then retain the proven data form
+        as a compatibility fallback.
         """
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        pin = alarm_pin or self._alarm_pin
+
+        if pin:
+            try:
+                await self.get_reply_to_request(
+                    "PUT",
+                    f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+                    "?name=ackEventCmd",
+                    body={"pwd": str(pin)},
+                )
+                return
+            except TydomClientApiClientCommunicationError:
+                LOGGER.debug(
+                    "Authenticated TYXAL acknowledgement was rejected; "
+                    "trying the data-channel form"
+                )
+
         await self.put_devices_data(device_id, endpoint_id, "ackEventCmd", "ACK")
 
     async def get_historic_cdata(

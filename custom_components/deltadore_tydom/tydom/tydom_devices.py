@@ -1048,10 +1048,9 @@ class TydomAlarm(TydomDevice):
         )
 
     async def acknowledge_events(self, code=None) -> None:
-        """Acknowledge alarm events."""
+        """Acknowledge alarm events and refresh the authoritative event list."""
         await self._tydom_client.put_ackevents_cdata(self._id, self._endpoint, code)
-        self.clear_pending_events()
-        await self.publish_updates()
+        await self.get_events("UNACKED_EVENTS")
 
     _KEPT_KEYS: ClassVar = {
         "": {"name", "date", "zones", "accessCode", "product"},
