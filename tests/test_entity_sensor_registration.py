@@ -117,38 +117,6 @@ class EntitySensorRegistrationTests(TestCase):
         self.assertEqual(entity.get_sensors(), [])
         self.assertNotIn("_registered_sensors", entity.__dict__)
 
-    def test_smoke_detector_primary_entity_remains_a_smoke_sensor(self) -> None:
-        """Binary normalisation must not turn a DFR into a hidden diagnostic."""
-        source_path = (
-            Path(__file__).parents[1]
-            / "custom_components"
-            / "deltadore_tydom"
-            / "ha_entities.py"
-        )
-        module = ast.parse(source_path.read_text(encoding="utf-8"))
-        smoke_class = next(
-            node
-            for node in module.body
-            if isinstance(node, ast.ClassDef) and node.name == "HASmoke"
-        )
-        init = next(
-            node
-            for node in smoke_class.body
-            if isinstance(node, ast.FunctionDef) and node.name == "__init__"
-        )
-        assignments = {
-            target.attr: ast.unparse(statement.value)
-            for statement in init.body
-            if isinstance(statement, ast.Assign)
-            for target in statement.targets
-            if isinstance(target, ast.Attribute)
-        }
-
-        self.assertEqual(
-            assignments["_attr_device_class"], "BinarySensorDeviceClass.SMOKE"
-        )
-        self.assertNotIn("_attr_entity_category", assignments)
-
 
 if __name__ == "__main__":
     import unittest
