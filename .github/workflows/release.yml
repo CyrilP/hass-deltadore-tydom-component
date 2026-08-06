@@ -19,8 +19,15 @@ jobs:
 
       - name: "Adjust version number"
         shell: "bash"
+        env:
+          RELEASE_VERSION: ${{ github.event.release.tag_name }}
         run: |
-          yq -i -o json '.version="${{ github.event.release.tag_name }}"' \
+          if [[ ! "${RELEASE_VERSION}" =~ ^v[0-9]+\.[0-9]+(\.[0-9]+)?([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release tag: ${RELEASE_VERSION}" >&2
+            exit 1
+          fi
+
+          yq -i -o json '.version = strenv(RELEASE_VERSION)' \
             "${{ github.workspace }}/custom_components/deltadore_tydom/manifest.json"
 
       - name: "ZIP the integration directory"
@@ -28,6 +35,20 @@ jobs:
         run: |
           cd "${{ github.workspace }}/custom_components/deltadore_tydom"
           zip deltadore_tydom.zip -r ./
+
+      - name: "Verify the release archive"
+        shell: "bash"
+        env:
+          RELEASE_VERSION: ${{ github.event.release.tag_name }}
+        run: |
+          manifest_version="$(unzip -p \
+            "${{ github.workspace }}/custom_components/deltadore_tydom/deltadore_tydom.zip" \
+            manifest.json | jq -r '.version')"
+
+          if [[ "${manifest_version}" != "${RELEASE_VERSION}" ]]; then
+            echo "Archive manifest version '${manifest_version}' does not match '${RELEASE_VERSION}'" >&2
+            exit 1
+          fi
 
       - name: "Upload the ZIP file to the release"
         uses: softprops/action-gh-release@v3.0.1
