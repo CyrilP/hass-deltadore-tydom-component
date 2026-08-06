@@ -36,6 +36,8 @@ from .tydom_devices import (
     TydomThermo,
     TydomSun,
     TydomScene,
+    is_binary_tyxia_receiver_profile,
+    resolve_device_model,
 )
 
 
@@ -127,28 +129,7 @@ def _is_tyxia_4910_other(uid: str) -> bool:
     """Identify a binary TYXIA 4910 configured under the TYDOM 'others' usage."""
     if str(device_tutorial_id.get(uid, "")).lower() != "9_tyxia_modulaire_serie4900":
         return False
-
-    metadata = device_metadata.get(uid)
-    if not isinstance(metadata, dict):
-        return False
-
-    level = metadata.get("level")
-    level_cmd = metadata.get("levelCmd")
-    if not isinstance(level, dict) or not isinstance(level_cmd, dict):
-        return False
-
-    commands = level_cmd.get("enum_values")
-    if not isinstance(commands, list) or not {"ON", "OFF"}.issubset(commands):
-        return False
-
-    try:
-        return (
-            float(level.get("min")) == 0
-            and float(level.get("max")) == 100
-            and float(level.get("step")) == 100
-        )
-    except (TypeError, ValueError):
-        return False
+    return is_binary_tyxia_receiver_profile(device_metadata.get(uid))
 
 
 # Device dict for parsing
@@ -173,18 +154,46 @@ TOTAL_GROUP_NAMES = {
     "shutter": "All shutters",
 }
 
-_REMOTE_CONTROL_MODELS = {
-    "tl2000": "TL 2000 TYXAL+",
-    "rcu_tyxia1410": "TYXIA 1410",
-}
-
 
 def _remote_control_model(tutorial_id: str) -> str:
     """Return a friendly model name from a TYDOM tutorial identifier."""
-    for prefix, model in _REMOTE_CONTROL_MODELS.items():
-        if tutorial_id.startswith(prefix):
-            return model
-    return "Delta Dore remote control"
+    return (
+        resolve_device_model(tutorial_id, "remoteControl")
+        or "Delta Dore remote control"
+    )
+
+
+def _infer_separately_paired_tyxia_2600() -> None:
+    """Identify the two endpoint records of a separately paired TYXIA 2600."""
+    configs_by_device: dict[str, list[tuple[str, dict]]] = {}
+    for unique_id, config in endpoint_config.items():
+        if config.get("usage") == "interrupter":
+            configs_by_device.setdefault(str(config["device_id"]), []).append(
+                (unique_id, config)
+            )
+
+    for endpoint_items in configs_by_device.values():
+        if len(endpoint_items) != 2:
+            continue
+        configs = [config for _, config in endpoint_items]
+        if any(config.get("tutorial_id") for config in configs):
+            continue
+
+        names = [str(config.get("name", "")) for config in configs]
+        has_numbered_switch = any(
+            re.fullmatch(r"Interrupteur\s+\d+", name, flags=re.IGNORECASE)
+            for name in names
+        )
+        has_common_button = any(
+            re.fullmatch(r"CG_DD_COMMON_BUTTON[AB]", name, flags=re.IGNORECASE)
+            for name in names
+        )
+        if not (has_numbered_switch and has_common_button):
+            continue
+
+        for unique_id, config in endpoint_items:
+            config["tutorial_id"] = "switch_tyxia2600"
+            device_tutorial_id[unique_id] = "switch_tyxia2600"
 
 
 def _refresh_remote_control_info() -> None:
@@ -781,6 +790,16 @@ class MessageHandler:
         tydom_client, last_usage, uid, device_id, name, endpoint=None, data=None
     ) -> TydomDevice | None:
         """Get device class from its last usage."""
+        model = resolve_device_model(
+            device_tutorial_id.get(uid),
+            last_usage,
+            device_metadata.get(uid),
+            data,
+        )
+        if model is not None:
+            data = dict(data or {})
+            data.setdefault("productName", model)
+
         match last_usage:
             case "shutter" | "klineShutter" | "awning" | "swingShutter":
                 return TydomShutter(
@@ -1082,6 +1101,7 @@ class MessageHandler:
             endpoint_config[device_unique_id] = {
                 "device_id": i["id_device"],
                 "endpoint_id": i["id_endpoint"],
+                "name": i.get("name", ""),
                 "usage": i.get("last_usage") or "unknown",
                 "tutorial_id": tutorial_id,
                 "configured_action": widget_behavior.get("action", "TOGGLE"),
@@ -1113,6 +1133,8 @@ class MessageHandler:
 
             if i["last_usage"] == "alarm":
                 device_name[device_unique_id] = "Tyxal Alarm"
+
+        _infer_separately_paired_tyxia_2600()
 
         # Parse scenarios metadata from /configs/file
         if "scenarios" in parsed and isinstance(parsed["scenarios"], list):

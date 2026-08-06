@@ -11,6 +11,176 @@ if TYPE_CHECKING:
     from .tydom_client import TydomClient
 
 
+_CONFIRMED_TUTORIAL_MODELS = {
+    "25_tymoov": "TYMOOV",
+    "35_se2000": "Tysense Thermo",
+    "4_dvi_kline": "DVI K-Line",
+    "6_pod_kline": "POD K-Line",
+    "7_dvi_kline_fenetre_coul_battant": "DVI K-Line",
+    "8_dvi_kline_fenetre_coul": "DVI K-Line",
+    "8_tyxia6610": "TYXIA 6610",
+    "sensor_dfr": "DFR TYXAL+",
+    "smart_plug_dd": "Delta Dore Easy Plug",
+    "split_takao_type_1": "Atlantic Naviclim 875311",
+    "split_takao_type_2": "Atlantic Naviclim 875311",
+    "tysense_sun": "Tysense Sun",
+    "tywatt_serie1000": "TYWATT 1000",
+    "tywell_control": "Tywell Control",
+    "tywell_control_2050": "Tywell 2050",
+    "volet_roulant_wellcom": "Well'com roller shutter",
+}
+
+_TUTORIAL_PREFIX_MODELS = {
+    "rcu_tyxia1410": "TYXIA 1410",
+    "switch_tyxia2600": "TYXIA 2600",
+    "tl2000": "TL 2000 Tyxal+",
+}
+
+
+def is_binary_tyxia_receiver_profile(metadata: dict[str, Any] | None) -> bool:
+    """Return whether metadata identifies a fixed-output TYXIA receiver."""
+    if not isinstance(metadata, dict):
+        return False
+
+    level = metadata.get("level")
+    level_cmd = metadata.get("levelCmd")
+    if not isinstance(level, dict) or not isinstance(level_cmd, dict):
+        return False
+
+    commands = level_cmd.get("enum_values")
+    if not isinstance(commands, list) or not {"ON", "OFF"}.issubset(commands):
+        return False
+
+    try:
+        return (
+            float(level.get("min")) == 0
+            and float(level.get("max")) == 100
+            and float(level.get("step")) == 100
+        )
+    except (TypeError, ValueError):
+        return False
+
+
+def is_tymoov_profile(data: dict[str, Any] | None) -> bool:
+    """Return whether firmware descriptors identify the TYMOOV range."""
+    if not isinstance(data, dict):
+        return False
+    return (
+        data.get("softPlan0") == "24.28.00.20"
+        and data.get("softPlan2") == "24.28.00.31"
+        and data.get("softPlan3") == "22.10.00.30"
+    )
+
+
+def is_trv_1_profile(data: dict[str, Any] | None) -> bool:
+    """Return whether issue #259's firmware descriptors identify a TRV 1.0."""
+    if not isinstance(data, dict):
+        return False
+    return (
+        data.get("softPlan0") == "24.22.00.14"
+        and data.get("softPlan1") == "24.22.00.30"
+        and data.get("softPlan2") == "24.22.00.20"
+    )
+
+
+def is_tyxia_dimmer_profile(metadata: dict[str, Any] | None) -> bool:
+    """Return whether metadata identifies a variable-output TYXIA receiver."""
+    if not isinstance(metadata, dict):
+        return False
+
+    level = metadata.get("level")
+    level_cmd = metadata.get("levelCmd")
+    if not isinstance(level, dict) or not isinstance(level_cmd, dict):
+        return False
+
+    commands = level_cmd.get("enum_values")
+    if not isinstance(commands, list):
+        return False
+
+    try:
+        return (
+            float(level.get("min")) == 0
+            and float(level.get("max")) == 100
+            and float(level.get("step")) == 1
+            and {"ON", "OFF", "STOP", "ON_SLOW", "OFF_SLOW"}.issubset(commands)
+        )
+    except (TypeError, ValueError):
+        return False
+
+
+def is_tybox_1137_profile(metadata: dict[str, Any] | None) -> bool:
+    """Return whether issue #355's metadata identifies a TYBOX 1137."""
+    if not isinstance(metadata, dict):
+        return False
+
+    required_attributes = {
+        "authorization",
+        "heatSetpoint",
+        "overrideSetpoint",
+        "overrideThermicLevel",
+        "useMode",
+        "antiSeizurePeriod",
+        "invertOutput",
+    }
+    if not required_attributes.issubset(metadata):
+        return False
+
+    use_mode = metadata.get("useMode")
+    authorization = metadata.get("authorization")
+    if not isinstance(use_mode, dict) or not isinstance(authorization, dict):
+        return False
+
+    use_modes = use_mode.get("enum_values")
+    authorizations = authorization.get("enum_values")
+    return (
+        isinstance(use_modes, list)
+        and {"SCHED", "OVERRIDE", "MANUAL"}.issubset(use_modes)
+        and isinstance(authorizations, list)
+        and {"STOP", "HEATING"}.issubset(authorizations)
+    )
+
+
+def resolve_device_model(
+    tutorial_id: str | None,
+    usage: str,
+    metadata: dict[str, Any] | None = None,
+    data: dict[str, Any] | None = None,
+) -> str | None:
+    """Return the most specific model justified by TYDOM descriptors.
+
+    Only descriptors proven to identify an exact product or an explicitly
+    named product range are accepted. Broad capability profiles retain Home
+    Assistant's existing fallback instead of being presented as device models.
+    """
+    tutorial = str(tutorial_id or "").strip().casefold()
+    if not tutorial:
+        if usage == "shutter" and is_tymoov_profile(data):
+            return "TYMOOV"
+        if usage == "sh_hvac" and is_trv_1_profile(data):
+            return "TRV 1.0"
+        if usage in {"boiler", "hvac"} and is_tybox_1137_profile(metadata):
+            return "TYBOX 1137"
+        return None
+
+    for prefix, model in _TUTORIAL_PREFIX_MODELS.items():
+        if tutorial.startswith(prefix):
+            return model
+
+    if tutorial == "7_tyxia_serie4000":
+        if usage in {"garage_door", "gate"}:
+            return "TYXIA 4620"
+        return None
+
+    if tutorial == "9_tyxia_modulaire_serie4900":
+        if is_tyxia_dimmer_profile(metadata):
+            return "TYXIA 4940"
+        if is_binary_tyxia_receiver_profile(metadata):
+            return "TYXIA 4910"
+        return None
+
+    return _CONFIRMED_TUTORIAL_MODELS.get(tutorial)
+
+
 class DeviceCallback(Protocol):
     """Protocol for device callbacks that can be called without arguments."""
 
