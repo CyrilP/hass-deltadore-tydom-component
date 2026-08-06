@@ -94,7 +94,6 @@ class TestDeviceModels(TestCase):
             "25_tymoov": "TYMOOV",
             "35_se2000": "Tysense Thermo",
             "4_dvi_kline": "DVI K-Line",
-            "5_detectouverture_kline": "DVI K-Line",
             "6_pod_kline": "POD K-Line",
             "7_dvi_kline_fenetre_coul_battant": "DVI K-Line",
             "tysense_sun": "Tysense Sun",
@@ -132,11 +131,22 @@ class TestDeviceModels(TestCase):
             "kline_vr",
             "42_novoferm_novoport_novomatic",
             "TA5555_Zigbee_DD",
+            # This is an association flow shared by unrelated opening
+            # detectors (including MDO TYXAL+), not a physical model.
+            "5_detectouverture_kline",
         }
 
         for tutorial_id in tutorials:
             with self.subTest(tutorial_id=tutorial_id):
                 self.assertIsNone(resolve_device_model(tutorial_id, "light"))
+
+    def test_opening_association_tutorial_does_not_identify_dvi(self) -> None:
+        """The shared K-Line flow cannot identify the physical detector."""
+        for usage in ("windowFrench", "belmDoor", "klineDoor"):
+            with self.subTest(usage=usage):
+                self.assertIsNone(
+                    resolve_device_model("5_detectouverture_kline", usage)
+                )
 
     def test_legacy_tutorial_category_uses_the_endpoint_profile(self) -> None:
         """The legacy series-4000 tutorial name must not become the model."""
@@ -194,9 +204,7 @@ class TestDeviceModels(TestCase):
 
         self.assertTrue(is_tyxia_dimmer_profile(metadata))
         self.assertIsNone(resolve_device_model(None, "light", metadata))
-        self.assertIsNone(
-            resolve_device_model("7_Tyxia_serie4000", "light", metadata)
-        )
+        self.assertIsNone(resolve_device_model("7_Tyxia_serie4000", "light", metadata))
         self.assertEqual(
             resolve_device_model("9_Tyxia_modulaire_serie4900", "light", metadata),
             "TYXIA 4940",

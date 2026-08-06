@@ -15,7 +15,6 @@ _CONFIRMED_TUTORIAL_MODELS = {
     "25_tymoov": "TYMOOV",
     "35_se2000": "Tysense Thermo",
     "4_dvi_kline": "DVI K-Line",
-    "5_detectouverture_kline": "DVI K-Line",
     "6_pod_kline": "POD K-Line",
     "7_dvi_kline_fenetre_coul_battant": "DVI K-Line",
     "8_dvi_kline_fenetre_coul": "DVI K-Line",
