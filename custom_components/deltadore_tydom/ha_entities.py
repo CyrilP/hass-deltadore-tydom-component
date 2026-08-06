@@ -121,6 +121,67 @@ from .const import (
 from .tydom.MessageHandler import device_name, groups_data
 
 
+_BINARY_TRUE_VALUES = frozenset({"1", "on", "true", "yes"})
+_BINARY_FALSE_VALUES = frozenset({"0", "off", "false", "no"})
+
+
+def normalize_binary_state(value: Any, *, allow_numeric: bool = False) -> bool | None:
+    """Convert values used by TYDOM for binary states to a HA boolean.
+
+    A BinarySensorEntity must only expose a boolean (or ``None`` for an unknown
+    state).  In particular, returning an unnormalised ``"ON"``/``"OFF"`` value
+    makes Home Assistant publish a non-standard state.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in _BINARY_TRUE_VALUES:
+            return True
+        if normalized in _BINARY_FALSE_VALUES:
+            return False
+    if allow_numeric and isinstance(value, int) and value in (0, 1):
+        return bool(value)
+    return None
+
+
+def is_binary_attribute(
+    device: TydomDevice,
+    attribute: str,
+    value: Any,
+    device_class: Any = None,
+) -> bool:
+    """Return whether an attribute is known to have only two possible states.
+
+    A current value of ``"off"`` is not enough: a TYDOM enum may also expose
+    ``1``, ``2`` and ``3``. Textual values are therefore considered binary only
+    when the device metadata advertises an enum entirely made of binary values,
+    or when the integration explicitly assigns a binary device class.
+    """
+    if isinstance(value, bool):
+        return True
+
+    if isinstance(device_class, BinarySensorDeviceClass):
+        return normalize_binary_state(value, allow_numeric=True) is not None
+
+    metadata = getattr(device, "_metadata", None)
+    attribute_metadata = metadata.get(attribute) if isinstance(metadata, dict) else None
+    enum_values = (
+        attribute_metadata.get("enum_values")
+        if isinstance(attribute_metadata, dict)
+        else None
+    )
+    return (
+        isinstance(enum_values, (list, tuple, set))
+        and bool(enum_values)
+        and all(
+            normalize_binary_state(enum_value, allow_numeric=True) is not None
+            for enum_value in enum_values
+        )
+        and normalize_binary_state(value, allow_numeric=True) is not None
+    )
+
+
 class HAEntity:
     """Generic abstract HA entity."""
 
@@ -266,7 +327,10 @@ class HAEntity:
                 elif alt_name in self.units:
                     unit = self.units[alt_name]
 
-                if isinstance(value, bool):
+                is_binary_sensor = is_binary_attribute(
+                    self._device, attribute, value, sensor_class
+                )
+                if is_binary_sensor:
                     sensors.append(
                         GenericBinarySensor(
                             self._device, sensor_class, attribute, attribute
@@ -288,7 +352,7 @@ class HAEntity:
                     "Nouveau capteur créé: %s.%s (type: %s, valeur: %s)",
                     self._device.device_id,
                     attribute,
-                    "binary" if isinstance(value, bool) else "sensor",
+                    "binary" if is_binary_sensor else "sensor",
                     value,
                 )
 
@@ -825,8 +889,9 @@ class GenericBinarySensor(BinarySensorBase):
     @property
     def is_on(self):
         """Return the state of the sensor."""
-        # Utiliser getattr avec une valeur par défaut pour éviter AttributeError
-        return getattr(self._device, self._attribute, False)
+        return normalize_binary_state(
+            getattr(self._device, self._attribute, None), allow_numeric=True
+        )
 
 
 class ClockSensor(SensorEntity):
@@ -1181,11 +1246,12 @@ class ProtocolBinarySensor(BinarySensorBase):
     def is_on(self) -> bool:
         """Return True if protocol attribute is active."""
         value = self._protocol_data.get(self._attribute, False)
-        if isinstance(value, bool):
-            return value
+        normalized = normalize_binary_state(value)
+        if normalized is not None:
+            return normalized
         if isinstance(value, str):
             # For status, check if it's "running" or "idle"
-            return value.lower() in ("running", "idle", "on", "true", "yes", "1")
+            return value.lower() in ("running", "idle")
         return bool(value)
 
     @property
@@ -3764,6 +3830,42 @@ class HaSun(SensorEntity, HAEntity):
                 "model": "Tysense Sun",
             }
         )
+
+
+class HAGenericBinarySensor(BinarySensorEntity, HAEntity):
+    """Primary binary sensor for an otherwise unknown TYDOM device."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+
+    def __init__(self, device: TydomDevice, hass: Any, attribute: str) -> None:
+        """Initialize a generic device whose primary state is binary."""
+        self.hass = hass
+        self._device = device
+        self._attribute = attribute
+        self._attr_unique_id = f"{self._device.device_id}_sensor"
+        self._attr_name = None
+        self._registered_sensors = [attribute]
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return the primary TYDOM state as a HA boolean."""
+        return normalize_binary_state(
+            getattr(self._device, self._attribute, None), allow_numeric=True
+        )
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return information for the unknown physical device."""
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
+        }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return self._enrich_device_info(info)
 
 
 class HASensor(SensorEntity, HAEntity):

@@ -7,6 +7,7 @@ import time
 from collections.abc import Callable
 from aiohttp import ClientWebSocketResponse, ClientSession
 
+from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from .tydom.tydom_client import TydomClient
@@ -55,6 +56,7 @@ from .ha_entities import (
     HaMoisture,
     HaThermo,
     HaSun,
+    HAGenericBinarySensor,
     HASensor,
     HAScene,
     HASwitch,
@@ -69,6 +71,7 @@ from .ha_entities import (
     HAMoment,
     HARemoteBattery,
     HARemoteEvent,
+    is_binary_attribute,
 )
 
 from .const import LOGGER, get_polling_interval_for_validity, STRUCTURED_LOGGER
@@ -258,6 +261,7 @@ class Hub:
             and self.add_number_callback is not None
             and self.add_select_callback is not None
             and self.add_event_callback is not None
+            and self.add_binary_sensor_callback is not None
         )
         # Créer le bouton de rechargement une fois que les callbacks sont prêts
         if (
@@ -270,6 +274,20 @@ class Hub:
             self._reload_button_created = True
             LOGGER.debug("Bouton de rechargement créé")
         return is_ready
+
+    def _add_discovered_entities(self, entities: list) -> None:
+        """Add discovered entities to the platform matching their entity type."""
+        binary_sensors = [
+            entity for entity in entities if isinstance(entity, BinarySensorEntity)
+        ]
+        sensors = [
+            entity for entity in entities if not isinstance(entity, BinarySensorEntity)
+        ]
+
+        if sensors and self.add_sensor_callback is not None:
+            self.add_sensor_callback(sensors)
+        if binary_sensors and self.add_binary_sensor_callback is not None:
+            self.add_binary_sensor_callback(binary_sensors)
 
     async def setup(self, connection: ClientWebSocketResponse) -> None:
         """Listen to tydom events."""
@@ -394,8 +412,7 @@ class Hub:
         self.ha_devices[device.device_id] = ha_device
         if self.add_update_callback is not None:
             self.add_update_callback([ha_device])
-        if self.add_sensor_callback is not None:
-            self.add_sensor_callback(ha_device.get_sensors())
+        self._add_discovered_entities(ha_device.get_sensors())
         # Le bouton de rechargement est créé dans ready() pour être toujours présent
 
     async def _create_shutter_device(self, device: TydomShutter) -> None:
@@ -405,8 +422,7 @@ class Hub:
         self.ha_devices[device.device_id] = ha_device
         if self.add_cover_callback is not None:
             self.add_cover_callback([ha_device])
-        if self.add_sensor_callback is not None:
-            self.add_sensor_callback(ha_device.get_sensors())
+        self._add_discovered_entities(ha_device.get_sensors())
 
     async def _create_energy_device(self, device: TydomEnergy) -> None:
         """Create energy consumption device."""
@@ -416,8 +432,7 @@ class Hub:
         # HAEnergy itself carries no device_class/unit/value: it only groups
         # the per-attribute sensors below and must not be added as an entity,
         # or it shows up as a useless "unknown" sensor (e.g. sensor.tywatt_tywatt).
-        if self.add_sensor_callback is not None:
-            self.add_sensor_callback(ha_device.get_sensors())
+        self._add_discovered_entities(ha_device.get_sensors())
         # The device has no energy* attribute yet at first discovery (they only
         # appear once the first cdata poll response is parsed), so this rarely
         # creates the button here -- update_ha_device() does it once data arrives.
@@ -453,9 +468,7 @@ class Hub:
         LOGGER.debug("Create smoke %s", device.device_id)
         ha_device = HASmoke(device, self._hass)
         self.ha_devices[device.device_id] = ha_device
-        if self.add_sensor_callback is not None:
-            self.add_sensor_callback([ha_device])
-            self.add_sensor_callback(ha_device.get_sensors())
+        self._add_discovered_entities([ha_device, *ha_device.get_sensors()])
 
     async def _create_boiler_device(self, device: TydomBoiler) -> None:
         """Create boiler/climate device."""
@@ -464,8 +477,7 @@ class Hub:
         self.ha_devices[device.device_id] = ha_device
         if self.add_climate_callback is not None:
             self.add_climate_callback([ha_device])
-        if self.add_sensor_callback is not None:
-            self.add_sensor_callback(ha_device.get_sensors())
+        self._add_discovered_entities(ha_device.get_sensors())
 
     async def _create_window_device(self, device: TydomWindow) -> None:
         """Create window device (cover if motorized, else binary_sensor)."""
@@ -492,8 +504,7 @@ class Hub:
                 self.add_binary_sensor_callback([ha_device])
 
         self.ha_devices[device.device_id] = ha_device
-        if self.add_sensor_callback:
-            self.add_sensor_callback(ha_device.get_sensors())
+        self._add_discovered_entities(ha_device.get_sensors())
 
     async def _create_door_device(self, device: TydomDoor) -> None:
         """Create door device (cover if motorized, else binary_sensor)."""
@@ -528,8 +539,7 @@ class Hub:
                 self.add_binary_sensor_callback([ha_device])
 
         self.ha_devices[device.device_id] = ha_device
-        if self.add_sensor_callback:
-            self.add_sensor_callback(ha_device.get_sensors())
+        self._add_discovered_entities(ha_device.get_sensors())
 
     async def _create_gate_device(self, device: TydomGate) -> None:
         """Create gate device."""
@@ -550,8 +560,7 @@ class Hub:
             if self.add_cover_callback is not None:
                 self.add_cover_callback([ha_device])
         self.ha_devices[device.device_id] = ha_device
-        if self.add_sensor_callback is not None:
-            self.add_sensor_callback(ha_device.get_sensors())
+        self._add_discovered_entities(ha_device.get_sensors())
 
     async def _create_garage_device(self, device: TydomGarage) -> None:
         """Create garage device."""
@@ -572,8 +581,7 @@ class Hub:
             if self.add_cover_callback is not None:
                 self.add_cover_callback([ha_device])
         self.ha_devices[device.device_id] = ha_device
-        if self.add_sensor_callback is not None:
-            self.add_sensor_callback(ha_device.get_sensors())
+        self._add_discovered_entities(ha_device.get_sensors())
 
     async def _create_light_device(self, device: TydomLight) -> None:
         """Create light device."""
@@ -582,8 +590,7 @@ class Hub:
         self.ha_devices[device.device_id] = ha_device
         if self.add_light_callback is not None:
             self.add_light_callback([ha_device])
-        if self.add_sensor_callback is not None:
-            self.add_sensor_callback(ha_device.get_sensors())
+        self._add_discovered_entities(ha_device.get_sensors())
 
     async def _create_interrupter_device(self, device: TydomInterrupter) -> None:
         """Create a wall-switch event entity and one battery diagnostic."""
@@ -609,8 +616,7 @@ class Hub:
         self.ha_devices[device.device_id] = ha_device
         if self.add_switch_callback is not None:
             self.add_switch_callback([ha_device])
-        if self.add_sensor_callback is not None:
-            self.add_sensor_callback(ha_device.get_sensors())
+        self._add_discovered_entities(ha_device.get_sensors())
 
     async def _create_alarm_device(self, device: TydomAlarm) -> None:
         """Create alarm device."""
@@ -621,13 +627,9 @@ class Hub:
             self.add_alarm_callback([ha_device])
         if self.add_button_callback is not None:
             self.add_button_callback([HAAlarmAcknowledgeButton(device, self._hass)])
-        if self.add_sensor_callback is not None:
-            self.add_sensor_callback(
-                [
-                    HAAlarmPendingEventsSensor(device, self._hass),
-                    *ha_device.get_sensors(),
-                ]
-            )
+        self._add_discovered_entities(
+            [HAAlarmPendingEventsSensor(device, self._hass), *ha_device.get_sensors()]
+        )
 
     async def _create_weather_device(self, device: TydomWeather) -> None:
         """Create weather device."""
@@ -636,35 +638,28 @@ class Hub:
         self.ha_devices[device.device_id] = ha_device
         if self.add_weather_callback is not None:
             self.add_weather_callback([ha_device])
-        if self.add_sensor_callback is not None:
-            self.add_sensor_callback(ha_device.get_sensors())
+        self._add_discovered_entities(ha_device.get_sensors())
 
     async def _create_water_device(self, device: TydomWater) -> None:
         """Create water/moisture device."""
         LOGGER.debug("Create moisture %s", device.device_id)
         ha_device = HaMoisture(device, self._hass)
         self.ha_devices[device.device_id] = ha_device
-        if self.add_sensor_callback is not None:
-            self.add_sensor_callback([ha_device])
-            self.add_sensor_callback(ha_device.get_sensors())
+        self._add_discovered_entities([ha_device, *ha_device.get_sensors()])
 
     async def _create_thermo_device(self, device: TydomThermo) -> None:
         """Create thermostat device."""
         LOGGER.debug("Create thermo %s", device.device_id)
         ha_device = HaThermo(device, self._hass)
         self.ha_devices[device.device_id] = ha_device
-        if self.add_sensor_callback is not None:
-            self.add_sensor_callback([ha_device])
-            self.add_sensor_callback(ha_device.get_sensors())
+        self._add_discovered_entities([ha_device, *ha_device.get_sensors()])
 
     async def _create_sun_device(self, device: TydomSun) -> None:
         """Create a Tysense Sun irradiance sensor."""
         LOGGER.debug("Create Tysense Sun %s", device.device_id)
         ha_device = HaSun(device, self._hass)
         self.ha_devices[device.device_id] = ha_device
-        if self.add_sensor_callback is not None:
-            self.add_sensor_callback([ha_device])
-            self.add_sensor_callback(ha_device.get_sensors())
+        self._add_discovered_entities([ha_device, *ha_device.get_sensors()])
 
     async def _create_scene_device(self, device: TydomScene) -> None:
         """Create scene device."""
@@ -731,11 +726,25 @@ class Hub:
     async def _create_generic_device(self, device: TydomDevice) -> None:
         """Create generic sensor device."""
         LOGGER.debug("Create generic sensor %s", device.device_id)
-        ha_device = HASensor(device, self._hass)
+        primary_binary_attribute = next(
+            (
+                attribute
+                for attribute in ("on", "state")
+                if hasattr(device, attribute)
+                and is_binary_attribute(
+                    device, attribute, getattr(device, attribute)
+                )
+            ),
+            None,
+        )
+        if primary_binary_attribute is not None:
+            ha_device = HAGenericBinarySensor(
+                device, self._hass, primary_binary_attribute
+            )
+        else:
+            ha_device = HASensor(device, self._hass)
         self.ha_devices[device.device_id] = ha_device
-        if self.add_sensor_callback is not None:
-            self.add_sensor_callback([ha_device])
-            self.add_sensor_callback(ha_device.get_sensors())
+        self._add_discovered_entities([ha_device, *ha_device.get_sensors()])
 
         # Try to detect if device should also be a switch
         # Check for on/off capabilities that aren't already handled
@@ -773,7 +782,7 @@ class Hub:
                 await ha_device.async_device_update(device)
 
             new_sensors = ha_device.get_sensors()
-            if len(new_sensors) > 0 and self.add_sensor_callback is not None:
+            if new_sensors:
                 # add new sensors
                 LOGGER.debug(
                     "Ajout de %d nouveau(x) capteur(s) pour le device %s: %s",
@@ -781,7 +790,7 @@ class Hub:
                     device.device_id,
                     [s._attr_name for s in new_sensors],
                 )
-                self.add_sensor_callback(new_sensors)
+                self._add_discovered_entities(new_sensors)
             if isinstance(ha_device, HAEnergy):
                 self._maybe_create_refresh_energy_button(stored_device, ha_device)
             # ha_device.publish_updates()
