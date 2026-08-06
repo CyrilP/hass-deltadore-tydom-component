@@ -731,9 +731,7 @@ class Hub:
                 attribute
                 for attribute in ("on", "state")
                 if hasattr(device, attribute)
-                and is_binary_attribute(
-                    device, attribute, getattr(device, attribute)
-                )
+                and is_binary_attribute(device, attribute, getattr(device, attribute))
             ),
             None,
         )

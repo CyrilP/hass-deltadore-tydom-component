@@ -43,12 +43,20 @@ def _load_ha_entity_class():
         def __init__(self, *_args) -> None:
             pass
 
+    class BinarySensorDeviceClass:
+        PROBLEM = "problem"
+
     namespace = {
         "Any": object,
+        "BinarySensorDeviceClass": BinarySensorDeviceClass,
         "DOMAIN": "deltadore_tydom",
         "LOGGER": MagicMock(),
         "GenericBinarySensor": GenericBinarySensor,
         "GenericSensor": GenericSensor,
+        "is_binary_attribute": lambda _device, _attribute, value, _class: isinstance(
+            value, bool
+        ),
+        "is_problem_attribute": lambda attribute: "defect" in attribute.casefold(),
     }
     exec(compile(isolated_module, source_path, "exec"), namespace)
     return namespace["HAEntity"]
