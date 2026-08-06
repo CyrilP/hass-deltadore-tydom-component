@@ -929,7 +929,7 @@ class Hub:
         """Poll one Tywatt cdata endpoint immediately, on demand."""
         await self._tydom_client.poll_devices_data_5m(device_id, endpoint_id)
 
-    async def refresh_data_5m(self) -> None:
+    async def refresh_cdata(self) -> None:
         """Periodically poll the cdata endpoints registered for devices like Tywatt.
 
         Endpoints such as energyIndex, energyInstant, energyHisto and
@@ -940,13 +940,17 @@ class Hub:
         any other device exposes validity metadata (the common case), that
         branch never runs and these cdata endpoints (e.g. the Tywatt instant
         consumption sensor) would never be queried.
+
+        Poll once at startup, then follow the refresh interval selected in the
+        integration options. The per-device Refresh button remains available
+        for an immediate reading between scheduled polls.
         """
         while not self._shutting_down:
             try:
                 await self._tydom_client.poll_devices_data_5m()
             except Exception:
                 LOGGER.exception("Error polling registered cdata endpoints")
-            await self._interruptible_sleep(300)
+            await self._interruptible_sleep(self._refresh_interval)
 
     async def reload_devices(self) -> None:
         """Recharger tous les appareils et entités comme au démarrage initial.
