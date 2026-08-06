@@ -436,6 +436,11 @@ class GenericSensor(SensorEntity):
         """Return the native value of the sensor."""
         # Utiliser getattr avec une valeur par défaut pour éviter AttributeError
         value = getattr(self._device, self._attribute, None)
+        if value is not None and self._attribute == "position":
+            position_from_tydom = getattr(self._device, "position_from_tydom", None)
+            if callable(position_from_tydom):
+                with suppress(TypeError, ValueError):
+                    value = position_from_tydom(int(value))
         if (
             value is not None
             and self._attr_device_class == SensorDeviceClass.BATTERY
@@ -1755,6 +1760,9 @@ class HACover(CoverEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
+        if self._device.device_type == "awning":
+            self._attr_device_class = CoverDeviceClass.AWNING
+            self._attr_icon = "mdi:awning-outline"
         # NOTE: supported_features is intentionally NOT computed here.
         # It is exposed as a dynamic property below so that OPEN/CLOSE/STOP/
         # SET_POSITION/SET_TILT_POSITION reflect the *current* device state.
@@ -1848,7 +1856,8 @@ class HACover(CoverEntity, HAEntity):
             value = int(float(raw))
         except (TypeError, ValueError):
             return None
-        return max(0, min(100, value))
+        value = max(0, min(100, value))
+        return self._device.position_from_tydom(value)
 
     @property
     def is_closed(self) -> bool | None:
@@ -1869,6 +1878,8 @@ class HACover(CoverEntity, HAEntity):
     @property
     def icon(self) -> str:
         """Return the icon for the cover based on position."""
+        if self._device.device_type == "awning":
+            return "mdi:awning-outline"
         position = self.current_cover_position
         if position is None:
             return "mdi:window-shutter"
@@ -1893,11 +1904,11 @@ class HACover(CoverEntity, HAEntity):
     # the cover to the desired position, or open and close it all the way.
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
-        await self._device.up()
+        await self._device.open()
 
     async def async_close_cover(self, **kwargs: Any) -> None:
         """Close the cover."""
-        await self._device.down()
+        await self._device.close()
 
     async def async_stop_cover(self, **kwargs):
         """Stop the cover."""
@@ -5480,8 +5491,9 @@ class HAGroupEntity(HAEntity):
                 if group_usage in ("shutter", "awning"):
                     # Cover control
                     if action == "open":
-                        if hasattr(device, "up"):
-                            tasks.append(device.up())
+                        movement = "down" if group_usage == "awning" else "up"
+                        if hasattr(device, movement):
+                            tasks.append(getattr(device, movement)())
                         elif hasattr(device, "open"):
                             tasks.append(device.open())
                         elif (
@@ -5491,12 +5503,16 @@ class HAGroupEntity(HAEntity):
                         ):
                             tasks.append(
                                 device._tydom_client.put_devices_data(
-                                    device._id, device._endpoint, "levelCmd", "UP"
+                                    device._id,
+                                    device._endpoint,
+                                    "levelCmd",
+                                    "DOWN" if group_usage == "awning" else "UP",
                                 )
                             )
                     elif action == "close":
-                        if hasattr(device, "down"):
-                            tasks.append(device.down())
+                        movement = "up" if group_usage == "awning" else "down"
+                        if hasattr(device, movement):
+                            tasks.append(getattr(device, movement)())
                         elif hasattr(device, "close"):
                             tasks.append(device.close())
                         elif (
@@ -5506,7 +5522,10 @@ class HAGroupEntity(HAEntity):
                         ):
                             tasks.append(
                                 device._tydom_client.put_devices_data(
-                                    device._id, device._endpoint, "levelCmd", "DOWN"
+                                    device._id,
+                                    device._endpoint,
+                                    "levelCmd",
+                                    "UP" if group_usage == "awning" else "DOWN",
                                 )
                             )
                     elif action == "stop":
@@ -5537,7 +5556,11 @@ class HAGroupEntity(HAEntity):
                                     device._id,
                                     device._endpoint,
                                     "levelCmd",
-                                    str(position),
+                                    str(
+                                        100 - position
+                                        if group_usage == "awning"
+                                        else position
+                                    ),
                                 )
                             )
                 elif group_usage in ("light", "plug"):
@@ -5813,12 +5836,13 @@ class HACoverGroup(CoverEntity, HAGroupEntity):
             return []
 
         states: list[bool] = []
+        closed_position = 100 if self._device.group_usage == "awning" else 0
         for member in members:
             position = getattr(member, "position", None)
             if position is None:
                 continue
             try:
-                states.append(float(position) == 0)
+                states.append(float(position) == closed_position)
             except (TypeError, ValueError):
                 continue
         return states

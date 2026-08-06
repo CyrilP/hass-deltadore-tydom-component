@@ -53,6 +53,7 @@ spec.loader.exec_module(devices_module)
 
 TydomGarage = devices_module.TydomGarage
 TydomGate = devices_module.TydomGate
+TydomShutter = devices_module.TydomShutter
 
 for name, original in _original_modules.items():
     if original is _MISSING:
@@ -77,6 +78,23 @@ def _cover(device_class, commands, *, level_metadata=None, data=None):
         "10",
         metadata,
         data,
+    )
+    return device, client
+
+
+def _position_cover(usage: str):
+    """Create a position-command cover for one Delta Dore usage."""
+    client = MagicMock()
+    client.put_devices_data = AsyncMock()
+    device = TydomShutter(
+        client,
+        "10_20",
+        "20",
+        "Cover",
+        usage,
+        "10",
+        {"positionCmd": {"permission": "w"}},
+        {"position": 0},
     )
     return device, client
 
@@ -198,6 +216,41 @@ class LevelCommandCoverTests(IsolatedAsyncioTestCase):
         self.assertEqual(
             client.put_devices_data.await_args_list,
             [call("20", "10", "levelCmd", "TOGGLE")],
+        )
+
+    async def test_shutter_open_and_close_use_up_and_down(self) -> None:
+        """A shutter opens upwards and closes downwards."""
+        shutter, client = _position_cover("shutter")
+
+        self.assertEqual(shutter.position_from_tydom(100), 100)
+        await shutter.open()
+        await shutter.close()
+
+        self.assertEqual(
+            client.put_devices_data.await_args_list,
+            [
+                call("20", "10", "positionCmd", "UP"),
+                call("20", "10", "positionCmd", "DOWN"),
+            ],
+        )
+
+    async def test_awning_open_and_close_deploy_and_retract(self) -> None:
+        """An awning opens downwards and closes upwards."""
+        awning, client = _position_cover("awning")
+
+        self.assertEqual(awning.position_from_tydom(100), 0)
+        self.assertEqual(awning.position_from_tydom(0), 100)
+        await awning.open()
+        await awning.close()
+        await awning.set_position(25)
+
+        self.assertEqual(
+            client.put_devices_data.await_args_list,
+            [
+                call("20", "10", "positionCmd", "DOWN"),
+                call("20", "10", "positionCmd", "UP"),
+                call("20", "10", "position", "75"),
+            ],
         )
 
 

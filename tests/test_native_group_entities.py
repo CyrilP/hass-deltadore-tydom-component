@@ -258,6 +258,19 @@ class NativeGroupEntityTests(IsolatedAsyncioTestCase):
         self.assertFalse(entity.is_closed)
         self.assertIsNone(entity._assumed_is_closed)
 
+    async def test_awning_group_opens_downwards_and_closes_upwards(self) -> None:
+        """Translate HA awning semantics into Delta Dore movement commands."""
+        member = MemberDevice("1", position=100)
+        entity = self._entity(HACoverGroup, "awning", [member])
+
+        self.assertTrue(entity.is_closed)
+        await entity.async_open_cover()
+        await entity.async_close_cover()
+
+        member.down.assert_awaited_once_with()
+        member.up.assert_awaited_once_with()
+        entity._clear_assumed_state()
+
     async def test_switch_group_reports_any_member_on(self) -> None:
         """Represent plug groups as switches with aggregate state."""
         first = MemberDevice("1", on=False)

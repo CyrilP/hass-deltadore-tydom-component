@@ -157,6 +157,33 @@ class Tydom(TydomDevice):
 class TydomShutter(TydomDevice):
     """Represents a shutter."""
 
+    @property
+    def is_awning(self) -> bool:
+        """Return whether Delta Dore identifies this cover as an awning."""
+        return self._type == "awning"
+
+    def position_from_tydom(self, position: int) -> int:
+        """Translate a Delta Dore position into Home Assistant semantics."""
+        return 100 - position if self.is_awning else position
+
+    def position_to_tydom(self, position: int) -> int:
+        """Translate a Home Assistant position into Delta Dore semantics."""
+        return 100 - position if self.is_awning else position
+
+    async def open(self) -> None:
+        """Open the cover using semantics appropriate to its usage."""
+        if self.is_awning:
+            await self.down()
+        else:
+            await self.up()
+
+    async def close(self) -> None:
+        """Close the cover using semantics appropriate to its usage."""
+        if self.is_awning:
+            await self.up()
+        else:
+            await self.down()
+
     async def down(self) -> None:
         """Tell cover to go down."""
         await self._tydom_client.put_devices_data(
@@ -184,8 +211,11 @@ class TydomShutter(TydomDevice):
 
             raise HomeAssistantError(error_msg or f"Valeur invalide: {position}")
 
+        # Delta Dore reports an awning at 100 when it is retracted, whereas
+        # Home Assistant cover semantics use 0 for closed and 100 for open.
+        native_position = self.position_to_tydom(position)
         await self._tydom_client.put_devices_data(
-            self._id, self._endpoint, "position", str(position)
+            self._id, self._endpoint, "position", str(native_position)
         )
 
     # FIXME replace command
