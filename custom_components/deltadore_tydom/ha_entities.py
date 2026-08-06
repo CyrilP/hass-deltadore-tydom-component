@@ -2166,8 +2166,10 @@ class HASmoke(BinarySensorEntity, HAEntity):
         self._attr_name = None  # primary entity inherits device name
         self._state = False
         self._registered_sensors = []
-        self._attr_device_class = BinarySensorDeviceClass.PROBLEM
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        # This is the detector's primary entity. Keep it visible as a smoke
+        # sensor; battDefect and techSmokeDefect are exposed separately as
+        # diagnostic problem entities by generic sensor discovery.
+        self._attr_device_class = BinarySensorDeviceClass.SMOKE
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
