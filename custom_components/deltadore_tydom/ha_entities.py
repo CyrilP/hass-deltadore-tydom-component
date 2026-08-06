@@ -436,6 +436,11 @@ class GenericSensor(SensorEntity):
         """Return the native value of the sensor."""
         # Utiliser getattr avec une valeur par défaut pour éviter AttributeError
         value = getattr(self._device, self._attribute, None)
+        if value is not None and self._attribute == "position":
+            position_from_tydom = getattr(self._device, "position_from_tydom", None)
+            if callable(position_from_tydom):
+                with suppress(TypeError, ValueError):
+                    value = position_from_tydom(int(value))
         if (
             value is not None
             and self._attr_device_class == SensorDeviceClass.BATTERY
