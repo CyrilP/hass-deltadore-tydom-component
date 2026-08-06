@@ -123,6 +123,7 @@ from .tydom.MessageHandler import device_name, groups_data
 
 _BINARY_TRUE_VALUES = frozenset({"1", "on", "true", "yes"})
 _BINARY_FALSE_VALUES = frozenset({"0", "off", "false", "no"})
+_PROBLEM_ATTRIBUTE_MARKERS = ("defect", "empty", "intrusion")
 
 
 def normalize_binary_state(value: Any, *, allow_numeric: bool = False) -> bool | None:
@@ -143,6 +144,12 @@ def normalize_binary_state(value: Any, *, allow_numeric: bool = False) -> bool |
     if allow_numeric and isinstance(value, int) and value in (0, 1):
         return bool(value)
     return None
+
+
+def is_problem_attribute(attribute: str) -> bool:
+    """Return whether a binary attribute denotes a reported problem."""
+    normalized = attribute.casefold()
+    return any(marker in normalized for marker in _PROBLEM_ATTRIBUTE_MARKERS)
 
 
 def is_binary_attribute(
@@ -331,9 +338,17 @@ class HAEntity:
                     self._device, attribute, value, sensor_class
                 )
                 if is_binary_sensor:
+                    binary_sensor_class = (
+                        BinarySensorDeviceClass.PROBLEM
+                        if is_problem_attribute(attribute)
+                        else sensor_class
+                    )
                     sensors.append(
                         GenericBinarySensor(
-                            self._device, sensor_class, attribute, attribute
+                            self._device,
+                            binary_sensor_class,
+                            attribute,
+                            attribute,
                         )
                     )
                 else:
@@ -1297,10 +1312,8 @@ class HATydom(UpdateEntity, HAEntity):
 
     # Binary sensor classes for system status
     binary_sensor_classes = {
-        "bddEmpty": BinarySensorDeviceClass.PROBLEM,
         "apiMode": None,  # No specific device class
         "pltRegistered": None,
-        "passwordEmpty": BinarySensorDeviceClass.PROBLEM,
     }
 
     filtered_attrs = [
@@ -1575,10 +1588,8 @@ class HATydom(UpdateEntity, HAEntity):
         # These are created automatically by get_sensors() from parent class
         # but we ensure they use the right device classes
         status_attrs = {
-            "bddEmpty": BinarySensorDeviceClass.PROBLEM,
             "apiMode": None,
             "pltRegistered": None,
-            "passwordEmpty": BinarySensorDeviceClass.PROBLEM,
         }
 
         for attr, device_class in status_attrs.items():
@@ -1803,15 +1814,6 @@ class HACover(CoverEntity, HAEntity):
     _attr_device_class = CoverDeviceClass.SHUTTER
     _attr_icon = "mdi:window-shutter"
     _attr_has_entity_name = True
-
-    sensor_classes = {
-        "batt_defect": BinarySensorDeviceClass.PROBLEM,
-        "thermic_defect": BinarySensorDeviceClass.PROBLEM,
-        "up_defect": BinarySensorDeviceClass.PROBLEM,
-        "down_defect": BinarySensorDeviceClass.PROBLEM,
-        "obstacle_defect": BinarySensorDeviceClass.PROBLEM,
-        "intrusion": BinarySensorDeviceClass.PROBLEM,
-    }
 
     def __init__(self, device: TydomShutter, hass) -> None:
         """Initialize the sensor."""
@@ -2155,8 +2157,6 @@ class HASmoke(BinarySensorEntity, HAEntity):
     _attr_icon = "mdi:smoke-detector"
     _attr_has_entity_name = True
 
-    sensor_classes = {"batt_defect": BinarySensorDeviceClass.PROBLEM}
-
     def __init__(self, device: TydomSmoke, hass) -> None:
         """Initialize TydomSmoke."""
         self.hass = hass
@@ -2166,7 +2166,8 @@ class HASmoke(BinarySensorEntity, HAEntity):
         self._attr_name = None  # primary entity inherits device name
         self._state = False
         self._registered_sensors = []
-        self._attr_device_class = BinarySensorDeviceClass.SMOKE
+        self._attr_device_class = BinarySensorDeviceClass.PROBLEM
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
@@ -2219,11 +2220,6 @@ class HaClimate(ClimateEntity, HAEntity):
     sensor_classes = {
         "temperature": SensorDeviceClass.TEMPERATURE,
         "outTemperature": SensorDeviceClass.TEMPERATURE,
-        "TempSensorDefect": BinarySensorDeviceClass.PROBLEM,
-        "TempSensorOpenCirc": BinarySensorDeviceClass.PROBLEM,
-        "TempSensorShortCut": BinarySensorDeviceClass.PROBLEM,
-        "ProductionDefect": BinarySensorDeviceClass.PROBLEM,
-        "BatteryCmdDefect": BinarySensorDeviceClass.PROBLEM,
         "battLevel": SensorDeviceClass.BATTERY,
     }
 
@@ -2870,23 +2866,12 @@ class HaWindowOpening(HaOpeningBinarySensor):
     _attr_icon = "mdi:window-open"
     _opening_device_class = BinarySensorDeviceClass.WINDOW
 
-    sensor_classes = {
-        "battDefect": BinarySensorDeviceClass.PROBLEM,
-        "intrusionDetect": BinarySensorDeviceClass.PROBLEM,
-    }
-
 
 class HaDoorOpening(HaOpeningBinarySensor):
     """Binary sensor for a passive (non-motorized) Tydom door."""
 
     _attr_icon = "mdi:door"
     _opening_device_class = BinarySensorDeviceClass.DOOR
-
-    sensor_classes = {
-        "battDefect": BinarySensorDeviceClass.PROBLEM,
-        "calibrationDefect": BinarySensorDeviceClass.PROBLEM,
-        "intrusionDetect": BinarySensorDeviceClass.PROBLEM,
-    }
 
 
 class HaWindow(CoverEntity, HAEntity):
@@ -2897,11 +2882,6 @@ class HaWindow(CoverEntity, HAEntity):
     _attr_device_class = CoverDeviceClass.WINDOW
     _attr_icon = "mdi:window-open"
     _attr_has_entity_name = True
-
-    sensor_classes = {
-        "battDefect": BinarySensorDeviceClass.PROBLEM,
-        "intrusionDetect": BinarySensorDeviceClass.PROBLEM,
-    }
 
     def __init__(self, device: TydomWindow, hass) -> None:
         """Initialize the sensor."""
@@ -2971,11 +2951,6 @@ class HaDoor(CoverEntity, HAEntity):
     _attr_device_class = CoverDeviceClass.DOOR
     _attr_icon = "mdi:door"
     _attr_has_entity_name = True
-    sensor_classes = {
-        "battDefect": BinarySensorDeviceClass.PROBLEM,
-        "calibrationDefect": BinarySensorDeviceClass.PROBLEM,
-        "intrusionDetect": BinarySensorDeviceClass.PROBLEM,
-    }
 
     def __init__(self, device: TydomDoor, hass) -> None:
         """Initialize the sensor."""
@@ -3153,9 +3128,6 @@ class HaGarage(CoverEntity, HAEntity):
     _attr_device_class = CoverDeviceClass.GARAGE
     _attr_icon = "mdi:garage"
     _attr_has_entity_name = True
-    sensor_classes = {
-        "thermic_defect": BinarySensorDeviceClass.PROBLEM,
-    }
 
     def __init__(self, device: TydomGarage, hass) -> None:
         """Initialize the sensor."""
@@ -3242,9 +3214,6 @@ class HaLight(LightEntity, HAEntity):
     _attr_should_poll = False
     _attr_icon = "mdi:lightbulb"
     _attr_has_entity_name = True
-    sensor_classes = {
-        "thermic_defect": BinarySensorDeviceClass.PROBLEM,
-    }
     _attr_color_mode: ColorMode | str | None = None
     _attr_supported_color_modes: set[ColorMode] | set[str] | None = None
 
@@ -3356,17 +3325,6 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
     _attr_icon = "mdi:shield-home"
     _attr_has_entity_name = True
     sensor_classes = {
-        "networkDefect": BinarySensorDeviceClass.PROBLEM,
-        "remoteSurveyDefect": BinarySensorDeviceClass.PROBLEM,
-        "simDefect": BinarySensorDeviceClass.PROBLEM,
-        "systAlarmDefect": BinarySensorDeviceClass.PROBLEM,
-        "systBatteryDefect": BinarySensorDeviceClass.PROBLEM,
-        "systSectorDefect": BinarySensorDeviceClass.PROBLEM,
-        "systSupervisionDefect": BinarySensorDeviceClass.PROBLEM,
-        "systTechnicalDefect": BinarySensorDeviceClass.PROBLEM,
-        "unitBatteryDefect": BinarySensorDeviceClass.PROBLEM,
-        "unitInternalDefect": BinarySensorDeviceClass.PROBLEM,
-        "videoLinkDefect": BinarySensorDeviceClass.PROBLEM,
         "outTemperature": SensorDeviceClass.TEMPERATURE,
     }
 
@@ -3677,8 +3635,6 @@ class HaMoisture(BinarySensorEntity, HAEntity):
     _attr_icon = "mdi:water"
     _attr_has_entity_name = True
 
-    sensor_classes = {"batt_defect": BinarySensorDeviceClass.PROBLEM}
-
     def __init__(self, device: TydomWater, hass) -> None:
         """Initialize TydomSmoke."""
         self.hass = hass
@@ -3688,7 +3644,8 @@ class HaMoisture(BinarySensorEntity, HAEntity):
         self._attr_name = None  # primary entity inherits device name
         self._state = False
         self._registered_sensors = []
-        self._attr_device_class = BinarySensorDeviceClass.MOISTURE
+        self._attr_device_class = BinarySensorDeviceClass.PROBLEM
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
@@ -3787,8 +3744,6 @@ class HaSun(SensorEntity, HAEntity):
     _attr_device_class = SensorDeviceClass.IRRADIANCE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = "W/m²"
-
-    sensor_classes = {"battDefect": BinarySensorDeviceClass.PROBLEM}
 
     def __init__(self, device: TydomSun, hass) -> None:
         """Initialise a Tysense Sun sensor."""
@@ -6508,7 +6463,7 @@ class HARemoteBattery(BinarySensorEntity, HAEntity):
 
     _attr_should_poll = False
     _attr_has_entity_name = True
-    _attr_device_class = BinarySensorDeviceClass.BATTERY
+    _attr_device_class = BinarySensorDeviceClass.PROBLEM
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_name = "Battery fault"
 
@@ -6692,7 +6647,7 @@ class HAInterrupterBattery(BinarySensorEntity, HAEntity):
 
     _attr_should_poll = False
     _attr_has_entity_name = True
-    _attr_device_class = BinarySensorDeviceClass.BATTERY
+    _attr_device_class = BinarySensorDeviceClass.PROBLEM
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_name = "Battery fault"
 
