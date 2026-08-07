@@ -260,7 +260,17 @@
         "number": {},
         "select": {},
         "event": {},
-        "cover": {},
+        "cover": {
+            "tywell_shutters": {
+                "name": "Volets"
+            },
+            "tywell_shutters_day": {
+                "name": "Volets jour"
+            },
+            "tywell_shutters_night": {
+                "name": "Volets nuit"
+            }
+        },
         "light": {},
         "climate": {},
         "alarm_control_panel": {},

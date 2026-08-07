@@ -259,7 +259,17 @@
         "number": {},
         "select": {},
         "event": {},
-        "cover": {},
+        "cover": {
+            "tywell_shutters": {
+                "name": "Shutters"
+            },
+            "tywell_shutters_day": {
+                "name": "Day shutters"
+            },
+            "tywell_shutters_night": {
+                "name": "Night shutters"
+            }
+        },
         "light": {},
         "climate": {},
         "alarm_control_panel": {},

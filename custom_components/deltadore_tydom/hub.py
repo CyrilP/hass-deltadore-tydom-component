@@ -59,6 +59,7 @@ from .ha_entities import (
     HAGenericBinarySensor,
     HASensor,
     HAScene,
+    HATwcShutterCover,
     HASwitch,
     HAButton,
     HAAlarmAcknowledgeButton,
@@ -149,6 +150,8 @@ class Hub:
         self._refresh_energy_buttons_created: set[str] = set()
         self._remote_battery_entities: dict[str, HARemoteBattery] = {}
         self._interrupter_battery_entities: dict[str, HAInterrupterBattery] = {}
+        self._twc_scene_sets: dict[str, dict[str, HAScene]] = {}
+        self._twc_cover_entities: dict[str, HATwcShutterCover] = {}
         self._shutting_down = False
 
         # Polling cache for optimization
@@ -662,12 +665,43 @@ class Hub:
         self._add_discovered_entities([ha_device, *ha_device.get_sensors()])
 
     async def _create_scene_device(self, device: TydomScene) -> None:
-        """Create scene device."""
+        """Create a normal scene or aggregate TWC commands into one cover."""
         LOGGER.debug("Create scene %s", device.device_id)
         ha_device = HAScene(device, self._hass)
         self.ha_devices[device.device_id] = ha_device
-        if self.add_scene_callback is not None:
-            self.add_scene_callback([ha_device])
+        action = ha_device.twc_action
+        if action is None:
+            if self.add_scene_callback is not None:
+                self.add_scene_callback([ha_device])
+            return
+
+        zone_key = ha_device._get_zone_from_scene()
+        controller_id = ha_device._find_tywell_device(zone_key)
+        parent_key = controller_id or f"tywell_control_{zone_key or 'default'}"
+        grouping_key = f"{parent_key}:{zone_key or 'default'}"
+        scenes = self._twc_scene_sets.setdefault(grouping_key, {})
+        scenes[action] = ha_device
+
+        cover = self._twc_cover_entities.get(grouping_key)
+        if cover is None:
+            cover = HATwcShutterCover(
+                grouping_key,
+                scenes,
+                ha_device,
+                self._hass,
+                zone_key,
+            )
+            self._twc_cover_entities[grouping_key] = cover
+            self.ha_devices[f"twc_cover_{grouping_key}"] = cover
+            if self.add_cover_callback is not None:
+                self.add_cover_callback([cover])
+            LOGGER.debug(
+                "Created Tywell shutter cover %s from scenario %s",
+                grouping_key,
+                device.device_name,
+            )
+        else:
+            cover.refresh_scenes(ha_device)
 
     async def _create_group_device(self, device: TydomGroup) -> None:
         """Create a native Home Assistant entity for a controllable group."""
@@ -971,6 +1005,8 @@ class Hub:
         self.ha_devices.clear()
         self._remote_battery_entities.clear()
         self._interrupter_battery_entities.clear()
+        self._twc_scene_sets.clear()
+        self._twc_cover_entities.clear()
         # Réinitialiser le flag pour recréer le bouton après le rechargement
         self._reload_button_created = False
         self._refresh_energy_buttons_created.clear()
