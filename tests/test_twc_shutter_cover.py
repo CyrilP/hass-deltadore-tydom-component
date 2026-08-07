@@ -202,7 +202,7 @@ class TwcShutterCoverTests(IsolatedAsyncioTestCase):
             target_states={"one": True, "two": True},
         )
         self.assertTrue(closed.is_closed)
-        self.assertFalse(closed.assumed_state)
+        self.assertTrue(closed.assumed_state)
 
         mixed, _, _ = self._entity(
             open_targets={"one", "two"},

@@ -5324,8 +5324,15 @@ class HATwcShutterCover(CoverEntity, HAEntity):
 
     @property
     def assumed_state(self) -> bool:
-        """Tell Home Assistant when no reliable aggregate feedback exists."""
-        return self.is_closed is None
+        """Keep both directions available for this command-only aggregate.
+
+        Even when every target reports position feedback, ``is_closed = False``
+        cannot distinguish fully open shutters from shutters stopped part-way.
+        Home Assistant would otherwise disable Open after a Close then Stop
+        sequence.  The aggregate state remains useful for display, but must
+        always be treated as assumed for control availability.
+        """
+        return True
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
