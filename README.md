@@ -32,7 +32,7 @@ Platform | Description
 **This integration has been tested with the following hardware.**
 
 - Cover (Up/Down/Stop)
-- Tywatt 5400, Tywatt 1000
+- Tywatt 5400, Tywatt 1000, Tywatt 2000 (*)
 - Tyxal+ DFR
 - K-Line DVI (windows, door)
 - Typass ATL (zones temperatures, target temperature, mode (Auto mode is used for antifrost), water/heat power usage) with Tybox 5101
@@ -44,10 +44,11 @@ Platform | Description
 - RF 6600 FP : partial issue #92
 
 Some other functions may also work or only report attributes.
+(*) : You light have to wait up to 30 minutes before anything shows up ; please hold.
 
 ## Installation
 
-The preferred way to install the Delta Dore Tydom integration is by addig it using HACS.
+The preferred way to install the Delta Dore Tydom integration is by adding it using HACS.
 
 Add your device via the Integration menu
 
