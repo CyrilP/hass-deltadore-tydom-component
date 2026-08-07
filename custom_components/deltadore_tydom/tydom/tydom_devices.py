@@ -36,6 +36,59 @@ _TUTORIAL_PREFIX_MODELS = {
     "tl2000": "TL 2000 Tyxal+",
 }
 
+_TYWELL_CONTROL_TYPES = {
+    "re2020ControlBoiler",
+    "re2020ControlPassive",
+}
+
+_TYWELL_CONTROL_MODELS = {
+    "tywell 2050",
+    "tywell control",
+}
+
+_TYWELL_CONTROL_TUTORIALS = {
+    "tywell_control",
+    "tywell_control_2050",
+}
+
+_TYWELL_CONTROL_SENSOR_ATTRIBUTES = {
+    "hygroIn",
+    "isReference",
+    "shutterCmd",
+    "synchroRadio",
+}
+
+
+def is_physical_tywell_control_profile(
+    tutorial_id: str | None,
+    device_type: str | None,
+    metadata: dict[str, Any] | None = None,
+    data: dict[str, Any] | None = None,
+) -> bool:
+    """Return whether descriptors identify a physical Tywell wall controller.
+
+    A controller may be advertised as either a passive endpoint or an unlinked
+    boiler endpoint depending on how it is associated with the heating system.
+    Prefer Delta Dore's explicit tutorial identifier and retain the established
+    capability fallback for older configurations.
+    """
+    if device_type not in _TYWELL_CONTROL_TYPES:
+        return False
+
+    if device_type == "re2020ControlPassive":
+        return True
+
+    tutorial = str(tutorial_id or "").strip().casefold()
+    if tutorial in _TYWELL_CONTROL_TUTORIALS:
+        return True
+
+    product_name = str((data or {}).get("productName", "")).strip().casefold()
+    if product_name in _TYWELL_CONTROL_MODELS:
+        return True
+
+    attributes = set(metadata or {}) | set(data or {})
+    return bool(attributes & _TYWELL_CONTROL_SENSOR_ATTRIBUTES)
+
 
 def is_binary_tyxia_receiver_profile(metadata: dict[str, Any] | None) -> bool:
     """Return whether metadata identifies a fixed-output TYXIA receiver."""
@@ -266,6 +319,16 @@ class TydomDevice:
     def registry_device_name(self) -> str:
         """Return the physical device name used by Home Assistant."""
         return str(getattr(self, "_registry_device_name", self._name))
+
+    @property
+    def is_physical_tywell_control(self) -> bool:
+        """Return whether this endpoint represents a Tywell wall controller."""
+        return is_physical_tywell_control_profile(
+            None,
+            self._type,
+            self._metadata,
+            self.__dict__,
+        )
 
     def group_with_registry_device(self, device_id: str, device_name: str) -> None:
         """Group this protocol endpoint with another physical HA device."""
