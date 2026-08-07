@@ -5246,6 +5246,7 @@ class HATwcShutterCover(CoverEntity, HAEntity):
             f"tywell_shutters_{zone_key}" if zone_key else "tywell_shutters"
         )
         self._subscribed_devices: set[TydomDevice] = set()
+        self._pending_action: str | None = None
 
     def refresh_scenes(self, representative_scene: HAScene | None = None) -> None:
         """Refresh scenario and target references after discovery changes."""
@@ -5310,9 +5311,60 @@ class HATwcShutterCover(CoverEntity, HAEntity):
                 entities.append(entity)
         return entities
 
+    def _target_positions(self) -> list[int] | None:
+        """Return every target position when complete feedback is available."""
+        target_ids = self._target_device_ids()
+        entities = self._target_cover_entities()
+        if not target_ids or len(entities) != len(target_ids):
+            return None
+        positions = []
+        for entity in entities:
+            position = getattr(entity, "current_cover_position", None)
+            if position is None:
+                return None
+            try:
+                positions.append(max(0, min(100, int(float(position)))))
+            except (TypeError, ValueError):
+                return None
+        return positions
+
+    def _terminal_state(self) -> str | None:
+        """Return a definitive endpoint reached by every target."""
+        positions = self._target_positions()
+        if positions:
+            if all(position == 0 for position in positions):
+                return "closed"
+            if all(position == 100 for position in positions):
+                return "open"
+            return None
+
+        entities = self._target_cover_entities()
+        if entities and all(entity.is_closed is True for entity in entities):
+            return "closed"
+        return None
+
+    @property
+    def current_cover_position(self) -> int | None:
+        """Return the mean target position when every target reports one."""
+        if self._pending_action is not None:
+            return None
+        positions = self._target_positions()
+        if not positions:
+            return None
+        return round(sum(positions) / len(positions))
+
     @property
     def is_closed(self) -> bool | None:
         """Aggregate closed state only when every target reports feedback."""
+        if self._pending_action in {"open", "close"}:
+            return False
+        if self._pending_action == "stop":
+            return None
+
+        terminal_state = self._terminal_state()
+        if terminal_state is not None:
+            return terminal_state == "closed"
+
         target_ids = self._target_device_ids()
         entities = self._target_cover_entities()
         if not target_ids or len(entities) != len(target_ids):
@@ -5324,15 +5376,8 @@ class HATwcShutterCover(CoverEntity, HAEntity):
 
     @property
     def assumed_state(self) -> bool:
-        """Keep both directions available for this command-only aggregate.
-
-        Even when every target reports position feedback, ``is_closed = False``
-        cannot distinguish fully open shutters from shutters stopped part-way.
-        Home Assistant would otherwise disable Open after a Close then Stop
-        sequence.  The aggregate state remains useful for display, but must
-        always be treated as assumed for control availability.
-        """
-        return True
+        """Keep both directions available until every target reaches an end."""
+        return self._pending_action is not None or self._terminal_state() is None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -5375,6 +5420,7 @@ class HATwcShutterCover(CoverEntity, HAEntity):
 
     def _handle_target_update(self) -> None:
         """Publish aggregate state when a target cover changes."""
+        self._pending_action = None
         self.async_write_ha_state()
 
     async def _activate(self, action: str) -> None:
@@ -5382,7 +5428,16 @@ class HATwcShutterCover(CoverEntity, HAEntity):
         scene = self._scenes.get(action)
         if scene is None:
             raise HomeAssistantError(f"Tywell {action} scenario is unavailable")
-        await scene._device.activate()
+        self._pending_action = action
+        if getattr(self, "entity_id", None):
+            self.async_write_ha_state()
+        try:
+            await scene._device.activate()
+        except Exception:
+            self._pending_action = None
+            if getattr(self, "entity_id", None):
+                self.async_write_ha_state()
+            raise
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Replay TWC_UP using the Tydom-configured shutter targets."""

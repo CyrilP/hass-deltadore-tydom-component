@@ -122,9 +122,10 @@ class TargetDevice:
 class TargetCover(CoverEntity):
     """Home Assistant cover target with position-derived closed state."""
 
-    def __init__(self, closed: bool | None) -> None:
+    def __init__(self, closed: bool | None, position: int | None = None) -> None:
         """Initialise the reported closed state."""
         self._closed = closed
+        self.current_cover_position = position
 
     @property
     def is_closed(self) -> bool | None:
@@ -141,6 +142,7 @@ class TwcShutterCoverTests(IsolatedAsyncioTestCase):
         open_targets: set[str] | None = None,
         close_targets: set[str] | None = None,
         target_states: dict[str, bool | None] | None = None,
+        target_positions: dict[str, int | None] | None = None,
     ):
         open_scene = SceneEntity(1, open_targets or {"shutter_1"})
         close_scene = SceneEntity(2, close_targets or {"shutter_1"})
@@ -158,7 +160,10 @@ class TwcShutterCoverTests(IsolatedAsyncioTestCase):
             )
         }
         ha_targets = {
-            target_id: TargetCover(state)
+            target_id: TargetCover(
+                state,
+                (target_positions or {}).get(target_id),
+            )
             for target_id, state in (target_states or {}).items()
         }
         hub = SimpleNamespace(
@@ -200,16 +205,21 @@ class TwcShutterCoverTests(IsolatedAsyncioTestCase):
             open_targets={"one", "two"},
             close_targets={"one", "two"},
             target_states={"one": True, "two": True},
+            target_positions={"one": 0, "two": 0},
         )
         self.assertTrue(closed.is_closed)
-        self.assertTrue(closed.assumed_state)
+        self.assertFalse(closed.assumed_state)
+        self.assertEqual(closed.current_cover_position, 0)
 
         mixed, _, _ = self._entity(
             open_targets={"one", "two"},
             close_targets={"one", "two"},
             target_states={"one": True, "two": False},
+            target_positions={"one": 0, "two": 50},
         )
         self.assertFalse(mixed.is_closed)
+        self.assertTrue(mixed.assumed_state)
+        self.assertEqual(mixed.current_cover_position, 25)
 
         mismatched, _, _ = self._entity(
             open_targets={"one"},
@@ -218,6 +228,39 @@ class TwcShutterCoverTests(IsolatedAsyncioTestCase):
         )
         self.assertIsNone(mismatched.is_closed)
         self.assertTrue(mismatched.assumed_state)
+
+    async def test_commands_remain_assumed_until_targets_reach_an_endpoint(
+        self,
+    ) -> None:
+        """Enable both directions during movement and after Stop."""
+        entity, _, _ = self._entity(
+            target_states={"shutter_1": True},
+            target_positions={"shutter_1": 0},
+        )
+        entity.entity_id = "cover.tywell_shutters"
+        entity.async_write_ha_state = MagicMock()
+
+        self.assertFalse(entity.assumed_state)
+        await entity.async_open_cover()
+        self.assertFalse(entity.is_closed)
+        self.assertTrue(entity.assumed_state)
+        self.assertIsNone(entity.current_cover_position)
+
+        await entity.async_stop_cover()
+        self.assertIsNone(entity.is_closed)
+        self.assertTrue(entity.assumed_state)
+
+        target = entity._target_cover_entities()[0]
+        target._closed = False
+        target.current_cover_position = 45
+        entity._handle_target_update()
+        self.assertFalse(entity.is_closed)
+        self.assertTrue(entity.assumed_state)
+
+        target.current_cover_position = 100
+        entity._handle_target_update()
+        self.assertFalse(entity.is_closed)
+        self.assertFalse(entity.assumed_state)
 
     async def test_cover_subscribes_to_target_updates(self) -> None:
         """Refresh aggregate state whenever a controlled shutter updates."""
