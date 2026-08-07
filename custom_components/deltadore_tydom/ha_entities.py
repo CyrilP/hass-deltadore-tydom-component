@@ -109,6 +109,7 @@ from .tydom.tydom_devices import (
     TydomMoment,
     TydomRemoteControl,
     TydomInterrupter,
+    get_twc_scene_action,
 )
 
 from .const import (
@@ -3958,20 +3959,12 @@ class HAScene(Scene, HAEntity):
         TWC scenes typically have names containing TWC_UP, TWC_DOWN, TWC_STOP,
         or variations like TWC UP, TWC DOWN, etc.
         """
-        name = self._device.device_name.upper()
-        # Check for common TWC patterns
-        twc_patterns = [
-            "TWC_DOWN",
-            "TWC_STOP",
-            "TWC_UP",
-            "TWC DOWN",
-            "TWC STOP",
-            "TWC UP",
-            "TWC-UP",
-            "TWC-DOWN",
-            "TWC-STOP",
-        ]
-        return any(pattern in name for pattern in twc_patterns)
+        return self.twc_action is not None
+
+    @property
+    def twc_action(self) -> str | None:
+        """Return the cover action represented by this TWC scenario."""
+        return get_twc_scene_action(self._device.device_name)
 
     def _get_zone_from_scene(self) -> str | None:
         """Extract zone (Jour/Nuit or Day/Night) from scene name, grpAct, or epAct.
@@ -5223,6 +5216,178 @@ class HAScene(Scene, HAEntity):
         This method allows Home Assistant to modify scenes via scene.apply service.
         """
         await self.async_create(**kwargs)
+
+
+class HATwcShutterCover(CoverEntity, HAEntity):
+    """Represent the three Tywell shutter scenarios as one cover."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_device_class = CoverDeviceClass.SHUTTER
+    _attr_icon = "mdi:window-shutter"
+
+    def __init__(
+        self,
+        grouping_key: str,
+        scenes: dict[str, HAScene],
+        representative_scene: HAScene,
+        hass,
+        zone_key: str | None = None,
+    ) -> None:
+        """Initialise a command cover backed by TWC scenarios."""
+        self.hass = hass
+        self._grouping_key = grouping_key
+        self._scenes = scenes
+        self._representative_scene = representative_scene
+        self._device = representative_scene._device
+        stable_key = grouping_key.replace(":", "_")
+        self._attr_unique_id = f"{stable_key}_twc_shutter_cover"
+        self._attr_translation_key = (
+            f"tywell_shutters_{zone_key}" if zone_key else "tywell_shutters"
+        )
+        self._subscribed_devices: set[TydomDevice] = set()
+
+    def refresh_scenes(self, representative_scene: HAScene | None = None) -> None:
+        """Refresh scenario and target references after discovery changes."""
+        if representative_scene is not None:
+            self._representative_scene = representative_scene
+            self._device = representative_scene._device
+        self._refresh_target_subscriptions()
+        if getattr(self, "entity_id", None):
+            self.async_write_ha_state()
+
+    @property
+    def supported_features(self) -> CoverEntityFeature:
+        """Expose only commands for which TYDOM supplied a scenario."""
+        features = CoverEntityFeature(0)
+        if "open" in self._scenes:
+            features |= CoverEntityFeature.OPEN
+        if "close" in self._scenes:
+            features |= CoverEntityFeature.CLOSE
+        if "stop" in self._scenes:
+            features |= CoverEntityFeature.STOP
+        return features
+
+    @property
+    def available(self) -> bool:
+        """Require the two directional scenarios and an online hub."""
+        hub = self._get_hub()
+        return (
+            "open" in self._scenes
+            and "close" in self._scenes
+            and hub is not None
+            and getattr(hub, "online", True)
+        )
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Attach the cover to the same Tywell device as its scenarios."""
+        return self._representative_scene.device_info
+
+    def _target_device_ids(self) -> set[str]:
+        """Return targets shared by the Open and Close scenarios."""
+        action_targets = [
+            scene._get_affected_device_ids()
+            for action in ("open", "close")
+            if (scene := self._scenes.get(action)) is not None
+        ]
+        if not action_targets:
+            return set()
+        first_targets = action_targets[0]
+        if any(targets != first_targets for targets in action_targets[1:]):
+            return set()
+        return set(first_targets)
+
+    def _target_cover_entities(self) -> list[CoverEntity]:
+        """Resolve scenario targets to existing Home Assistant covers."""
+        hub = self._get_hub()
+        if hub is None:
+            return []
+        entities = []
+        for device_id in self._target_device_ids():
+            entity = getattr(hub, "ha_devices", {}).get(device_id)
+            if isinstance(entity, CoverEntity):
+                entities.append(entity)
+        return entities
+
+    @property
+    def is_closed(self) -> bool | None:
+        """Aggregate closed state only when every target reports feedback."""
+        target_ids = self._target_device_ids()
+        entities = self._target_cover_entities()
+        if not target_ids or len(entities) != len(target_ids):
+            return None
+        states = [entity.is_closed for entity in entities]
+        if any(state is None for state in states):
+            return None
+        return all(states)
+
+    @property
+    def assumed_state(self) -> bool:
+        """Tell Home Assistant when no reliable aggregate feedback exists."""
+        return self.is_closed is None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose scenario and target identifiers for diagnostics."""
+        return {
+            "scenario_ids": {
+                action: getattr(scene._device, "scene_id", scene._device._id)
+                for action, scene in sorted(self._scenes.items())
+            },
+            "target_device_ids": sorted(self._target_device_ids()),
+        }
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to position updates from every resolved target."""
+        await super().async_added_to_hass()
+        self._refresh_target_subscriptions()
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove target callbacks."""
+        for device in self._subscribed_devices:
+            device.remove_callback(self._handle_target_update)
+        self._subscribed_devices.clear()
+        await super().async_will_remove_from_hass()
+
+    def _refresh_target_subscriptions(self) -> None:
+        """Synchronise callbacks with the scenarios' current targets."""
+        hub = self._get_hub()
+        if hub is None:
+            return
+        wanted = {
+            device
+            for device_id in self._target_device_ids()
+            if (device := getattr(hub, "devices", {}).get(device_id)) is not None
+        }
+        for device in self._subscribed_devices - wanted:
+            device.remove_callback(self._handle_target_update)
+        for device in wanted - self._subscribed_devices:
+            device.register_callback(self._handle_target_update)
+        self._subscribed_devices = wanted
+
+    def _handle_target_update(self) -> None:
+        """Publish aggregate state when a target cover changes."""
+        self.async_write_ha_state()
+
+    async def _activate(self, action: str) -> None:
+        """Activate the Delta Dore scenario for one cover action."""
+        scene = self._scenes.get(action)
+        if scene is None:
+            raise HomeAssistantError(f"Tywell {action} scenario is unavailable")
+        await scene._device.activate()
+
+    async def async_open_cover(self, **kwargs: Any) -> None:
+        """Replay TWC_UP using the Tydom-configured shutter targets."""
+        await self._activate("open")
+
+    async def async_close_cover(self, **kwargs: Any) -> None:
+        """Replay TWC_DOWN using the Tydom-configured shutter targets."""
+        await self._activate("close")
+
+    async def async_stop_cover(self, **kwargs: Any) -> None:
+        """Replay TWC_STOP using the Tydom-configured shutter targets."""
+        await self._activate("stop")
 
 
 class HAMoment(SwitchEntity, HAEntity):
