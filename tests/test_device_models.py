@@ -67,6 +67,9 @@ is_trv_1_profile = devices_module.is_trv_1_profile
 is_tymoov_profile = devices_module.is_tymoov_profile
 is_tybox_1137_profile = devices_module.is_tybox_1137_profile
 is_tyxia_dimmer_profile = devices_module.is_tyxia_dimmer_profile
+is_physical_tywell_control_profile = (
+    devices_module.is_physical_tywell_control_profile
+)
 resolve_device_model = devices_module.resolve_device_model
 MessageHandler = handler_module.MessageHandler
 
@@ -116,6 +119,29 @@ class TestDeviceModels(TestCase):
                 self.assertEqual(
                     resolve_device_model(tutorial_id, "unknown"), expected_model
                 )
+
+    def test_physical_tywell_control_profiles(self) -> None:
+        """Both linked and unlinked controller forms retain one identity."""
+        self.assertTrue(
+            is_physical_tywell_control_profile(
+                "tywell_control",
+                "re2020ControlBoiler",
+            )
+        )
+        self.assertTrue(
+            is_physical_tywell_control_profile(
+                None,
+                "re2020ControlPassive",
+                {"hygroIn": {"permission": "r"}},
+            )
+        )
+        self.assertFalse(
+            is_physical_tywell_control_profile(
+                None,
+                "boiler",
+                {"heatSetpoint": {"permission": "rw"}},
+            )
+        )
 
     def test_family_tutorials_do_not_become_models(self) -> None:
         """Family-only tutorial identifiers retain the existing fallback."""

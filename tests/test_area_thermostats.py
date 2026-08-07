@@ -625,6 +625,36 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         self.assertEqual(weather.registry_device_name, "Tywell Ctrl RdC")
         self.assertEqual(weather.device_id, "30_40")
 
+    async def test_weather_uses_unlinked_tywell_boiler_identity(self) -> None:
+        """An unlinked controller still owns its weather companion endpoint."""
+        handler_module.device_name.update(
+            {
+                "10_20": "Tywell Ctrl RdC",
+                "30_40": "Produit 1",
+            }
+        )
+        handler_module.device_type.update(
+            {
+                "10_20": "re2020ControlBoiler",
+                "30_40": "weather",
+            }
+        )
+        handler_module.device_tutorial_id["10_20"] = "tywell_control"
+
+        weather = await MessageHandler.get_device(
+            self.client,
+            "weather",
+            "30_40",
+            "40",
+            "Produit 1",
+            "30",
+            {},
+        )
+
+        self.assertIsInstance(weather, TydomWeather)
+        self.assertEqual(weather.registry_device_id, "10_20")
+        self.assertEqual(weather.registry_device_name, "Tywell Ctrl RdC")
+
     async def test_weather_endpoint_stays_separate_when_controller_is_ambiguous(
         self,
     ) -> None:

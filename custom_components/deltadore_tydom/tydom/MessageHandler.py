@@ -37,6 +37,7 @@ from .tydom_devices import (
     TydomSun,
     TydomScene,
     is_binary_tyxia_receiver_profile,
+    is_physical_tywell_control_profile,
     resolve_device_model,
 )
 
@@ -250,13 +251,6 @@ _AREA_CONTROL_ATTRIBUTES = {
     "coolSetpoint",
 }
 
-_TYWELL_CONTROL_SENSOR_ATTRIBUTES = {
-    "hygroIn",
-    "isReference",
-    "shutterCmd",
-    "synchroRadio",
-}
-
 
 def _is_physical_tywell_control_endpoint(
     uid: str, metadata: dict | None, data: dict | None
@@ -269,11 +263,12 @@ def _is_physical_tywell_control_endpoint(
     capabilities when configuration metadata is incomplete. Orphaned thermal
     proxies must not create misleading climate entities.
     """
-    if str(device_tutorial_id.get(uid, "")).casefold() == "tywell_control":
-        return True
-
-    attributes = set(metadata or {}) | set(data or {})
-    return bool(attributes & _TYWELL_CONTROL_SENSOR_ATTRIBUTES)
+    return is_physical_tywell_control_profile(
+        device_tutorial_id.get(uid),
+        device_type.get(uid),
+        metadata,
+        data,
+    )
 
 
 def _area_metadata_score(metadata: dict) -> int:
@@ -979,13 +974,17 @@ class MessageHandler:
                     device_metadata.get(uid),
                     data,
                 )
-                passive_controllers = [
+                physical_controllers = [
                     controller_uid
                     for controller_uid, controller_type in device_type.items()
-                    if controller_type == "re2020ControlPassive"
+                    if is_physical_tywell_control_profile(
+                        device_tutorial_id.get(controller_uid),
+                        controller_type,
+                        device_metadata.get(controller_uid),
+                    )
                 ]
-                if len(passive_controllers) == 1:
-                    controller_uid = passive_controllers[0]
+                if len(physical_controllers) == 1:
+                    controller_uid = physical_controllers[0]
                     weather_device.group_with_registry_device(
                         controller_uid,
                         device_name.get(controller_uid, "Tywell Control"),
