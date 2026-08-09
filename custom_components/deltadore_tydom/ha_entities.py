@@ -2815,6 +2815,7 @@ class HaOpeningBinarySensor(BinarySensorEntity, HAEntity):
 
     _attr_should_poll = False
     _attr_has_entity_name = True
+    consumed_attrs = frozenset({"openState", "intrusionDetect"})
 
     # Overridden by the window/door subclasses.
     _opening_device_class: BinarySensorDeviceClass = BinarySensorDeviceClass.WINDOW
@@ -2835,16 +2836,6 @@ class HaOpeningBinarySensor(BinarySensorEntity, HAEntity):
         self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
         self._attr_device_class = self._opening_device_class
-
-    def _get_consumed_attrs(self) -> set[str]:
-        """Hide intrusionDetect only when it is the primary opening state."""
-        consumed = super()._get_consumed_attrs()
-        if (
-            getattr(self._device, "openState", None) is None
-            and getattr(self._device, "intrusionDetect", None) is not None
-        ):
-            consumed.add("intrusionDetect")
-        return consumed
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
@@ -2920,6 +2911,7 @@ class HaWindow(CoverEntity, HAEntity):
     _attr_device_class = CoverDeviceClass.WINDOW
     _attr_icon = "mdi:window-open"
     _attr_has_entity_name = True
+    consumed_attrs = frozenset({"openState", "intrusionDetect"})
 
     def __init__(self, device: TydomWindow, hass) -> None:
         """Initialize the sensor."""
@@ -2929,16 +2921,6 @@ class HaWindow(CoverEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
-
-    def _get_consumed_attrs(self) -> set[str]:
-        """Hide intrusionDetect only when it backs the window state."""
-        consumed = super()._get_consumed_attrs()
-        if (
-            not hasattr(self._device, "openState")
-            and getattr(self._device, "intrusionDetect", None) is not None
-        ):
-            consumed.add("intrusionDetect")
-        return consumed
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
@@ -3010,14 +2992,10 @@ class HaDoor(CoverEntity, HAEntity):
         self._registered_sensors = []
 
     def _get_consumed_attrs(self) -> set[str]:
-        """Hide intrusionDetect only when it backs the door state."""
+        """Hide raw contact aliases when they back the door's primary state."""
         consumed = super()._get_consumed_attrs()
-        if (
-            not hasattr(self._device, "podPosition")
-            and not hasattr(self._device, "openState")
-            and getattr(self._device, "intrusionDetect", None) is not None
-        ):
-            consumed.add("intrusionDetect")
+        if not hasattr(self._device, "podPosition"):
+            consumed.update({"openState", "intrusionDetect"})
         return consumed
 
     async def async_added_to_hass(self) -> None:

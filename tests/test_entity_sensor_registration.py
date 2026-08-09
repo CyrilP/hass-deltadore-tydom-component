@@ -122,11 +122,26 @@ class EntitySensorRegistrationTests(TestCase):
         entity = self._entity("opening_1")
         entity._device.intrusionDetect = False
         entity._device.battDefect = False
-        entity.consumed_attrs = frozenset({"intrusionDetect"})
+        entity.consumed_attrs = frozenset({"openState", "intrusionDetect"})
 
         sensors = entity.get_sensors()
 
         self.assertEqual(len(sensors), 2)
+        self.assertNotIn("intrusionDetect", entity._registered_sensors)
+        self.assertIn("battDefect", entity._registered_sensors)
+
+    def test_both_opening_state_aliases_are_consumed(self) -> None:
+        """A dual-reporting opening must still expose one primary state."""
+        entity = self._entity("opening_1")
+        entity._device.openState = "LOCKED"
+        entity._device.intrusionDetect = False
+        entity._device.battDefect = False
+        entity.consumed_attrs = frozenset({"openState", "intrusionDetect"})
+
+        sensors = entity.get_sensors()
+
+        self.assertEqual(len(sensors), 2)
+        self.assertNotIn("openState", entity._registered_sensors)
         self.assertNotIn("intrusionDetect", entity._registered_sensors)
         self.assertIn("battDefect", entity._registered_sensors)
 
@@ -208,6 +223,37 @@ class EntitySensorRegistrationTests(TestCase):
             )
             self.assertIn(
                 expected_attribute, ast.literal_eval(assignment.value.args[0])
+            )
+
+    def test_opening_entities_consume_both_contact_state_aliases(self) -> None:
+        """Opening wrappers must handle single and dual-reporting endpoints."""
+        source_path = (
+            Path(__file__).parents[1]
+            / "custom_components"
+            / "deltadore_tydom"
+            / "ha_entities.py"
+        )
+        module = ast.parse(source_path.read_text(encoding="utf-8"))
+
+        for class_name in ("HaOpeningBinarySensor", "HaWindow"):
+            entity_class = next(
+                node
+                for node in module.body
+                if isinstance(node, ast.ClassDef) and node.name == class_name
+            )
+            assignment = next(
+                statement
+                for statement in entity_class.body
+                if isinstance(statement, ast.Assign)
+                and any(
+                    isinstance(target, ast.Name) and target.id == "consumed_attrs"
+                    for target in statement.targets
+                )
+            )
+
+            self.assertEqual(
+                ast.literal_eval(assignment.value.args[0]),
+                {"openState", "intrusionDetect"},
             )
 
     def test_leak_detector_primary_entity_remains_a_moisture_sensor(self) -> None:
