@@ -65,6 +65,51 @@ def _load_ha_entity_class():
 HAEntity = _load_ha_entity_class()
 
 
+def _load_opening_consumed_attrs():
+    """Load the metadata helper without Home Assistant dependencies."""
+    source_path = (
+        Path(__file__).parents[1]
+        / "custom_components"
+        / "deltadore_tydom"
+        / "ha_entities.py"
+    )
+    module = ast.parse(source_path.read_text(encoding="utf-8"))
+    selected_nodes = [
+        node
+        for node in module.body
+        if (
+            isinstance(node, ast.Assign)
+            and any(
+                isinstance(target, ast.Name)
+                and target.id == "_BINARY_OPEN_STATES"
+                for target in node.targets
+            )
+        )
+        or (
+            isinstance(node, ast.FunctionDef)
+            and node.name == "get_consumed_opening_attrs"
+        )
+    ]
+    isolated_module = ast.Module(
+        body=[
+            ast.ImportFrom(
+                module="__future__",
+                names=[ast.alias(name="annotations")],
+                level=0,
+            ),
+            *selected_nodes,
+        ],
+        type_ignores=[],
+    )
+    ast.fix_missing_locations(isolated_module)
+    namespace = {"Any": object}
+    exec(compile(isolated_module, source_path, "exec"), namespace)
+    return namespace["get_consumed_opening_attrs"]
+
+
+get_consumed_opening_attrs = _load_opening_consumed_attrs()
+
+
 class EntitySensorRegistrationTests(TestCase):
     """Ensure generic sensor discovery is isolated between entity instances."""
 
@@ -225,36 +270,41 @@ class EntitySensorRegistrationTests(TestCase):
                 expected_attribute, ast.literal_eval(assignment.value.args[0])
             )
 
-    def test_opening_entities_consume_both_contact_state_aliases(self) -> None:
-        """Opening wrappers must handle single and dual-reporting endpoints."""
-        source_path = (
-            Path(__file__).parents[1]
-            / "custom_components"
-            / "deltadore_tydom"
-            / "ha_entities.py"
+    def test_binary_open_state_is_consumed(self) -> None:
+        """A two-state openState adds nothing beyond the primary entity."""
+        device = MagicMock()
+        device._metadata = {
+            "openState": {"enum_values": ["LOCKED", "UNLOCKED"]}
+        }
+
+        self.assertEqual(
+            get_consumed_opening_attrs(device),
+            {"openState", "intrusionDetect"},
         )
-        module = ast.parse(source_path.read_text(encoding="utf-8"))
 
-        for class_name in ("HaOpeningBinarySensor", "HaWindow"):
-            entity_class = next(
-                node
-                for node in module.body
-                if isinstance(node, ast.ClassDef) and node.name == class_name
-            )
-            assignment = next(
-                statement
-                for statement in entity_class.body
-                if isinstance(statement, ast.Assign)
-                and any(
-                    isinstance(target, ast.Name) and target.id == "consumed_attrs"
-                    for target in statement.targets
-                )
-            )
+    def test_detailed_open_state_is_retained(self) -> None:
+        """French-window opening modes must remain separately observable."""
+        device = MagicMock()
+        device._metadata = {
+            "openState": {
+                "enum_values": ["LOCKED", "OPEN_FRENCH", "OPEN_HOPPER"]
+            }
+        }
 
-            self.assertEqual(
-                ast.literal_eval(assignment.value.args[0]),
-                {"openState", "intrusionDetect"},
-            )
+        self.assertEqual(
+            get_consumed_opening_attrs(device),
+            {"intrusionDetect"},
+        )
+
+    def test_open_state_is_retained_without_metadata(self) -> None:
+        """Missing metadata must favour preserving information."""
+        device = MagicMock()
+        device._metadata = None
+
+        self.assertEqual(
+            get_consumed_opening_attrs(device),
+            {"intrusionDetect"},
+        )
 
     def test_leak_detector_primary_entity_remains_a_moisture_sensor(self) -> None:
         """A leak detector belongs in Sensors, not hidden in Diagnostics."""

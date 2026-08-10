@@ -125,6 +125,7 @@ from .tydom.MessageHandler import device_name, groups_data
 _BINARY_TRUE_VALUES = frozenset({"1", "on", "true", "yes"})
 _BINARY_FALSE_VALUES = frozenset({"0", "off", "false", "no"})
 _PROBLEM_ATTRIBUTE_MARKERS = ("defect", "empty", "intrusion")
+_BINARY_OPEN_STATES = frozenset({"LOCKED", "UNLOCKED"})
 
 
 def normalize_binary_state(value: Any, *, allow_numeric: bool = False) -> bool | None:
@@ -151,6 +152,33 @@ def is_problem_attribute(attribute: str) -> bool:
     """Return whether a binary attribute denotes a reported problem."""
     normalized = attribute.casefold()
     return any(marker in normalized for marker in _PROBLEM_ATTRIBUTE_MARKERS)
+
+
+def get_consumed_opening_attrs(device: Any) -> set[str]:
+    """Return raw attributes already represented by an opening entity.
+
+    ``intrusionDetect`` is a boolean alias of the primary open/closed state.
+    ``openState`` is also redundant when metadata advertises only LOCKED and
+    UNLOCKED, but must remain available when it distinguishes richer states
+    such as a French window opened normally or in hopper mode.
+    """
+    consumed = {"intrusionDetect"}
+    metadata = getattr(device, "_metadata", None)
+    open_state_metadata = (
+        metadata.get("openState") if isinstance(metadata, dict) else None
+    )
+    enum_values = (
+        open_state_metadata.get("enum_values")
+        if isinstance(open_state_metadata, dict)
+        else None
+    )
+    if (
+        isinstance(enum_values, (list, tuple, set))
+        and bool(enum_values)
+        and set(enum_values).issubset(_BINARY_OPEN_STATES)
+    ):
+        consumed.add("openState")
+    return consumed
 
 
 def is_binary_attribute(
@@ -2815,7 +2843,6 @@ class HaOpeningBinarySensor(BinarySensorEntity, HAEntity):
 
     _attr_should_poll = False
     _attr_has_entity_name = True
-    consumed_attrs = frozenset({"openState", "intrusionDetect"})
 
     # Overridden by the window/door subclasses.
     _opening_device_class: BinarySensorDeviceClass = BinarySensorDeviceClass.WINDOW
@@ -2836,6 +2863,10 @@ class HaOpeningBinarySensor(BinarySensorEntity, HAEntity):
         self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
         self._attr_device_class = self._opening_device_class
+
+    def _get_consumed_attrs(self) -> set[str]:
+        """Hide only contact attributes which add no opening detail."""
+        return super()._get_consumed_attrs() | get_consumed_opening_attrs(self._device)
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
@@ -2911,7 +2942,6 @@ class HaWindow(CoverEntity, HAEntity):
     _attr_device_class = CoverDeviceClass.WINDOW
     _attr_icon = "mdi:window-open"
     _attr_has_entity_name = True
-    consumed_attrs = frozenset({"openState", "intrusionDetect"})
 
     def __init__(self, device: TydomWindow, hass) -> None:
         """Initialize the sensor."""
@@ -2921,6 +2951,10 @@ class HaWindow(CoverEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
+
+    def _get_consumed_attrs(self) -> set[str]:
+        """Hide only contact attributes which add no opening detail."""
+        return super()._get_consumed_attrs() | get_consumed_opening_attrs(self._device)
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
@@ -2995,7 +3029,7 @@ class HaDoor(CoverEntity, HAEntity):
         """Hide raw contact aliases when they back the door's primary state."""
         consumed = super()._get_consumed_attrs()
         if not hasattr(self._device, "podPosition"):
-            consumed.update({"openState", "intrusionDetect"})
+            consumed.update(get_consumed_opening_attrs(self._device))
         return consumed
 
     async def async_added_to_hass(self) -> None:
