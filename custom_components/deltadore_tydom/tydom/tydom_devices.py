@@ -37,6 +37,19 @@ _TUTORIAL_PREFIX_MODELS = {
 }
 
 
+def get_twc_scene_action(scene_name: str) -> str | None:
+    """Return the cover action encoded by a Tywell shutter scenario name."""
+    normalized_name = str(scene_name).upper().replace("-", "_")
+    normalized_name = "_".join(normalized_name.split())
+    if "TWC_UP" in normalized_name:
+        return "open"
+    if "TWC_DOWN" in normalized_name:
+        return "close"
+    if "TWC_STOP" in normalized_name:
+        return "stop"
+    return None
+
+
 def is_binary_tyxia_receiver_profile(metadata: dict[str, Any] | None) -> bool:
     """Return whether metadata identifies a fixed-output TYXIA receiver."""
     if not isinstance(metadata, dict):
