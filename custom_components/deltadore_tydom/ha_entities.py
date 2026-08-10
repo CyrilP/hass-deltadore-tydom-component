@@ -4497,26 +4497,26 @@ class HAScene(Scene, HAEntity):
 
             # TWC_UP/DOWN/STOP scenes generally target shutter groups, not the
             # controller endpoint itself. In that case grpAct/epAct cannot lead
-            # us back to the physical Tywell controller. The endpoint advertised
-            # as re2020ControlPassive is the controller which exposes the
-            # tywell_control widget in /configs/file.
-            passive_controllers = [
+            # us back to the physical Tywell controller. Depending on its area
+            # association, the same wall controller may be advertised as a
+            # passive endpoint or as an unlinked boiler endpoint.
+            physical_controllers = [
                 (device_id, device)
                 for device_id, device in hub_instance.devices.items()
-                if getattr(device, "device_type", None) == "re2020ControlPassive"
+                if getattr(device, "is_physical_tywell_control", False)
             ]
 
             if zone:
                 zone_controllers = [
                     (device_id, device)
-                    for device_id, device in passive_controllers
+                    for device_id, device in physical_controllers
                     if self._get_zone_from_device(device) == zone
                 ]
                 if len(zone_controllers) == 1:
-                    passive_controllers = zone_controllers
+                    physical_controllers = zone_controllers
 
-            if len(passive_controllers) == 1:
-                device_id = passive_controllers[0][0]
+            if len(physical_controllers) == 1:
+                device_id = physical_controllers[0][0]
                 self._cached_tywell_device_id = device_id
                 LOGGER.debug(
                     "Using physical Tywell controller %s for scene %s",
