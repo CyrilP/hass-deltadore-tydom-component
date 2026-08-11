@@ -5663,7 +5663,12 @@ class HAGroupEntity(HAEntity):
 
     def _handle_member_update(self) -> None:
         """Refresh the native group after a member update."""
-        self.async_write_ha_state()
+        if self._state_updates_ready():
+            self.async_write_ha_state()
+
+    def _state_updates_ready(self) -> bool:
+        """Return whether Home Assistant has fully registered this entity."""
+        return self.hass is not None and getattr(self, "entity_id", None) is not None
 
     def get_sensors(self) -> list:
         """Do not expose internal group membership as sensors."""
@@ -5710,9 +5715,10 @@ class HAGroupEntity(HAEntity):
 
     def refresh_members(self) -> None:
         """Attach members discovered after the group and refresh its HA state."""
+        if not self._state_updates_ready():
+            return
         self._register_member_callbacks()
-        if getattr(self, "entity_id", None) is not None:
-            self._handle_member_update()
+        self._handle_member_update()
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -6011,6 +6017,8 @@ class HALightGroup(LightEntity, HAGroupEntity):
 
     def _handle_member_update(self) -> None:
         """Reconcile an assumed group state with reported member states."""
+        if not self._state_updates_ready():
+            return
         if self._assumed_is_on is not None:
             members = self._member_devices()
             states = self._reported_member_states()
@@ -6135,6 +6143,8 @@ class HACoverGroup(CoverEntity, HAGroupEntity):
 
     def _handle_member_update(self) -> None:
         """Reconcile an assumed group state with reported member positions."""
+        if not self._state_updates_ready():
+            return
         if self._assumed_is_closed is not None:
             members = self._member_devices()
             states = self._reported_member_closed_states()

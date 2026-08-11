@@ -169,7 +169,9 @@ class NativeGroupEntityTests(IsolatedAsyncioTestCase):
             stored_devices[member.device_id] = member
         group = GroupDevice(usage, member_ids)
         hass = SimpleNamespace(hub=SimpleNamespace(devices=stored_devices))
-        return entity_class(group, hass)
+        entity = entity_class(group, hass)
+        entity.entity_id = f"{usage}.all_{usage}s"
+        return entity
 
     async def test_light_group_aggregates_state_and_deduplicates_commands(self) -> None:
         """Report any light on and command each physical member only once."""
@@ -187,7 +189,9 @@ class NativeGroupEntityTests(IsolatedAsyncioTestCase):
         self.assertFalse(entity.is_on)
         entity._clear_assumed_state()
 
-    async def test_light_group_keeps_requested_state_until_members_converge(self) -> None:
+    async def test_light_group_keeps_requested_state_until_members_converge(
+        self,
+    ) -> None:
         """Avoid presenting a stale light state while TYDOM polls each member."""
         first = MemberDevice("1", level=100)
         second = MemberDevice("2", level=100)
@@ -307,6 +311,33 @@ class NativeGroupEntityTests(IsolatedAsyncioTestCase):
         second.register_callback.assert_called_once_with(entity._handle_member_update)
         entity.async_write_ha_state.assert_called_once_with()
         self.assertFalse(entity.is_on)
+
+    def test_group_defers_refresh_until_home_assistant_registration(self) -> None:
+        """Ignore protocol refreshes while Home Assistant is adding the entity."""
+        member = MemberDevice("1", level=0)
+        entity = self._entity(HALightGroup, "light", [member])
+        entity.entity_id = "light.all_lights"
+        entity.hass = None
+        entity.async_write_ha_state = MagicMock()
+
+        entity.refresh_members()
+        entity._handle_member_update()
+
+        member.register_callback.assert_not_called()
+        entity.async_write_ha_state.assert_not_called()
+
+    def test_group_refresh_registration_is_idempotent(self) -> None:
+        """Register each member callback once across repeated refreshes."""
+        member = MemberDevice("1", level=0)
+        entity = self._entity(HALightGroup, "light", [member])
+        entity.entity_id = "light.all_lights"
+        entity.async_write_ha_state = MagicMock()
+
+        entity.refresh_members()
+        entity.refresh_members()
+
+        member.register_callback.assert_called_once_with(entity._handle_member_update)
+        self.assertEqual(entity.async_write_ha_state.call_count, 2)
 
 
 if __name__ == "__main__":
