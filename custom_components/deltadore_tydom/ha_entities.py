@@ -2459,7 +2459,7 @@ class HaClimate(ClimateEntity, HAEntity):
             metadata is not None and "thermicLevel" in metadata
         )
         has_pilot_wire_command = hasattr(self._device, "hvacMode") or hasattr(
-            seft._device, "authorization"
+            self._device, "authorization"
         )
         self._is_filpilote = (
             has_pilot_wire_command
