@@ -218,6 +218,12 @@ def resolve_device_model(
     named product range are accepted. Broad capability profiles retain Home
     Assistant's existing fallback instead of being presented as device models.
     """
+    if usage in {"awning", "klineShutter", "shutter", "swingShutter"}:
+        manufacturer = str((data or {}).get("manufacturer", "")).strip()
+        model_identifier = str((data or {}).get("modelIdentifier", "")).strip()
+        if manufacturer.casefold() == "profalux" and model_identifier:
+            return f"Profalux {model_identifier}"
+
     tutorial = str(tutorial_id or "").strip().casefold()
     if not tutorial:
         if usage == "shutter" and is_tymoov_profile(data):

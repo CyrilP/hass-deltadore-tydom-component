@@ -293,6 +293,35 @@ class TestDeviceModels(TestCase):
         metadata.pop("invertOutput")
         self.assertFalse(is_tybox_1137_profile(metadata))
 
+    def test_reported_profalux_zigbee_model(self) -> None:
+        """Profalux covers use the manufacturer and model reported by Zigbee."""
+        for model_identifier in ("MOT-C1Z06F", "MOT-C1Z10F"):
+            with self.subTest(model_identifier=model_identifier):
+                self.assertEqual(
+                    resolve_device_model(
+                        "profalux_stella",
+                        "shutter",
+                        data={
+                            "manufacturer": "Profalux",
+                            "modelIdentifier": model_identifier,
+                        },
+                    ),
+                    f"Profalux {model_identifier}",
+                )
+
+    def test_unrelated_zigbee_descriptor_is_not_used_as_a_model(self) -> None:
+        """Do not turn arbitrary Zigbee descriptors into cover models."""
+        self.assertIsNone(
+            resolve_device_model(
+                "profalux_stella",
+                "shutter",
+                data={
+                    "manufacturer": "Other manufacturer",
+                    "modelIdentifier": "MOT-C1Z06F",
+                },
+            )
+        )
+
 
 class TestDeviceModelApplication(IsolatedAsyncioTestCase):
     """Exercise model application when protocol devices are created."""
@@ -304,6 +333,7 @@ class TestDeviceModelApplication(IsolatedAsyncioTestCase):
         handler_module.device_metadata.clear()
         handler_module.device_tutorial_id.clear()
         handler_module.endpoint_config.clear()
+        self.handler = MessageHandler(MagicMock(), b"")
 
     async def test_resolved_model_is_added_to_device_data(self) -> None:
         """A descriptor-derived model is exposed through productName."""
@@ -366,6 +396,95 @@ class TestDeviceModelApplication(IsolatedAsyncioTestCase):
             )
             self.assertIsNotNone(device)
             self.assertEqual(device.productName, "TYXIA 2600")
+
+    async def test_empty_endpoint_placeholder_is_not_created(self) -> None:
+        """Ignore successful endpoints that expose no state or capabilities."""
+        real_uid = "20_10"
+        placeholder_uid = "11_10"
+        handler_module.device_name.update(
+            {
+                real_uid: "Bedroom shutter",
+                placeholder_uid: "Product 1",
+            }
+        )
+        handler_module.device_type.update(
+            {
+                real_uid: "shutter",
+                placeholder_uid: "shutter",
+            }
+        )
+        handler_module.device_tutorial_id.update(
+            {
+                real_uid: "profalux_stella",
+                placeholder_uid: "profalux_stella",
+            }
+        )
+        handler_module.device_metadata.update(
+            {
+                real_uid: {"position": {"permission": "rw", "unit": "%"}},
+                placeholder_uid: {},
+            }
+        )
+
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": 10,
+                    "endpoints": [
+                        {
+                            "id": 20,
+                            "error": 0,
+                            "data": [
+                                {
+                                    "name": "manufacturer",
+                                    "value": "Profalux",
+                                    "validity": "upToDate",
+                                },
+                                {
+                                    "name": "modelIdentifier",
+                                    "value": "MOT-C1Z06F",
+                                    "validity": "upToDate",
+                                },
+                                {
+                                    "name": "position",
+                                    "value": 42,
+                                    "validity": "upToDate",
+                                },
+                            ],
+                        },
+                        {"id": 11, "error": 0, "data": []},
+                    ],
+                }
+            ],
+            None,
+        )
+
+        self.assertEqual(len(devices), 1)
+        self.assertEqual(devices[0].device_name, "Bedroom shutter")
+        self.assertEqual(devices[0].productName, "Profalux MOT-C1Z06F")
+
+    async def test_silent_endpoint_with_capabilities_is_preserved(self) -> None:
+        """Keep a temporarily silent endpoint when its capabilities are known."""
+        uid = "20_10"
+        handler_module.device_name[uid] = "Offline shutter"
+        handler_module.device_type[uid] = "shutter"
+        handler_module.device_tutorial_id[uid] = "profalux_stella"
+        handler_module.device_metadata[uid] = {
+            "position": {"permission": "rw", "unit": "%"}
+        }
+
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": 10,
+                    "endpoints": [{"id": 20, "error": 0, "data": []}],
+                }
+            ],
+            None,
+        )
+
+        self.assertEqual(len(devices), 1)
+        self.assertEqual(devices[0].device_name, "Offline shutter")
 
 
 if __name__ == "__main__":
