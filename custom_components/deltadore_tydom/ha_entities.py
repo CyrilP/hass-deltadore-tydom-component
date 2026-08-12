@@ -463,6 +463,12 @@ class GenericSensor(SensorEntity):
         - Uses stable identifiers from the device API
         - Combines base unique_id with entity-specific identifier for multi-entity devices
         """
+        if device_class == SensorDeviceClass.BATTERY:
+            # Home Assistant battery sensors always represent a percentage.
+            # Some TYDOM devices report ``unit: NA`` for their discrete battery
+            # scale even though the value is converted to a percentage below.
+            unit_of_measurement = PERCENTAGE
+
         self._device = device
         # unique_id format: {device_id}_{entity_name}
         # device_id is stable and unique (endpoint_id + "_" + device_id from Tydom API)
@@ -555,6 +561,9 @@ class GenericSensor(SensorEntity):
         Uses unit from metadata if available, otherwise falls back to
         the unit set during initialization.
         """
+        if self._attr_device_class == SensorDeviceClass.BATTERY:
+            return PERCENTAGE
+
         # First try to get unit from metadata
         if (
             self._device._metadata is not None
