@@ -186,6 +186,19 @@ Error | Meaning | Checks
 Authentication error | The supplied or retrieved credentials were rejected. | In Cloud mode, verify the Delta Dore email address, account password and gateway MAC. In Manual mode, verify that the TYDOM gateway password—not the Delta Dore account password—was entered.
 Communication error | Home Assistant could not reach the configured host or complete the connection. | Verify the hostname or IP address, local network access, DNS, gateway power and, when using cloud access, connectivity to `mediation.tydom.com`.
 
+### TYWATT readings do not appear immediately
+
+TYWATT 1000, TYWATT 2000 and TYWATT 5400/EMIC energy data may not all appear
+immediately after setup or restart. The integration requests registered TYWATT
+energy data once at startup and then follows the configured refresh interval,
+which is 30 minutes by default. The gateway or measuring equipment may also
+return a new value only when its own counter is updated.
+
+To request an additional reading without waiting for the next scheduled poll,
+open the corresponding TYWATT device and press **Refresh energy data**. Allow
+Home Assistant additional time to create long-term statistics before expecting
+a newly eligible sensor to appear in the Energy dashboard.
+
 ### Remove obsolete devices
 
 Open **Settings > Devices & services > Delta Dore Tydom > Devices**, open the

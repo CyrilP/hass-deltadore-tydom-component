@@ -197,6 +197,22 @@ Erreur | Signification | Vérifications
 Erreur d'authentification | Les identifiants fournis ou récupérés ont été refusés. | En mode Cloud, vérifiez l'adresse e-mail Delta Dore, le mot de passe du compte et l'adresse MAC de la passerelle. En mode Manuel, vérifiez que vous avez saisi le mot de passe de la passerelle TYDOM, et non celui du compte Delta Dore.
 Erreur de communication | Home Assistant n'a pas pu joindre l'hôte configuré ou terminer la connexion. | Vérifiez le nom d'hôte ou l'adresse IP, l'accès au réseau local, le DNS, l'alimentation de la passerelle et, pour un accès cloud, la connectivité avec `mediation.tydom.com`.
 
+### Les relevés TYWATT n'apparaissent pas immédiatement
+
+Les données énergétiques des TYWATT 1000, TYWATT 2000 et TYWATT 5400/EMIC
+peuvent ne pas toutes apparaître immédiatement après la configuration ou un
+redémarrage. L'intégration interroge les données énergétiques TYWATT enregistrées
+une première fois au démarrage, puis selon l'intervalle de rafraîchissement
+configuré, qui est de 30 minutes par défaut. La passerelle ou l'équipement de
+mesure peut également ne fournir une nouvelle valeur que lorsque son propre
+compteur est actualisé.
+
+Pour demander un relevé supplémentaire sans attendre la prochaine interrogation
+planifiée, ouvrez l'appareil TYWATT concerné et appuyez sur **Actualiser les
+données énergétiques**. Laissez également à Home Assistant le temps de créer les
+statistiques à long terme avant qu'un nouveau capteur compatible apparaisse dans
+le tableau de bord Énergie.
+
 ### Supprimer les appareils obsolètes
 
 Ouvrez **Paramètres > Appareils et services > Delta Dore Tydom > Appareils**,
