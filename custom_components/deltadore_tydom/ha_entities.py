@@ -1727,6 +1727,7 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyInstantDhwI": SensorDeviceClass.CURRENT,
         "energyIndexTi1": SensorDeviceClass.ENERGY,
         "energyTotIndexWatt": SensorDeviceClass.ENERGY,
+        "energyIndexCoolWatt": SensorDeviceClass.ENERGY,
         "energyIndexHeatWatt": SensorDeviceClass.ENERGY,
         "energyIndexECSWatt": SensorDeviceClass.ENERGY,
         "energyIndexHeatGas": SensorDeviceClass.ENERGY,
@@ -1744,6 +1745,7 @@ class HAEnergy(SensorEntity, HAEntity):
         # Total increasing for energy counters
         "energyIndexTi1": SensorStateClass.TOTAL_INCREASING,
         "energyTotIndexWatt": SensorStateClass.TOTAL_INCREASING,
+        "energyIndexCoolWatt": SensorStateClass.TOTAL_INCREASING,
         "energyIndexECSWatt": SensorStateClass.TOTAL_INCREASING,
         "energyIndexHeatWatt": SensorStateClass.TOTAL_INCREASING,
         "energyIndexHeatGas": SensorStateClass.TOTAL_INCREASING,
@@ -1812,6 +1814,7 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyInstantDhwI": UnitOfElectricCurrent.AMPERE,
         "energyIndexTi1": UnitOfEnergy.WATT_HOUR,
         "energyTotIndexWatt": UnitOfEnergy.WATT_HOUR,
+        "energyIndexCoolWatt": UnitOfEnergy.WATT_HOUR,
         "energyIndexHeatWatt": UnitOfEnergy.WATT_HOUR,
         "energyIndexECSWatt": UnitOfEnergy.WATT_HOUR,
         "energyIndexHeatGas": UnitOfEnergy.WATT_HOUR,
