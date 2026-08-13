@@ -125,6 +125,7 @@ from .tydom.MessageHandler import device_name, groups_data
 _BINARY_TRUE_VALUES = frozenset({"1", "on", "true", "yes"})
 _BINARY_FALSE_VALUES = frozenset({"0", "off", "false", "no"})
 _PROBLEM_ATTRIBUTE_MARKERS = ("defect", "empty", "intrusion")
+_BINARY_OPEN_STATES = frozenset({"LOCKED", "UNLOCKED"})
 
 
 def normalize_binary_state(value: Any, *, allow_numeric: bool = False) -> bool | None:
@@ -151,6 +152,33 @@ def is_problem_attribute(attribute: str) -> bool:
     """Return whether a binary attribute denotes a reported problem."""
     normalized = attribute.casefold()
     return any(marker in normalized for marker in _PROBLEM_ATTRIBUTE_MARKERS)
+
+
+def get_consumed_opening_attrs(device: Any) -> set[str]:
+    """Return raw attributes already represented by an opening entity.
+
+    ``intrusionDetect`` is a boolean alias of the primary open/closed state.
+    ``openState`` is also redundant when metadata advertises only LOCKED and
+    UNLOCKED, but must remain available when it distinguishes richer states
+    such as a French window opened normally or in hopper mode.
+    """
+    consumed = {"intrusionDetect"}
+    metadata = getattr(device, "_metadata", None)
+    open_state_metadata = (
+        metadata.get("openState") if isinstance(metadata, dict) else None
+    )
+    enum_values = (
+        open_state_metadata.get("enum_values")
+        if isinstance(open_state_metadata, dict)
+        else None
+    )
+    if (
+        isinstance(enum_values, (list, tuple, set))
+        and bool(enum_values)
+        and set(enum_values).issubset(_BINARY_OPEN_STATES)
+    ):
+        consumed.add("openState")
+    return consumed
 
 
 def is_binary_attribute(
@@ -197,6 +225,7 @@ class HAEntity:
     state_classes: dict[str, Any] = {}
     units: dict[str, Any] = {}
     filtered_attrs: list[str] = []
+    consumed_attrs: frozenset[str] = frozenset()
     _device: Any = None
     _registered_sensors: list[str]
     hass: Any = None
@@ -308,6 +337,7 @@ class HAEntity:
         if registered_sensors is None:
             return sensors
 
+        consumed_attrs = self._get_consumed_attrs()
         for attribute, value in self._device.__dict__.items():
             if (
                 attribute[:1] != "_"
@@ -316,6 +346,8 @@ class HAEntity:
             ):
                 alt_name = attribute.split("_")[0]
                 if attribute in self.filtered_attrs or alt_name in self.filtered_attrs:
+                    continue
+                if attribute in consumed_attrs or alt_name in consumed_attrs:
                     continue
                 sensor_class = None
                 if attribute in self.sensor_classes:
@@ -373,6 +405,16 @@ class HAEntity:
                 )
 
         return sensors
+
+    def _get_consumed_attrs(self) -> set[str]:
+        """Return raw attributes already represented by this primary entity.
+
+        Unlike ``filtered_attrs``, these are valid TYDOM values which should
+        remain available on devices where they provide independent information.
+        Entity wrappers declare them consumed only when their own state already
+        exposes the same value.
+        """
+        return set(self.consumed_attrs)
 
     def _get_device_info(self) -> dict[str, str]:
         """Get manufacturer and model from device attributes."""
@@ -2168,6 +2210,7 @@ class HASmoke(BinarySensorEntity, HAEntity):
     _attr_supported_features: int | None = None
     _attr_icon = "mdi:smoke-detector"
     _attr_has_entity_name = True
+    consumed_attrs = frozenset({"techSmokeDefect"})
 
     def __init__(self, device: TydomSmoke, hass) -> None:
         """Initialize TydomSmoke."""
@@ -2179,8 +2222,7 @@ class HASmoke(BinarySensorEntity, HAEntity):
         self._state = False
         self._registered_sensors = []
         # This is the detector's primary entity. Keep it visible as a smoke
-        # sensor; battDefect and techSmokeDefect are exposed separately as
-        # diagnostic problem entities by generic sensor discovery.
+        # sensor; independent diagnostics such as battDefect remain available.
         self._attr_device_class = BinarySensorDeviceClass.SMOKE
 
     async def async_added_to_hass(self) -> None:
@@ -2824,6 +2866,10 @@ class HaOpeningBinarySensor(BinarySensorEntity, HAEntity):
         self._registered_sensors = []
         self._attr_device_class = self._opening_device_class
 
+    def _get_consumed_attrs(self) -> set[str]:
+        """Hide only contact attributes which add no opening detail."""
+        return super()._get_consumed_attrs() | get_consumed_opening_attrs(self._device)
+
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
         await super().async_added_to_hass()
@@ -2908,6 +2954,10 @@ class HaWindow(CoverEntity, HAEntity):
         self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
 
+    def _get_consumed_attrs(self) -> set[str]:
+        """Hide only contact attributes which add no opening detail."""
+        return super()._get_consumed_attrs() | get_consumed_opening_attrs(self._device)
+
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
         await super().async_added_to_hass()
@@ -2976,6 +3026,13 @@ class HaDoor(CoverEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
+
+    def _get_consumed_attrs(self) -> set[str]:
+        """Hide raw contact aliases when they back the door's primary state."""
+        consumed = super()._get_consumed_attrs()
+        if not hasattr(self._device, "podPosition"):
+            consumed.update(get_consumed_opening_attrs(self._device))
+        return consumed
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
@@ -3650,6 +3707,7 @@ class HaMoisture(BinarySensorEntity, HAEntity):
     _attr_supported_features: int | None = None
     _attr_icon = "mdi:water"
     _attr_has_entity_name = True
+    consumed_attrs = frozenset({"techWaterDefect"})
 
     def __init__(self, device: TydomWater, hass) -> None:
         """Initialize TydomSmoke."""
@@ -3660,8 +3718,7 @@ class HaMoisture(BinarySensorEntity, HAEntity):
         self._attr_name = None  # primary entity inherits device name
         self._state = False
         self._registered_sensors = []
-        self._attr_device_class = BinarySensorDeviceClass.PROBLEM
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_device_class = BinarySensorDeviceClass.MOISTURE
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
@@ -3702,6 +3759,7 @@ class HaThermo(SensorEntity, HAEntity):
 
     _attr_icon = "mdi:thermometer"
     _attr_has_entity_name = True
+    consumed_attrs = frozenset({"outTemperature"})
 
     def __init__(self, device: TydomThermo, hass) -> None:
         """Initialize TydomSmoke."""
@@ -3711,7 +3769,7 @@ class HaThermo(SensorEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_thermos"
         self._attr_name = None  # primary entity inherits device name
         self._state = False
-        self._registered_sensors = ["outTemperature"]
+        self._registered_sensors = []
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
@@ -3760,6 +3818,7 @@ class HaSun(SensorEntity, HAEntity):
     _attr_device_class = SensorDeviceClass.IRRADIANCE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = "W/m²"
+    consumed_attrs = frozenset({"lightPower"})
 
     def __init__(self, device: TydomSun, hass) -> None:
         """Initialise a Tysense Sun sensor."""
@@ -3770,7 +3829,7 @@ class HaSun(SensorEntity, HAEntity):
         # entry and recorder history can survive the dedicated implementation.
         self._attr_unique_id = f"{self._device.device_id}_lightPower"
         self._attr_name = None
-        self._registered_sensors = ["lightPower"]
+        self._registered_sensors = []
 
     async def async_added_to_hass(self) -> None:
         """Refresh the entity on every device push."""

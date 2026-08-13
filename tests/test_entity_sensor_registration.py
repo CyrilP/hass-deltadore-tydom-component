@@ -65,6 +65,51 @@ def _load_ha_entity_class():
 HAEntity = _load_ha_entity_class()
 
 
+def _load_opening_consumed_attrs():
+    """Load the metadata helper without Home Assistant dependencies."""
+    source_path = (
+        Path(__file__).parents[1]
+        / "custom_components"
+        / "deltadore_tydom"
+        / "ha_entities.py"
+    )
+    module = ast.parse(source_path.read_text(encoding="utf-8"))
+    selected_nodes = [
+        node
+        for node in module.body
+        if (
+            isinstance(node, ast.Assign)
+            and any(
+                isinstance(target, ast.Name)
+                and target.id == "_BINARY_OPEN_STATES"
+                for target in node.targets
+            )
+        )
+        or (
+            isinstance(node, ast.FunctionDef)
+            and node.name == "get_consumed_opening_attrs"
+        )
+    ]
+    isolated_module = ast.Module(
+        body=[
+            ast.ImportFrom(
+                module="__future__",
+                names=[ast.alias(name="annotations")],
+                level=0,
+            ),
+            *selected_nodes,
+        ],
+        type_ignores=[],
+    )
+    ast.fix_missing_locations(isolated_module)
+    namespace = {"Any": object}
+    exec(compile(isolated_module, source_path, "exec"), namespace)
+    return namespace["get_consumed_opening_attrs"]
+
+
+get_consumed_opening_attrs = _load_opening_consumed_attrs()
+
+
 class EntitySensorRegistrationTests(TestCase):
     """Ensure generic sensor discovery is isolated between entity instances."""
 
@@ -117,6 +162,48 @@ class EntitySensorRegistrationTests(TestCase):
         self.assertEqual(entity.get_sensors(), [])
         self.assertNotIn("_registered_sensors", entity.__dict__)
 
+    def test_consumed_attribute_is_not_exposed_as_generic_sensor(self) -> None:
+        """A primary state must not also become a raw generic sensor."""
+        entity = self._entity("opening_1")
+        entity._device.intrusionDetect = False
+        entity._device.battDefect = False
+        entity.consumed_attrs = frozenset({"openState", "intrusionDetect"})
+
+        sensors = entity.get_sensors()
+
+        self.assertEqual(len(sensors), 2)
+        self.assertNotIn("intrusionDetect", entity._registered_sensors)
+        self.assertIn("battDefect", entity._registered_sensors)
+
+    def test_both_opening_state_aliases_are_consumed(self) -> None:
+        """A dual-reporting opening must still expose one primary state."""
+        entity = self._entity("opening_1")
+        entity._device.openState = "LOCKED"
+        entity._device.intrusionDetect = False
+        entity._device.battDefect = False
+        entity.consumed_attrs = frozenset({"openState", "intrusionDetect"})
+
+        sensors = entity.get_sensors()
+
+        self.assertEqual(len(sensors), 2)
+        self.assertNotIn("openState", entity._registered_sensors)
+        self.assertNotIn("intrusionDetect", entity._registered_sensors)
+        self.assertIn("battDefect", entity._registered_sensors)
+
+    def test_consumed_attribute_is_evaluated_for_each_entity(self) -> None:
+        """Consumed state on one wrapper must not suppress another device."""
+        consumed = self._entity("opening_1")
+        retained = self._entity("shutter_1")
+        consumed._device.intrusionDetect = False
+        retained._device.intrusionDetect = False
+        consumed.consumed_attrs = frozenset({"intrusionDetect"})
+
+        consumed.get_sensors()
+        retained.get_sensors()
+
+        self.assertNotIn("intrusionDetect", consumed._registered_sensors)
+        self.assertIn("intrusionDetect", retained._registered_sensors)
+
     def test_smoke_detector_primary_entity_remains_a_smoke_sensor(self) -> None:
         """Binary normalisation must not turn a DFR into a hidden diagnostic."""
         source_path = (
@@ -146,6 +233,108 @@ class EntitySensorRegistrationTests(TestCase):
 
         self.assertEqual(
             assignments["_attr_device_class"], "BinarySensorDeviceClass.SMOKE"
+        )
+        self.assertNotIn("_attr_entity_category", assignments)
+
+    def test_primary_entities_consume_their_raw_state(self) -> None:
+        """Dedicated entities must not expose their source value twice."""
+        source_path = (
+            Path(__file__).parents[1]
+            / "custom_components"
+            / "deltadore_tydom"
+            / "ha_entities.py"
+        )
+        module = ast.parse(source_path.read_text(encoding="utf-8"))
+
+        for class_name, expected_attribute in (
+            ("HASmoke", "techSmokeDefect"),
+            ("HaMoisture", "techWaterDefect"),
+            ("HaThermo", "outTemperature"),
+            ("HaSun", "lightPower"),
+        ):
+            entity_class = next(
+                node
+                for node in module.body
+                if isinstance(node, ast.ClassDef) and node.name == class_name
+            )
+            assignment = next(
+                statement
+                for statement in entity_class.body
+                if isinstance(statement, ast.Assign)
+                and any(
+                    isinstance(target, ast.Name) and target.id == "consumed_attrs"
+                    for target in statement.targets
+                )
+            )
+            self.assertIn(
+                expected_attribute, ast.literal_eval(assignment.value.args[0])
+            )
+
+    def test_binary_open_state_is_consumed(self) -> None:
+        """A two-state openState adds nothing beyond the primary entity."""
+        device = MagicMock()
+        device._metadata = {
+            "openState": {"enum_values": ["LOCKED", "UNLOCKED"]}
+        }
+
+        self.assertEqual(
+            get_consumed_opening_attrs(device),
+            {"openState", "intrusionDetect"},
+        )
+
+    def test_detailed_open_state_is_retained(self) -> None:
+        """French-window opening modes must remain separately observable."""
+        device = MagicMock()
+        device._metadata = {
+            "openState": {
+                "enum_values": ["LOCKED", "OPEN_FRENCH", "OPEN_HOPPER"]
+            }
+        }
+
+        self.assertEqual(
+            get_consumed_opening_attrs(device),
+            {"intrusionDetect"},
+        )
+
+    def test_open_state_is_retained_without_metadata(self) -> None:
+        """Missing metadata must favour preserving information."""
+        device = MagicMock()
+        device._metadata = None
+
+        self.assertEqual(
+            get_consumed_opening_attrs(device),
+            {"intrusionDetect"},
+        )
+
+    def test_leak_detector_primary_entity_remains_a_moisture_sensor(self) -> None:
+        """A leak detector belongs in Sensors, not hidden in Diagnostics."""
+        source_path = (
+            Path(__file__).parents[1]
+            / "custom_components"
+            / "deltadore_tydom"
+            / "ha_entities.py"
+        )
+        module = ast.parse(source_path.read_text(encoding="utf-8"))
+        moisture_class = next(
+            node
+            for node in module.body
+            if isinstance(node, ast.ClassDef) and node.name == "HaMoisture"
+        )
+        init = next(
+            node
+            for node in moisture_class.body
+            if isinstance(node, ast.FunctionDef) and node.name == "__init__"
+        )
+        assignments = {
+            target.attr: ast.unparse(statement.value)
+            for statement in init.body
+            if isinstance(statement, ast.Assign)
+            for target in statement.targets
+            if isinstance(target, ast.Attribute)
+        }
+
+        self.assertEqual(
+            assignments["_attr_device_class"], "BinarySensorDeviceClass.MOISTURE"
         )
         self.assertNotIn("_attr_entity_category", assignments)
 
