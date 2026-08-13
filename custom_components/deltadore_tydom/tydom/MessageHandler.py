@@ -1326,6 +1326,26 @@ class MessageHandler:
                     has_error = endpoint.get("error", 0) != 0
                     has_data = "data" in endpoint and len(endpoint.get("data", [])) > 0
 
+                    # Some Zigbee gateways advertise a second, non-functional
+                    # endpoint for each physical cover.  A successful endpoint
+                    # with neither state nor capabilities cannot create a useful
+                    # Home Assistant entity.  Keep endpoints with metadata so a
+                    # temporarily silent or offline device is still discovered.
+                    if (
+                        not has_error
+                        and not has_data
+                        and not device_metadata.get(unique_id)
+                        and not endpoint.get("link")
+                    ):
+                        LOGGER.debug(
+                            "Ignoring empty endpoint placeholder "
+                            "(device_id=%s, endpoint_id=%s, name=%s)",
+                            device_id,
+                            endpoint_id,
+                            name_of_id,
+                        )
+                        continue
+
                     if has_error:
                         LOGGER.warning(
                             "Endpoint avec erreur (création quand même) : "
