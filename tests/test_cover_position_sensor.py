@@ -52,10 +52,13 @@ def _load_generic_sensor_class():
     namespace = {
         "DOMAIN": "deltadore_tydom",
         "EntityCategory": EntityCategory,
+        "PERCENTAGE": "%",
         "SensorDeviceClass": SensorDeviceClass,
         "SensorEntity": SensorEntity,
         "SensorEntityDescription": SensorEntityDescription,
-        "ranged_value_to_percentage": lambda _range, value: value,
+        "ranged_value_to_percentage": lambda value_range, value: round(
+            (value - value_range[0]) * 100 / (value_range[1] - value_range[0])
+        ),
         "suppress": suppress,
     }
     exec(compile(isolated_module, source_path, "exec"), namespace)
@@ -91,6 +94,29 @@ class CoverPositionSensorTests(TestCase):
         )
 
         self.assertEqual(self._sensor(device).native_value, 64)
+
+    def test_battery_ignores_tydom_na_unit(self) -> None:
+        """Keep the percentage unit for a discrete TYDOM battery level."""
+        device = SimpleNamespace(
+            device_id="tywell_control_1",
+            battLevel=2,
+            _metadata={
+                "battLevel": {"min": 0, "max": 2, "step": 1, "unit": "NA"}
+            },
+        )
+
+        sensor = GenericSensor(
+            device,
+            "battery",
+            "measurement",
+            "battLevel",
+            "battLevel",
+            None,
+        )
+
+        self.assertEqual(sensor.native_value, 100)
+        self.assertEqual(sensor.entity_description.native_unit_of_measurement, "%")
+        self.assertEqual(sensor.native_unit_of_measurement, "%")
 
 
 if __name__ == "__main__":
