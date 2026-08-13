@@ -20,6 +20,7 @@ passerelle Delta Dore peut être détectée par découverte DHCP.
 
 ## Sommaire
 
+- [Fonctionnalités principales](#fonctionnalités-principales)
 - [Matériel testé](#matériel-testé)
 - [Prérequis](#prérequis)
 - [Installation](#installation)
@@ -51,6 +52,25 @@ Plateforme | Description
 `update` | Installe les mises à jour de micrologiciel TYDOM prises en charge.
 `weather` | Indique les informations météorologiques.
 
+### Fonctionnalités principales
+
+- Reçoit les changements d'état publiés en direct par la passerelle et utilise
+  l'intervalle de rafraîchissement configuré pour réconcilier les données qui
+  ne sont pas envoyées automatiquement.
+- Expose les véritables groupes TYDOM d'éclairage, de prises, de volets et de
+  bannes sous forme d'entités Home Assistant natives, y compris les groupes
+  globaux fournis par la passerelle lorsqu'ils existent.
+- Regroupe les scénarios `TWC_UP`, `TWC_DOWN` et `TWC_STOP` générés par Tywell
+  dans un seul volet natif, en utilisant le retour des volets ciblés lorsqu'il
+  est disponible.
+- Conserve les capteurs du boîtier mural Tywell, la régulation par zone et les
+  commandes météo ou volets associées sur le même appareil physique, quelle
+  que soit la disposition des points de terminaison annoncée par TYDOM.
+- Expose les modes et zones d'alarme, l'historique et l'acquittement des
+  événements, les opérations de maintenance à distance confirmées et les
+  événements d'automatisation natifs des interrupteurs et télécommandes
+  compatibles.
+
 ### Matériel testé
 
 L'intégration s'appuie sur les capacités des appareils : les équipements
@@ -61,14 +81,15 @@ liste de compatibilité n'est pas exhaustive.
 
 Catégorie | Matériel ou configuration confirmés | Prise en charge dans Home Assistant
 -- | -- | --
-Alarme et sécurité | TYXAL+, CS8000, CSX40 et détecteurs de fumée DFR | Pilotage de l'alarme, modes par zone, diagnostics, historique et acquittement des événements, ainsi que la gestion à distance des produits et zones compatibles.
-Chauffage et régulation | Tybox 5101 avec Typass ATL, Tywell Control, TYXIA 1137, Calybox et RF 6600 FP | Régulation par zone, températures, consignes, modes de fonctionnement, humidité, batterie et commandes de chauffage annoncées par l'appareil.
+Alarme et sécurité | TYXAL+, CS8000, CSX40 et détecteurs de fumée DFR TYXAL+ | Pilotage de l'alarme, modes par zone, diagnostics, état de détection de fumée, historique et acquittement des événements, ainsi que la gestion à distance des produits et zones compatibles.
+Chauffage et régulation | Tybox 5101 avec Typass ATL, Tywell Control, Tywell 2050, TYXIA 1137, Calybox et RF 6600 FP | Régulation par zone, températures, consignes de chauffage et de refroidissement, modes de fonctionnement, humidité, batterie et commandes de chauffage ou de fil pilote annoncées par l'appareil.
 Suivi énergétique | TYWATT 1000, TYWATT 2000 et TYWATT 5400 avec EMIC | Mesures de puissance, courant et énergie, y compris les canaux de chauffage et d'eau chaude sanitaire lorsqu'ils sont annoncés.
 Portails et portes de garage | Récepteurs à contact sec TYXIA 4620 | Boutons impulsionnels reproduisant la séquence ouverture/arrêt/fermeture du récepteur, sans prétendre connaître une position qui n'est pas remontée.
-Éclairage et commutation | TYXIA 4910 configuré dans l'usage `Autres` de TYDOM, TYXIA 6610, éclairages, variateurs et prises X3D compatibles | Éclairages, luminosité, interrupteurs et prises selon les capacités annoncées par le point de terminaison.
-Ouvertures et protections solaires | Moteurs de volets roulants TYMOOV, installations BSO, fenêtres et portes K-Line DVI, volets et bannes X3D compatibles | Commandes montée, descente et arrêt ; état d'ouverture ou de contact lorsque le matériel fournit un retour.
+Éclairage et commutation | Récepteurs TYXIA 4910 à sortie fixe et TYXIA 4940 à variation configurés dans l'usage `Autres` de TYDOM, TYXIA 6610, Delta Dore Easy Plug et équipements X3D compatibles | Éclairages, luminosité, interrupteurs et prises selon les capacités annoncées par le point de terminaison.
+Ouvertures et protections solaires | Volets roulants TYMOOV et Well'com, installations BSO, volets Zigbee Profalux `MOT-C1Z06F` et `MOT-C1Z10F`, bannes TYXIA 5731, ouvrants K-Line DVI et portes K-Line POD | Volets natifs avec montée, descente, arrêt et position lorsqu'ils sont annoncés ; les commandes et positions des bannes sont converties selon la sémantique ouverture/fermeture de Home Assistant ; l'état d'ouverture ou de contact est exposé lorsqu'un retour est fourni.
 Commandes physiques | Interrupteurs muraux TYXIA 2600, télécommandes TYXIA 1410 et télécommandes TL 2000 Tyxal+ | Événements Home Assistant natifs utilisables dans les automatisations, avec diagnostic de batterie lorsqu'il est fourni.
-Capteurs solaires | TySense Sun | Irradiance solaire en W/m² et diagnostics associés.
+Capteurs | Tysense Sun et Tysense Thermo/SE 2000 | Irradiance solaire en W/m², température extérieure et diagnostics associés lorsqu'ils sont fournis.
+Groupes et automatisation | Groupes d'éclairage, de prises, de volets et de bannes fournis par la passerelle ; scénarios et moments TYDOM ; scénarios de volets Tywell | Éclairages, interrupteurs et volets groupés natifs, activation des scénarios, interrupteurs de moments et un volet unique regroupant les commandes Tywell.
 Ventilation | Naviclim Atlantic 875311 | Régulation, modes de fonctionnement et vitesses de ventilation prises en charge.
 
 Les appareils absents de cette liste peuvent néanmoins fonctionner entièrement
@@ -185,6 +206,13 @@ elle ne supprime rien de la passerelle TYDOM ni de l'application officielle.
 L'appareil peut être découvert de nouveau si la passerelle continue à
 l'annoncer.
 
+Après un changement de type d'entité ou le filtrage d'un point de terminaison
+technique, l'ancienne entrée peut d'abord apparaître comme **Indisponible** ou
+**Plus fournie**. Vérifiez que l'appareil réel de remplacement est présent et
+fonctionnel avant d'utiliser **Supprimer l'appareil**. Les points de terminaison
+vides filtrés, tels que les doublons Profalux « Produit X », ne seront pas
+recréés tant qu'ils restent vides.
+
 ## Capturer les données d'un appareil non pris en charge
 
 Le dépôt fournit un outil de capture en lecture seule destiné à documenter les
@@ -270,6 +298,10 @@ service ni automatisation.
   commande impulsionnelle, mais aucun retour de position ou de direction. Home
   Assistant expose donc un bouton sans état et ne peut pas déterminer si
   l'impulsion suivante ouvrira, arrêtera ou fermera la motorisation.
+- Le volet Tywell natif rejoue les scénarios `TWC_UP`, `TWC_DOWN` et
+  `TWC_STOP` créés par TYDOM. Les volets concernés doivent donc être configurés
+  dans l'application officielle, et la position globale n'est disponible que
+  lorsque toutes les cibles configurées fournissent un retour adapté.
 - Les appareils radio ou alimentés par batterie transmettent selon leur propre
   cadence. L'actualisation ou l'interrogation de la passerelle ne peut pas
   forcer un appareil endormi à transmettre une valeur plus récente.
