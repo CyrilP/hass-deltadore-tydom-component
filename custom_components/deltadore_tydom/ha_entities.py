@@ -2442,8 +2442,7 @@ class HaClimate(ClimateEntity, HAEntity):
         # keep their previous behaviour intact.
         metadata = self._device._metadata
         has_setpoint_meta = metadata is not None and any(
-            attr in metadata
-            and ("min" in metadata[attr] or "max" in metadata[attr])
+            attr in metadata and ("min" in metadata[attr] or "max" in metadata[attr])
             for attr in ("setpoint", "heatSetpoint", "coolSetpoint")
         )
         has_cool_enum_meta = metadata is not None and any(
