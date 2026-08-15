@@ -79,6 +79,12 @@ from .const import LOGGER, get_polling_interval_for_validity, STRUCTURED_LOGGER
 from .remote_registry_migration import migrate_legacy_remote_endpoint
 
 
+# Some dynamic values are reported as ``upToDate`` by the gateway even though
+# it does not push later changes. Poll their regular data endpoint using the
+# user-configured refresh interval when no validity-based interval is supplied.
+DYNAMIC_POLLING_FALLBACK_ATTRIBUTES = frozenset({"lightPower"})
+
+
 class Hub:
     """Hub for Delta Dore Tydom."""
 
@@ -881,6 +887,8 @@ class Hub:
         - Devices with validity=ES_SUPERVISION are cached with 300s interval
         - Devices with validity=SENSOR_SUPERVISION are cached with 60s interval
         - Devices with validity=SYNCHRO_SUPERVISION are cached with 30s interval
+        - Dynamic fallback attributes are polled at the configured refresh
+          interval when their validity would otherwise exclude them
         """
         new_cache: dict[tuple[str, str], int] = {}
         for device_key, device in self.devices.items():
@@ -890,6 +898,13 @@ class Hub:
                 if isinstance(attr_metadata, dict):
                     validity = attr_metadata.get("validity")
                     interval = get_polling_interval_for_validity(validity)
+                    if (
+                        interval is None
+                        and attr_name in DYNAMIC_POLLING_FALLBACK_ATTRIBUTES
+                    ):
+                        interval = (
+                            self._refresh_interval if self._refresh_interval > 0 else 60
+                        )
                     if interval is not None:
                         new_cache[(device_key, attr_name)] = interval
 
