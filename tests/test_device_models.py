@@ -486,6 +486,60 @@ class TestDeviceModelApplication(IsolatedAsyncioTestCase):
         self.assertEqual(len(devices), 1)
         self.assertEqual(devices[0].device_name, "Offline shutter")
 
+    async def test_valid_values_survive_endpoint_error(self) -> None:
+        """Keep individually valid values when TYDOM flags the endpoint."""
+        uid = "20_10"
+        handler_module.device_name[uid] = "Typass ATL"
+        handler_module.device_type[uid] = "boiler"
+        handler_module.device_metadata[uid] = {
+            "authorization": {"enum_values": ["STOP", "HEATING"]},
+            "heatSetpoint": {"permission": "rw", "unit": "degC"},
+            "ambientTemperature": {"permission": "r", "unit": "degC"},
+        }
+
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": 10,
+                    "endpoints": [
+                        {
+                            "id": 20,
+                            "error": 1,
+                            "data": [
+                                {
+                                    "name": "authorization",
+                                    "value": "HEATING",
+                                    "validity": "upToDate",
+                                },
+                                {
+                                    "name": "heatSetpoint",
+                                    "value": 19.0,
+                                    "validity": "upToDate",
+                                },
+                                {
+                                    "name": "ambientTemperature",
+                                    "value": 29.73,
+                                    "validity": "upToDate",
+                                },
+                                {
+                                    "name": "overrideSetpoint",
+                                    "value": 21.0,
+                                    "validity": "expired",
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+
+        self.assertEqual(len(devices), 1)
+        self.assertEqual(devices[0].authorization, "HEATING")
+        self.assertEqual(devices[0].heatSetpoint, 19.0)
+        self.assertEqual(devices[0].ambientTemperature, 29.73)
+        self.assertFalse(hasattr(devices[0], "overrideSetpoint"))
+
 
 if __name__ == "__main__":
     unittest.main()
