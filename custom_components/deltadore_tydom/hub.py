@@ -167,6 +167,7 @@ class Hub:
         self._polling_cache_timestamp = 0
         self._polling_cache_ttl = 300  # 5 minutes
         self._next_poll_due: dict[int, float] = {}  # interval -> monotonic due time
+        self._radio_refresh_intervals: set[int] = set()
 
         # Device factory registry for create_ha_device
         self._device_factories: dict[type, Callable] = {
@@ -894,6 +895,7 @@ class Hub:
           interval when their validity would otherwise exclude them
         """
         new_cache: dict[tuple[str, str], int] = {}
+        radio_refresh_intervals: set[int] = set()
         for device_key, device in self.devices.items():
             metadata = getattr(device, "_metadata", None)
             if isinstance(metadata, dict):
@@ -914,12 +916,15 @@ class Hub:
                 if hasattr(device, attr_name) or (
                     isinstance(metadata, dict) and attr_name in metadata
                 ):
-                    new_cache[cache_key] = (
+                    fallback_interval = (
                         self._refresh_interval if self._refresh_interval > 0 else 60
                     )
+                    new_cache[cache_key] = fallback_interval
+                    radio_refresh_intervals.add(fallback_interval)
 
         # Update cache atomically
         self._polling_cache = new_cache
+        self._radio_refresh_intervals = radio_refresh_intervals
         LOGGER.debug("Polling cache rebuilt with %d entries", len(self._polling_cache))
 
     async def refresh_data(self) -> None:
@@ -968,6 +973,17 @@ class Hub:
                     if current_time < self._next_poll_due.get(interval, 0):
                         continue
                     self._next_poll_due[interval] = current_time + interval
+                    if interval in self._radio_refresh_intervals:
+                        try:
+                            # A regular endpoint GET only returns TYDOM's cache
+                            # for data-only lightPower values. One global refresh
+                            # per due interval triggers fresh radio measurements,
+                            # which arrive asynchronously as /devices/data pushes.
+                            await self._tydom_client.post_refresh()
+                        except Exception:
+                            LOGGER.exception(
+                                "Error requesting radio refresh for dynamic data"
+                            )
                     for device_key in device_keys:
                         if device_key in self.devices:
                             device = self.devices[device_key]
