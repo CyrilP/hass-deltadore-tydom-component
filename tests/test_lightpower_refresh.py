@@ -57,10 +57,15 @@ PollingCacheMixin = _load_rebuild_polling_cache()
 class LightPowerRefreshTests(TestCase):
     """Ensure changing irradiance values remain refreshable."""
 
-    def _hub(self, metadata: dict, refresh_interval: int = 1800):
+    def _hub(
+        self,
+        metadata: dict | None,
+        refresh_interval: int = 1800,
+        **runtime_attributes,
+    ):
         hub = PollingCacheMixin()
         hub.devices = {
-            "7_42": SimpleNamespace(_metadata=metadata),
+            "7_42": SimpleNamespace(_metadata=metadata, **runtime_attributes),
         }
         hub._refresh_interval = refresh_interval
         hub._polling_cache = {}
@@ -74,13 +79,23 @@ class LightPowerRefreshTests(TestCase):
 
         self.assertEqual(hub._polling_cache, {("7_42", "lightPower"): 1800})
 
-    def test_missing_light_power_validity_uses_configured_interval(self) -> None:
-        """Gateways omitting validity still expose a dynamic light value."""
-        hub = self._hub({"lightPower": {"type": "numeric"}}, refresh_interval=600)
+    def test_runtime_light_power_without_metadata_uses_configured_interval(
+        self,
+    ) -> None:
+        """A data-only lightPower capability must remain refreshable."""
+        hub = self._hub({}, refresh_interval=600, lightPower=23)
 
         hub._rebuild_polling_cache()
 
         self.assertEqual(hub._polling_cache, {("7_42", "lightPower"): 600})
+
+    def test_runtime_light_power_without_metadata_object_is_refreshable(self) -> None:
+        """A missing metadata object must not suppress runtime capabilities."""
+        hub = self._hub(None, refresh_interval=60, lightPower=23)
+
+        hub._rebuild_polling_cache()
+
+        self.assertEqual(hub._polling_cache, {("7_42", "lightPower"): 60})
 
     def test_metadata_polling_interval_remains_preferred(self) -> None:
         """Valid supervision metadata must retain its faster interval."""
