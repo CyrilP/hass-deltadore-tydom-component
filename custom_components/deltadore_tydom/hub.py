@@ -317,6 +317,9 @@ class Hub:
                 for device in devices:
                     if device.device_id not in self.devices:
                         self.devices[device.device_id] = device
+                        # Device capabilities may appear after the polling task
+                        # built its cache during start-up discovery.
+                        self._polling_cache_timestamp = 0
                         STRUCTURED_LOGGER.device_operation(
                             "debug",
                             "create",
@@ -892,21 +895,28 @@ class Hub:
         """
         new_cache: dict[tuple[str, str], int] = {}
         for device_key, device in self.devices.items():
-            if not hasattr(device, "_metadata") or device._metadata is None:
-                continue
-            for attr_name, attr_metadata in device._metadata.items():
-                if isinstance(attr_metadata, dict):
-                    validity = attr_metadata.get("validity")
-                    interval = get_polling_interval_for_validity(validity)
-                    if (
-                        interval is None
-                        and attr_name in DYNAMIC_POLLING_FALLBACK_ATTRIBUTES
-                    ):
-                        interval = (
-                            self._refresh_interval if self._refresh_interval > 0 else 60
-                        )
-                    if interval is not None:
-                        new_cache[(device_key, attr_name)] = interval
+            metadata = getattr(device, "_metadata", None)
+            if isinstance(metadata, dict):
+                for attr_name, attr_metadata in metadata.items():
+                    if isinstance(attr_metadata, dict):
+                        validity = attr_metadata.get("validity")
+                        interval = get_polling_interval_for_validity(validity)
+                        if interval is not None:
+                            new_cache[(device_key, attr_name)] = interval
+
+            # Some gateways include dynamic attributes in /devices/data but
+            # omit them from /devices/meta. Inspect both sources so those
+            # capabilities can still opt into the configured polling schedule.
+            for attr_name in DYNAMIC_POLLING_FALLBACK_ATTRIBUTES:
+                cache_key = (device_key, attr_name)
+                if cache_key in new_cache:
+                    continue
+                if hasattr(device, attr_name) or (
+                    isinstance(metadata, dict) and attr_name in metadata
+                ):
+                    new_cache[cache_key] = (
+                        self._refresh_interval if self._refresh_interval > 0 else 60
+                    )
 
         # Update cache atomically
         self._polling_cache = new_cache
