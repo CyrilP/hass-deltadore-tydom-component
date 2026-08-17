@@ -128,13 +128,13 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
         return TydomClient(None, "test", "001122334455", "password", host="local")
 
     async def test_refresh_all_sends_expected_empty_json_body(self) -> None:
-        """A refresh request must not be serialised as a bodyless POST."""
+        """A refresh request must carry JSON and await its acknowledgement."""
         client = self._client()
-        client.send_request = AsyncMock()
+        client.get_reply_to_request = AsyncMock(return_value=[])
 
         await client.post_refresh()
 
-        client.send_request.assert_awaited_once_with(
+        client.get_reply_to_request.assert_awaited_once_with(
             "POST",
             "/refresh/all",
             body=b"{}",

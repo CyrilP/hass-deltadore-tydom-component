@@ -967,11 +967,11 @@ class TydomClient:
         await self.send_message(method=req, msg=msg_type)
 
     async def post_refresh(self):
-        """Refresh (all)."""
+        """Request and await acknowledgement of a full gateway refresh."""
         # Known TYDOM clients serialise this POST with an empty JSON object.
         # Some gateways acknowledge a bodyless request without refreshing
         # radio-backed values, so preserve the expected request framing.
-        await self.send_request(
+        await self.get_reply_to_request(
             "POST",
             "/refresh/all",
             body=b"{}",
