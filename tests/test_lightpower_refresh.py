@@ -46,6 +46,7 @@ def _load_polling_mixin():
     }
     namespace = {
         "DYNAMIC_POLLING_FALLBACK_ATTRIBUTES": frozenset({"lightPower"}),
+        "RADIO_REFRESH_SETTLE_SECONDS": 6,
         "LOGGER": MagicMock(),
         "time": time,
         "get_polling_interval_for_validity": lambda validity: intervals.get(
@@ -154,9 +155,12 @@ class LightPowerRefreshLoopTests(IsolatedAsyncioTestCase):
             ),
         }
 
+        sleep_intervals = []
+
         async def sleep_once(interval: int) -> None:
-            self.assertEqual(interval, 60)
-            hub._shutting_down = True
+            sleep_intervals.append(interval)
+            if interval == 60:
+                hub._shutting_down = True
 
         hub._interruptible_sleep = sleep_once
 
@@ -164,3 +168,4 @@ class LightPowerRefreshLoopTests(IsolatedAsyncioTestCase):
 
         client.post_refresh.assert_awaited_once_with()
         self.assertEqual(client.poll_device_data.await_count, 2)
+        self.assertEqual(sleep_intervals, [6, 60])

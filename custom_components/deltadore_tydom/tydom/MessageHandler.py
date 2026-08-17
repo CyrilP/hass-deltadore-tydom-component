@@ -631,6 +631,25 @@ class MessageHandler:
                     transaction_id,
                     uri_origin,
                 )
+                if (
+                    transaction_id
+                    and (event := self._end_reply_events.pop(transaction_id, None))
+                    is not None
+                ):
+                    # A caller explicitly waiting for this request needs the
+                    # transport acknowledgement, even when the resulting
+                    # device state is delivered later as a separate push.
+                    self._cdata_replies.insert(
+                        0,
+                        Reply(
+                            transaction_id=transaction_id,
+                            events=[],
+                            done=True,
+                        ),
+                    )
+                    if len(self._cdata_replies) > _MAX_REPLIES_SIZE:
+                        self._cdata_replies.pop()
+                    event.set()
                 return None
 
             try:
