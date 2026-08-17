@@ -83,6 +83,7 @@ from .remote_registry_migration import migrate_legacy_remote_endpoint
 # it does not push later changes. Poll their regular data endpoint using the
 # user-configured refresh interval when no validity-based interval is supplied.
 DYNAMIC_POLLING_FALLBACK_ATTRIBUTES = frozenset({"lightPower"})
+RADIO_REFRESH_SETTLE_SECONDS = 6
 
 
 class Hub:
@@ -980,6 +981,14 @@ class Hub:
                             # per due interval triggers fresh radio measurements,
                             # which arrive asynchronously as /devices/data pushes.
                             await self._tydom_client.post_refresh()
+                            # The acknowledgement only confirms that TYDOM has
+                            # accepted the refresh. Solar motors then report
+                            # their radio-backed values progressively. Live
+                            # captures show a complete four-device pass taking
+                            # about five seconds after gateway start-up.
+                            await self._interruptible_sleep(
+                                RADIO_REFRESH_SETTLE_SECONDS
+                            )
                         except Exception:
                             LOGGER.exception(
                                 "Error requesting radio refresh for dynamic data"
