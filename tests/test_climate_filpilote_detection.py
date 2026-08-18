@@ -2,11 +2,11 @@
 
 import enum
 import importlib.util
-from pathlib import Path
 import sys
 import types
-from unittest import TestCase
-from unittest.mock import MagicMock
+from pathlib import Path
+from unittest import IsolatedAsyncioTestCase, TestCase
+from unittest.mock import AsyncMock, MagicMock, call
 
 _MISSING = object()
 _original_modules: dict[str, object] = {}
@@ -60,7 +60,9 @@ AlarmControlPanelEntityFeature = _feature_flag(
 )
 
 
-class HVACMode(str, enum.Enum):
+class HVACMode(enum.StrEnum):
+    """Stub mirroring the handful of HVACMode members HaClimate reads."""
+
     OFF = "off"
     HEAT = "heat"
     COOL = "cool"
@@ -219,7 +221,10 @@ _module(
 
 def _load(module_name: str, relative_path: str):
     module_path = (
-        Path(__file__).parents[1] / "custom_components" / "deltadore_tydom" / relative_path
+        Path(__file__).parents[1]
+        / "custom_components"
+        / "deltadore_tydom"
+        / relative_path
     )
     spec = importlib.util.spec_from_file_location(module_name, module_path)
     assert spec is not None and spec.loader is not None
@@ -250,6 +255,7 @@ for name, original in _original_modules.items():
 def _thermostat(*, metadata, data):
     """Create a TydomBoiler device and its HaClimate entity."""
     client = MagicMock()
+    client.put_devices_data = AsyncMock()
     device = TydomBoiler(
         client,
         "10_20",
@@ -261,17 +267,18 @@ def _thermostat(*, metadata, data):
         data,
     )
     entity = HaClimate(device, hass=MagicMock())
-    return entity
+    return entity, client
 
 
 class FilPiloteDetectionTests(TestCase):
     """Ensure _is_filpilote correctly discriminates pilot-wire zones."""
 
     def test_authorization_only_rf6600_is_detected_as_pilot_wire(self) -> None:
-        """An RF 6600 zone using `authorization` (no hvacMode) must be
-        recognised as pilot-wire, so it gets the [off, heat] + presets UI.
+        """An RF 6600 zone using `authorization` (no hvacMode) must be recognised as pilot-wire.
+
+        This ensures it gets the [off, heat] + presets UI.
         """
-        entity = _thermostat(
+        entity, _client = _thermostat(
             metadata={
                 "authorization": {
                     "type": "string",
@@ -298,11 +305,12 @@ class FilPiloteDetectionTests(TestCase):
         self.assertEqual(entity._attr_hvac_modes, [HVACMode.OFF, HVACMode.HEAT])
 
     def test_authorization_with_heat_setpoint_is_not_pilot_wire(self) -> None:
-        """A conventional authorisation-based thermostat exposing
-        `heatSetpoint` (not `setpoint`) must NOT be misclassified as
+        """A conventional authorisation-based thermostat must not be misclassified.
+
+        It exposes `heatSetpoint` (not `setpoint`) and must NOT be treated as
         pilot-wire, or it would lose target-temperature support.
         """
-        entity = _thermostat(
+        entity, _client = _thermostat(
             metadata={
                 "authorization": {
                     "type": "string",
@@ -331,7 +339,7 @@ class FilPiloteDetectionTests(TestCase):
 
     def test_authorization_with_cool_setpoint_is_not_pilot_wire(self) -> None:
         """Same guard, using `coolSetpoint` instead of `heatSetpoint`."""
-        entity = _thermostat(
+        entity, _client = _thermostat(
             metadata={
                 "authorization": {
                     "type": "string",
@@ -357,6 +365,82 @@ class FilPiloteDetectionTests(TestCase):
             },
         )
         self.assertFalse(entity._is_filpilote)
+
+
+class PresetNoneSendsAutoTests(IsolatedAsyncioTestCase):
+    """Ensure selecting the `None` preset drives thermicLevel AUTO when supported.
+
+    Also checks it is a safe no-op otherwise (refs #411).
+    """
+
+    async def test_preset_none_sends_thermic_level_auto_when_supported(self) -> None:
+        """Send AUTO for a Calybox-230-like zone advertising it.
+
+        A zone whose thermicLevel enum includes AUTO must send
+        `thermicLevel: AUTO` when the None preset is selected.
+        """
+        entity, client = _thermostat(
+            metadata={
+                "authorization": {
+                    "type": "string",
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "thermicLevel": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": [
+                        "ECO",
+                        "COMFORT",
+                        "STOP",
+                        "ANTI_FROST",
+                        "AUTO",
+                    ],
+                },
+            },
+            data={
+                "authorization": "HEATING",
+                "thermicLevel": "COMFORT",
+            },
+        )
+        self.assertTrue(entity._is_filpilote)
+
+        await entity.async_set_preset_mode("none")
+
+        self.assertEqual(
+            client.put_devices_data.await_args_list,
+            [call("20", "10", "thermicLevel", "AUTO")],
+        )
+
+    async def test_preset_none_is_a_no_op_when_auto_not_advertised(self) -> None:
+        """Do nothing for an RF 6600 zone that doesn't advertise AUTO.
+
+        A zone whose thermicLevel enum has no AUTO value must not send
+        anything for the None preset (previous, safe behaviour).
+        """
+        entity, client = _thermostat(
+            metadata={
+                "authorization": {
+                    "type": "string",
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "thermicLevel": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["ECO", "COMFORT", "STOP", "ANTI_FROST"],
+                },
+            },
+            data={
+                "authorization": "HEATING",
+                "thermicLevel": "ECO",
+            },
+        )
+        self.assertTrue(entity._is_filpilote)
+
+        await entity.async_set_preset_mode("none")
+
+        client.put_devices_data.assert_not_awaited()
 
 
 if __name__ == "__main__":
