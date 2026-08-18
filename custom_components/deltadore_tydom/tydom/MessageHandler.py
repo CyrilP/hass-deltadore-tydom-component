@@ -138,6 +138,7 @@ device_name = {}
 device_endpoint = {}
 device_type = {}
 device_metadata = {}
+device_command_metadata = {}
 device_tutorial_id = {}
 interrupter_endpoint_config = {}
 interrupter_info = {}
@@ -962,6 +963,7 @@ class MessageHandler:
                     endpoint,
                     device_metadata.get(uid),
                     data,
+                    command_metadata=device_command_metadata.get(uid),
                 )
             case "weather":
                 weather_device = TydomWeather(
@@ -1184,8 +1186,15 @@ class MessageHandler:
         LOGGER.debug("parse_cmeta_data : %s", parsed)
         for i in parsed:
             for endpoint in i["endpoints"]:
-                if len(endpoint["cmetadata"]) > 0:
-                    for elem in endpoint["cmetadata"]:
+                command_metadata = endpoint.get("cmetadata", [])
+                unique_id = f"{endpoint['id']}_{i['id']}"
+                device_command_metadata[unique_id] = {
+                    elem["name"]: elem
+                    for elem in command_metadata
+                    if isinstance(elem, dict) and elem.get("name")
+                }
+                if len(command_metadata) > 0:
+                    for elem in command_metadata:
                         if elem["name"] == "energyIndex":
                             for params in elem["parameters"]:
                                 if params["name"] == "dest":

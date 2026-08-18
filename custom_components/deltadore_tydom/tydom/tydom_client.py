@@ -37,7 +37,7 @@ from .const import (
     DELTADORE_AUTH_URL,
     MEDIATION_URL,
 )
-from .MessageHandler import MessageHandler
+from .MessageHandler import MessageHandler, TydomAlarmCommandError
 
 if TYPE_CHECKING:
     from .tydom_devices import TydomDevice
@@ -1516,55 +1516,43 @@ class TydomClient:
         else:
             pin = alarm_pin
 
-        try:
-            if zone_id is None or zone_id == "":
-                cmd = "alarmCmd"
-                body = json.dumps({"value": str(value), "pwd": str(pin)})
-            else:
-                if legacy_zones:
-                    cmd = "partCmd"
-                    body = json.dumps({"value": str(value), "part": str(zone_id)})
-                else:
-                    cmd = "zoneCmd"
-                    zones = [
-                        int(zone.strip())
-                        for zone in str(zone_id).split(",")
-                        if zone.strip()
-                    ]
-                    body = json.dumps(
-                        {"value": str(value), "pwd": str(pin), "zones": zones}
-                    )
+        if zone_id is None or zone_id == "":
+            cmd = "alarmCmd"
+            body = {"value": str(value), "pwd": str(pin)}
+        elif legacy_zones:
+            cmd = "partCmd"
+            body = {"value": str(value), "part": str(zone_id)}
+        else:
+            cmd = "zoneCmd"
+            zones = [
+                int(zone.strip()) for zone in str(zone_id).split(",") if zone.strip()
+            ]
+            body = {"value": str(value), "pwd": str(pin), "zones": zones}
 
-            safe_device_id = quote(str(device_id), safe="")
-            safe_endpoint_id = quote(str(endpoint_id), safe="")
-            safe_cmd = quote(str(cmd), safe="")
-            str_request = (
-                f"PUT /devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata?name={safe_cmd} HTTP/1.1\r\nContent-Length: "
-                + str(len(body))
-                + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
-                + body
-                + "\r\n\r\n"
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        safe_cmd = quote(cmd, safe="")
+        replies = await self.get_reply_to_request(
+            "PUT",
+            f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata?name={safe_cmd}",
+            body=body,
+        )
+
+        result = next(
+            (
+                str(reply.get("values", {}).get("result"))
+                for reply in replies or []
+                if reply.get("name") == cmd
+                and reply.get("values", {}).get("result") is not None
+            ),
+            None,
+        )
+        if result is None:
+            raise TydomClientApiClientCommunicationError(
+                f"No command result received for {cmd}"
             )
-
-            a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
-            LOGGER.debug("Sending message to tydom (%s)", "PUT cdata")
-
-            try:
-                if not file_mode:
-                    await self.send_bytes(a_bytes)
-                    return 0
-            except BaseException:
-                LOGGER.error("put_alarm_cdata ERROR !", exc_info=True)
-                # Masquer les informations sensibles dans les bytes loggés
-                a_bytes_str = (
-                    a_bytes.decode("utf-8", errors="replace")
-                    if isinstance(a_bytes, bytes)
-                    else str(a_bytes)
-                )
-                sanitized_bytes = sanitize_log_message(a_bytes_str, self._password)
-                LOGGER.error("Request bytes: %s", sanitized_bytes)
-        except BaseException:
-            LOGGER.error("put_alarm_cdata ERROR !", exc_info=True)
+        if result != "ACK":
+            raise TydomAlarmCommandError(cmd, result)
 
     async def put_ackevents_cdata(self, device_id, endpoint_id=None, alarm_pin=None):
         """Acknowledge alarm events using the command supported by the gateway.
