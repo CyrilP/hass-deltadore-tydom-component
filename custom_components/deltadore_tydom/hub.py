@@ -980,7 +980,9 @@ class Hub:
                             # for data-only lightPower values. One global refresh
                             # per due interval triggers fresh radio measurements,
                             # which arrive asynchronously as /devices/data pushes.
-                            await self._tydom_client.post_refresh()
+                            await self._tydom_client.post_refresh(
+                                wait_for_acknowledgement=True
+                            )
                             # The acknowledgement only confirms that TYDOM has
                             # accepted the refresh. Solar motors then report
                             # their radio-backed values progressively. Live
