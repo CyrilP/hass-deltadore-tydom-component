@@ -166,6 +166,6 @@ class LightPowerRefreshLoopTests(IsolatedAsyncioTestCase):
 
         await hub.refresh_data()
 
-        client.post_refresh.assert_awaited_once_with()
+        client.post_refresh.assert_awaited_once_with(wait_for_acknowledgement=True)
         self.assertEqual(client.poll_device_data.await_count, 2)
         self.assertEqual(sleep_intervals, [6, 60])
