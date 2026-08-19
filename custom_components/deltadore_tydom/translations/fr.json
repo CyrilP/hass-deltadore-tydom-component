@@ -158,6 +158,14 @@
             "name": "Acquitter les événements de défaut",
             "description": "Acquitter tous les événements d'alarme de défaut."
         },
+        "force_arm": {
+            "name": "Forcer la mise en marche de l'alarme",
+            "description": "Forcer explicitement un mode d'alarme malgré les défauts ayant entraîné le refus de la mise en marche normale.",
+            "fields": {
+                "code": {"name": "Code utilisateur TYXAL", "description": "Code utilisateur autorisé à mettre l'alarme en marche."},
+                "mode": {"name": "Mode de mise en marche", "description": "Mode d'alarme Home Assistant configuré à forcer."}
+            }
+        },
         "get_events": {
             "name": "Obtenir les événements d'alarme",
             "description": "Obtenir les événements d'alarme",

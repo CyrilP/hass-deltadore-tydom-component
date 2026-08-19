@@ -77,6 +77,38 @@ for name, original in _original_modules.items():
         sys.modules[name] = original
 
 
+def _alarm_with_command(
+    command: str,
+    values: list[str],
+    *,
+    away_zones: str = "1,3",
+    legacy: bool = False,
+) -> tuple[object, MagicMock]:
+    """Return an alarm advertising one writable cdata command."""
+    client = MagicMock()
+    client._zone_away = away_zones
+    client._zone_home = "1"
+    client._zone_night = "2"
+    client.put_alarm_cdata = AsyncMock()
+    alarm = TydomAlarm(
+        client,
+        "10_20",
+        "20",
+        "Alarm",
+        "alarm",
+        "10",
+        {},
+        {"part1State": "OFF"} if legacy else {},
+        command_metadata={
+            command: {
+                "permission": "w",
+                "parameters": [{"name": "value", "enum_values": values}],
+            }
+        },
+    )
+    return alarm, client
+
+
 class ProtocolResponseTests(IsolatedAsyncioTestCase):
     """Exercise response acknowledgements and light refresh polling."""
 
@@ -84,6 +116,122 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         """Reset protocol state shared between tests."""
         handler_module.device_name.clear()
         handler_module.device_type.clear()
+        handler_module.device_command_metadata.clear()
+
+    async def test_alarm_command_metadata_is_retained_by_endpoint(self) -> None:
+        """Command capabilities must remain available to alarm entities."""
+        handler = MessageHandler(MagicMock(), b"")
+
+        await handler.parse_cmeta_data(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [
+                        {
+                            "id": 10,
+                            "error": 0,
+                            "cmetadata": [
+                                {
+                                    "name": "zoneCmd",
+                                    "permission": "w",
+                                    "parameters": [
+                                        {
+                                            "name": "value",
+                                            "type": "string",
+                                            "enum_values": ["ON", "OFF", "FORCED_ON"],
+                                        }
+                                    ],
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+
+        self.assertIn(
+            "FORCED_ON",
+            handler_module.device_command_metadata["10_20"]["zoneCmd"]["parameters"][0][
+                "enum_values"
+            ],
+        )
+
+    async def test_transac_zero_alarm_result_resolves_command_waiter(self) -> None:
+        """TYDOM alarm broadcasts must complete the matching pending command."""
+        handler = MessageHandler(MagicMock(), b"")
+        handler_module.device_name["10_20"] = "Alarm"
+        handler_module.device_type["10_20"] = "alarm"
+        waiter = handler.create_alarm_command_waiter("20", "10", "zoneCmd")
+
+        await handler.parse_devices_cdata(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [
+                        {
+                            "id": 10,
+                            "error": 0,
+                            "cdata": [
+                                {
+                                    "name": "zoneCmd",
+                                    "values": {
+                                        "result": "DENIED",
+                                        "authent": "USER",
+                                    },
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            "0",
+        )
+
+        self.assertEqual((await waiter)["values"]["result"], "DENIED")
+
+    async def test_force_arm_uses_advertised_zone_command(self) -> None:
+        """Modern alarms may force only a command advertised by cmetadata."""
+        alarm, client = _alarm_with_command("zoneCmd", ["ON", "OFF", "FORCED_ON"])
+
+        await alarm.force_arm("away", "123456")
+
+        client.put_alarm_cdata.assert_awaited_once_with(
+            "20", "10", "123456", "FORCED_ON", "1,3", False
+        )
+
+    async def test_force_arm_rejects_unadvertised_command(self) -> None:
+        """Force arming must not guess support when FORCED_ON is absent."""
+        alarm, client = _alarm_with_command("zoneCmd", ["ON", "OFF"])
+
+        with self.assertRaisesRegex(ValueError, "does not advertise FORCED_ON"):
+            await alarm.force_arm("away", "123456")
+
+        client.put_alarm_cdata.assert_not_awaited()
+
+    async def test_force_arm_uses_advertised_global_command(self) -> None:
+        """An empty configured zone selection must use the global alarm command."""
+        alarm, client = _alarm_with_command(
+            "alarmCmd", ["ON", "OFF", "FORCED_ON"], away_zones=""
+        )
+
+        await alarm.force_arm("away", "123456")
+
+        client.put_alarm_cdata.assert_awaited_once_with(
+            "20", "10", "123456", "FORCED_ON", "", False
+        )
+
+    async def test_force_arm_uses_advertised_legacy_part_command(self) -> None:
+        """Legacy alarms must retain their per-part command path."""
+        alarm, client = _alarm_with_command(
+            "partCmd", ["OFF", "ON", "FORCED_ON"], legacy=True
+        )
+
+        await alarm.force_arm("away", "123456")
+
+        client.put_alarm_cdata.assert_awaited_once_with(
+            "20", "10", "123456", "FORCED_ON", "1,3", True
+        )
 
     def test_light_brightness_requires_intermediate_levels(self) -> None:
         """Binary level metadata must not advertise variable brightness."""
