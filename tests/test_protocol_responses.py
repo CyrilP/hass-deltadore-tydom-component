@@ -157,6 +157,39 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
             ],
         )
 
+    async def test_transac_zero_alarm_result_resolves_command_waiter(self) -> None:
+        """TYDOM alarm broadcasts must complete the matching pending command."""
+        handler = MessageHandler(MagicMock(), b"")
+        handler_module.device_name["10_20"] = "Alarm"
+        handler_module.device_type["10_20"] = "alarm"
+        waiter = handler.create_alarm_command_waiter("20", "10", "zoneCmd")
+
+        await handler.parse_devices_cdata(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [
+                        {
+                            "id": 10,
+                            "error": 0,
+                            "cdata": [
+                                {
+                                    "name": "zoneCmd",
+                                    "values": {
+                                        "result": "DENIED",
+                                        "authent": "USER",
+                                    },
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            "0",
+        )
+
+        self.assertEqual((await waiter)["values"]["result"], "DENIED")
+
     async def test_force_arm_uses_advertised_zone_command(self) -> None:
         """Modern alarms may force only a command advertised by cmetadata."""
         alarm, client = _alarm_with_command("zoneCmd", ["ON", "OFF", "FORCED_ON"])

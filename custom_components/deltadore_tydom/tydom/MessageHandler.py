@@ -419,6 +419,9 @@ class MessageHandler:
         self._cdata_replies: list[Reply] = []
         self._end_reply_events: dict[str, asyncio.Event] = {}
         self._reply_errors: dict[str, str] = {}
+        self._alarm_command_waiters: dict[
+            tuple[str, str, str], list[asyncio.Future[dict[str, Any]]]
+        ] = {}
         self._area_devices: dict[str, dict[str, AreaDeviceReference]] = {}
         self._area_data: dict[str, dict[str, Any]] = {}
         self._area_metadata: dict[str, dict] = {}
@@ -479,6 +482,49 @@ class MessageHandler:
     def get_reply_error(self, transaction_id: str) -> str | None:
         """Return and forget a protocol error for one pending request."""
         return self._reply_errors.pop(transaction_id, None)
+
+    def create_alarm_command_waiter(
+        self, device_id: str, endpoint_id: str, command: str
+    ) -> asyncio.Future[dict[str, Any]]:
+        """Wait for an asynchronous alarm command result broadcast by TYDOM."""
+        key = (str(device_id), str(endpoint_id), command)
+        waiter = asyncio.get_running_loop().create_future()
+        self._alarm_command_waiters.setdefault(key, []).append(waiter)
+        return waiter
+
+    def remove_alarm_command_waiter(
+        self,
+        device_id: str,
+        endpoint_id: str,
+        command: str,
+        waiter: asyncio.Future[dict[str, Any]],
+    ) -> None:
+        """Remove one alarm command waiter after completion or timeout."""
+        key = (str(device_id), str(endpoint_id), command)
+        waiters = self._alarm_command_waiters.get(key)
+        if not waiters:
+            return
+        with contextlib.suppress(ValueError):
+            waiters.remove(waiter)
+        if not waiters:
+            self._alarm_command_waiters.pop(key, None)
+
+    def _resolve_alarm_command_waiter(
+        self, device_id: str, endpoint_id: str, element: dict[str, Any]
+    ) -> None:
+        """Deliver a Transac-Id 0 alarm result to the command that sent it."""
+        command = element.get("name")
+        if not command or (element.get("values") or {}).get("result") is None:
+            return
+        key = (str(device_id), str(endpoint_id), command)
+        waiters = self._alarm_command_waiters.get(key)
+        while waiters:
+            waiter = waiters.pop(0)
+            if not waiter.done():
+                waiter.set_result(element)
+                break
+        if not waiters:
+            self._alarm_command_waiters.pop(key, None)
 
     def _complete_empty_cdata_reply(self, transaction_id: str) -> None:
         """Complete an EOR-only reply unless late TYXAL data completed it first."""
@@ -1603,10 +1649,18 @@ class MessageHandler:
                         data = {}
 
                         for elem in endpoint["cdata"]:
+                            if type_of_id == "alarm":
+                                self._resolve_alarm_command_waiter(
+                                    device_id, endpoint_id, elem
+                                )
+
                             if type_of_id == "conso":
                                 data.update(_parse_energy_cdata_element(elem))
 
-                            elif type_of_id == "alarm" and transaction_id is not None:
+                            elif type_of_id == "alarm" and transaction_id not in (
+                                None,
+                                "0",
+                            ):
                                 reply = None
                                 for r in self._cdata_replies:
                                     if r["transaction_id"] == transaction_id:

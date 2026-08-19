@@ -88,6 +88,9 @@ _module(
 _module(
     "custom_components.deltadore_tydom.tydom.MessageHandler",
     MessageHandler=MagicMock(),
+)
+_module(
+    "custom_components.deltadore_tydom.tydom.tydom_devices",
     TydomAlarmCommandError=_AlarmCommandError,
 )
 
@@ -184,41 +187,41 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
         )
 
     async def test_alarm_command_waits_for_acknowledged_result(self) -> None:
-        """Alarm commands must use a tracked request and require an ACK result."""
+        """Alarm commands must correlate their Transac-Id 0 cdata result."""
         client = self._client()
-        client.get_reply_to_request = AsyncMock(
-            return_value=[
-                {"name": "alarmCmd", "values": {"result": "ACK", "authent": "USER"}}
-            ]
+        waiter = asyncio.get_running_loop().create_future()
+        waiter.set_result(
+            {"name": "alarmCmd", "values": {"result": "ACK", "authent": "USER"}}
         )
+        client._message_handler.create_alarm_command_waiter.return_value = waiter
+        client.send_bytes = AsyncMock()
 
         await client._put_alarm_cdata("20", "10", "123456", "ON")
 
-        client.get_reply_to_request.assert_awaited_once_with(
-            "PUT",
-            "/devices/20/endpoints/10/cdata?name=alarmCmd",
-            body={"value": "ON", "pwd": "123456"},
-        )
+        request = client.send_bytes.await_args.args[0].decode("ascii")
+        self.assertIn("PUT /devices/20/endpoints/10/cdata?name=alarmCmd", request)
+        self.assertIn("Transac-Id: 0", request)
+        self.assertIn('{"value": "ON", "pwd": "123456"}', request)
 
     async def test_denied_zone_alarm_command_raises(self) -> None:
         """A gateway DENIED result must reach the Home Assistant action."""
         client = self._client()
-        client.get_reply_to_request = AsyncMock(
-            return_value=[
-                {"name": "zoneCmd", "values": {"result": "DENIED", "authent": "USER"}}
-            ]
+        waiter = asyncio.get_running_loop().create_future()
+        waiter.set_result(
+            {"name": "zoneCmd", "values": {"result": "DENIED", "authent": "USER"}}
         )
+        client._message_handler.create_alarm_command_waiter.return_value = waiter
+        client.send_bytes = AsyncMock()
 
         with self.assertRaises(TydomAlarmCommandError) as context:
             await client._put_alarm_cdata("20", "10", "123456", "ON", "1,3")
 
         self.assertEqual(context.exception.command, "zoneCmd")
         self.assertEqual(context.exception.result, "DENIED")
-        client.get_reply_to_request.assert_awaited_once_with(
-            "PUT",
-            "/devices/20/endpoints/10/cdata?name=zoneCmd",
-            body={"value": "ON", "pwd": "123456", "zones": [1, 3]},
-        )
+        request = client.send_bytes.await_args.args[0].decode("ascii")
+        self.assertIn("PUT /devices/20/endpoints/10/cdata?name=zoneCmd", request)
+        self.assertIn("Transac-Id: 0", request)
+        self.assertIn('"zones": [1, 3]', request)
 
     async def test_alarm_inventory_uses_supported_label_command(self) -> None:
         """Inventory must not depend on optional unsupported productInfo data."""

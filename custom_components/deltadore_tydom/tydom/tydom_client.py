@@ -37,7 +37,8 @@ from .const import (
     DELTADORE_AUTH_URL,
     MEDIATION_URL,
 )
-from .MessageHandler import MessageHandler, TydomAlarmCommandError
+from .MessageHandler import MessageHandler
+from .tydom_devices import TydomAlarmCommandError
 
 if TYPE_CHECKING:
     from .tydom_devices import TydomDevice
@@ -1529,28 +1530,39 @@ class TydomClient:
             ]
             body = {"value": str(value), "pwd": str(pin), "zones": zones}
 
+        body_json = json.dumps(body)
         safe_device_id = quote(str(device_id), safe="")
         safe_endpoint_id = quote(str(endpoint_id), safe="")
         safe_cmd = quote(cmd, safe="")
-        replies = await self.get_reply_to_request(
-            "PUT",
-            f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata?name={safe_cmd}",
-            body=body,
+        request = (
+            f"PUT /devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+            f"?name={safe_cmd} HTTP/1.1\r\nContent-Length: {len(body_json)}"
+            "\r\nContent-Type: application/json; charset=UTF-8"
+            "\r\nTransac-Id: 0\r\n\r\n"
+            f"{body_json}\r\n\r\n"
         )
-
-        result = next(
-            (
-                str(reply.get("values", {}).get("result"))
-                for reply in replies or []
-                if reply.get("name") == cmd
-                and reply.get("values", {}).get("result") is not None
-            ),
-            None,
+        waiter = self._message_handler.create_alarm_command_waiter(
+            str(device_id), str(endpoint_id), cmd
         )
-        if result is None:
-            raise TydomClientApiClientCommunicationError(
-                f"No command result received for {cmd}"
+        try:
+            if not file_mode:
+                await self.send_bytes(self._cmd_prefix + request.encode("ascii"))
+            try:
+                async with async_timeout.timeout(5):
+                    reply = await waiter
+            except TimeoutError:
+                # Older gateways may execute alarm commands without publishing
+                # a command result. Preserve that established fire-and-forget
+                # behaviour rather than turning a successful command into an
+                # apparent Home Assistant failure.
+                LOGGER.debug("No asynchronous result received for %s", cmd)
+                return
+        finally:
+            self._message_handler.remove_alarm_command_waiter(
+                str(device_id), str(endpoint_id), cmd, waiter
             )
+
+        result = str(reply.get("values", {}).get("result"))
         if result != "ACK":
             raise TydomAlarmCommandError(cmd, result)
 
