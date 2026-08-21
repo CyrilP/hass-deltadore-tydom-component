@@ -5,6 +5,34 @@ acknowledge_events:
     entity:
       integration: deltadore_tydom
       domain: alarm_control_panel
+force_arm:
+  name: Force arm alarm
+  description: Explicitly force the selected alarm mode despite defects that caused normal arming to be refused. Use only after checking those defects.
+  target:
+    entity:
+      integration: deltadore_tydom
+      domain: alarm_control_panel
+  fields:
+    code:
+      name: TYXAL user code
+      description: User code authorised to arm the alarm.
+      required: true
+      selector:
+        text:
+          type: password
+    mode:
+      name: Arming mode
+      description: Configured Home Assistant alarm mode to force.
+      required: true
+      selector:
+        select:
+          options:
+            - label: Away
+              value: away
+            - label: Home
+              value: home
+            - label: Night
+              value: night
 get_events:
   name: Get alarm events
   description: Retrieve alarm events from the system. Returns a list of events based on the selected filter.

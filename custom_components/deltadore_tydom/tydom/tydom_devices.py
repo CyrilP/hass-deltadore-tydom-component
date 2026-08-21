@@ -260,6 +260,16 @@ class DeviceCallback(Protocol):
         """Call the callback."""
 
 
+class TydomAlarmCommandError(Exception):
+    """Exception raised when a TYDOM alarm command returns a negative result."""
+
+    def __init__(self, command: str, result: str) -> None:
+        """Store the rejected command and gateway result."""
+        self.command = command
+        self.result = result
+        super().__init__(f"TYDOM rejected {command} with result {result}")
+
+
 # Import TydomGroup at the end to avoid circular import
 
 
@@ -1230,10 +1240,29 @@ class TydomLight(TydomDevice):
 class TydomAlarm(TydomDevice):
     """represents an alarm."""
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(
+        self, *args, command_metadata: dict[str, Any] | None = None, **kwargs
+    ) -> None:
         """Initialise an alarm and its dashboard event cache."""
         super().__init__(*args, **kwargs)
         self._pending_events: list[dict[str, Any]] | None = None
+        self._command_metadata = command_metadata or {}
+
+    def _alarm_command_name(self, zone_id: str | None) -> str:
+        """Return the command used by this alarm and zone selection."""
+        if zone_id in (None, ""):
+            return "alarmCmd"
+        return "partCmd" if self.is_legacy_alarm() else "zoneCmd"
+
+    def _supports_alarm_command_value(self, command: str, value: str) -> bool:
+        """Return whether cmetadata explicitly advertises a command value."""
+        metadata = self._command_metadata.get(command)
+        if not isinstance(metadata, dict) or "w" not in metadata.get("permission", ""):
+            return False
+        for parameter in metadata.get("parameters", []):
+            if parameter.get("name") == "value":
+                return value in parameter.get("enum_values", [])
+        return False
 
     @property
     def pending_events(self) -> list[dict[str, Any]] | None:
@@ -1320,6 +1349,30 @@ class TydomAlarm(TydomDevice):
             self.is_legacy_alarm(),
         )
 
+    async def force_arm(self, mode: str, code: str) -> None:
+        """Explicitly force arming in one configured Home Assistant mode."""
+        zones_by_mode = {
+            "away": self._tydom_client._zone_away,
+            "home": self._tydom_client._zone_home,
+            "night": self._tydom_client._zone_night,
+        }
+        if mode not in zones_by_mode:
+            raise ValueError(f"Unsupported force-arm mode: {mode}")
+
+        zone_id = zones_by_mode[mode]
+        command = self._alarm_command_name(zone_id)
+        if not self._supports_alarm_command_value(command, "FORCED_ON"):
+            raise ValueError(f"The gateway does not advertise FORCED_ON for {command}")
+
+        await self._tydom_client.put_alarm_cdata(
+            self._id,
+            self._endpoint,
+            code,
+            "FORCED_ON",
+            zone_id,
+            self.is_legacy_alarm(),
+        )
+
     async def alarm_trigger(self, code=None) -> None:
         """Trigger the alarm.
 
@@ -1330,9 +1383,12 @@ class TydomAlarm(TydomDevice):
         )
 
     async def acknowledge_events(self, code=None) -> None:
-        """Acknowledge alarm events and refresh the authoritative event list."""
+        """Acknowledge alarm events without blocking on unsupported history."""
         await self._tydom_client.put_ackevents_cdata(self._id, self._endpoint, code)
-        await self.get_events("UNACKED_EVENTS")
+        # The central unit publishes ``unackedEvent`` after a successful
+        # acknowledgement.  Some TYDOM2 gateways never answer the optional
+        # history endpoint; querying it here turned a completed action into a
+        # 60-second Home Assistant failure.
 
     _KEPT_KEYS: ClassVar = {
         "": {"name", "date", "zones", "accessCode", "product"},

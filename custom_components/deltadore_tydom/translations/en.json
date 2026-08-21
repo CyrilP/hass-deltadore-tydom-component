@@ -157,6 +157,14 @@
             "name": "Acknowledge defect events",
             "description": "Acknowledge all defect alarm events."
         },
+        "force_arm": {
+            "name": "Force arm alarm",
+            "description": "Explicitly force an alarm mode despite defects that caused normal arming to be refused.",
+            "fields": {
+                "code": {"name": "TYXAL user code", "description": "User code authorised to arm the alarm."},
+                "mode": {"name": "Arming mode", "description": "Configured Home Assistant alarm mode to force."}
+            }
+        },
         "get_events": {
             "name": "Get alarm events",
             "description": "Get alarm events",

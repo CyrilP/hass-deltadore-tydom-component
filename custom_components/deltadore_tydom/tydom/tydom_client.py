@@ -38,6 +38,7 @@ from .const import (
     MEDIATION_URL,
 )
 from .MessageHandler import MessageHandler
+from .tydom_devices import TydomAlarmCommandError
 
 if TYPE_CHECKING:
     from .tydom_devices import TydomDevice
@@ -1516,55 +1517,54 @@ class TydomClient:
         else:
             pin = alarm_pin
 
-        try:
-            if zone_id is None or zone_id == "":
-                cmd = "alarmCmd"
-                body = json.dumps({"value": str(value), "pwd": str(pin)})
-            else:
-                if legacy_zones:
-                    cmd = "partCmd"
-                    body = json.dumps({"value": str(value), "part": str(zone_id)})
-                else:
-                    cmd = "zoneCmd"
-                    zones = [
-                        int(zone.strip())
-                        for zone in str(zone_id).split(",")
-                        if zone.strip()
-                    ]
-                    body = json.dumps(
-                        {"value": str(value), "pwd": str(pin), "zones": zones}
-                    )
+        if zone_id is None or zone_id == "":
+            cmd = "alarmCmd"
+            body = {"value": str(value), "pwd": str(pin)}
+        elif legacy_zones:
+            cmd = "partCmd"
+            body = {"value": str(value), "part": str(zone_id)}
+        else:
+            cmd = "zoneCmd"
+            zones = [
+                int(zone.strip()) for zone in str(zone_id).split(",") if zone.strip()
+            ]
+            body = {"value": str(value), "pwd": str(pin), "zones": zones}
 
-            safe_device_id = quote(str(device_id), safe="")
-            safe_endpoint_id = quote(str(endpoint_id), safe="")
-            safe_cmd = quote(str(cmd), safe="")
-            str_request = (
-                f"PUT /devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata?name={safe_cmd} HTTP/1.1\r\nContent-Length: "
-                + str(len(body))
-                + "\r\nContent-Type: application/json; charset=UTF-8\r\nTransac-Id: 0\r\n\r\n"
-                + body
-                + "\r\n\r\n"
+        body_json = json.dumps(body)
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        safe_cmd = quote(cmd, safe="")
+        request = (
+            f"PUT /devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+            f"?name={safe_cmd} HTTP/1.1\r\nContent-Length: {len(body_json)}"
+            "\r\nContent-Type: application/json; charset=UTF-8"
+            "\r\nTransac-Id: 0\r\n\r\n"
+            f"{body_json}\r\n\r\n"
+        )
+        waiter = self._message_handler.create_alarm_command_waiter(
+            str(device_id), str(endpoint_id), cmd
+        )
+        try:
+            if not file_mode:
+                await self.send_bytes(self._cmd_prefix + request.encode("ascii"))
+            try:
+                async with async_timeout.timeout(5):
+                    reply = await waiter
+            except TimeoutError:
+                # Older gateways may execute alarm commands without publishing
+                # a command result. Preserve that established fire-and-forget
+                # behaviour rather than turning a successful command into an
+                # apparent Home Assistant failure.
+                LOGGER.debug("No asynchronous result received for %s", cmd)
+                return
+        finally:
+            self._message_handler.remove_alarm_command_waiter(
+                str(device_id), str(endpoint_id), cmd, waiter
             )
 
-            a_bytes = self._cmd_prefix + bytes(str_request, "ascii")
-            LOGGER.debug("Sending message to tydom (%s)", "PUT cdata")
-
-            try:
-                if not file_mode:
-                    await self.send_bytes(a_bytes)
-                    return 0
-            except BaseException:
-                LOGGER.error("put_alarm_cdata ERROR !", exc_info=True)
-                # Masquer les informations sensibles dans les bytes loggés
-                a_bytes_str = (
-                    a_bytes.decode("utf-8", errors="replace")
-                    if isinstance(a_bytes, bytes)
-                    else str(a_bytes)
-                )
-                sanitized_bytes = sanitize_log_message(a_bytes_str, self._password)
-                LOGGER.error("Request bytes: %s", sanitized_bytes)
-        except BaseException:
-            LOGGER.error("put_alarm_cdata ERROR !", exc_info=True)
+        result = str(reply.get("values", {}).get("result"))
+        if result != "ACK":
+            raise TydomAlarmCommandError(cmd, result)
 
     async def put_ackevents_cdata(self, device_id, endpoint_id=None, alarm_pin=None):
         """Acknowledge alarm events using the command supported by the gateway.
@@ -1581,19 +1581,41 @@ class TydomClient:
         pin = alarm_pin or self._alarm_pin
 
         if pin:
+            # TYDOM2 publishes the command outcome asynchronously with the
+            # reserved transaction id 0, just like arm commands.  Waiting for
+            # a transaction-correlated HTTP reply causes a 30-second timeout.
+            body = json.dumps({"pwd": str(pin)})
+            request = (
+                f"PUT /devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+                "?name=ackEventCmd HTTP/1.1\r\n"
+                f"Content-Length: {len(body)}\r\n"
+                "Content-Type: application/json; charset=UTF-8\r\n"
+                "Transac-Id: 0\r\n\r\n"
+                f"{body}\r\n\r\n"
+            )
+            waiter = self._message_handler.create_alarm_command_waiter(
+                str(device_id), str(endpoint_id), "ackEventCmd"
+            )
             try:
-                await self.get_reply_to_request(
-                    "PUT",
-                    f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
-                    "?name=ackEventCmd",
-                    body={"pwd": str(pin)},
+                await self.send_bytes(self._cmd_prefix + request.encode("ascii"))
+                try:
+                    async with async_timeout.timeout(5):
+                        reply = await waiter
+                except TimeoutError:
+                    # Older gateways may not publish a result.  Do not send
+                    # the /data fallback: its empty 200 is only transport ACK
+                    # and does not prove that the central unit executed it.
+                    LOGGER.debug("No asynchronous result received for ackEventCmd")
+                    return
+            finally:
+                self._message_handler.remove_alarm_command_waiter(
+                    str(device_id), str(endpoint_id), "ackEventCmd", waiter
                 )
-                return
-            except TydomClientApiClientCommunicationError:
-                LOGGER.debug(
-                    "Authenticated TYXAL acknowledgement was rejected; "
-                    "trying the data-channel form"
-                )
+
+            result = str(reply.get("values", {}).get("result"))
+            if result != "ACK":
+                raise TydomAlarmCommandError("ackEventCmd", result)
+            return
 
         await self.put_devices_data(device_id, endpoint_id, "ackEventCmd", "ACK")
 

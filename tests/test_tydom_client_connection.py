@@ -30,6 +30,15 @@ class _WebSocketResponse:
     """Stand-in used only to evaluate runtime annotations."""
 
 
+class _AlarmCommandError(Exception):
+    """Stand-in retaining the command result inspected by the tests."""
+
+    def __init__(self, command: str, result: str) -> None:
+        """Store the simulated command result."""
+        self.command = command
+        self.result = result
+
+
 for package_name in (
     "custom_components",
     "custom_components.deltadore_tydom",
@@ -80,6 +89,10 @@ _module(
     "custom_components.deltadore_tydom.tydom.MessageHandler",
     MessageHandler=MagicMock(),
 )
+_module(
+    "custom_components.deltadore_tydom.tydom.tydom_devices",
+    TydomAlarmCommandError=_AlarmCommandError,
+)
 
 module_name = "custom_components.deltadore_tydom.tydom.tydom_client"
 client_path = (
@@ -99,6 +112,7 @@ TydomClient = client_module.TydomClient
 TydomClientApiClientCommunicationError = (
     client_module.TydomClientApiClientCommunicationError
 )
+TydomAlarmCommandError = client_module.TydomAlarmCommandError
 sanitize_log_message = client_module.sanitize_log_message
 
 for name, original in _original_modules.items():
@@ -171,6 +185,43 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
                 call("20", "10", "123456", "ON", "3", True),
             ],
         )
+
+    async def test_alarm_command_waits_for_acknowledged_result(self) -> None:
+        """Alarm commands must correlate their Transac-Id 0 cdata result."""
+        client = self._client()
+        waiter = asyncio.get_running_loop().create_future()
+        waiter.set_result(
+            {"name": "alarmCmd", "values": {"result": "ACK", "authent": "USER"}}
+        )
+        client._message_handler.create_alarm_command_waiter.return_value = waiter
+        client.send_bytes = AsyncMock()
+
+        await client._put_alarm_cdata("20", "10", "123456", "ON")
+
+        request = client.send_bytes.await_args.args[0].decode("ascii")
+        self.assertIn("PUT /devices/20/endpoints/10/cdata?name=alarmCmd", request)
+        self.assertIn("Transac-Id: 0", request)
+        self.assertIn('{"value": "ON", "pwd": "123456"}', request)
+
+    async def test_denied_zone_alarm_command_raises(self) -> None:
+        """A gateway DENIED result must reach the Home Assistant action."""
+        client = self._client()
+        waiter = asyncio.get_running_loop().create_future()
+        waiter.set_result(
+            {"name": "zoneCmd", "values": {"result": "DENIED", "authent": "USER"}}
+        )
+        client._message_handler.create_alarm_command_waiter.return_value = waiter
+        client.send_bytes = AsyncMock()
+
+        with self.assertRaises(TydomAlarmCommandError) as context:
+            await client._put_alarm_cdata("20", "10", "123456", "ON", "1,3")
+
+        self.assertEqual(context.exception.command, "zoneCmd")
+        self.assertEqual(context.exception.result, "DENIED")
+        request = client.send_bytes.await_args.args[0].decode("ascii")
+        self.assertIn("PUT /devices/20/endpoints/10/cdata?name=zoneCmd", request)
+        self.assertIn("Transac-Id: 0", request)
+        self.assertIn('"zones": [1, 3]', request)
 
     async def test_alarm_inventory_uses_supported_label_command(self) -> None:
         """Inventory must not depend on optional unsupported productInfo data."""
@@ -295,33 +346,35 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
         )
 
     async def test_alarm_acknowledgement_prefers_authenticated_cdata(self) -> None:
-        """A configured code must use the controlled command advertised by TYXAL."""
+        """A configured code uses the asynchronous TYXAL command result."""
         client = self._client()
-        client.get_reply_to_request = AsyncMock(return_value=[])
+        waiter = asyncio.get_running_loop().create_future()
+        waiter.set_result({"name": "ackEventCmd", "values": {"result": "ACK"}})
+        client._message_handler.create_alarm_command_waiter.return_value = waiter
+        client.send_bytes = AsyncMock()
         client.put_devices_data = AsyncMock()
 
         await client.put_ackevents_cdata("20", "10", "123456")
 
-        client.get_reply_to_request.assert_awaited_once_with(
-            "PUT",
-            "/devices/20/endpoints/10/cdata?name=ackEventCmd",
-            body={"pwd": "123456"},
-        )
+        request = client.send_bytes.await_args.args[0].decode("ascii")
+        self.assertIn("PUT /devices/20/endpoints/10/cdata?name=ackEventCmd", request)
+        self.assertIn("Transac-Id: 0", request)
+        self.assertIn('{"pwd": "123456"}', request)
         client.put_devices_data.assert_not_awaited()
 
-    async def test_alarm_acknowledgement_falls_back_to_data_channel(self) -> None:
-        """Firmware rejecting authenticated cdata must retain the proven fallback."""
+    async def test_alarm_acknowledgement_rejects_denied_result(self) -> None:
+        """A negative asynchronous result must reach the service caller."""
         client = self._client()
-        client.get_reply_to_request = AsyncMock(
-            side_effect=TydomClientApiClientCommunicationError("HTTP 500")
+        waiter = asyncio.get_running_loop().create_future()
+        waiter.set_result(
+            {"name": "ackEventCmd", "values": {"result": "DENIED"}}
         )
-        client.put_devices_data = AsyncMock()
+        client._message_handler.create_alarm_command_waiter.return_value = waiter
+        client.send_bytes = AsyncMock()
 
-        await client.put_ackevents_cdata("20", "10", "123456")
+        with self.assertRaises(TydomAlarmCommandError):
+            await client.put_ackevents_cdata("20", "10", "123456")
 
-        client.put_devices_data.assert_awaited_once_with(
-            "20", "10", "ackEventCmd", "ACK"
-        )
 
     async def test_alarm_remote_configuration_lock_uses_official_command(self) -> None:
         """Remote TYXAL configuration must be explicitly locked and unlocked."""
