@@ -1383,9 +1383,12 @@ class TydomAlarm(TydomDevice):
         )
 
     async def acknowledge_events(self, code=None) -> None:
-        """Acknowledge alarm events and refresh the authoritative event list."""
+        """Acknowledge alarm events without blocking on unsupported history."""
         await self._tydom_client.put_ackevents_cdata(self._id, self._endpoint, code)
-        await self.get_events("UNACKED_EVENTS")
+        # The central unit publishes ``unackedEvent`` after a successful
+        # acknowledgement.  Some TYDOM2 gateways never answer the optional
+        # history endpoint; querying it here turned a completed action into a
+        # 60-second Home Assistant failure.
 
     _KEPT_KEYS: ClassVar = {
         "": {"name", "date", "zones", "accessCode", "product"},

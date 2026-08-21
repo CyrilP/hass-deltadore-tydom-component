@@ -1581,19 +1581,41 @@ class TydomClient:
         pin = alarm_pin or self._alarm_pin
 
         if pin:
+            # TYDOM2 publishes the command outcome asynchronously with the
+            # reserved transaction id 0, just like arm commands.  Waiting for
+            # a transaction-correlated HTTP reply causes a 30-second timeout.
+            body = json.dumps({"pwd": str(pin)})
+            request = (
+                f"PUT /devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+                "?name=ackEventCmd HTTP/1.1\r\n"
+                f"Content-Length: {len(body)}\r\n"
+                "Content-Type: application/json; charset=UTF-8\r\n"
+                "Transac-Id: 0\r\n\r\n"
+                f"{body}\r\n\r\n"
+            )
+            waiter = self._message_handler.create_alarm_command_waiter(
+                str(device_id), str(endpoint_id), "ackEventCmd"
+            )
             try:
-                await self.get_reply_to_request(
-                    "PUT",
-                    f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
-                    "?name=ackEventCmd",
-                    body={"pwd": str(pin)},
+                await self.send_bytes(self._cmd_prefix + request.encode("ascii"))
+                try:
+                    async with async_timeout.timeout(5):
+                        reply = await waiter
+                except TimeoutError:
+                    # Older gateways may not publish a result.  Do not send
+                    # the /data fallback: its empty 200 is only transport ACK
+                    # and does not prove that the central unit executed it.
+                    LOGGER.debug("No asynchronous result received for ackEventCmd")
+                    return
+            finally:
+                self._message_handler.remove_alarm_command_waiter(
+                    str(device_id), str(endpoint_id), "ackEventCmd", waiter
                 )
-                return
-            except TydomClientApiClientCommunicationError:
-                LOGGER.debug(
-                    "Authenticated TYXAL acknowledgement was rejected; "
-                    "trying the data-channel form"
-                )
+
+            result = str(reply.get("values", {}).get("result"))
+            if result != "ACK":
+                raise TydomAlarmCommandError("ackEventCmd", result)
+            return
 
         await self.put_devices_data(device_id, endpoint_id, "ackEventCmd", "ACK")
 
