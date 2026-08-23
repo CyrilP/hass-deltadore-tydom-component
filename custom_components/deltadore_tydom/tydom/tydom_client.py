@@ -854,6 +854,7 @@ class TydomClient:
         body: dict | bytes | None = None,
         headers: dict | None = None,
         timeout: float = TIMEOUT_NORMAL_REQUEST,
+        log_timeout: bool = True,
     ) -> list[dict] | None:
         """Send request and wait for its reply with timeout handling.
 
@@ -863,6 +864,7 @@ class TydomClient:
             body: Request body
             headers: Request headers
             timeout: Timeout in seconds (default: 30.0)
+            log_timeout: Log an expected timeout as a warning when true.
 
         Returns:
             List of reply events or None
@@ -900,7 +902,8 @@ class TydomClient:
             async with async_timeout.timeout(timeout):
                 await event.wait()
         except TimeoutError:
-            LOGGER.warning(
+            log_method = LOGGER.warning if log_timeout else LOGGER.debug
+            log_method(
                 "Timeout waiting for reply to %s %s (transaction_id: %s, timeout: %.1fs)",
                 method,
                 safe_url,
@@ -1626,6 +1629,9 @@ class TydomClient:
         event_type: str | None = None,
         indexStart: int = 0,
         nbElement: int = 10,
+        *,
+        timeout: float = TIMEOUT_LONG_REQUEST,
+        log_timeout: bool = True,
     ) -> list[dict] | None:
         """Get historical events."""
         # GET /devices/xxxx/endpoints/xxxx/cdata?name=histo&type=ALL&indexStart=0&nbElem=10
@@ -1637,7 +1643,9 @@ class TydomClient:
         # The box streams the events one message at a time (about 2 seconds
         # apart), so the reply wait needs the long timeout; the default one
         # (10 s) cuts the stream off after a few events.
-        return await self.get_reply_to_request("GET", url, timeout=TIMEOUT_LONG_REQUEST)
+        return await self.get_reply_to_request(
+            "GET", url, timeout=timeout, log_timeout=log_timeout
+        )
 
     @staticmethod
     def _first_cdata_value(messages: list[dict] | None) -> dict | None:

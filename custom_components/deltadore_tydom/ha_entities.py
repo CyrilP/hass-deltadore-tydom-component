@@ -127,6 +127,7 @@ _BINARY_TRUE_VALUES = frozenset({"1", "on", "true", "yes"})
 _BINARY_FALSE_VALUES = frozenset({"0", "off", "false", "no"})
 _PROBLEM_ATTRIBUTE_MARKERS = ("defect", "empty", "intrusion")
 _BINARY_OPEN_STATES = frozenset({"LOCKED", "UNLOCKED"})
+_AUTOMATIC_ALARM_HISTORY_TIMEOUT = 10.0
 
 
 def normalize_binary_state(value: Any, *, allow_numeric: bool = False) -> bool | None:
@@ -6468,6 +6469,7 @@ class HAAlarmPendingEventsSensor(SensorEntity, HAEntity):
         self._attr_unique_id = f"{device.device_id}_pending_alarm_events"
         self._last_unacked_state = bool(getattr(device, "unackedEvent", False))
         self._refresh_task = None
+        self._automatic_history_supported = True
 
     @property
     def native_value(self) -> int | None:
@@ -6532,6 +6534,8 @@ class HAAlarmPendingEventsSensor(SensorEntity, HAEntity):
 
     def _schedule_refresh(self) -> None:
         """Schedule one history request without delaying entity setup."""
+        if not self._automatic_history_supported:
+            return
         if self._refresh_task is None or self._refresh_task.done():
             self._refresh_task = self.hass.async_create_task(
                 self._async_refresh_events(),
@@ -6541,11 +6545,21 @@ class HAAlarmPendingEventsSensor(SensorEntity, HAEntity):
     async def _async_refresh_events(self) -> None:
         """Fetch the bounded list advertised by the TYXAL history endpoint."""
         try:
-            await self._device.get_events("UNACKED_EVENTS")
+            await self._device.get_events(
+                "UNACKED_EVENTS",
+                timeout=_AUTOMATIC_ALARM_HISTORY_TIMEOUT,
+                log_timeout=False,
+            )
         except Exception:
-            LOGGER.exception(
-                "Unable to refresh unacknowledged events for %s",
+            # Some TYDOM2 gateways expose ``unackedEvent`` but never answer
+            # the optional detailed-history request. Probe once per load, then
+            # retain the pushed boolean as the authoritative state.
+            self._automatic_history_supported = False
+            LOGGER.debug(
+                "Detailed unacknowledged-event history is unavailable for %s; "
+                "automatic refresh disabled until the integration is reloaded",
                 self._device.device_id,
+                exc_info=True,
             )
 
 
