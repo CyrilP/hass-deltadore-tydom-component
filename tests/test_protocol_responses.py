@@ -260,6 +260,117 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         self.assertFalse(binary_light.supports_brightness)
         self.assertTrue(dimmable_light.supports_brightness)
 
+    @staticmethod
+    def _profile_alarm(data: dict[str, str]) -> tuple[object, MagicMock]:
+        """Return an alarm with configurable profiles and live zone states."""
+        client = MagicMock()
+        client._zone_home = "3"
+        client._zone_night = "1,3"
+        client._zone_away = "1,2,3"
+        client.put_alarm_cdata = AsyncMock()
+        alarm = TydomAlarm(
+            client, "10_20", "20", "Alarm", "alarm", "10", {}, data
+        )
+        return alarm, client
+
+    async def test_alarm_profile_reduction_disables_only_surplus_zones(self) -> None:
+        """Away to Night must remove zone 2 without a global disarm."""
+        alarm, client = self._profile_alarm(
+            {"zone1State": "ON", "zone2State": "ON", "zone3State": "ON"}
+        )
+
+        await alarm.alarm_arm_night("123456")
+
+        client.put_alarm_cdata.assert_awaited_once_with(
+            "20", "10", "123456", "OFF", "2", False
+        )
+
+    async def test_alarm_profile_additions_precede_removals(self) -> None:
+        """A profile replacement must extend protection before reducing it."""
+        alarm, client = self._profile_alarm(
+            {"zone1State": "ON", "zone2State": "ON", "zone3State": "OFF"}
+        )
+        client._zone_home = "2,3"
+
+        await alarm.alarm_arm_home("123456")
+
+        self.assertEqual(
+            client.put_alarm_cdata.await_args_list,
+            [
+                call("20", "10", "123456", "ON", "3", False),
+                call("20", "10", "123456", "OFF", "1", False),
+            ],
+        )
+
+    async def test_alarm_profile_from_disarmed_enables_target_zones(self) -> None:
+        """Arming from OFF must enable the complete configured profile."""
+        alarm, client = self._profile_alarm(
+            {"zone1State": "OFF", "zone2State": "OFF", "zone3State": "OFF"}
+        )
+
+        await alarm.alarm_arm_home("123456")
+
+        client.put_alarm_cdata.assert_awaited_once_with(
+            "20", "10", "123456", "ON", "3", False
+        )
+
+    async def test_disarmed_mode_ignores_stale_zone_states(self) -> None:
+        """Explicit OFF mode must override zone values left over from arming."""
+        alarm, client = self._profile_alarm(
+            {"alarmMode": "OFF", "zone1State": "ON", "zone3State": "ON"}
+        )
+
+        await alarm.alarm_arm_home("123456")
+
+        client.put_alarm_cdata.assert_awaited_once_with(
+            "20", "10", "123456", "ON", "3", False
+        )
+
+    async def test_empty_alarm_profile_retains_global_arm_command(self) -> None:
+        """An unconfigured zone list must keep the established global command."""
+        alarm, client = self._profile_alarm({"zone1State": "OFF"})
+        client._zone_away = ""
+
+        await alarm.alarm_arm_away("123456")
+
+        client.put_alarm_cdata.assert_awaited_once_with(
+            "20", "10", "123456", "ON", "", False
+        )
+
+    async def test_alarm_profile_uses_updated_integration_configuration(self) -> None:
+        """Profile calculations must use current integration option values."""
+        alarm, client = self._profile_alarm(
+            {"zone1State": "ON", "zone2State": "OFF"}
+        )
+        client._zone_home = "2"
+
+        await alarm.alarm_arm_home("123456")
+
+        self.assertEqual(
+            client.put_alarm_cdata.await_args_list,
+            [
+                call("20", "10", "123456", "ON", "2", False),
+                call("20", "10", "123456", "OFF", "1", False),
+            ],
+        )
+
+    async def test_legacy_alarm_profiles_use_part_commands(self) -> None:
+        """Legacy alarm transitions must retain the part-command dispatcher."""
+        alarm, client = self._profile_alarm(
+            {"part1State": "ON", "part2State": "ON", "part3State": "OFF"}
+        )
+        client._zone_night = "2,3"
+
+        await alarm.alarm_arm_night("123456")
+
+        self.assertEqual(
+            client.put_alarm_cdata.await_args_list,
+            [
+                call("20", "10", "123456", "ON", "3", True),
+                call("20", "10", "123456", "OFF", "1", True),
+            ],
+        )
+
     async def test_alarm_inventory_merges_labels_and_technical_data(self) -> None:
         """Inventory responses should be useful without exposing other labels."""
         client = MagicMock()
