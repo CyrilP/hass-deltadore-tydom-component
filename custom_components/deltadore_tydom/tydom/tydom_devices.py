@@ -1249,6 +1249,7 @@ class TydomAlarm(TydomDevice):
         self._command_metadata = command_metadata or {}
         self._alarm_event_sequence = 0
         self._latest_alarm_actor: str | None = None
+        self._latest_alarm_actor_type: str | None = None
         self._latest_alarm_event_target: str | None = None
 
     def _alarm_command_name(self, zone_id: str | None) -> str:
@@ -1277,23 +1278,26 @@ class TydomAlarm(TydomDevice):
         self._pending_events = []
 
     @staticmethod
-    def _actor_from_alarm_event(event: dict[str, Any]) -> str | None:
-        """Return the named actor carried by a spontaneous alarm event."""
+    def _actor_from_alarm_event(
+        event: dict[str, Any],
+    ) -> tuple[str, str] | None:
+        """Return the named actor and source carried by an alarm event."""
         access_code = event.get("accessCode") or {}
         actor = str(access_code.get("nameCustom") or "").strip()
         if actor:
-            return actor
+            return actor, "access_code"
 
         product = event.get("product") or {}
         actor = str(product.get("nameCustom") or "").strip()
         if actor:
-            return actor
+            return actor, "product"
 
         standard_name = str(product.get("nameStd") or "").strip()
         product_number = product.get("number")
         if standard_name and product_number is not None:
-            return f"{standard_name} {product_number}"
-        return standard_name or str(product.get("typeLong") or "").strip() or None
+            return f"{standard_name} {product_number}", "product"
+        actor = standard_name or str(product.get("typeLong") or "").strip()
+        return (actor, "product") if actor else None
 
     @staticmethod
     def _alarm_event_target(event: dict[str, Any]) -> str | None:
@@ -1316,6 +1320,11 @@ class TydomAlarm(TydomDevice):
         return self._latest_alarm_actor
 
     @property
+    def latest_alarm_actor_type(self) -> str | None:
+        """Return the source type from the newest alarm actor event."""
+        return self._latest_alarm_actor_type
+
+    @property
     def latest_alarm_event_target(self) -> str | None:
         """Return whether the newest actor event armed or disarmed the alarm."""
         return self._latest_alarm_event_target
@@ -1325,9 +1334,9 @@ class TydomAlarm(TydomDevice):
         event = getattr(device, "eventAlarm", None)
         target = self._alarm_event_target(event) if isinstance(event, dict) else None
         if target:
-            actor = self._actor_from_alarm_event(event)
-            if actor:
-                self._latest_alarm_actor = actor
+            actor_details = self._actor_from_alarm_event(event)
+            if actor_details:
+                self._latest_alarm_actor, self._latest_alarm_actor_type = actor_details
                 self._latest_alarm_event_target = target
                 self._alarm_event_sequence += 1
         await super().update_device(device)

@@ -3451,10 +3451,11 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         self._attr_code_format = CodeFormat.NUMBER
         self._attr_code_arm_required = True
         self._attr_changed_by = None
+        self._changed_by_type: str | None = None
         self._registered_sensors = []
         self._last_alarm_state = self.alarm_state
         self._last_alarm_event_sequence = self._device.alarm_event_sequence
-        self._pending_alarm_actor: tuple[str, str] | None = None
+        self._pending_alarm_actor: tuple[str, str, str] | None = None
 
         self._attr_supported_features = (
             self._attr_supported_features
@@ -3485,6 +3486,7 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         event_sequence = self._device.alarm_event_sequence
         has_new_actor = event_sequence != self._last_alarm_event_sequence
         actor = self._device.latest_alarm_actor if has_new_actor else None
+        actor_type = self._device.latest_alarm_actor_type if has_new_actor else None
         actor_target = self._device.latest_alarm_event_target if has_new_actor else None
         self._last_alarm_event_sequence = event_sequence
 
@@ -3494,22 +3496,30 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         )
         if state_changed:
             self._attr_changed_by = None
-            if actor and self._actor_target_matches_state(actor_target, current_state):
+            self._changed_by_type = None
+            if (
+                actor
+                and actor_type
+                and self._actor_target_matches_state(actor_target, current_state)
+            ):
                 self._attr_changed_by = actor
+                self._changed_by_type = actor_type
                 self._pending_alarm_actor = None
             elif self._pending_alarm_actor and self._actor_target_matches_state(
                 self._pending_alarm_actor[0], current_state
             ):
                 self._attr_changed_by = self._pending_alarm_actor[1]
+                self._changed_by_type = self._pending_alarm_actor[2]
                 self._pending_alarm_actor = None
             else:
                 self._pending_alarm_actor = None
-        elif actor and actor_target:
+        elif actor and actor_type and actor_target:
             if self._actor_target_matches_state(actor_target, current_state):
                 self._attr_changed_by = actor
+                self._changed_by_type = actor_type
             else:
                 # TYDOM may publish eventAlarm just before alarmMode changes.
-                self._pending_alarm_actor = (actor_target, actor)
+                self._pending_alarm_actor = (actor_target, actor, actor_type)
 
         self.async_write_ha_state()
 
@@ -3528,6 +3538,13 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
     def changed_by(self) -> str | None:
         """Return the actor resolved for the latest alarm transition."""
         return self._attr_changed_by
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the source type for the actor that changed alarm state."""
+        if self._changed_by_type is None:
+            return {}
+        return {"changed_by_type": self._changed_by_type}
 
     @property
     def alarm_state(self) -> AlarmControlPanelState:
