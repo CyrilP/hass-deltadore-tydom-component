@@ -233,6 +233,127 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
             "20", "10", "123456", "FORCED_ON", "1,3", True
         )
 
+    async def test_spontaneous_alarm_event_is_forwarded_as_device_update(self) -> None:
+        """A pushed eventAlarm must reach the stored alarm device."""
+        handler = MessageHandler(MagicMock(), b"")
+        handler_module.device_name["10_20"] = "Alarm"
+        handler_module.device_type["10_20"] = "alarm"
+
+        devices = await handler.parse_devices_cdata(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [
+                        {
+                            "id": 10,
+                            "error": 0,
+                            "cdata": [
+                                {
+                                    "name": "eventAlarm",
+                                    "parameters": {},
+                                    "values": {
+                                        "event": {
+                                            "name": "marcheTotale",
+                                            "product": {
+                                                "nameCustom": "TL 2000 Sandra",
+                                                "typeLong": "TL 2000",
+                                            },
+                                        }
+                                    },
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            "0",
+        )
+
+        self.assertEqual(len(devices), 1)
+        self.assertEqual(devices[0].eventAlarm["name"], "marcheTotale")
+
+    async def test_alarm_actor_prefers_named_access_code(self) -> None:
+        """A spontaneous named user code must take precedence over product data."""
+        client = MagicMock()
+        stored = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+        incoming = TydomAlarm(
+            client,
+            "10_20",
+            "20",
+            "Alarm",
+            "alarm",
+            "10",
+            {},
+            {
+                "eventAlarm": {
+                    "name": "arret",
+                    "accessCode": {"nameCustom": "Sandra"},
+                    "product": {"nameCustom": "TYDOM application"},
+                }
+            },
+        )
+
+        await stored.update_device(incoming)
+
+        self.assertEqual(stored.latest_alarm_actor, "Sandra")
+        self.assertEqual(stored.latest_alarm_event_target, "disarmed")
+        self.assertEqual(stored.alarm_event_sequence, 1)
+
+    async def test_alarm_actor_uses_named_remote(self) -> None:
+        """A spontaneous named physical remote must populate the alarm actor."""
+        client = MagicMock()
+        stored = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+        incoming = TydomAlarm(
+            client,
+            "10_20",
+            "20",
+            "Alarm",
+            "alarm",
+            "10",
+            {},
+            {
+                "eventAlarm": {
+                    "name": "marcheTotale",
+                    "product": {
+                        "nameCustom": "TL 2000 Sandra",
+                        "typeLong": "TL 2000",
+                    },
+                }
+            },
+        )
+
+        await stored.update_device(incoming)
+
+        self.assertEqual(stored.latest_alarm_actor, "TL 2000 Sandra")
+        self.assertEqual(stored.latest_alarm_event_target, "armed")
+        self.assertEqual(stored.alarm_event_sequence, 1)
+
+    async def test_non_state_alarm_event_does_not_replace_actor(self) -> None:
+        """Intrusion and diagnostic events must not become changed_by actors."""
+        client = MagicMock()
+        stored = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+        incoming = TydomAlarm(
+            client,
+            "10_20",
+            "20",
+            "Alarm",
+            "alarm",
+            "10",
+            {},
+            {
+                "eventAlarm": {
+                    "name": "intrusion",
+                    "product": {"nameCustom": "Living room detector"},
+                }
+            },
+        )
+
+        await stored.update_device(incoming)
+
+        self.assertIsNone(stored.latest_alarm_actor)
+        self.assertIsNone(stored.latest_alarm_event_target)
+        self.assertEqual(stored.alarm_event_sequence, 0)
+
     def test_light_brightness_requires_intermediate_levels(self) -> None:
         """Binary level metadata must not advertise variable brightness."""
         client = MagicMock()
