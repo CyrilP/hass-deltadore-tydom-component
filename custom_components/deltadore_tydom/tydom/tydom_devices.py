@@ -1247,6 +1247,9 @@ class TydomAlarm(TydomDevice):
         super().__init__(*args, **kwargs)
         self._pending_events: list[dict[str, Any]] | None = None
         self._command_metadata = command_metadata or {}
+        self._alarm_event_sequence = 0
+        self._latest_alarm_actor: str | None = None
+        self._latest_alarm_event_target: str | None = None
 
     def _alarm_command_name(self, zone_id: str | None) -> str:
         """Return the command used by this alarm and zone selection."""
@@ -1272,6 +1275,62 @@ class TydomAlarm(TydomDevice):
     def clear_pending_events(self) -> None:
         """Clear the local event cache after acknowledgement or a clear state."""
         self._pending_events = []
+
+    @staticmethod
+    def _actor_from_alarm_event(event: dict[str, Any]) -> str | None:
+        """Return the named actor carried by a spontaneous alarm event."""
+        access_code = event.get("accessCode") or {}
+        actor = str(access_code.get("nameCustom") or "").strip()
+        if actor:
+            return actor
+
+        product = event.get("product") or {}
+        actor = str(product.get("nameCustom") or "").strip()
+        if actor:
+            return actor
+
+        standard_name = str(product.get("nameStd") or "").strip()
+        product_number = product.get("number")
+        if standard_name and product_number is not None:
+            return f"{standard_name} {product_number}"
+        return standard_name or str(product.get("typeLong") or "").strip() or None
+
+    @staticmethod
+    def _alarm_event_target(event: dict[str, Any]) -> str | None:
+        """Return the state family reached by a completed alarm event."""
+        name = str(event.get("name") or "").strip().casefold()
+        if name == "arret":
+            return "disarmed"
+        if name.startswith("marche"):
+            return "armed"
+        return None
+
+    @property
+    def alarm_event_sequence(self) -> int:
+        """Return a sequence incremented for each named arm/disarm event."""
+        return self._alarm_event_sequence
+
+    @property
+    def latest_alarm_actor(self) -> str | None:
+        """Return the actor from the newest spontaneous arm/disarm event."""
+        return self._latest_alarm_actor
+
+    @property
+    def latest_alarm_event_target(self) -> str | None:
+        """Return whether the newest actor event armed or disarmed the alarm."""
+        return self._latest_alarm_event_target
+
+    async def update_device(self, device) -> None:
+        """Capture spontaneous alarm actors before publishing the update."""
+        event = getattr(device, "eventAlarm", None)
+        target = self._alarm_event_target(event) if isinstance(event, dict) else None
+        if target:
+            actor = self._actor_from_alarm_event(event)
+            if actor:
+                self._latest_alarm_actor = actor
+                self._latest_alarm_event_target = target
+                self._alarm_event_sequence += 1
+        await super().update_device(device)
 
     def is_legacy_alarm(self) -> bool:
         """Check if alarm is legacy."""

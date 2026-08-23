@@ -1657,6 +1657,12 @@ class MessageHandler:
                                 self._resolve_alarm_command_waiter(
                                     device_id, endpoint_id, elem
                                 )
+                                values = elem.get("values") or {}
+                                event = values.get("event")
+                                if elem.get("name") == "eventAlarm" and isinstance(
+                                    event, dict
+                                ):
+                                    data["eventAlarm"] = event
 
                             if type_of_id == "conso":
                                 data.update(_parse_energy_cdata_element(elem))
@@ -1742,7 +1748,7 @@ class MessageHandler:
                                     type_of_id,
                                 )
 
-                        if type_of_id == "conso" and data:
+                        if type_of_id in {"alarm", "conso"} and data:
                             device = await MessageHandler.get_device(
                                 self.tydom_client,
                                 type_of_id,

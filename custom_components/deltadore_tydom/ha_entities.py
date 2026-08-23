@@ -3434,6 +3434,13 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         "outTemperature": SensorStateClass.MEASUREMENT,
     }
 
+    _ACTOR_HISTORY_STATES = {
+        AlarmControlPanelState.DISARMED,
+        AlarmControlPanelState.ARMED_AWAY,
+        AlarmControlPanelState.ARMED_HOME,
+        AlarmControlPanelState.ARMED_NIGHT,
+    }
+
     def __init__(self, device: TydomAlarm, hass) -> None:
         """Initialize the sensor."""
         self.hass = hass
@@ -3443,7 +3450,11 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         self._attr_name = None  # primary entity inherits device name
         self._attr_code_format = CodeFormat.NUMBER
         self._attr_code_arm_required = True
+        self._attr_changed_by = None
         self._registered_sensors = []
+        self._last_alarm_state = self.alarm_state
+        self._last_alarm_event_sequence = self._device.alarm_event_sequence
+        self._pending_alarm_actor: tuple[str, str] | None = None
 
         self._attr_supported_features = (
             self._attr_supported_features
@@ -3456,15 +3467,67 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
         await super().async_added_to_hass()
-        self._device.register_callback(self.async_write_ha_state)
+        self._device.register_callback(self._handle_alarm_update)
         self._device._ha_device = self
 
     async def async_will_remove_from_hass(self) -> None:
         """Remove the push callback registered in async_added_to_hass."""
-        self._device.remove_callback(self.async_write_ha_state)
+        self._device.remove_callback(self._handle_alarm_update)
         if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
             self._device._ha_device = None
         await super().async_will_remove_from_hass()
+
+    def _handle_alarm_update(self) -> None:
+        """Publish alarm pushes and associate spontaneous actors with transitions."""
+        current_state = self.alarm_state
+        previous_state = self._last_alarm_state
+        self._last_alarm_state = current_state
+        event_sequence = self._device.alarm_event_sequence
+        has_new_actor = event_sequence != self._last_alarm_event_sequence
+        actor = self._device.latest_alarm_actor if has_new_actor else None
+        actor_target = self._device.latest_alarm_event_target if has_new_actor else None
+        self._last_alarm_event_sequence = event_sequence
+
+        state_changed = (
+            current_state != previous_state
+            and current_state in self._ACTOR_HISTORY_STATES
+        )
+        if state_changed:
+            self._attr_changed_by = None
+            if actor and self._actor_target_matches_state(actor_target, current_state):
+                self._attr_changed_by = actor
+                self._pending_alarm_actor = None
+            elif self._pending_alarm_actor and self._actor_target_matches_state(
+                self._pending_alarm_actor[0], current_state
+            ):
+                self._attr_changed_by = self._pending_alarm_actor[1]
+                self._pending_alarm_actor = None
+            else:
+                self._pending_alarm_actor = None
+        elif actor and actor_target:
+            if self._actor_target_matches_state(actor_target, current_state):
+                self._attr_changed_by = actor
+            else:
+                # TYDOM may publish eventAlarm just before alarmMode changes.
+                self._pending_alarm_actor = (actor_target, actor)
+
+        self.async_write_ha_state()
+
+    @staticmethod
+    def _actor_target_matches_state(target, state) -> bool:
+        """Return whether an actor event describes the current HA alarm state."""
+        if target == "disarmed":
+            return state == AlarmControlPanelState.DISARMED
+        return target == "armed" and state in {
+            AlarmControlPanelState.ARMED_AWAY,
+            AlarmControlPanelState.ARMED_HOME,
+            AlarmControlPanelState.ARMED_NIGHT,
+        }
+
+    @property
+    def changed_by(self) -> str | None:
+        """Return the actor resolved for the latest alarm transition."""
+        return self._attr_changed_by
 
     @property
     def alarm_state(self) -> AlarmControlPanelState:
