@@ -1292,9 +1292,10 @@ class TydomAlarm(TydomDevice):
             return False
 
         command = self._metadata.get("alarmCmd")
-        if not isinstance(command, dict) or "w" not in str(
-            command.get("permission", "")
-        ).lower():
+        if (
+            not isinstance(command, dict)
+            or "w" not in str(command.get("permission", "")).lower()
+        ):
             return False
 
         values = command.get("enum_values")
