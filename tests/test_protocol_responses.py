@@ -371,6 +371,89 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
             ],
         )
 
+    @staticmethod
+    def _legacy_alarm() -> tuple[TydomAlarm, MagicMock]:
+        """Return a CSX-style alarm advertising regular global commands."""
+        client = MagicMock()
+        client.put_devices_data = AsyncMock()
+        client.put_alarm_cdata = AsyncMock()
+        client._zone_away = ""
+        client._zone_home = "2"
+        client._zone_night = "1"
+        alarm = TydomAlarm(
+            client,
+            "10_20",
+            "20",
+            "Legacy alarm",
+            "alarm",
+            "10",
+            {
+                "alarmCmd": {
+                    "permission": "w",
+                    "enum_values": ["OFF", "ON", "FORCED_ON"],
+                },
+                "part1State": {"permission": "r"},
+            },
+            {"alarmMode": "OFF", "part1State": "OFF"},
+        )
+        return alarm, client
+
+    async def test_legacy_global_disarm_uses_regular_data(self) -> None:
+        """CSX-style alarmCmd must use its advertised regular data endpoint."""
+        alarm, client = self._legacy_alarm()
+
+        await alarm.alarm_disarm("unused-code")
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "alarmCmd", "OFF"
+        )
+        client.put_alarm_cdata.assert_not_awaited()
+
+    async def test_legacy_global_arm_uses_regular_data(self) -> None:
+        """A global legacy arm must not be sent to unsupported cdata."""
+        alarm, client = self._legacy_alarm()
+
+        await alarm.alarm_arm_away("unused-code")
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "alarmCmd", "ON"
+        )
+        client.put_alarm_cdata.assert_not_awaited()
+
+    async def test_legacy_partial_arm_retains_cdata_part_command(self) -> None:
+        """Configured CSX parts must retain the existing cdata dispatcher."""
+        alarm, client = self._legacy_alarm()
+
+        await alarm.alarm_arm_home("unused-code")
+
+        client.put_alarm_cdata.assert_awaited_once_with(
+            "20", "10", "unused-code", "ON", "2", True
+        )
+        client.put_devices_data.assert_not_awaited()
+
+    async def test_modern_alarm_retains_cdata_global_command(self) -> None:
+        """Modern zone-based alarms must retain authenticated cdata writes."""
+        client = MagicMock()
+        client.put_devices_data = AsyncMock()
+        client.put_alarm_cdata = AsyncMock()
+        alarm = TydomAlarm(
+            client,
+            "10_20",
+            "20",
+            "Modern alarm",
+            "alarm",
+            "10",
+            {"alarmCmd": {"permission": "w", "enum_values": ["OFF", "ON"]}},
+            {"alarmMode": "ON", "zone1State": "ON"},
+        )
+
+        await alarm.alarm_disarm("123456")
+
+        client.put_alarm_cdata.assert_awaited_once_with(
+            "20", "10", "123456", "OFF", None, False
+        )
+        client.put_devices_data.assert_not_awaited()
+
     async def test_alarm_inventory_merges_labels_and_technical_data(self) -> None:
         """Inventory responses should be useful without exposing other labels."""
         client = MagicMock()

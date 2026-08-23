@@ -1286,6 +1286,46 @@ class TydomAlarm(TydomDevice):
             return set()
         return {int(zone.strip()) for zone in str(value).split(",") if zone.strip()}
 
+    def _supports_regular_alarm_command(self, value: str) -> bool:
+        """Return whether a legacy alarm advertises a regular alarmCmd write."""
+        if not self.is_legacy_alarm() or not isinstance(self._metadata, dict):
+            return False
+
+        command = self._metadata.get("alarmCmd")
+        if (
+            not isinstance(command, dict)
+            or "w" not in str(command.get("permission", "")).lower()
+        ):
+            return False
+
+        values = command.get("enum_values")
+        return not isinstance(values, list) or value in values
+
+    async def _send_alarm_mode(
+        self,
+        value: str,
+        code: str | None,
+        zones: str | None,
+    ) -> None:
+        """Select regular data or cdata from the alarm's advertised capability."""
+        if zones in (None, "") and self._supports_regular_alarm_command(value):
+            await self._tydom_client.put_devices_data(
+                self._id,
+                self._endpoint,
+                "alarmCmd",
+                value,
+            )
+            return
+
+        await self._tydom_client.put_alarm_cdata(
+            self._id,
+            self._endpoint,
+            code,
+            value,
+            zones,
+            self.is_legacy_alarm(),
+        )
+
     def _active_alarm_zones(self) -> set[int]:
         """Return the zones currently reported as armed by the central unit."""
         if getattr(self, "alarmMode", None) == "OFF":
@@ -1306,9 +1346,7 @@ class TydomAlarm(TydomDevice):
         # means "all zones" on installations which do not configure explicit
         # Away/Home/Night zone lists, rather than an empty desired zone set.
         if not target_zones:
-            await self._tydom_client.put_alarm_cdata(
-                self._id, self._endpoint, code, "ON", configured_zones, legacy
-            )
+            await self._send_alarm_mode("ON", code, configured_zones)
             return
 
         active_zones = self._active_alarm_zones()
@@ -1354,9 +1392,7 @@ class TydomAlarm(TydomDevice):
 
     async def alarm_disarm(self, code) -> None:
         """Disarm alarm."""
-        await self._tydom_client.put_alarm_cdata(
-            self._id, self._endpoint, code, "OFF", None, self.is_legacy_alarm()
-        )
+        await self._send_alarm_mode("OFF", code, None)
         # self._tydom_client.add_poll_device_url_1s(f"/devices/{self._id}/endpoints/{self._endpoint}/cdata")
 
     async def alarm_arm_away(self, code=None) -> None:
@@ -1402,9 +1438,7 @@ class TydomAlarm(TydomDevice):
 
         This will trigger a SOS alarm for 90 seconds.
         """
-        await self._tydom_client.put_alarm_cdata(
-            self._id, self._endpoint, code, "PANIC", None, self.is_legacy_alarm()
-        )
+        await self._send_alarm_mode("PANIC", code, None)
 
     async def acknowledge_events(self, code=None) -> None:
         """Acknowledge alarm events without blocking on unsupported history."""
