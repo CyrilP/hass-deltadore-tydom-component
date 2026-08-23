@@ -1383,9 +1383,12 @@ class TydomAlarm(TydomDevice):
         )
 
     async def acknowledge_events(self, code=None) -> None:
-        """Acknowledge alarm events and refresh the authoritative event list."""
+        """Acknowledge alarm events without blocking on unsupported history."""
         await self._tydom_client.put_ackevents_cdata(self._id, self._endpoint, code)
-        await self.get_events("UNACKED_EVENTS")
+        # The central unit publishes ``unackedEvent`` after a successful
+        # acknowledgement.  Some TYDOM2 gateways never answer the optional
+        # history endpoint; querying it here turned a completed action into a
+        # 60-second Home Assistant failure.
 
     _KEPT_KEYS: ClassVar = {
         "": {"name", "date", "zones", "accessCode", "product"},
@@ -1409,13 +1412,22 @@ class TydomAlarm(TydomDevice):
         else:
             return event
 
-    async def get_events(self, event_type: str | None) -> list[dict[str, Any]]:
+    async def get_events(
+        self,
+        event_type: str | None,
+        *,
+        timeout: float | None = None,
+        log_timeout: bool = True,
+    ) -> list[dict[str, Any]]:
         """Get alarm events."""
         if self._endpoint is None:
             LOGGER.error("Cannot get events: endpoint is None for device %s", self._id)
             return []
+        kwargs: dict[str, Any] = {"log_timeout": log_timeout}
+        if timeout is not None:
+            kwargs["timeout"] = timeout
         events = await self._tydom_client.get_historic_cdata(
-            self._id, self._endpoint, event_type
+            self._id, self._endpoint, event_type, **kwargs
         )
 
         LOGGER.debug("Raw messages: %s", events)

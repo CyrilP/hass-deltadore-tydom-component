@@ -854,6 +854,7 @@ class TydomClient:
         body: dict | bytes | None = None,
         headers: dict | None = None,
         timeout: float = TIMEOUT_NORMAL_REQUEST,
+        log_timeout: bool = True,
     ) -> list[dict] | None:
         """Send request and wait for its reply with timeout handling.
 
@@ -863,6 +864,7 @@ class TydomClient:
             body: Request body
             headers: Request headers
             timeout: Timeout in seconds (default: 30.0)
+            log_timeout: Log an expected timeout as a warning when true.
 
         Returns:
             List of reply events or None
@@ -900,7 +902,8 @@ class TydomClient:
             async with async_timeout.timeout(timeout):
                 await event.wait()
         except TimeoutError:
-            LOGGER.warning(
+            log_method = LOGGER.warning if log_timeout else LOGGER.debug
+            log_method(
                 "Timeout waiting for reply to %s %s (transaction_id: %s, timeout: %.1fs)",
                 method,
                 safe_url,
@@ -1581,19 +1584,41 @@ class TydomClient:
         pin = alarm_pin or self._alarm_pin
 
         if pin:
+            # TYDOM2 publishes the command outcome asynchronously with the
+            # reserved transaction id 0, just like arm commands.  Waiting for
+            # a transaction-correlated HTTP reply causes a 30-second timeout.
+            body = json.dumps({"pwd": str(pin)})
+            request = (
+                f"PUT /devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
+                "?name=ackEventCmd HTTP/1.1\r\n"
+                f"Content-Length: {len(body)}\r\n"
+                "Content-Type: application/json; charset=UTF-8\r\n"
+                "Transac-Id: 0\r\n\r\n"
+                f"{body}\r\n\r\n"
+            )
+            waiter = self._message_handler.create_alarm_command_waiter(
+                str(device_id), str(endpoint_id), "ackEventCmd"
+            )
             try:
-                await self.get_reply_to_request(
-                    "PUT",
-                    f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata"
-                    "?name=ackEventCmd",
-                    body={"pwd": str(pin)},
+                await self.send_bytes(self._cmd_prefix + request.encode("ascii"))
+                try:
+                    async with async_timeout.timeout(5):
+                        reply = await waiter
+                except TimeoutError:
+                    # Older gateways may not publish a result.  Do not send
+                    # the /data fallback: its empty 200 is only transport ACK
+                    # and does not prove that the central unit executed it.
+                    LOGGER.debug("No asynchronous result received for ackEventCmd")
+                    return
+            finally:
+                self._message_handler.remove_alarm_command_waiter(
+                    str(device_id), str(endpoint_id), "ackEventCmd", waiter
                 )
-                return
-            except TydomClientApiClientCommunicationError:
-                LOGGER.debug(
-                    "Authenticated TYXAL acknowledgement was rejected; "
-                    "trying the data-channel form"
-                )
+
+            result = str(reply.get("values", {}).get("result"))
+            if result != "ACK":
+                raise TydomAlarmCommandError("ackEventCmd", result)
+            return
 
         await self.put_devices_data(device_id, endpoint_id, "ackEventCmd", "ACK")
 
@@ -1604,6 +1629,9 @@ class TydomClient:
         event_type: str | None = None,
         indexStart: int = 0,
         nbElement: int = 10,
+        *,
+        timeout: float = TIMEOUT_LONG_REQUEST,
+        log_timeout: bool = True,
     ) -> list[dict] | None:
         """Get historical events."""
         # GET /devices/xxxx/endpoints/xxxx/cdata?name=histo&type=ALL&indexStart=0&nbElem=10
@@ -1615,7 +1643,9 @@ class TydomClient:
         # The box streams the events one message at a time (about 2 seconds
         # apart), so the reply wait needs the long timeout; the default one
         # (10 s) cuts the stream off after a few events.
-        return await self.get_reply_to_request("GET", url, timeout=TIMEOUT_LONG_REQUEST)
+        return await self.get_reply_to_request(
+            "GET", url, timeout=timeout, log_timeout=log_timeout
+        )
 
     @staticmethod
     def _first_cdata_value(messages: list[dict] | None) -> dict | None:
