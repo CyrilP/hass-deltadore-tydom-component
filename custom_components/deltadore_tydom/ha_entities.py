@@ -2782,8 +2782,6 @@ class HaClimate(ClimateEntity, HAEntity):
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new target preset mode."""
-        if preset_mode == PRESET_NONE:
-            return
         if getattr(self, "_is_filpilote", False):
             # Drive the pilot-wire order register directly (as the app does).
             if preset_mode == PRESET_COMFORT:
@@ -2792,6 +2790,19 @@ class HaClimate(ClimateEntity, HAEntity):
                 await self._device.set_thermic_level("ECO")
             elif preset_mode == PRESET_AWAY:
                 await self._device.set_thermic_level("ANTI_FROST")
+            elif preset_mode == PRESET_NONE and (
+                self._device._metadata is not None
+                and "thermicLevel" in self._device._metadata
+                and "AUTO"
+                in self._device._metadata["thermicLevel"].get("enum_values", [])
+            ):
+                # Only send AUTO if this device's thermicLevel register
+                # actually advertises it (e.g. Calybox 230). Zones whose
+                # enum doesn't include AUTO (e.g. some RF 6600 units) are
+                # left untouched, matching the previous no-op behaviour.
+                await self._device.set_thermic_level("AUTO")
+            return
+        if preset_mode == PRESET_NONE:
             return
         # Try to set comfortMode first
         if (
