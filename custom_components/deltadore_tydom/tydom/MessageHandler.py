@@ -1325,6 +1325,12 @@ class MessageHandler:
                     # Check for errors or missing data, but still try to create device
                     has_error = endpoint.get("error", 0) != 0
                     has_data = "data" in endpoint and len(endpoint.get("data", [])) > 0
+                    valid_data = [
+                        elem
+                        for elem in endpoint.get("data", [])
+                        if elem.get("validity") == "upToDate"
+                    ]
+                    has_valid_data = bool(valid_data)
 
                     # Some Zigbee gateways advertise a second, non-functional
                     # endpoint for each physical cover.  A successful endpoint
@@ -1355,7 +1361,7 @@ class MessageHandler:
                             endpoint.get("error"),
                         )
 
-                    if not has_data:
+                    if not has_valid_data:
                         LOGGER.warning(
                             "Endpoint sans données valides (création avec état par défaut) : "
                             "device_id=%s, endpoint_id=%s, name=%s",
@@ -1402,15 +1408,13 @@ class MessageHandler:
                                 reference_uid
                             ] = reference
 
-                        # Only process data if available and valid
-                        if has_data and not has_error:
-                            for elem in endpoint["data"]:
+                        # Endpoint-level errors can accompany usable values. Trust
+                        # each field's validity instead of discarding the full payload.
+                        if has_valid_data:
+                            for elem in valid_data:
                                 element_name = elem["name"]
                                 element_value = elem["value"]
-                                element_validity = elem["validity"]
-
-                                if element_validity == "upToDate":
-                                    data[element_name] = element_value
+                                data[element_name] = element_value
 
                         if (
                             area_id is not None
@@ -1435,7 +1439,7 @@ class MessageHandler:
                                 "device_id": device_id,
                                 "endpoint_id": endpoint_id,
                             }
-                            if has_data and not has_error:
+                            if has_valid_data:
                                 LOGGER.info(
                                     "Device update (id=%s, endpoint=%s, name=%s, type=%s)",
                                     device_id,
