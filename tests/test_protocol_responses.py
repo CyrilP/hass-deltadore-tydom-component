@@ -296,6 +296,7 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         await stored.update_device(incoming)
 
         self.assertEqual(stored.latest_alarm_actor, "Sandra")
+        self.assertEqual(stored.latest_alarm_actor_type, "access_code")
         self.assertEqual(stored.latest_alarm_event_target, "disarmed")
         self.assertEqual(stored.alarm_event_sequence, 1)
 
@@ -325,6 +326,7 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         await stored.update_device(incoming)
 
         self.assertEqual(stored.latest_alarm_actor, "TL 2000 Sandra")
+        self.assertEqual(stored.latest_alarm_actor_type, "product")
         self.assertEqual(stored.latest_alarm_event_target, "armed")
         self.assertEqual(stored.alarm_event_sequence, 1)
 
@@ -351,6 +353,7 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         await stored.update_device(incoming)
 
         self.assertIsNone(stored.latest_alarm_actor)
+        self.assertIsNone(stored.latest_alarm_actor_type)
         self.assertIsNone(stored.latest_alarm_event_target)
         self.assertEqual(stored.alarm_event_sequence, 0)
 
