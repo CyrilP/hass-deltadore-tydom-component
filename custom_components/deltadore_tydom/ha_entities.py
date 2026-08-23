@@ -30,10 +30,16 @@ from homeassistant.const import (
     UnitOfEnergy,
     UnitOfPower,
     UnitOfElectricCurrent,
-    UnitOfIrradiance,
     EntityCategory,
     PERCENTAGE,
 )
+try:
+    from homeassistant.const import UnitOfIrradiance
+except ImportError:  # Compatibility with older Home Assistant test stubs.
+    class UnitOfIrradiance:
+        """Fallback irradiance unit container for old HA environments."""
+
+        WATTS_PER_SQUARE_METER = "W/m2"
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
