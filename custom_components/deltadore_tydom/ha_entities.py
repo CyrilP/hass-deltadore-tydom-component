@@ -109,6 +109,7 @@ from .tydom.tydom_devices import (
     TydomMoment,
     TydomRemoteControl,
     TydomInterrupter,
+    TydomAlarmCommandError,
     get_twc_scene_action,
 )
 
@@ -3529,23 +3530,48 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
 
     async def async_alarm_disarm(self, code=None) -> None:
         """Send disarm command."""
-        await self._device.alarm_disarm(code)
+        await self._run_alarm_command(self._device.alarm_disarm(code), "disarming")
 
     async def async_alarm_arm_away(self, code=None) -> None:
         """Send arm away command."""
-        await self._device.alarm_arm_away(code)
+        await self._run_alarm_command(self._device.alarm_arm_away(code), "arming")
 
     async def async_alarm_arm_home(self, code=None) -> None:
         """Send arm home command."""
-        await self._device.alarm_arm_home(code)
+        await self._run_alarm_command(self._device.alarm_arm_home(code), "arming")
 
     async def async_alarm_arm_night(self, code=None) -> None:
         """Send arm night command."""
-        await self._device.alarm_arm_night(code)
+        await self._run_alarm_command(self._device.alarm_arm_night(code), "arming")
 
     async def async_alarm_trigger(self, code=None) -> None:
         """Send alarm trigger command."""
-        await self._device.alarm_trigger(code)
+        await self._run_alarm_command(self._device.alarm_trigger(code), "triggering")
+
+    async def _run_alarm_command(self, command, operation: str) -> None:
+        """Run an alarm command and expose a negative gateway result in HA."""
+        try:
+            await command
+        except TydomAlarmCommandError as err:
+            if err.result == "DENIED":
+                raise HomeAssistantError(
+                    f"The alarm system refused {operation}. Check the reported "
+                    "defects before trying again."
+                ) from err
+            raise HomeAssistantError(
+                f"The alarm system rejected {operation} ({err.result})."
+            ) from err
+
+    async def async_force_arm(self, code: str, mode: str) -> None:
+        """Force arming only after an explicit Home Assistant action."""
+        try:
+            await self._device.force_arm(mode, code)
+        except ValueError as err:
+            raise HomeAssistantError(str(err)) from err
+        except TydomAlarmCommandError as err:
+            raise HomeAssistantError(
+                f"The alarm system rejected forced arming ({err.result})."
+            ) from err
 
     async def async_acknowledge_events(self, code=None) -> None:
         """Acknowledge alarm events."""
