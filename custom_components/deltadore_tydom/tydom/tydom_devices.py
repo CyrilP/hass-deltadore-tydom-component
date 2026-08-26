@@ -1595,7 +1595,9 @@ class TydomAlarm(TydomDevice):
         the alarm central remains the authority for an arming refusal.
         """
         if self._endpoint is None:
-            LOGGER.error("Cannot get open issues: endpoint is None for device %s", self._id)
+            LOGGER.error(
+                "Cannot get open issues: endpoint is None for device %s", self._id
+            )
             return []
         # CS8000 advertises a maximum of 50 history records.  Requesting more
         # can yield an ``error detected`` cdata reply on some firmware.
