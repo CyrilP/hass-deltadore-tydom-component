@@ -63,9 +63,10 @@ Platform | Description
 - Keep Tywell wall-controller sensors, area-backed climate control and
   companion weather or shutter controls attached to the same physical device
   across the different endpoint layouts advertised by TYDOM.
-- Expose alarm modes and zones, event history and acknowledgement, supported
-  remote maintenance operations, and native automation events from compatible
-  wall switches and remote controls.
+- Expose alarm modes and zones, event history and acknowledgement, the actor
+  behind the latest alarm state change, supported remote maintenance and
+  forced-arming operations, and native automation events from compatible wall
+  switches and remote controls.
 
 ### Tested hardware
 
@@ -78,7 +79,7 @@ Category | Confirmed hardware or configuration | Home Assistant support
 -- | -- | --
 Alarm and safety | TYXAL+, CS8000, CSX40 and DFR TYXAL+ smoke detectors | Alarm control, zone modes, diagnostics, smoke state, event history, acknowledgement and supported remote product/zone management.
 Climate and heating | Tybox 5101 with Typass ATL, Tywell Control, Tywell 2050, TYXIA 1137, Calybox and RF 6600 FP | Area-backed climate control, temperatures, heating and cooling setpoints, operating modes, humidity, battery and capability-driven heating or pilot-wire commands where advertised.
-Energy monitoring | TYWATT 1000, TYWATT 2000 and TYWATT 5400 with EMIC | Power, current and energy measurements, including heating and domestic hot water channels where advertised.
+Energy monitoring | TYWATT 1000, TYWATT 2000 and TYWATT 5400 with EMIC | Power, current and energy measurements, including heating, domestic hot water and cooling channels where advertised.
 Gates and garage doors | TYXIA 4620 dry-contact receivers | Stateless toggle buttons matching the receiver's open/stop/close pulse sequence, without claiming unavailable position feedback.
 Lighting and switching | TYXIA 4910 fixed-output and TYXIA 4940 dimming receivers configured under TYDOM's `Others` usage, TYXIA 6610, Delta Dore Easy Plug and compatible X3D equipment | Lights, brightness, switches and plugs according to the capabilities reported by the endpoint.
 Openings and covers | TYMOOV and Well'com roller shutters, BSO installations, Profalux `MOT-C1Z06F` and `MOT-C1Z10F` Zigbee shutters, TYXIA 5731 awnings, K-Line DVI openings and K-Line POD doors | Native covers with up, down, stop and position control where advertised; awning commands and positions are translated into Home Assistant open/close semantics; opening/contact state is exposed when feedback is supplied.
@@ -261,6 +262,8 @@ useful in Home Assistant:
 - `deltadore_tydom.get_events` returns alarm history and can filter it to alarm,
   activation/deactivation or unacknowledged events;
 - `deltadore_tydom.acknowledge_events` acknowledges pending alarm events;
+- `deltadore_tydom.force_arm` explicitly arms a configured Away, Home or Night
+  mode when normal arming was refused because of defects;
 - `deltadore_tydom.get_alarm_products` lists configured products and zones;
 - `deltadore_tydom.enter_alarm_maintenance` unlocks remote configuration and
   puts a disarmed CS8000 into maintenance mode;
@@ -281,15 +284,24 @@ finished. The installer code is used only for the request and is redacted from
 logs. Product deletion, access codes, telephone settings and siren
 configuration are not exposed.
 
+`force_arm` does not replace the normal Home Assistant alarm controls. Use it
+only after checking the reported defects and deciding that forced arming is
+appropriate.
+
 The TYXAL alarm device also provides an **Acknowledge events** button for
 convenient dashboard use without requiring a service call or automation.
 
+When TYDOM reports the actor for an alarm transition, the alarm entity exposes
+`changed_by` with the user-code or product name and `changed_by_type` with
+either `access_code` or `product`. These attributes describe the latest
+reported arm or disarm transition.
+
 ## Known limitations
 
-- TYXIA 4620 gate and garage receivers provide an impulse command but no
-  position or direction feedback. Home Assistant therefore exposes a stateless
-  toggle button and cannot determine whether the next pulse will open, stop or
-  close the motor.
+- Dry-contact TYXIA 4620 gate and garage configurations provide an impulse
+  command but no position or direction feedback. Home Assistant therefore
+  exposes a stateless toggle button and cannot determine whether the next pulse
+  will open, stop or close the motor.
 - The native Tywell shutter cover replays the `TWC_UP`, `TWC_DOWN` and
   `TWC_STOP` scenarios created by TYDOM. Its shutter membership must therefore
   be configured in the official application, and aggregate position is only
