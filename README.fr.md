@@ -67,7 +67,8 @@ Plateforme | Description
   commandes météo ou volets associées sur le même appareil physique, quelle
   que soit la disposition des points de terminaison annoncée par TYDOM.
 - Expose les modes et zones d'alarme, l'historique et l'acquittement des
-  événements, les opérations de maintenance à distance confirmées et les
+  événements, l'auteur de la dernière transition d'état, les opérations de
+  maintenance à distance et d'armement forcé confirmées, ainsi que les
   événements d'automatisation natifs des interrupteurs et télécommandes
   compatibles.
 
@@ -83,7 +84,7 @@ Catégorie | Matériel ou configuration confirmés | Prise en charge dans Home A
 -- | -- | --
 Alarme et sécurité | TYXAL+, CS8000, CSX40 et détecteurs de fumée DFR TYXAL+ | Pilotage de l'alarme, modes par zone, diagnostics, état de détection de fumée, historique et acquittement des événements, ainsi que la gestion à distance des produits et zones compatibles.
 Chauffage et régulation | Tybox 5101 avec Typass ATL, Tywell Control, Tywell 2050, TYXIA 1137, Calybox et RF 6600 FP | Régulation par zone, températures, consignes de chauffage et de refroidissement, modes de fonctionnement, humidité, batterie et commandes de chauffage ou de fil pilote annoncées par l'appareil.
-Suivi énergétique | TYWATT 1000, TYWATT 2000 et TYWATT 5400 avec EMIC | Mesures de puissance, courant et énergie, y compris les canaux de chauffage et d'eau chaude sanitaire lorsqu'ils sont annoncés.
+Suivi énergétique | TYWATT 1000, TYWATT 2000 et TYWATT 5400 avec EMIC | Mesures de puissance, courant et énergie, y compris les canaux de chauffage, d'eau chaude sanitaire et de refroidissement lorsqu'ils sont annoncés.
 Portails et portes de garage | Récepteurs à contact sec TYXIA 4620 | Boutons impulsionnels reproduisant la séquence ouverture/arrêt/fermeture du récepteur, sans prétendre connaître une position qui n'est pas remontée.
 Éclairage et commutation | Récepteurs TYXIA 4910 à sortie fixe et TYXIA 4940 à variation configurés dans l'usage `Autres` de TYDOM, TYXIA 6610, Delta Dore Easy Plug et équipements X3D compatibles | Éclairages, luminosité, interrupteurs et prises selon les capacités annoncées par le point de terminaison.
 Ouvertures et protections solaires | Volets roulants TYMOOV et Well'com, installations BSO, volets Zigbee Profalux `MOT-C1Z06F` et `MOT-C1Z10F`, bannes TYXIA 5731, ouvrants K-Line DVI et portes K-Line POD | Volets natifs avec montée, descente, arrêt et position lorsqu'ils sont annoncés ; les commandes et positions des bannes sont converties selon la sémantique ouverture/fermeture de Home Assistant ; l'état d'ouverture ou de contact est exposé lorsqu'un retour est fourni.
@@ -282,6 +283,8 @@ TYXAL+ utiles dans Home Assistant :
 - `deltadore_tydom.get_events` renvoie l'historique et permet de le filtrer sur
   les alarmes, les activations/désactivations ou les événements non acquittés ;
 - `deltadore_tydom.acknowledge_events` acquitte les événements en attente ;
+- `deltadore_tydom.force_arm` arme explicitement un mode Absent, Présent ou
+  Nuit configuré lorsqu'un armement normal a été refusé en raison de défauts ;
 - `deltadore_tydom.get_alarm_products` répertorie les produits et zones
   configurés ;
 - `deltadore_tydom.enter_alarm_maintenance` déverrouille la configuration à
@@ -304,16 +307,26 @@ installateur n'est utilisé que pour la requête et est masqué dans les journau
 La suppression de produits, les codes d'accès, les réglages téléphoniques et la
 configuration des sirènes ne sont pas exposés.
 
+`force_arm` ne remplace pas les commandes d'alarme habituelles de Home
+Assistant. Utilisez-le uniquement après avoir vérifié les défauts signalés et
+déterminé qu'un armement forcé est approprié.
+
 L'appareil d'alarme TYXAL fournit également un bouton **Acquitter les
 événements** utilisable directement dans un tableau de bord, sans appel de
 service ni automatisation.
 
+Lorsque TYDOM transmet l'auteur d'une transition d'alarme, l'entité d'alarme
+expose `changed_by`, contenant le nom du code utilisateur ou du produit, ainsi
+que `changed_by_type`, dont la valeur est `access_code` ou `product`. Ces
+attributs décrivent la dernière transition d'armement ou de désarmement reçue.
+
 ## Limites connues
 
-- Les récepteurs de portail et de porte de garage TYXIA 4620 fournissent une
-  commande impulsionnelle, mais aucun retour de position ou de direction. Home
-  Assistant expose donc un bouton sans état et ne peut pas déterminer si
-  l'impulsion suivante ouvrira, arrêtera ou fermera la motorisation.
+- Les configurations de portail et de porte de garage TYXIA 4620 à contact sec
+  fournissent une commande impulsionnelle, mais aucun retour de position ou de
+  direction. Home Assistant expose donc un bouton sans état et ne peut pas
+  déterminer si l'impulsion suivante ouvrira, arrêtera ou fermera la
+  motorisation.
 - Le volet Tywell natif rejoue les scénarios `TWC_UP`, `TWC_DOWN` et
   `TWC_STOP` créés par TYDOM. Les volets concernés doivent donc être configurés
   dans l'application officielle, et la position globale n'est disponible que
