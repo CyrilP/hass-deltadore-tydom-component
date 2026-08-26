@@ -730,6 +730,17 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
                         "defects": ["OPEN"],
                     }
                 },
+                {
+                    "values": {
+                        "product": {
+                            "id": 43,
+                            "nameCustom": "Front door",
+                            "typeShort": "MO",
+                            "typeLong": "Door opening contact",
+                        },
+                        "defects": ["OPEN"],
+                    }
+                },
                 {"EOR": True},
             ]
         )
@@ -751,6 +762,14 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
                     "type_short": "MDO",
                     "type_long": "Opening detector",
                     "zone": 1,
+                    "defects": ["OPEN"],
+                },
+                {
+                    "id": 43,
+                    "name": "Front door",
+                    "name_custom": "Front door",
+                    "type_short": "MO",
+                    "type_long": "Door opening contact",
                     "defects": ["OPEN"],
                 }
             ],
