@@ -64,6 +64,7 @@ from .ha_entities import (
     HAButton,
     HAAlarmAcknowledgeButton,
     HAAlarmPendingEventsSensor,
+    HAAlarmOpenIssuesSensor,
     HAReloadButton,
     HARefreshEnergyButton,
     HACoverGroup,
@@ -631,7 +632,11 @@ class Hub:
         if self.add_button_callback is not None:
             self.add_button_callback([HAAlarmAcknowledgeButton(device, self._hass)])
         self._add_discovered_entities(
-            [HAAlarmPendingEventsSensor(device, self._hass), *ha_device.get_sensors()]
+            [
+                HAAlarmPendingEventsSensor(device, self._hass),
+                HAAlarmOpenIssuesSensor(device, self._hass),
+                *ha_device.get_sensors(),
+            ]
         )
 
     async def _create_weather_device(self, device: TydomWeather) -> None:

@@ -57,6 +57,13 @@ get_events:
               value: ON_OFF
             - label: All alarm events
               value: EVENTS
+get_open_issues:
+  name: Get open alarm issues
+  description: Retrieve the exact products currently reported by the alarm central as preventing arming.
+  target:
+    entity:
+      integration: deltadore_tydom
+      domain: alarm_control_panel
 get_alarm_products:
   name: Get alarm products and zones
   description: Retrieve the products and zones configured on a TYXAL alarm. This service does not require the alarm PIN.

@@ -1246,6 +1246,7 @@ class TydomAlarm(TydomDevice):
         """Initialise an alarm and its dashboard event cache."""
         super().__init__(*args, **kwargs)
         self._pending_events: list[dict[str, Any]] | None = None
+        self._open_issues: list[dict[str, Any]] | None = None
         self._command_metadata = command_metadata or {}
         self._alarm_event_sequence = 0
         self._latest_alarm_actor: str | None = None
@@ -1276,6 +1277,15 @@ class TydomAlarm(TydomDevice):
     def clear_pending_events(self) -> None:
         """Clear the local event cache after acknowledgement or a clear state."""
         self._pending_events = []
+
+    @property
+    def open_issues(self) -> list[dict[str, Any]] | None:
+        """Return the latest products reported as blocking alarm arming."""
+        return self._open_issues
+
+    def clear_open_issues(self) -> None:
+        """Clear the local cache once the central reports no open issue."""
+        self._open_issues = []
 
     @staticmethod
     def _actor_from_alarm_event(
@@ -1571,6 +1581,54 @@ class TydomAlarm(TydomDevice):
             self._pending_events = formatted_events
             await self.publish_updates()
         return formatted_events
+
+    async def get_open_issues(
+        self,
+        *,
+        timeout: float | None = None,
+        log_timeout: bool = True,
+    ) -> list[dict[str, Any]]:
+        """Return products currently preventing the alarm from being armed.
+
+        ``OPEN_ISSUES`` is the same history view used by the official TYDOM
+        application.  It is intentionally not inferred from local HA sensors:
+        the alarm central remains the authority for an arming refusal.
+        """
+        if self._endpoint is None:
+            LOGGER.error("Cannot get open issues: endpoint is None for device %s", self._id)
+            return []
+        kwargs: dict[str, Any] = {"nbElement": 100, "log_timeout": log_timeout}
+        if timeout is not None:
+            kwargs["timeout"] = timeout
+        messages = await self._tydom_client.get_historic_cdata(
+            self._id, self._endpoint, "OPEN_ISSUES", **kwargs
+        )
+        issues = []
+        for message in messages or []:
+            values = message.get("values", {}) if isinstance(message, dict) else {}
+            product = values.get("product")
+            if not isinstance(product, dict):
+                continue
+            issue = {
+                key: value
+                for key, value in {
+                    "id": product.get("id"),
+                    "name": product.get("nameCustom") or product.get("nameStd"),
+                    "name_custom": product.get("nameCustom"),
+                    "name_standard": product.get("nameStd"),
+                    "number": product.get("number"),
+                    "type_short": product.get("typeShort"),
+                    "type_long": product.get("typeLong"),
+                    "zone": product.get("zone"),
+                    "defects": values.get("defects"),
+                    "error": values.get("error"),
+                }.items()
+                if value is not None
+            }
+            issues.append(issue)
+        self._open_issues = issues
+        await self.publish_updates()
+        return issues
 
     def _require_endpoint(self) -> str:
         """Return the alarm endpoint or fail before building a request."""

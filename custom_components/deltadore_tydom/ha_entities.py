@@ -3662,6 +3662,10 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         """Get alarm events."""
         return await self._device.get_events(event_type or "UNACKED_EVENTS")
 
+    async def async_get_open_issues(self) -> list:
+        """Return the products the central currently reports as blocking arming."""
+        return await self._device.get_open_issues()
+
     async def async_get_alarm_products(self) -> dict[str, list[dict[str, Any]]]:
         """Return the products and zones configured on the alarm."""
         return await self._device.get_alarm_products()
@@ -6649,6 +6653,104 @@ class HAAlarmPendingEventsSensor(SensorEntity, HAEntity):
             LOGGER.debug(
                 "Detailed unacknowledged-event history is unavailable for %s; "
                 "automatic refresh disabled until the integration is reloaded",
+                self._device.device_id,
+                exc_info=True,
+            )
+
+
+class HAAlarmOpenIssuesSensor(SensorEntity, HAEntity):
+    """Products officially reported by TYXAL as preventing arming."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_translation_key = "open_alarm_issues"
+    _attr_icon = "mdi:door-open"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, device: TydomAlarm, hass) -> None:
+        """Initialise the open-issues sensor."""
+        self.hass = hass
+        self._device = device
+        self._attr_unique_id = f"{device.device_id}_open_alarm_issues"
+        self._last_open_issue_state = bool(getattr(device, "systOpenIssue", False))
+        self._refresh_task = None
+        self._automatic_history_supported = True
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the number of products blocking normal arming."""
+        issues = self._device.open_issues
+        return None if issues is None else len(issues)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the named products for automations and dashboards."""
+        issues = self._device.open_issues
+        return {} if issues is None else {"issues": issues}
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Link the sensor to the existing TYXAL alarm device."""
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
+        }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return self._enrich_device_info(info)
+
+    async def async_added_to_hass(self) -> None:
+        """React to the supervision state pushed by the central."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self._handle_alarm_update)
+        if self._last_open_issue_state:
+            self._schedule_refresh()
+        else:
+            self._device.clear_open_issues()
+            self.async_write_ha_state()
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Cancel work and unregister the device callback."""
+        self._device.remove_callback(self._handle_alarm_update)
+        if self._refresh_task is not None:
+            self._refresh_task.cancel()
+        await super().async_will_remove_from_hass()
+
+    def _handle_alarm_update(self) -> None:
+        """Fetch the official detail only when the pushed flag appears."""
+        has_open_issue = bool(getattr(self._device, "systOpenIssue", False))
+        should_refresh = has_open_issue and (
+            not self._last_open_issue_state or self._device.open_issues is None
+        )
+        self._last_open_issue_state = has_open_issue
+        if not has_open_issue:
+            self._device.clear_open_issues()
+        elif should_refresh:
+            self._schedule_refresh()
+        self.async_write_ha_state()
+
+    def _schedule_refresh(self) -> None:
+        """Avoid concurrent long history requests."""
+        if self._automatic_history_supported and (
+            self._refresh_task is None or self._refresh_task.done()
+        ):
+            self._refresh_task = self.hass.async_create_task(
+                self._async_refresh_issues(), "Refresh TYXAL open alarm issues"
+            )
+
+    async def _async_refresh_issues(self) -> None:
+        """Fetch the central's current list without delaying a state push."""
+        try:
+            await self._device.get_open_issues(
+                timeout=_AUTOMATIC_ALARM_HISTORY_TIMEOUT, log_timeout=False
+            )
+        except Exception:
+            self._automatic_history_supported = False
+            LOGGER.debug(
+                "Detailed open-issue history is unavailable for %s; automatic "
+                "refresh disabled until the integration is reloaded",
                 self._device.device_id,
                 exc_info=True,
             )
