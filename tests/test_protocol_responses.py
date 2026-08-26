@@ -757,7 +757,7 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         )
         self.assertEqual(alarm.open_issues, result)
         client.get_historic_cdata.assert_awaited_once_with(
-            "20", "10", "OPEN_ISSUES", nbElement=100, log_timeout=False, timeout=10.0
+            "20", "10", "OPEN_ISSUES", nbElement=50, log_timeout=False, timeout=10.0
         )
         callback.assert_called_once_with()
 

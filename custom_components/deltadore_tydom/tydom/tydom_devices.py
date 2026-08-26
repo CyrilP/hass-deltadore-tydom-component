@@ -1597,7 +1597,9 @@ class TydomAlarm(TydomDevice):
         if self._endpoint is None:
             LOGGER.error("Cannot get open issues: endpoint is None for device %s", self._id)
             return []
-        kwargs: dict[str, Any] = {"nbElement": 100, "log_timeout": log_timeout}
+        # CS8000 advertises a maximum of 50 history records.  Requesting more
+        # can yield an ``error detected`` cdata reply on some firmware.
+        kwargs: dict[str, Any] = {"nbElement": 50, "log_timeout": log_timeout}
         if timeout is not None:
             kwargs["timeout"] = timeout
         messages = await self._tydom_client.get_historic_cdata(
