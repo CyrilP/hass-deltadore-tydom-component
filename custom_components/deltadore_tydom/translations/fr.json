@@ -286,9 +286,6 @@
         "weather": {},
         "update": {},
         "sensor": {
-            "open_alarm_issues": {
-                "name": "Problèmes empêchant l'activation"
-            },
             "pending_alarm_events": {
                 "name": "Évènements d'alarme en attente"
             },

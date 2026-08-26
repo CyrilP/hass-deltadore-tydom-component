@@ -64,7 +64,6 @@ from .ha_entities import (
     HAButton,
     HAAlarmAcknowledgeButton,
     HAAlarmPendingEventsSensor,
-    HAAlarmOpenIssuesSensor,
     HAReloadButton,
     HARefreshEnergyButton,
     HACoverGroup,
@@ -634,7 +633,6 @@ class Hub:
         self._add_discovered_entities(
             [
                 HAAlarmPendingEventsSensor(device, self._hass),
-                HAAlarmOpenIssuesSensor(device, self._hass),
                 *ha_device.get_sensors(),
             ]
         )

@@ -285,9 +285,6 @@
         "weather": {},
         "update": {},
         "sensor": {
-            "open_alarm_issues": {
-                "name": "Open alarm issues"
-            },
             "pending_alarm_events": {
                 "name": "Pending alarm events"
             },
