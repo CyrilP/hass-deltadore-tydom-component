@@ -3541,10 +3541,14 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the source type for the actor that changed alarm state."""
-        if self._changed_by_type is None:
-            return {}
-        return {"changed_by_type": self._changed_by_type}
+        """Return alarm actor metadata and current central-reported issues."""
+        attributes: dict[str, Any] = {}
+        if self._changed_by_type is not None:
+            attributes["changed_by_type"] = self._changed_by_type
+        if self._device.open_issues is not None:
+            attributes["open_issue_count"] = len(self._device.open_issues)
+            attributes["open_issues"] = self._device.open_issues
+        return attributes
 
     @property
     def alarm_state(self) -> AlarmControlPanelState:
