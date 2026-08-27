@@ -6,7 +6,7 @@ import asyncio
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from homeassistant.const import ATTR_ENTITY_ID, CONF_HOST, CONF_MAC, CONF_PIN, Platform
+from homeassistant.const import CONF_HOST, CONF_MAC, CONF_PIN, Platform
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
@@ -23,6 +23,7 @@ from .const import (
     LOGGER,
 )
 from .device_removal import can_remove_device
+from .ha_entities import HATydom
 
 # Config schema for hassfest validation
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -54,7 +55,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
     async def handle_set_local_gateway_password(call):
         """Change the local Digest password of one directly connected gateway."""
-        entity_id = call.data[ATTR_ENTITY_ID]
+        device_id = call.data["device_id"]
         password = call.data["new_password"]
 
         if not call.data["confirm"]:
@@ -71,19 +72,33 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                 "including one letter and one digit"
             )
 
-        from homeassistant.helpers import entity_registry as er
+        from homeassistant.helpers import device_registry as dr
 
-        entity_entry = er.async_get(hass).async_get(entity_id)
-        if entity_entry is None or entity_entry.platform != DOMAIN:
-            raise HomeAssistantError(
-                "Select an entity provided by the Delta Dore TYDOM integration"
+        device_entry = dr.async_get(hass).async_get(device_id)
+        if device_entry is None:
+            raise HomeAssistantError("Select a Delta Dore TYDOM gateway device")
+
+        entry_id = getattr(device_entry, "config_entry_id", None)
+        if entry_id is None:
+            matching_entry_ids = set(device_entry.config_entries) & set(
+                hass.data.get(DOMAIN, {})
             )
+            if len(matching_entry_ids) != 1:
+                raise HomeAssistantError(
+                    "The selected device is not linked to one loaded Delta Dore "
+                    "TYDOM gateway"
+                )
+            entry_id = matching_entry_ids.pop()
 
-        entry_id = entity_entry.config_entry_id
-        tydom_hub = hass.data.get(DOMAIN, {}).get(entry_id)
-        if tydom_hub is None:
+        tydom_hub = hass.data.get(DOMAIN, {}).get(str(entry_id))
+        if tydom_hub is None or not any(
+            isinstance(ha_device, HATydom)
+            and (DOMAIN, ha_device._device.device_id) in device_entry.identifiers
+            for ha_device in tydom_hub.ha_devices.values()
+        ):
             raise HomeAssistantError(
-                "The selected Delta Dore TYDOM configuration entry is not loaded"
+                "Select the Delta Dore TYDOM gateway device, not one of its "
+                "connected products"
             )
 
         try:
@@ -114,7 +129,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         handle_set_local_gateway_password,
         schema=vol.Schema(
             {
-                vol.Required(ATTR_ENTITY_ID): cv.entity_id,
+                vol.Required("device_id"): cv.string,
                 vol.Required("new_password"): cv.string,
                 vol.Required("confirm"): cv.boolean,
             }
