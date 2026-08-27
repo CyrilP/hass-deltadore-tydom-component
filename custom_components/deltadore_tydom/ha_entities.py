@@ -3157,7 +3157,9 @@ class HaGate(CoverEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_cover"
         self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
-        self._attr_supported_features = _level_command_cover_features(device)
+        self._attr_supported_features = _level_command_cover_features(
+            device, allow_position=True
+        )
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
@@ -3192,7 +3194,7 @@ class HaGate(CoverEntity, HAEntity):
 
         Some compatible gate motors report the same ``level`` feedback as a
         garage door, while ordinary dry-contact receivers expose no feedback at
-        all.  Older gate profiles can instead report ``openState``.
+        all. Older gate profiles can instead report ``openState``.
         """
         level = getattr(self._device, "level", None)
         if level is not None:
@@ -3220,6 +3222,10 @@ class HaGate(CoverEntity, HAEntity):
     async def async_stop_cover(self, **kwargs: Any) -> None:
         """Stop the gate."""
         await self._device.stop()
+
+    async def async_set_cover_position(self, **kwargs: Any) -> None:
+        """Set the gate position when its endpoint allows it."""
+        await self._device.set_level(kwargs[ATTR_POSITION])
 
     async def async_toggle(self, **kwargs: Any) -> None:
         """Toggle the gate without deriving direction from an unknown state."""

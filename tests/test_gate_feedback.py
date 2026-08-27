@@ -5,8 +5,8 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 from types import SimpleNamespace
-from unittest import TestCase
-from unittest.mock import MagicMock
+from unittest import IsolatedAsyncioTestCase
+from unittest.mock import AsyncMock, MagicMock
 
 
 def _load_gate_class():
@@ -49,6 +49,7 @@ def _load_gate_class():
         pass
 
     namespace = {
+        "ATTR_POSITION": "position",
         "Any": object,
         "CoverDeviceClass": CoverDeviceClass,
         "CoverEntity": CoverEntity,
@@ -66,7 +67,7 @@ def _load_gate_class():
 HaGate = _load_gate_class()
 
 
-class GateFeedbackTests(TestCase):
+class GateFeedbackTests(IsolatedAsyncioTestCase):
     """Verify feedback is exposed only when a gate actually provides it."""
 
     @staticmethod
@@ -98,6 +99,15 @@ class GateFeedbackTests(TestCase):
 
         self.assertIsNone(gate.is_closed)
         self.assertIsNone(gate.current_cover_position)
+
+    async def test_feedback_capable_gate_accepts_a_requested_position(self) -> None:
+        """A writable level is forwarded as a cover position request."""
+        set_level = AsyncMock()
+        gate = self._gate(set_level=set_level)
+
+        await gate.async_set_cover_position(position=100)
+
+        set_level.assert_awaited_once_with(100)
 
 
 if __name__ == "__main__":
