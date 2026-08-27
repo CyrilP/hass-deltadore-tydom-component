@@ -339,6 +339,11 @@ class Hub:
             if choice.profile_id == self._association_profile
         )
 
+    @property
+    def association_product_supported(self) -> bool:
+        """Whether the current choice has a documented local install profile."""
+        return self._association_profile is not None
+
     def register_association_control(self, entity) -> None:
         """Register a gateway control that needs selection-state updates."""
         if entity not in self._association_controls:
@@ -377,6 +382,10 @@ class Hub:
 
     async def start_selected_product_association(self) -> None:
         """Start association using the product selected in the gateway controls."""
+        if self._association_profile is None:
+            raise ValueError(
+                "The selected category has no documented local TYDOM install profile"
+            )
         payload = await start_product_association(self, self._association_profile)
         LOGGER.info(
             "Started gateway association for %s on config entry %s",

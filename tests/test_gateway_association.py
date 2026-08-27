@@ -44,22 +44,46 @@ class GatewayAssociationTests(IsolatedAsyncioTestCase):
 
     def test_same_radio_recipe_can_be_exposed_in_multiple_categories(self) -> None:
         """Keep usage choice separate from the protocol recipe it selects."""
-        lighting = ASSOCIATION_CATALOG["Éclairage"]
-        gate = ASSOCIATION_CATALOG["Portails et garages"]
+        lighting = ASSOCIATION_CATALOG["Éclairages"]
+        gate = ASSOCIATION_CATALOG["Portail"]
 
         self.assertIn("light_x3d", {choice.profile_id for choice in lighting})
         self.assertIn("light_x3d", {choice.profile_id for choice in gate})
+
+    def test_catalog_matches_the_official_application_group_order(self) -> None:
+        """Keep the gateway flow familiar to users of the official app."""
+        self.assertEqual(
+            tuple(ASSOCIATION_CATALOG),
+            (
+                "Volets",
+                "Éclairages",
+                "Thermique",
+                "Garage",
+                "Portail",
+                "Alarme",
+                "Caméras",
+                "Consommation",
+                "Porte",
+                "Fenêtres",
+                "Stores",
+                "Prise",
+                "Autres",
+                "Télécommandes et claviers",
+                "Interrupteurs",
+                "Capteurs",
+            ),
+        )
 
     def test_category_change_updates_the_available_product_family(self) -> None:
         """A category controls its product list without changing the gateway."""
         tydom_hub = object.__new__(Hub)
         tydom_hub._association_controls = []
-        tydom_hub._association_category = "Éclairage"
+        tydom_hub._association_category = "Éclairages"
         tydom_hub._association_profile = "light_x3d"
 
-        tydom_hub.set_association_category("Volets et stores")
+        tydom_hub.set_association_category("Volets")
 
-        self.assertEqual(tydom_hub.association_category, "Volets et stores")
+        self.assertEqual(tydom_hub.association_category, "Volets")
         self.assertEqual(
             tydom_hub.association_product_label, "Récepteur volet roulant X3D"
         )

@@ -26,7 +26,7 @@ class AssociationChoice:
     """A product-family choice shown under one user-facing category."""
 
     label: str
-    profile_id: str
+    profile_id: str | None
 
 
 # These profiles are the public request values used by the official TYDOM app.
@@ -110,63 +110,99 @@ DISCOVERY_PROFILES: dict[str, DiscoveryProfile] = {
 }
 
 
-# The official application first asks for a usage, then a product family.  A
+# The official application first asks for a usage, then a product family. Keep
+# its initial list of groups intact: this is less surprising than collapsing a
+# gate and a garage, or a door and a window, into one generic category. A
 # profile may deliberately occur in more than one category: a TYXIA receiver,
-# for example, can be fitted to lighting, a gate, or a garage door.  The
+# for example, can be fitted to lighting, a gate, or a garage door. The
 # category is for a clear UX; ``profile_id`` remains the protocol value sent to
-# the gateway.
+# the gateway. Cameras are displayed for parity with the application, but do
+# not have a documented local ``/devices/install`` profile.
 ASSOCIATION_CATALOG: dict[str, tuple[AssociationChoice, ...]] = {
-    "Éclairage": (
-        AssociationChoice("Récepteur éclairage X3D", "light_x3d"),
-        AssociationChoice("Éclairage Zigbee", "light_zigbee"),
-    ),
-    "Volets et stores": (
+    "Volets": (
         AssociationChoice("Récepteur volet roulant X3D", "shutter_x3d"),
         AssociationChoice("Volet Activ'Home", "shutter_activhome_x3d"),
         AssociationChoice("Volet Brushless", "shutter_brushless_x3d"),
         AssociationChoice("Volet projeté", "shutter_projected_x3d"),
-        AssociationChoice("Store banne", "awning_x3d"),
         AssociationChoice("Volet Profalux Zigbee", "shutter_profalux_zigbee"),
         AssociationChoice("Volet Stella Zigbee", "shutter_stella_zigbee"),
         AssociationChoice("Volet roulant Zigbee", "shutter_zigbee"),
     ),
-    "Portails et garages": (
-        AssociationChoice("Récepteur portail / garage X3D", "light_x3d"),
-        AssociationChoice("Récepteur volet / garage X3D", "shutter_x3d"),
-        AssociationChoice("Produit générique X3D", "generic_x3d"),
+    "Éclairages": (
+        AssociationChoice("Récepteur éclairage X3D", "light_x3d"),
+        AssociationChoice("Éclairage Zigbee", "light_zigbee"),
     ),
-    "Chauffage": (
+    "Thermique": (
         AssociationChoice("Récepteur chauffage X3D", "thermic_x3d"),
         AssociationChoice("Récepteur chauffage X2D", "thermic_x2d"),
         AssociationChoice("Émetteur chauffage X3D spécifique", "thermic_x3d_es"),
         AssociationChoice("Chaudière Drive", "boiler_drive_x3d"),
         AssociationChoice("Chauffage Zigbee", "thermic_zigbee"),
+        AssociationChoice("Chauffage partagé X3D", "shared_thermic_x3d"),
         AssociationChoice("TYPASS ATL", "typass_atl_x3d"),
         AssociationChoice("TYPASS Saunier", "typass_saunier_x3d"),
+        AssociationChoice("Aéraulique Zigbee", "aeraulic_zigbee"),
     ),
-    "Sécurité et ouvrants": (
+    "Garage": (
+        AssociationChoice("Récepteur portail / garage X3D", "light_x3d"),
+        AssociationChoice("Récepteur volet / garage X3D", "shutter_x3d"),
+        AssociationChoice("Volet Profalux Zigbee", "shutter_profalux_zigbee"),
+    ),
+    "Portail": (
+        AssociationChoice("Récepteur portail X3D", "light_x3d"),
+        AssociationChoice("Produit générique X3D", "generic_x3d"),
+    ),
+    "Alarme": (
         AssociationChoice("TYXAL / alarme X2D", "alarm_x2d"),
         AssociationChoice("TYXAL+ / alarme X3D", "alarm_x3d"),
         AssociationChoice("Détecteur X3D", "detector_x3d"),
-        AssociationChoice("Ouvrant, porte ou fenêtre X3D", "opening_x3d"),
-        AssociationChoice("Capteur X3D", "sensor_x3d"),
+        AssociationChoice("Télécommande / clavier X3D", "remote_x3d"),
     ),
-    "Énergie et mesure": (
+    "Caméras": (
+        AssociationChoice("Aucun profil d'association locale documenté", None),
+    ),
+    "Consommation": (
         AssociationChoice("Compteur ou mesure X3D", "meter_x3d"),
         AssociationChoice("RT2012", "rt2012_x3d"),
         AssociationChoice("RT2012 sans sonde extérieure", "rt2012_no_outdoor_temp_x3d"),
         AssociationChoice("Mesure RT2012", "rt2012_measure_x3d"),
     ),
-    "Commandes et autres": (
-        AssociationChoice("Télécommande X3D", "remote_x3d"),
-        AssociationChoice("Contrôleur X3D", "controller_x3d"),
+    "Porte": (
+        AssociationChoice("Ouvrant, porte ou fenêtre X3D", "opening_x3d"),
+        AssociationChoice("Produit POD X3D", "pod_x3d"),
+    ),
+    "Fenêtres": (
+        AssociationChoice("Ouvrant, porte ou fenêtre X3D", "opening_x3d"),
+        AssociationChoice("Produit POD X3D", "pod_x3d"),
+    ),
+    "Stores": (
+        AssociationChoice("Store banne X3D", "awning_x3d"),
+        AssociationChoice("Store projeté X3D", "shutter_projected_x3d"),
+    ),
+    "Prise": (
+        AssociationChoice("Prise / équipement électrique Zigbee", "electric_zigbee"),
+        AssociationChoice("Récepteur prise X3D", "light_x3d"),
+    ),
+    "Autres": (
+        AssociationChoice("Produit générique X3D", "generic_x3d"),
         AssociationChoice("Produit multifonction X3D", "multi_x3d"),
         AssociationChoice("Produit POD X3D", "pod_x3d"),
         AssociationChoice("Station météo", "weather_plt"),
     ),
-    "Ventilation": (
-        AssociationChoice("Aéraulique Zigbee", "aeraulic_zigbee"),
-        AssociationChoice("Chauffage partagé X3D", "shared_thermic_x3d"),
+    "Télécommandes et claviers": (
+        AssociationChoice("Télécommande X3D", "remote_x3d"),
+        AssociationChoice("Contrôleur X3D", "controller_x3d"),
+    ),
+    "Interrupteurs": (
+        AssociationChoice("Interrupteur / récepteur éclairage X3D", "light_x3d"),
+        AssociationChoice("Éclairage Zigbee", "light_zigbee"),
+        AssociationChoice("Contrôleur X3D", "controller_x3d"),
+    ),
+    "Capteurs": (
+        AssociationChoice("Capteur X3D", "sensor_x3d"),
+        AssociationChoice("Détecteur X3D", "detector_x3d"),
+        AssociationChoice("Sonde de température X3D", "temperature_x3d"),
+        AssociationChoice("Station météo", "weather_plt"),
     ),
 }
 

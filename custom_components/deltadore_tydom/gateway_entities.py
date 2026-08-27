@@ -100,6 +100,11 @@ class HAGatewayStartAssociationButton(_GatewayAssociationEntity, ButtonEntity):
         self._attr_unique_id = f"{tydom_hub.hub_id}_start_product_association"
         self._attr_name = "Démarrer l'association"
 
+    @property
+    def available(self) -> bool:
+        """Disable the action for groups without a local install API profile."""
+        return self._hub.association_product_supported
+
     async def async_press(self) -> None:
         """Start association using the selected product-family recipe."""
         await self._hub.start_selected_product_association()
