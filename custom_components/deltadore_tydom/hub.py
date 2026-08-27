@@ -69,7 +69,7 @@ from .ha_entities import (
     HATwcShutterCover,
     HASwitch,
     HAButton,
-    HADeviceAssociationButton,
+    HAEntity,
     HAAlarmAcknowledgeButton,
     HAAlarmPendingEventsSensor,
     HAReloadButton,
@@ -451,6 +451,56 @@ class HAGatewayStartAssociationButton(_GatewayAssociationEntity, ButtonEntity):
     async def async_press(self) -> None:
         """Start association using the selected product family."""
         await self._hub.start_selected_product_association()
+
+
+class HADeviceAssociationButton(ButtonEntity, HAEntity):
+    """Button for an association capability advertised by one product."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+
+    def __init__(self, device: TydomDevice, hass, command: str) -> None:
+        """Initialise an association or physical-identification button."""
+        action_name, icon = {
+            ASSOCIATION_COMMAND: (
+                "Démarrer le mode association",
+                "mdi:link-variant-plus",
+            ),
+            IDENTIFY_COMMAND: ("Identifier l'appareil", "mdi:map-marker-radius"),
+        }[command]
+        self.hass = hass
+        self._device = device
+        self._association_command = command
+        self._attr_icon = icon
+        self._attr_name = action_name
+        self._attr_unique_id = f"{device.device_id}_button_{command}"
+
+    async def async_added_to_hass(self) -> None:
+        """Refresh when the associated product is updated."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Detach the update callback without replacing the primary entity."""
+        self._device.remove_callback(self.async_write_ha_state)
+        await super().async_will_remove_from_hass()
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Attach this control to the existing physical product."""
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
+        }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return self._enrich_device_info(info)
+
+    async def async_press(self) -> None:
+        """Run the START command advertised by this endpoint."""
+        await start_command(self._device, self._association_command)
 
 
 class Hub:

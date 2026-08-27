@@ -9,7 +9,7 @@ from custom_components.deltadore_tydom.hub import (
     start_command,
     supports_command,
 )
-from custom_components.deltadore_tydom.ha_entities import HADeviceAssociationButton
+from custom_components.deltadore_tydom.hub import HADeviceAssociationButton
 
 
 class _Client:

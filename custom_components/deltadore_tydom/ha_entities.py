@@ -6512,58 +6512,6 @@ class HAButton(ButtonEntity, HAEntity):
             )
 
 
-class HADeviceAssociationButton(ButtonEntity, HAEntity):
-    """Button for a capability advertised by one associated product."""
-
-    _attr_should_poll = False
-    _attr_has_entity_name = True
-
-    def __init__(self, device: TydomDevice, hass, command: str) -> None:
-        """Initialise an association or physical-identification button."""
-        action_name, icon = {
-            "modeAsso": ("Démarrer le mode association", "mdi:link-variant-plus"),
-            "localisation": ("Identifier l'appareil", "mdi:map-marker-radius"),
-        }[command]
-        self.hass = hass
-        self._device = device
-        self._association_command = command
-        self._attr_icon = icon
-        self._attr_name = action_name
-        self._attr_unique_id = f"{device.device_id}_button_{command}"
-
-    async def async_added_to_hass(self) -> None:
-        """Refresh when the associated product is updated."""
-        await super().async_added_to_hass()
-        self._device.register_callback(self.async_write_ha_state)
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Detach the update callback without replacing the primary entity."""
-        self._device.remove_callback(self.async_write_ha_state)
-        await super().async_will_remove_from_hass()
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Attach this control to the already-associated physical product."""
-        device_info = self._get_device_info()
-        info: DeviceInfo = {
-            "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self._device.device_name,
-            "manufacturer": device_info["manufacturer"],
-        }
-        if "model" in device_info:
-            info["model"] = device_info["model"]
-        return self._enrich_device_info(info)
-
-    async def async_press(self) -> None:
-        """Run only the START command advertised by this endpoint."""
-        await self._device._tydom_client.put_devices_data(
-            self._device._id,
-            self._device._endpoint,
-            self._association_command,
-            "START",
-        )
-
-
 class HAAlarmAcknowledgeButton(ButtonEntity, HAEntity):
     """Button which acknowledges pending TYXAL alarm events."""
 
