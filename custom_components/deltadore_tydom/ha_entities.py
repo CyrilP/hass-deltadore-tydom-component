@@ -6556,9 +6556,12 @@ class HADeviceAssociationButton(ButtonEntity, HAEntity):
 
     async def async_press(self) -> None:
         """Run only the START command advertised by this endpoint."""
-        from .device_association import start_command
-
-        await start_command(self._device, self._association_command)
+        await self._device._tydom_client.put_devices_data(
+            self._device._id,
+            self._device._endpoint,
+            self._association_command,
+            "START",
+        )
 
 
 class HAAlarmAcknowledgeButton(ButtonEntity, HAEntity):

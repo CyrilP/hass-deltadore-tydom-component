@@ -22,12 +22,13 @@ from .const import (
     LOGGER,
 )
 from .device_removal import can_remove_device
-from .device_association import (
+from .hub import (
     ASSOCIATION_COMMAND,
     IDENTIFY_COMMAND,
+    remove_product_association,
     start_command,
+    start_product_association,
 )
-from .gateway_association import remove_product_association, start_product_association
 
 # Config schema for hassfest validation
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)

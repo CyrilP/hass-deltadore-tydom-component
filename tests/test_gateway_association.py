@@ -3,7 +3,7 @@
 from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase
 
-from custom_components.deltadore_tydom.gateway_association import (
+from custom_components.deltadore_tydom.hub import (
     ASSOCIATION_CATALOG,
     get_install_payload,
     remove_product_association,
