@@ -3,7 +3,7 @@
 from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase
 
-from custom_components.deltadore_tydom.hub import (
+from custom_components.deltadore_tydom.ha_entities import (
     ASSOCIATION_COMMAND,
     IDENTIFY_COMMAND,
     start_command,

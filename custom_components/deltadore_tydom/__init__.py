@@ -22,11 +22,9 @@ from .const import (
     LOGGER,
 )
 from .device_removal import can_remove_device
+from .ha_entities import ASSOCIATION_COMMAND, IDENTIFY_COMMAND, start_command
 from .hub import (
-    ASSOCIATION_COMMAND,
-    IDENTIFY_COMMAND,
     remove_product_association,
-    start_command,
     start_product_association,
 )
 
