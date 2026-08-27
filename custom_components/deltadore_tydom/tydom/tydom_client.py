@@ -952,6 +952,26 @@ class TydomClient:
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
+    async def post_device_install(self, payload: dict[str, str | int]) -> None:
+        """Start the gateway's generic product-association workflow.
+
+        ``/devices/install`` is the endpoint used by the official application
+        for TYDOM and Tywell product discovery.  It is deliberately a generic
+        request (not a write to an already discovered device).
+        """
+        required = {"protocol", "type", "profile"}
+        missing = required.difference(payload)
+        if missing:
+            raise ValueError(
+                "Product association payload is missing: " + ", ".join(sorted(missing))
+            )
+        await self.get_reply_to_request("POST", "/devices/install", body=payload)
+
+    async def delete_device(self, device_id: str | int) -> None:
+        """Delete one product from the TYDOM gateway inventory."""
+        safe_device_id = quote(str(device_id), safe="")
+        await self.get_reply_to_request("DELETE", f"/devices/{safe_device_id}")
+
     async def get_local_claim(self):
         """Ask some information from Tydom."""
         msg_type = "/configs/gateway/local_claim"

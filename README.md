@@ -217,8 +217,13 @@ endpoints, will not be recreated while they remain empty.
 ### Device association and identification
 
 Some devices expose association and physical-identification commands through
-their endpoint metadata. When the selected entity advertises the corresponding
-command, the following services are available:
+their endpoint metadata. When the device advertises the corresponding command,
+its page exposes the matching button:
+
+- **Démarrer le mode association** sends `modeAsso: START`;
+- **Identifier l'appareil** sends `localisation: START`.
+
+The same actions are also available through services for automations:
 
 - `deltadore_tydom.start_device_association` sends `modeAsso: START` to begin
   the device's own association procedure;
@@ -230,10 +235,28 @@ climate entity), then follow the product's installation instructions. These
 services only run commands advertised by that specific endpoint, so they fail
 safely on products and firmware that do not support them.
 
-The TYDOM app's full *Add a product* wizard also selects a product-specific
-protocol, type, profile and sometimes a radio network. That discovery protocol
-is not yet exposed by this integration; after a successful association, use
-**Reload devices** to immediately request the refreshed gateway inventory.
+### Add or remove a product from a gateway
+
+The gateway device page now exposes a guided association flow compatible with
+TYDOM 1.0/2.0, TYDOM Home/Pro and Tywell Pro gateways:
+
+1. Choose **Catégorie à associer** (lighting, shutters and awnings, heating,
+   security/openings, energy, and so on).
+2. Choose **Produit à associer**. The available families change with the
+   category. A compatible radio recipe may intentionally be offered in several
+   categories; for example a TYXIA receiver can be used for lighting or a
+   gate/garage.
+3. Press **Démarrer l'association**, then complete the physical association on
+   the product as instructed by its manual.
+4. Press **Recharger les appareils** once the association is complete to load
+   the refreshed gateway inventory immediately.
+
+The gateway remains authoritative: it rejects radio families unsupported by
+its firmware. The advanced `deltadore_tydom.start_product_association` service
+also accepts a `config_entry_id`, so it can target a newly configured gateway
+that has no entities yet. `deltadore_tydom.remove_product_association` removes
+the selected product from the physical gateway (not only from Home Assistant)
+and therefore requires `confirm: true`.
 
 ## Capturing data for unsupported devices
 

@@ -17,6 +17,121 @@ identify_device:
   target:
     entity:
       integration: deltadore_tydom
+start_product_association:
+  name: Start product association
+  description: Start the official gateway-level product-association workflow. It works with TYDOM 1.0/2.0, TYDOM Home/Pro and Tywell gateways when the selected radio family is supported by their firmware. Target any entity of the desired gateway, or provide its config entry ID for an empty gateway.
+  target:
+    entity:
+      integration: deltadore_tydom
+  fields:
+    config_entry_id:
+      name: TYDOM config entry ID
+      description: Alternative target for a gateway that has no entities yet.
+      required: false
+      selector:
+        text:
+    profile:
+      name: Product family
+      description: Radio/product family to put into association mode.
+      required: true
+      selector:
+        select:
+          options:
+            - label: TYXAL / alarm X2D
+              value: alarm_x2d
+            - label: TYXAL+ / alarm X3D
+              value: alarm_x3d
+            - label: Aéraulique Zigbee
+              value: aeraulic_zigbee
+            - label: Store banne X3D
+              value: awning_x3d
+            - label: Chaudière Drive X3D
+              value: boiler_drive_x3d
+            - label: Contrôleur X3D
+              value: controller_x3d
+            - label: Détecteur X3D
+              value: detector_x3d
+            - label: Équipement électrique Zigbee
+              value: electric_zigbee
+            - label: Éclairage X3D
+              value: light_x3d
+            - label: Éclairage Zigbee
+              value: light_zigbee
+            - label: Produit générique X3D
+              value: generic_x3d
+            - label: Compteur / mesure X3D
+              value: meter_x3d
+            - label: Produit multifonction X3D
+              value: multi_x3d
+            - label: Ouvrant / porte / fenêtre X3D
+              value: opening_x3d
+            - label: Produit POD X3D
+              value: pod_x3d
+            - label: Télécommande X3D
+              value: remote_x3d
+            - label: Mesure RT2012 X3D
+              value: rt2012_measure_x3d
+            - label: RT2012 sans sonde extérieure X3D
+              value: rt2012_no_outdoor_temp_x3d
+            - label: RT2012 X3D
+              value: rt2012_x3d
+            - label: Capteur X3D
+              value: sensor_x3d
+            - label: Chauffage partagé X3D
+              value: shared_thermic_x3d
+            - label: Volet roulant X3D
+              value: shutter_x3d
+            - label: Volet Activ'Home X3D
+              value: shutter_activhome_x3d
+            - label: Volet Brushless X3D
+              value: shutter_brushless_x3d
+            - label: Volet projeté X3D
+              value: shutter_projected_x3d
+            - label: Volet Profalux Zigbee
+              value: shutter_profalux_zigbee
+            - label: Volet RMLP X3D
+              value: shutter_rmlp_x3d
+            - label: Volet Stella Zigbee
+              value: shutter_stella_zigbee
+            - label: Volet roulant Zigbee
+              value: shutter_zigbee
+            - label: Sonde de température X3D
+              value: temperature_x3d
+            - label: Chauffage X3D
+              value: thermic_x3d
+            - label: Chauffage X2D
+              value: thermic_x2d
+            - label: Chauffage X3D (émetteur spécifique)
+              value: thermic_x3d_es
+            - label: Chauffage Zigbee
+              value: thermic_zigbee
+            - label: TYPASS ATL X3D
+              value: typass_atl_x3d
+            - label: TYPASS Saunier X3D
+              value: typass_saunier_x3d
+            - label: Station météo
+              value: weather_plt
+    network:
+      name: Radio network
+      description: Optional radio network number. Zigbee defaults to network 0, as in the official application.
+      required: false
+      selector:
+        number:
+          min: 0
+          mode: box
+remove_product_association:
+  name: Remove associated product
+  description: Permanently remove the selected product from its TYDOM/Tywell gateway. This is not limited to deleting the Home Assistant entity.
+  target:
+    entity:
+      integration: deltadore_tydom
+  fields:
+    confirm:
+      name: Confirm permanent removal
+      description: Must be enabled to remove the selected product from the gateway.
+      required: true
+      selector:
+        boolean:
 force_arm:
   name: Force arm alarm
   description: Explicitly force the selected alarm mode despite defects that caused normal arming to be refused. Use only after checking those defects.

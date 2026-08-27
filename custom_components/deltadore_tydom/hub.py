@@ -62,6 +62,7 @@ from .ha_entities import (
     HATwcShutterCover,
     HASwitch,
     HAButton,
+    HADeviceAssociationButton,
     HAAlarmAcknowledgeButton,
     HAAlarmPendingEventsSensor,
     HAReloadButton,
@@ -76,6 +77,17 @@ from .ha_entities import (
 )
 
 from .const import LOGGER, get_polling_interval_for_validity, STRUCTURED_LOGGER
+from .gateway_association import (
+    ASSOCIATION_CATALOG,
+    get_association_choices,
+    start_product_association,
+)
+from .gateway_entities import (
+    HAGatewayAssociationCategorySelect,
+    HAGatewayAssociationProductSelect,
+    HAGatewayStartAssociationButton,
+)
+from .device_association import ASSOCIATION_COMMAND, IDENTIFY_COMMAND, supports_command
 from .remote_registry_migration import migrate_legacy_remote_endpoint
 
 
@@ -147,7 +159,14 @@ class Hub:
 
         self.online = True
         self._reload_button_created = False
+        self._association_controls_created = False
+        self._association_controls: list = []
+        self._association_category = next(iter(ASSOCIATION_CATALOG))
+        self._association_profile = get_association_choices(self._association_category)[
+            0
+        ].profile_id
         self._refresh_energy_buttons_created: set[str] = set()
+        self._device_association_buttons_created: set[tuple[str, str]] = set()
         self._remote_battery_entities: dict[str, HARemoteBattery] = {}
         self._interrupter_battery_entities: dict[str, HAInterrupterBattery] = {}
         self._twc_scene_sets: dict[str, dict[str, HAScene]] = {}
@@ -276,7 +295,94 @@ class Hub:
             self.add_button_callback([reload_button])
             self._reload_button_created = True
             LOGGER.debug("Bouton de rechargement créé")
+        if (
+            is_ready
+            and not self._association_controls_created
+            and self.add_button_callback is not None
+            and self.add_select_callback is not None
+        ):
+            self.add_select_callback(
+                [
+                    HAGatewayAssociationCategorySelect(self),
+                    HAGatewayAssociationProductSelect(self),
+                ]
+            )
+            self.add_button_callback([HAGatewayStartAssociationButton(self)])
+            self._association_controls_created = True
+            LOGGER.debug("Gateway product-association controls created")
         return is_ready
+
+    @property
+    def association_categories(self) -> tuple[str, ...]:
+        """Return the usage categories offered by gateway association."""
+        return tuple(ASSOCIATION_CATALOG)
+
+    @property
+    def association_category(self) -> str:
+        """Return the currently selected association category."""
+        return self._association_category
+
+    @property
+    def association_product_labels(self) -> tuple[str, ...]:
+        """Return product families for the selected category."""
+        return tuple(
+            choice.label
+            for choice in get_association_choices(self._association_category)
+        )
+
+    @property
+    def association_product_label(self) -> str:
+        """Return the label of the currently selected product family."""
+        return next(
+            choice.label
+            for choice in get_association_choices(self._association_category)
+            if choice.profile_id == self._association_profile
+        )
+
+    def register_association_control(self, entity) -> None:
+        """Register a gateway control that needs selection-state updates."""
+        if entity not in self._association_controls:
+            self._association_controls.append(entity)
+
+    def unregister_association_control(self, entity) -> None:
+        """Forget a gateway control removed by Home Assistant."""
+        if entity in self._association_controls:
+            self._association_controls.remove(entity)
+
+    def _notify_association_controls(self) -> None:
+        """Update the category/product controls after a selection change."""
+        for entity in self._association_controls:
+            entity.async_write_ha_state()
+
+    def set_association_category(self, category: str) -> None:
+        """Choose a usage category and its first valid product family."""
+        choices = get_association_choices(category)
+        self._association_category = category
+        if not any(
+            choice.profile_id == self._association_profile for choice in choices
+        ):
+            self._association_profile = choices[0].profile_id
+        self._notify_association_controls()
+
+    def set_association_product(self, label: str) -> None:
+        """Choose one product family from the current category."""
+        for choice in get_association_choices(self._association_category):
+            if choice.label == label:
+                self._association_profile = choice.profile_id
+                self._notify_association_controls()
+                return
+        raise ValueError(
+            f"{label!r} is not available for {self._association_category!r}"
+        )
+
+    async def start_selected_product_association(self) -> None:
+        """Start association using the product selected in the gateway controls."""
+        payload = await start_product_association(self, self._association_profile)
+        LOGGER.info(
+            "Started gateway association for %s on config entry %s",
+            payload,
+            self._entry.entry_id,
+        )
 
     def _add_discovered_entities(self, entities: list) -> None:
         """Add discovered entities to the platform matching their entity type."""
@@ -399,6 +505,7 @@ class Hub:
 
         try:
             await factory(device)
+            self._maybe_create_device_association_buttons(device)
         except Exception as e:
             LOGGER.exception(
                 "Error creating HA device for %s (%s): %s",
@@ -825,6 +932,7 @@ class Hub:
                 self._add_discovered_entities(new_sensors)
             if isinstance(ha_device, HAEnergy):
                 self._maybe_create_refresh_energy_button(stored_device, ha_device)
+            self._maybe_create_device_association_buttons(stored_device)
             # ha_device.publish_updates()
             # ha_device.update()
         except KeyError as e:
@@ -837,6 +945,24 @@ class Hub:
             LOGGER.exception(
                 "Erreur lors de la mise à jour du device %s", device.device_id
             )
+
+    def _maybe_create_device_association_buttons(self, device: TydomDevice) -> None:
+        """Expose only association controls advertised by a physical product."""
+        if self.add_button_callback is None:
+            return
+
+        buttons = []
+        for command in (ASSOCIATION_COMMAND, IDENTIFY_COMMAND):
+            key = (device.device_id, command)
+            if key in self._device_association_buttons_created:
+                continue
+            if not supports_command(device, command):
+                continue
+            buttons.append(HADeviceAssociationButton(device, self._hass, command))
+            self._device_association_buttons_created.add(key)
+
+        if buttons:
+            self.add_button_callback(buttons)
 
     async def ping(self) -> None:
         """Periodically send pings."""
@@ -1009,7 +1135,10 @@ class Hub:
         self._twc_cover_entities.clear()
         # Réinitialiser le flag pour recréer le bouton après le rechargement
         self._reload_button_created = False
+        self._association_controls_created = False
+        self._association_controls.clear()
         self._refresh_energy_buttons_created.clear()
+        self._device_association_buttons_created.clear()
 
         # Supprimer toutes les entités existantes via l'Entity Registry
         from homeassistant.helpers import entity_registry as er
@@ -1050,6 +1179,18 @@ class Hub:
             reload_button = HAReloadButton(self, self._hass)
             self.add_button_callback([reload_button])
             LOGGER.debug("Bouton de rechargement recréé après le rechargement")
+        if (
+            self.add_button_callback is not None
+            and self.add_select_callback is not None
+        ):
+            self.add_select_callback(
+                [
+                    HAGatewayAssociationCategorySelect(self),
+                    HAGatewayAssociationProductSelect(self),
+                ]
+            )
+            self.add_button_callback([HAGatewayStartAssociationButton(self)])
+            self._association_controls_created = True
 
         LOGGER.info(
             "Rechargement terminé, les nouveaux appareils seront découverts automatiquement"

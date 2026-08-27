@@ -9,6 +9,7 @@ from custom_components.deltadore_tydom.device_association import (
     start_command,
     supports_command,
 )
+from custom_components.deltadore_tydom.ha_entities import HADeviceAssociationButton
 
 
 class _Client:
@@ -26,6 +27,7 @@ class DeviceAssociationTests(IsolatedAsyncioTestCase):
         return SimpleNamespace(
             _id="42",
             _endpoint="43",
+            device_id="43_42",
             _metadata=metadata or {},
             _tydom_client=_Client(),
         )
@@ -67,3 +69,17 @@ class DeviceAssociationTests(IsolatedAsyncioTestCase):
         """Avoid a write when the gateway does not advertise the command."""
         with self.assertRaisesRegex(ValueError, "does not support"):
             await start_command(self._device(), ASSOCIATION_COMMAND)
+
+    async def test_association_button_uses_the_advertised_start_command(self) -> None:
+        """The device-page button sends START instead of a generic ON command."""
+        device = self._device(
+            {ASSOCIATION_COMMAND: {"permission": "w", "enum_values": ["START"]}}
+        )
+        button = HADeviceAssociationButton(device, None, ASSOCIATION_COMMAND)
+
+        await button.async_press()
+
+        self.assertEqual(
+            device._tydom_client.calls,
+            [("42", "43", ASSOCIATION_COMMAND, "START")],
+        )
