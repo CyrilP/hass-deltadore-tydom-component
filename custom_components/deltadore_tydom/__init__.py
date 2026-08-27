@@ -8,7 +8,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.const import CONF_HOST, CONF_MAC, CONF_PIN, Platform
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceEntry
 
 from . import hub
@@ -22,6 +22,11 @@ from .const import (
     LOGGER,
 )
 from .device_removal import can_remove_device
+from .device_association import (
+    ASSOCIATION_COMMAND,
+    IDENTIFY_COMMAND,
+    start_command,
+)
 
 # Config schema for hassfest validation
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -50,6 +55,47 @@ PLATFORMS: list[str] = [
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Delta Dore Tydom integration."""
+
+    def get_tydom_device(entity_id: str):
+        """Return the TYDOM device represented by an integration entity."""
+        for tydom_hub in hass.data.get(DOMAIN, {}).values():
+            ha_device = getattr(tydom_hub, "ha_devices", {}).get(entity_id)
+            device = getattr(ha_device, "_device", None)
+            if device is not None:
+                return device
+        return None
+
+    async def handle_device_command(call, command: str) -> None:
+        """Run an association-related command on one supported entity."""
+        entity_id = call.data.get("entity_id")
+        if not entity_id:
+            raise HomeAssistantError(f"{command} requires one TYDOM entity")
+
+        device = get_tydom_device(entity_id)
+        if device is None:
+            raise HomeAssistantError(f"TYDOM entity {entity_id} was not found")
+
+        try:
+            await start_command(device, command)
+        except ValueError as err:
+            raise HomeAssistantError(
+                f"Cannot run {command} for {entity_id}: {err}"
+            ) from err
+
+        LOGGER.info("Started %s for TYDOM entity %s", command, entity_id)
+
+    async def handle_start_device_association(call) -> None:
+        """Start association mode on a compatible TYDOM device."""
+        await handle_device_command(call, ASSOCIATION_COMMAND)
+
+    async def handle_identify_device(call) -> None:
+        """Physically identify a compatible TYDOM device."""
+        await handle_device_command(call, IDENTIFY_COMMAND)
+
+    hass.services.async_register(
+        DOMAIN, "start_device_association", handle_start_device_association
+    )
+    hass.services.async_register(DOMAIN, "identify_device", handle_identify_device)
 
     # Enregistrer le service de rechargement une seule fois
     async def handle_reload_devices(call):

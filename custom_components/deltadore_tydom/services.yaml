@@ -5,6 +5,18 @@ acknowledge_events:
     entity:
       integration: deltadore_tydom
       domain: alarm_control_panel
+start_device_association:
+  name: Start device association
+  description: Start association mode on a TYDOM device when its endpoint advertises modeAsso with the START value.
+  target:
+    entity:
+      integration: deltadore_tydom
+identify_device:
+  name: Identify device
+  description: Trigger physical identification on a TYDOM device when its endpoint advertises localisation with the START value.
+  target:
+    entity:
+      integration: deltadore_tydom
 force_arm:
   name: Force arm alarm
   description: Explicitly force the selected alarm mode despite defects that caused normal arming to be refused. Use only after checking those defects.

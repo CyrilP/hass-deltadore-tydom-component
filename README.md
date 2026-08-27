@@ -214,6 +214,27 @@ Verify that the genuine replacement device is present and working before using
 **Remove device**. Filtered placeholders, such as empty Profalux `Produit X`
 endpoints, will not be recreated while they remain empty.
 
+### Device association and identification
+
+Some devices expose association and physical-identification commands through
+their endpoint metadata. When the selected entity advertises the corresponding
+command, the following services are available:
+
+- `deltadore_tydom.start_device_association` sends `modeAsso: START` to begin
+  the device's own association procedure;
+- `deltadore_tydom.identify_device` sends `localisation: START`, allowing the
+  physical equipment to identify itself.
+
+Select the primary entity of the equipment (for example its cover, light or
+climate entity), then follow the product's installation instructions. These
+services only run commands advertised by that specific endpoint, so they fail
+safely on products and firmware that do not support them.
+
+The TYDOM app's full *Add a product* wizard also selects a product-specific
+protocol, type, profile and sometimes a radio network. That discovery protocol
+is not yet exposed by this integration; after a successful association, use
+**Reload devices** to immediately request the refreshed gateway inventory.
+
 ## Capturing data for unsupported devices
 
 The repository includes a read-only capture tool for documenting devices and
