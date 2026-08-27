@@ -6,12 +6,14 @@ set_local_gateway_password:
     cloud. The gateway may reject the request when its firmware does not
     support local password changes.
   fields:
-    config_entry_id:
-      name: Gateway configuration entry
-      description: Delta Dore TYDOM configuration entry for the local gateway to update.
+    entity_id:
+      name: Gateway entity
+      description: >-
+        Any entity provided by the directly connected gateway whose password
+        must be changed, for example its alarm-control-panel entity.
       required: true
       selector:
-        config_entry:
+        entity:
           integration: deltadore_tydom
     new_password:
       name: New local gateway password

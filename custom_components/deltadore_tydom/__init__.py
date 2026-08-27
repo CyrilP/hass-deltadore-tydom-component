@@ -6,7 +6,7 @@ import asyncio
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from homeassistant.const import CONF_HOST, CONF_MAC, CONF_PIN, Platform
+from homeassistant.const import ATTR_ENTITY_ID, CONF_HOST, CONF_MAC, CONF_PIN, Platform
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
@@ -54,7 +54,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
     async def handle_set_local_gateway_password(call):
         """Change the local Digest password of one directly connected gateway."""
-        entry_id = call.data["config_entry_id"]
+        entity_id = call.data[ATTR_ENTITY_ID]
         password = call.data["new_password"]
 
         if not call.data["confirm"]:
@@ -71,6 +71,15 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                 "including one letter and one digit"
             )
 
+        from homeassistant.helpers import entity_registry as er
+
+        entity_entry = er.async_get(hass).async_get(entity_id)
+        if entity_entry is None or entity_entry.platform != DOMAIN:
+            raise HomeAssistantError(
+                "Select an entity provided by the Delta Dore TYDOM integration"
+            )
+
+        entry_id = entity_entry.config_entry_id
         tydom_hub = hass.data.get(DOMAIN, {}).get(entry_id)
         if tydom_hub is None:
             raise HomeAssistantError(
@@ -98,7 +107,6 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         LOGGER.info(
             "Updated local gateway password for configuration entry %s", entry_id
         )
-        return {"config_entry_id": entry_id, "updated": True}
 
     hass.services.async_register(
         DOMAIN,
@@ -106,7 +114,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         handle_set_local_gateway_password,
         schema=vol.Schema(
             {
-                vol.Required("config_entry_id"): cv.string,
+                vol.Required(ATTR_ENTITY_ID): cv.entity_id,
                 vol.Required("new_password"): cv.string,
                 vol.Required("confirm"): cv.boolean,
             }
