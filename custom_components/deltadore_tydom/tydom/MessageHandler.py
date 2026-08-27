@@ -60,6 +60,9 @@ if TYPE_CHECKING:
 _MAX_REPLIES_SIZE = 5
 """Maximal number of replies to keep track of."""
 
+_ENDPOINT_WARNING_MILESTONES = {1, 10, 100, 1000}
+"""Per-session endpoint issue counts which remain visible as warnings."""
+
 _HISTO_END_INDEX = 255
 """Index value (0xFF) of the sentinel element closing an histo reply stream.
 
@@ -425,6 +428,36 @@ class MessageHandler:
         self._area_devices: dict[str, dict[str, AreaDeviceReference]] = {}
         self._area_data: dict[str, dict[str, Any]] = {}
         self._area_metadata: dict[str, dict] = {}
+        self._endpoint_issue_counts: dict[tuple[Any, Any, str, Any], int] = {}
+
+    def _record_endpoint_issue(
+        self,
+        device_id: Any,
+        endpoint_id: Any,
+        issue: str,
+        detail: Any,
+        name: str,
+    ) -> None:
+        """Rate-limit a repeated endpoint problem while retaining diagnostics."""
+        key = (device_id, endpoint_id, issue, detail)
+        occurrences = self._endpoint_issue_counts.get(key, 0) + 1
+        self._endpoint_issue_counts[key] = occurrences
+
+        log = (
+            LOGGER.warning
+            if occurrences in _ENDPOINT_WARNING_MILESTONES
+            else LOGGER.debug
+        )
+        log(
+            "TYDOM endpoint %s: device_id=%s, endpoint_id=%s, name=%s, "
+            "detail=%s, occurrences=%s; retaining the previous state",
+            issue,
+            device_id,
+            endpoint_id,
+            name,
+            detail,
+            occurrences,
+        )
 
     def get_reply(self, transaction_id: str) -> Reply | None:
         """
@@ -1395,6 +1428,7 @@ class MessageHandler:
                     if (
                         not has_error
                         and not has_data
+                        and type_of_id != "conso"
                         and not device_metadata.get(unique_id)
                         and not endpoint.get("link")
                     ):
@@ -1408,20 +1442,37 @@ class MessageHandler:
                         continue
 
                     if has_error:
-                        LOGGER.warning(
-                            "Endpoint avec erreur (création quand même) : "
-                            "device_id=%s, endpoint_id=%s, error=%s",
+                        self._record_endpoint_issue(
                             device_id,
                             endpoint_id,
+                            "reported an error",
                             endpoint.get("error"),
+                            name_of_id,
                         )
-
-                    if not has_valid_data:
-                        LOGGER.warning(
-                            "Endpoint sans données valides (création avec état par défaut) : "
-                            "device_id=%s, endpoint_id=%s, name=%s",
+                    elif not has_data and type_of_id != "conso":
+                        self._record_endpoint_issue(
                             device_id,
                             endpoint_id,
+                            "returned no regular data",
+                            None,
+                            name_of_id,
+                        )
+                    elif not has_data:
+                        # Calybox/Tywatt consumption endpoints expose their values
+                        # through /devices/cdata rather than /devices/data.
+                        LOGGER.debug(
+                            "Ignoring expected empty regular data for cdata endpoint "
+                            "(device_id=%s, endpoint_id=%s, name=%s)",
+                            device_id,
+                            endpoint_id,
+                            name_of_id,
+                        )
+                    elif not has_valid_data:
+                        self._record_endpoint_issue(
+                            device_id,
+                            endpoint_id,
+                            "returned no up-to-date data",
+                            None,
                             name_of_id,
                         )
 
@@ -1503,8 +1554,9 @@ class MessageHandler:
                                     type_of_id,
                                 )
                             else:
-                                LOGGER.info(
-                                    "Device créé sans données (id=%s, endpoint=%s, name=%s, type=%s)",
+                                LOGGER.debug(
+                                    "Device created without fresh data "
+                                    "(id=%s, endpoint=%s, name=%s, type=%s)",
                                     device_id,
                                     endpoint_id,
                                     name_of_id,
