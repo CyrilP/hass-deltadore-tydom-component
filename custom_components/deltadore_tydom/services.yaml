@@ -6,14 +6,14 @@ set_local_gateway_password:
     cloud. The gateway may reject the request when its firmware does not
     support local password changes.
   fields:
-    entity_id:
-      name: Gateway entity
+    device_id:
+      name: Gateway device
       description: >-
-        Any entity provided by the directly connected gateway whose password
-        must be changed, for example its alarm-control-panel entity.
+        Select the directly connected TYDOM or Tywell gateway. Connected
+        products such as shutters, lights, thermostats, and alarms are refused.
       required: true
       selector:
-        entity:
+        device:
           integration: deltadore_tydom
     new_password:
       name: New local gateway password
