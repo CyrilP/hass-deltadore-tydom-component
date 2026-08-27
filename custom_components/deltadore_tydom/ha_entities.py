@@ -3188,15 +3188,26 @@ class HaGate(CoverEntity, HAEntity):
 
     @property
     def is_closed(self) -> bool | None:
-        """Return if the window is closed."""
-        if hasattr(self._device, "openState"):
-            open_state = getattr(self._device, "openState", None)
+        """Return whether the gate is closed when feedback is available.
+
+        Some compatible gate motors report the same ``level`` feedback as a
+        garage door, while ordinary dry-contact receivers expose no feedback at
+        all.  Older gate profiles can instead report ``openState``.
+        """
+        level = getattr(self._device, "level", None)
+        if level is not None:
+            return level == 0
+
+        open_state = getattr(self._device, "openState", None)
+        if open_state is not None:
             return open_state == "LOCKED"
-        else:
-            LOGGER.warning(
-                "no attribute 'openState' for device %s", self._device.device_id
-            )
-            return None
+
+        return None
+
+    @property
+    def current_cover_position(self) -> int | None:
+        """Return the reported gate position when the endpoint provides it."""
+        return getattr(self._device, "level", None)
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the gate."""
