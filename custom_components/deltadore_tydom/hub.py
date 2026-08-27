@@ -246,6 +246,11 @@ class Hub:
                     "Timed out closing Tydom websocket after credential test"
                 )
 
+    async def async_set_local_gateway_password(self, password: str) -> None:
+        """Change this directly connected gateway's local authentication secret."""
+        await self._tydom_client.async_set_local_gateway_password(password)
+        self._pass = password
+
     def ready(self) -> bool:
         """Check if we're ready to work."""
         # and self.add_alarm_callback is not None

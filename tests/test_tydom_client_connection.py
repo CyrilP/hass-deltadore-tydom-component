@@ -164,6 +164,49 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
             True,
         )
 
+    async def test_set_local_gateway_password_uses_gateway_endpoint(self) -> None:
+        """The local password update uses the generic gateway endpoint."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+
+        await client.async_set_local_gateway_password("NewPassword1")
+
+        client.get_reply_to_request.assert_awaited_once_with(
+            "PUT",
+            "/configs/gateway/password",
+            body={"password": "NewPassword1"},
+        )
+        self.assertEqual(client._password, "NewPassword1")
+
+    async def test_set_local_gateway_password_keeps_previous_password_on_failure(
+        self,
+    ) -> None:
+        """A rejected update must not poison the next Digest authentication."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(
+            side_effect=TydomClientApiClientCommunicationError("rejected")
+        )
+
+        with self.assertRaises(TydomClientApiClientCommunicationError):
+            await client.async_set_local_gateway_password("NewPassword1")
+
+        self.assertEqual(client._password, "password")
+
+    async def test_set_local_gateway_password_rejects_cloud_mediation(self) -> None:
+        """The password-changing API must remain a direct local operation."""
+        client = TydomClient(
+            None,
+            "test",
+            "001122334455",
+            "password",
+            host="mediation.tydom.com",
+        )
+
+        with self.assertRaisesRegex(
+            client_module.TydomClientApiClientError, "direct local connection"
+        ):
+            await client.async_set_local_gateway_password("NewPassword1")
+
     async def test_legacy_alarm_zone_commands_are_still_split(self) -> None:
         """Legacy arm commands must continue to address each configured part."""
         client = self._client()
@@ -366,15 +409,12 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
         """A negative asynchronous result must reach the service caller."""
         client = self._client()
         waiter = asyncio.get_running_loop().create_future()
-        waiter.set_result(
-            {"name": "ackEventCmd", "values": {"result": "DENIED"}}
-        )
+        waiter.set_result({"name": "ackEventCmd", "values": {"result": "DENIED"}})
         client._message_handler.create_alarm_command_waiter.return_value = waiter
         client.send_bytes = AsyncMock()
 
         with self.assertRaises(TydomAlarmCommandError):
             await client.put_ackevents_cdata("20", "10", "123456")
-
 
     async def test_alarm_remote_configuration_lock_uses_official_command(self) -> None:
         """Remote TYXAL configuration must be explicitly locked and unlocked."""

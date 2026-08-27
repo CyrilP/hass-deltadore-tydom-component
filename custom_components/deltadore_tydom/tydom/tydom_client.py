@@ -970,6 +970,20 @@ class TydomClient:
         req = "PUT"
         await self.send_message(method=req, msg=msg_type)
 
+    async def async_set_local_gateway_password(self, password: str) -> None:
+        """Set the password used by the gateway's local Digest authentication."""
+        if self._remote_mode:
+            raise TydomClientApiClientError(
+                "Changing the local gateway password requires a direct local connection"
+            )
+
+        await self.get_reply_to_request(
+            "PUT", "/configs/gateway/password", body={"password": password}
+        )
+        # Keep the client ready for its next Digest handshake. The existing
+        # websocket remains authenticated until it reconnects.
+        self._password = password
+
     async def post_refresh(self):
         """Refresh (all)."""
         msg_type = "/refresh/all"
