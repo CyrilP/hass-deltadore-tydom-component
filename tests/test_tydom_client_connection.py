@@ -570,6 +570,30 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
         client._reconnect_with_backoff.assert_awaited_once()
         replacement.send_bytes.assert_awaited_once_with(b"request")
 
+    async def test_area_attributes_are_sent_in_one_request(self) -> None:
+        """A TRV local override must be an atomic area-level command."""
+        client = self._client()
+        client.send_bytes = AsyncMock()
+
+        await client.put_area_data_attributes(
+            1761575990,
+            {
+                "localSetpoint": "20.5",
+                "localSetpRemainingTimeStr": "UNTIL_SCHED",
+                "localMode": "LOCAL_SETPOINT",
+            },
+        )
+
+        request = client.send_bytes.await_args.args[0].decode("ascii")
+        self.assertIn("PUT /areas/1761575990/data HTTP/1.1", request)
+        self.assertIn('"name": "localSetpoint", "value": "20.5"', request)
+        self.assertIn(
+            '"name": "localSetpRemainingTimeStr", "value": "UNTIL_SCHED"',
+            request,
+        )
+        self.assertIn('"name": "localMode", "value": "LOCAL_SETPOINT"', request)
+        client.send_bytes.assert_awaited_once()
+
 
 class TestDevicePolling(IsolatedAsyncioTestCase):
     """Exercise adaptive polling URL construction."""
