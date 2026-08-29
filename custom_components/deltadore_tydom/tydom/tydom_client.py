@@ -956,8 +956,11 @@ class TydomClient:
         """Start the gateway's generic product-association workflow.
 
         ``/devices/install`` is the endpoint used by the official application
-        for TYDOM and Tywell product discovery.  It is deliberately a generic
-        request (not a write to an already discovered device).
+        for TYDOM and Tywell product discovery.  Some gateway firmware keeps
+        this discovery request open while it listens for a radio product and
+        does not send a synchronous HTTP reply.  Dispatch it without waiting
+        for such a reply; callers must subsequently reload the inventory to
+        determine whether a product was discovered.
         """
         required = {"protocol", "type", "profile"}
         missing = required.difference(payload)
@@ -965,7 +968,13 @@ class TydomClient:
             raise ValueError(
                 "Product association payload is missing: " + ", ".join(sorted(missing))
             )
-        await self.get_reply_to_request("POST", "/devices/install", body=payload)
+        transaction_id = await self.send_request(
+            "POST", "/devices/install", body=payload
+        )
+        LOGGER.debug(
+            "Dispatched product-association request (transaction_id: %s)",
+            transaction_id,
+        )
 
     async def delete_device(self, device_id: str | int) -> None:
         """Delete one product from the TYDOM gateway inventory."""
