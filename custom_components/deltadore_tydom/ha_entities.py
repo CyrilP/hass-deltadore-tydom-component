@@ -128,6 +128,7 @@ _BINARY_FALSE_VALUES = frozenset({"0", "off", "false", "no"})
 _PROBLEM_ATTRIBUTE_MARKERS = ("defect", "empty", "intrusion")
 _BINARY_OPEN_STATES = frozenset({"LOCKED", "UNLOCKED"})
 _AUTOMATIC_ALARM_HISTORY_TIMEOUT = 10.0
+_UNCONFIRMED_ARMING_SETTLE_DELAY = 6.0
 
 
 def normalize_binary_state(value: Any, *, allow_numeric: bool = False) -> bool | None:
@@ -3526,23 +3527,37 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
 
         self.async_write_ha_state()
 
-    def _schedule_open_issues_refresh(self) -> None:
+    def _schedule_open_issues_refresh(
+        self, *, after_unconfirmed_arm: bool = False
+    ) -> None:
         """Fetch the central-reported blockers after a refused arm command."""
         if (
             self._open_issues_refresh_task is None
             or self._open_issues_refresh_task.done()
         ):
             self._open_issues_refresh_task = self.hass.async_create_task(
-                self._async_refresh_open_issues(),
+                self._async_refresh_open_issues(after_unconfirmed_arm),
                 "Refresh TYXAL open issues after refused arming",
             )
 
-    async def _async_refresh_open_issues(self) -> None:
-        """Refresh issue details after the alarm central refused arming."""
+    async def _async_refresh_open_issues(
+        self, after_unconfirmed_arm: bool = False
+    ) -> None:
+        """Refresh issue details after an arm command that did not complete."""
+        if after_unconfirmed_arm:
+            # Some older gateways do not publish ACK or DENIED for alarm
+            # cdata. Give their normal state push time to arrive before
+            # deciding whether the command was refused.
+            await asyncio.sleep(_UNCONFIRMED_ARMING_SETTLE_DELAY)
+            if self.alarm_state != AlarmControlPanelState.DISARMED:
+                self._device.clear_open_issues()
+                self.async_write_ha_state()
+                return
         try:
-            await self._device.get_open_issues(
-                timeout=_AUTOMATIC_ALARM_HISTORY_TIMEOUT, log_timeout=False
-            )
+            # This is limited to refused or unconfirmed arm attempts. Use the
+            # normal history timeout, rather than the short startup probe for
+            # optional alarm-history sensors.
+            await self._device.get_open_issues()
         except Exception:
             LOGGER.debug(
                 "Unable to retrieve detailed open issues after refused arming for %s",
@@ -3663,7 +3678,7 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
     async def _run_alarm_command(self, command, operation: str) -> None:
         """Run an alarm command and expose a negative gateway result in HA."""
         try:
-            await command
+            command_confirmed = await command
         except TydomAlarmCommandError as err:
             if err.result == "DENIED":
                 if operation == "arming":
@@ -3675,7 +3690,11 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
             raise HomeAssistantError(
                 f"The alarm system rejected {operation} ({err.result})."
             ) from err
-        if operation == "arming":
+        if operation == "arming" and command_confirmed is False:
+            # The gateway did not publish ACK/DENIED. Check its state after a
+            # short delay and retrieve blockers only if it remained disarmed.
+            self._schedule_open_issues_refresh(after_unconfirmed_arm=True)
+        elif operation == "arming":
             self._device.clear_open_issues()
             self.async_write_ha_state()
 

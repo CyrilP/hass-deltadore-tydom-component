@@ -67,13 +67,15 @@ class _Harness:
         self._device = SimpleNamespace(clear_open_issues=self._clear_open_issues)
         self.clear_calls = 0
         self.refresh_calls = 0
+        self.refresh_after_unconfirmed_arm = False
         self.write_calls = 0
 
     def _clear_open_issues(self) -> None:
         self.clear_calls += 1
 
-    def _schedule_open_issues_refresh(self) -> None:
+    def _schedule_open_issues_refresh(self, *, after_unconfirmed_arm=False) -> None:
         self.refresh_calls += 1
+        self.refresh_after_unconfirmed_arm = after_unconfirmed_arm
 
     def async_write_ha_state(self) -> None:
         self.write_calls += 1
@@ -93,6 +95,7 @@ class AlarmOpenIssuesRefreshTests(IsolatedAsyncioTestCase):
             await entity._run_alarm_command(command(), "arming")
 
         self.assertEqual(entity.refresh_calls, 1)
+        self.assertFalse(entity.refresh_after_unconfirmed_arm)
         self.assertEqual(entity.clear_calls, 0)
 
     async def test_successful_arming_clears_previous_open_issues(self) -> None:
@@ -107,6 +110,19 @@ class AlarmOpenIssuesRefreshTests(IsolatedAsyncioTestCase):
         self.assertEqual(entity.refresh_calls, 0)
         self.assertEqual(entity.clear_calls, 1)
         self.assertEqual(entity.write_calls, 1)
+
+    async def test_unconfirmed_arming_schedules_a_delayed_refresh(self) -> None:
+        """A silent gateway result must not be mistaken for accepted arming."""
+        entity = _Harness()
+
+        async def command() -> bool:
+            return False
+
+        await entity._run_alarm_command(command(), "arming")
+
+        self.assertEqual(entity.refresh_calls, 1)
+        self.assertTrue(entity.refresh_after_unconfirmed_arm)
+        self.assertEqual(entity.clear_calls, 0)
 
     async def test_non_arming_denial_does_not_refresh_open_issues(self) -> None:
         """Disarming failures are unrelated to arming blockers."""

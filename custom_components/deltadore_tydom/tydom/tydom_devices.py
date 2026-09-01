@@ -1384,7 +1384,7 @@ class TydomAlarm(TydomDevice):
         value: str,
         code: str | None,
         zones: str | None,
-    ) -> None:
+    ) -> bool:
         """Select regular data or cdata from the alarm's advertised capability."""
         if zones in (None, "") and self._supports_regular_alarm_command(value):
             await self._tydom_client.put_devices_data(
@@ -1393,9 +1393,9 @@ class TydomAlarm(TydomDevice):
                 "alarmCmd",
                 value,
             )
-            return
+            return True
 
-        await self._tydom_client.put_alarm_cdata(
+        return await self._tydom_client.put_alarm_cdata(
             self._id,
             self._endpoint,
             code,
@@ -1415,7 +1415,7 @@ class TydomAlarm(TydomDevice):
             or getattr(self, f"zone{zone}State", "OFF") == "ON"
         }
 
-    async def _set_alarm_profile(self, code: str | None, configured_zones: Any) -> None:
+    async def _set_alarm_profile(self, code: str | None, configured_zones: Any) -> bool:
         """Transition to one configured profile without globally disarming."""
         target_zones = self._parse_alarm_zones(configured_zones)
         legacy = self.is_legacy_alarm()
@@ -1424,8 +1424,7 @@ class TydomAlarm(TydomDevice):
         # means "all zones" on installations which do not configure explicit
         # Away/Home/Night zone lists, rather than an empty desired zone set.
         if not target_zones:
-            await self._send_alarm_mode("ON", code, configured_zones)
-            return
+            return await self._send_alarm_mode("ON", code, configured_zones)
 
         active_zones = self._active_alarm_zones()
         zones_to_enable = target_zones - active_zones
@@ -1433,8 +1432,9 @@ class TydomAlarm(TydomDevice):
 
         # Extend protection before removing surplus coverage so zones shared
         # by both profiles remain armed throughout the transition.
+        confirmed = True
         if zones_to_enable:
-            await self._tydom_client.put_alarm_cdata(
+            confirmed = await self._tydom_client.put_alarm_cdata(
                 self._id,
                 self._endpoint,
                 code,
@@ -1443,14 +1443,18 @@ class TydomAlarm(TydomDevice):
                 legacy,
             )
         if zones_to_disable:
-            await self._tydom_client.put_alarm_cdata(
-                self._id,
-                self._endpoint,
-                code,
-                "OFF",
-                ",".join(str(zone) for zone in sorted(zones_to_disable)),
-                legacy,
+            confirmed = (
+                await self._tydom_client.put_alarm_cdata(
+                    self._id,
+                    self._endpoint,
+                    code,
+                    "OFF",
+                    ",".join(str(zone) for zone in sorted(zones_to_disable)),
+                    legacy,
+                )
+                and confirmed
             )
+        return confirmed
 
     def get_alarm_mode_from_zones(self) -> str | None:
         """Identify the configured alarm mode from the active zones."""
@@ -1468,24 +1472,24 @@ class TydomAlarm(TydomDevice):
 
         return None
 
-    async def alarm_disarm(self, code) -> None:
+    async def alarm_disarm(self, code) -> bool:
         """Disarm alarm."""
-        await self._send_alarm_mode("OFF", code, None)
+        return await self._send_alarm_mode("OFF", code, None)
         # self._tydom_client.add_poll_device_url_1s(f"/devices/{self._id}/endpoints/{self._endpoint}/cdata")
 
-    async def alarm_arm_away(self, code=None) -> None:
+    async def alarm_arm_away(self, code=None) -> bool:
         """Arm away alarm."""
-        await self._set_alarm_profile(code, self._tydom_client._zone_away)
+        return await self._set_alarm_profile(code, self._tydom_client._zone_away)
         # self._tydom_client.add_poll_device_url_1s(f"/devices/{self._id}/endpoints/{self._endpoint}/cdata")
 
-    async def alarm_arm_home(self, code=None) -> None:
+    async def alarm_arm_home(self, code=None) -> bool:
         """Arm home alarm."""
-        await self._set_alarm_profile(code, self._tydom_client._zone_home)
+        return await self._set_alarm_profile(code, self._tydom_client._zone_home)
         # self._tydom_client.add_poll_device_url_1s(f"/devices/{self._id}/endpoints/{self._endpoint}/cdata")
 
-    async def alarm_arm_night(self, code=None) -> None:
+    async def alarm_arm_night(self, code=None) -> bool:
         """Arm night alarm."""
-        await self._set_alarm_profile(code, self._tydom_client._zone_night)
+        return await self._set_alarm_profile(code, self._tydom_client._zone_night)
 
     async def force_arm(self, mode: str, code: str) -> None:
         """Explicitly force arming in one configured Home Assistant mode."""
