@@ -121,7 +121,10 @@ start_product_association:
           mode: box
 remove_product_association:
   name: Remove associated product
-  description: Permanently remove the selected product from its TYDOM/Tywell gateway. This is not limited to deleting the Home Assistant entity.
+  description: >-
+    Permanently remove one selected product device from its TYDOM/Tywell
+    gateway. Select the product device itself, or exactly one of its entities.
+    This is not limited to deleting the Home Assistant entity.
   target:
     entity:
       integration: deltadore_tydom
