@@ -8,7 +8,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.const import CONF_HOST, CONF_MAC, CONF_PIN, Platform
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceEntry
 
 from . import hub
@@ -22,6 +22,11 @@ from .const import (
     LOGGER,
 )
 from .device_removal import can_remove_device
+from .ha_entities import ASSOCIATION_COMMAND, IDENTIFY_COMMAND, start_command
+from .hub import (
+    remove_product_association,
+    start_product_association,
+)
 
 # Config schema for hassfest validation
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -50,6 +55,145 @@ PLATFORMS: list[str] = [
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Delta Dore Tydom integration."""
+
+    def get_tydom_device(entity_id: str):
+        """Return the TYDOM device represented by an integration entity."""
+        for tydom_hub in hass.data.get(DOMAIN, {}).values():
+            ha_device = getattr(tydom_hub, "ha_devices", {}).get(entity_id)
+            device = getattr(ha_device, "_device", None)
+            if device is not None:
+                return device
+        return None
+
+    def get_tydom_device_from_target(call):
+        """Resolve exactly one TYDOM product from an entity or device target."""
+        entity_ids = call.data.get("entity_id", [])
+        device_ids = call.data.get("device_id", [])
+        if isinstance(entity_ids, str):
+            entity_ids = [entity_ids]
+        if isinstance(device_ids, str):
+            device_ids = [device_ids]
+
+        devices = {}
+        for entity_id in entity_ids:
+            device = get_tydom_device(entity_id)
+            if device is not None:
+                devices[id(device)] = device
+
+        if device_ids:
+            from homeassistant.helpers import device_registry as dr
+
+            device_registry = dr.async_get(hass)
+            for registry_device_id in device_ids:
+                device_entry = device_registry.async_get(registry_device_id)
+                if device_entry is None:
+                    continue
+                for domain, product_id in device_entry.identifiers:
+                    if domain != DOMAIN:
+                        continue
+                    for tydom_hub in hass.data.get(DOMAIN, {}).values():
+                        device = getattr(tydom_hub, "devices", {}).get(str(product_id))
+                        if device is not None:
+                            devices[id(device)] = device
+
+        if len(devices) != 1:
+            raise HomeAssistantError(
+                "This action requires exactly one TYDOM product entity or device"
+            )
+        return next(iter(devices.values()))
+
+    def get_tydom_hub(entity_id: str):
+        """Return the configured gateway owning an integration entity."""
+        for tydom_hub in hass.data.get(DOMAIN, {}).values():
+            if entity_id in getattr(tydom_hub, "ha_devices", {}):
+                return tydom_hub
+        return None
+
+    def get_target_hub(call):
+        """Resolve a gateway from a config entry, or one of its entities."""
+        entry_id = call.data.get("config_entry_id")
+        if entry_id:
+            tydom_hub = hass.data.get(DOMAIN, {}).get(entry_id)
+            if tydom_hub is None:
+                raise HomeAssistantError(f"TYDOM config entry {entry_id} was not found")
+            return tydom_hub
+        entity_ids = call.data.get("entity_id", [])
+        if isinstance(entity_ids, str):
+            entity_ids = [entity_ids]
+        for entity_id in entity_ids:
+            tydom_hub = get_tydom_hub(entity_id)
+            if tydom_hub is not None:
+                return tydom_hub
+        device = get_tydom_device_from_target(call)
+        for tydom_hub in hass.data.get(DOMAIN, {}).values():
+            if device in getattr(tydom_hub, "devices", {}).values():
+                return tydom_hub
+        raise HomeAssistantError(
+            "Product association requires one TYDOM entity, device, or config_entry_id"
+        )
+
+    async def handle_device_command(call, command: str) -> None:
+        """Run an association-related command on one supported entity."""
+        device = get_tydom_device_from_target(call)
+
+        try:
+            await start_command(device, command)
+        except ValueError as err:
+            raise HomeAssistantError(
+                f"Cannot run {command} for {device.device_id}: {err}"
+            ) from err
+
+        LOGGER.info("Started %s for TYDOM device %s", command, device.device_id)
+
+    async def handle_start_device_association(call) -> None:
+        """Start association mode on a compatible TYDOM device."""
+        await handle_device_command(call, ASSOCIATION_COMMAND)
+
+    async def handle_identify_device(call) -> None:
+        """Physically identify a compatible TYDOM device."""
+        await handle_device_command(call, IDENTIFY_COMMAND)
+
+    async def handle_start_product_association(call) -> dict[str, str | int]:
+        """Start generic product association on a configured gateway."""
+        tydom_hub = get_target_hub(call)
+        profile = call.data.get("profile")
+        if not profile:
+            raise HomeAssistantError("Product association requires a profile")
+        network = call.data.get("network")
+        try:
+            payload = await start_product_association(tydom_hub, profile, network)
+        except ValueError as err:
+            raise HomeAssistantError(str(err)) from err
+        LOGGER.info(
+            "Started product association on TYDOM config entry %s: %s",
+            tydom_hub._entry.entry_id,
+            payload,
+        )
+        return {"payload": payload}
+
+    async def handle_remove_product_association(call) -> None:
+        """Remove an associated product from its gateway after confirmation."""
+        if not call.data.get("confirm"):
+            raise HomeAssistantError(
+                "Set confirm: true to remove the product from the TYDOM gateway"
+            )
+        device = get_tydom_device_from_target(call)
+        try:
+            await remove_product_association(device)
+        except ValueError as err:
+            raise HomeAssistantError(str(err)) from err
+        LOGGER.warning("Removed TYDOM product %s from its gateway", device.device_id)
+
+    hass.services.async_register(
+        DOMAIN, "start_device_association", handle_start_device_association
+    )
+    hass.services.async_register(DOMAIN, "identify_device", handle_identify_device)
+    hass.services.async_register(
+        DOMAIN, "start_product_association", handle_start_product_association
+    )
+    hass.services.async_register(
+        DOMAIN, "remove_product_association", handle_remove_product_association
+    )
 
     # Enregistrer le service de rechargement une seule fois
     async def handle_reload_devices(call):

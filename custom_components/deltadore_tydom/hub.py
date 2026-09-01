@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
+
 from aiohttp import ClientWebSocketResponse, ClientSession
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
@@ -62,6 +64,10 @@ from .ha_entities import (
     HATwcShutterCover,
     HASwitch,
     HAButton,
+    HADeviceAssociationButton,
+    HAGatewayAssociationCategorySelect,
+    HAGatewayAssociationProductSelect,
+    HAGatewayStartAssociationButton,
     HAAlarmAcknowledgeButton,
     HAAlarmPendingEventsSensor,
     HAReloadButton,
@@ -73,10 +79,247 @@ from .ha_entities import (
     HARemoteBattery,
     HARemoteEvent,
     is_binary_attribute,
+    ASSOCIATION_COMMAND,
+    IDENTIFY_COMMAND,
+    supports_command,
 )
 
 from .const import LOGGER, get_polling_interval_for_validity, STRUCTURED_LOGGER
 from .remote_registry_migration import migrate_legacy_remote_endpoint
+
+
+@dataclass(frozen=True, slots=True)
+class DiscoveryProfile:
+    """One radio/product family accepted by the gateway install API."""
+
+    label: str
+    protocol: str
+    type: str
+    profile: str
+
+
+@dataclass(frozen=True, slots=True)
+class AssociationChoice:
+    """A product-family choice shown under one user-facing category."""
+
+    label: str
+    profile_id: str | None
+
+
+# These profiles are the request values used by the official TYDOM app. The
+# gateway stays authoritative and accepts only values supported by its firmware.
+DISCOVERY_PROFILES: dict[str, DiscoveryProfile] = {
+    "alarm_x2d": DiscoveryProfile("TYXAL / alarm X2D", "X3D", "x2d_a", "alarm"),
+    "alarm_x3d": DiscoveryProfile("TYXAL+ / alarm X3D", "X3D", "x3d_ppa", "alarm"),
+    "aeraulic_zigbee": DiscoveryProfile("Aéraulique Zigbee", "ZIGBEE", "", "aeraulic"),
+    "awning_x3d": DiscoveryProfile("Store banne X3D", "X3D", "x3d_rm", "awning"),
+    "boiler_drive_x3d": DiscoveryProfile(
+        "Chaudière Drive X3D", "X3D", "x3d_rm", "boilerDrive"
+    ),
+    "controller_x3d": DiscoveryProfile(
+        "Contrôleur X3D", "X3D", "x3d_pps", "controller"
+    ),
+    "detector_x3d": DiscoveryProfile("Détecteur X3D", "X3D", "direct", "detector"),
+    "electric_zigbee": DiscoveryProfile(
+        "Équipement électrique Zigbee", "ZIGBEE", "", "electric"
+    ),
+    "light_x3d": DiscoveryProfile("Éclairage X3D", "X3D", "x3d_rm", "light"),
+    "light_zigbee": DiscoveryProfile("Éclairage Zigbee", "ZIGBEE", "", "light"),
+    "generic_x3d": DiscoveryProfile(
+        "Produit générique X3D", "X3D", "x3d_pp", "generic"
+    ),
+    "meter_x3d": DiscoveryProfile("Compteur / mesure X3D", "X3D", "direct", "meter"),
+    "multi_x3d": DiscoveryProfile(
+        "Produit multifonction X3D", "X3D", "x3d_pped", "multi"
+    ),
+    "opening_x3d": DiscoveryProfile(
+        "Ouvrant / porte / fenêtre X3D", "X3D", "x3d_rm", "opening"
+    ),
+    "pod_x3d": DiscoveryProfile("Produit POD X3D", "X3D", "x3d_rm", "pod"),
+    "remote_x3d": DiscoveryProfile("Télécommande X3D", "X3D", "direct", "remote"),
+    "rt2012_measure_x3d": DiscoveryProfile(
+        "Mesure RT2012 X3D", "X3D", "x3d_pped", "rt2012_meas"
+    ),
+    "rt2012_no_outdoor_temp_x3d": DiscoveryProfile(
+        "RT2012 sans sonde extérieure X3D", "X3D", "x3d_pped", "rt2012_noOutTemp"
+    ),
+    "rt2012_x3d": DiscoveryProfile("RT2012 X3D", "X3D", "x3d_pped", "rt2012"),
+    "sensor_x3d": DiscoveryProfile("Capteur X3D", "X3D", "direct", "sensor"),
+    "shared_thermic_x3d": DiscoveryProfile(
+        "Chauffage partagé X3D", "X3D", "x3d_rmloop", "shThermic"
+    ),
+    "shutter_x3d": DiscoveryProfile("Volet roulant X3D", "X3D", "x3d_rm", "shutter"),
+    "shutter_activhome_x3d": DiscoveryProfile(
+        "Volet Activ'Home X3D", "X3D", "x3d_rm", "shutterActivHome"
+    ),
+    "shutter_brushless_x3d": DiscoveryProfile(
+        "Volet Brushless X3D", "X3D", "x3d_rm", "shutterBrushless"
+    ),
+    "shutter_projected_x3d": DiscoveryProfile(
+        "Volet projeté X3D", "X3D", "x3d_rm", "shutterProjected"
+    ),
+    "shutter_profalux_zigbee": DiscoveryProfile(
+        "Volet Profalux Zigbee", "ZIGBEE", "PROFALUX", "shutter"
+    ),
+    "shutter_rmlp_x3d": DiscoveryProfile(
+        "Volet RMLP X3D", "X3D", "x3d_rmlp", "shutter"
+    ),
+    "shutter_stella_zigbee": DiscoveryProfile(
+        "Volet Stella Zigbee", "ZIGBEE", "", "shutter"
+    ),
+    "shutter_zigbee": DiscoveryProfile("Volet roulant Zigbee", "ZIGBEE", "", "shutter"),
+    "temperature_x3d": DiscoveryProfile(
+        "Sonde de température X3D", "X3D", "direct", "temperature"
+    ),
+    "thermic_x3d": DiscoveryProfile("Chauffage X3D", "X3D", "x3d_rm", "thermic"),
+    "thermic_x2d": DiscoveryProfile("Chauffage X2D", "X3D", "x2d_d", "thermic"),
+    "thermic_x3d_es": DiscoveryProfile(
+        "Chauffage X3D (émetteur spécifique)", "X3D", "x3d_rm", "thermicES"
+    ),
+    "thermic_zigbee": DiscoveryProfile("Chauffage Zigbee", "ZIGBEE", "", "thermic"),
+    "typass_atl_x3d": DiscoveryProfile("TYPASS ATL X3D", "X3D", "direct", "typassAtl"),
+    "typass_saunier_x3d": DiscoveryProfile(
+        "TYPASS Saunier X3D", "X3D", "direct", "typassSaunier"
+    ),
+    "weather_plt": DiscoveryProfile("Station météo", "PltService", "", "weather"),
+}
+
+
+# The official application first asks for a usage, then a product family. Keep
+# its initial list of groups intact. A recipe may occur in several categories.
+ASSOCIATION_CATALOG: dict[str, tuple[AssociationChoice, ...]] = {
+    "Volets": (
+        AssociationChoice("Récepteur volet roulant X3D", "shutter_x3d"),
+        AssociationChoice("Volet Activ'Home", "shutter_activhome_x3d"),
+        AssociationChoice("Volet Brushless", "shutter_brushless_x3d"),
+        AssociationChoice("Volet projeté", "shutter_projected_x3d"),
+        AssociationChoice("Volet Profalux Zigbee", "shutter_profalux_zigbee"),
+        AssociationChoice("Volet Stella Zigbee", "shutter_stella_zigbee"),
+        AssociationChoice("Volet roulant Zigbee", "shutter_zigbee"),
+    ),
+    "Éclairages": (
+        AssociationChoice("Récepteur éclairage X3D", "light_x3d"),
+        AssociationChoice("Éclairage Zigbee", "light_zigbee"),
+    ),
+    "Thermique": (
+        AssociationChoice("Récepteur chauffage X3D", "thermic_x3d"),
+        AssociationChoice("Récepteur chauffage X2D", "thermic_x2d"),
+        AssociationChoice("Émetteur chauffage X3D spécifique", "thermic_x3d_es"),
+        AssociationChoice("Chaudière Drive", "boiler_drive_x3d"),
+        AssociationChoice("Chauffage Zigbee", "thermic_zigbee"),
+        AssociationChoice("Chauffage partagé X3D", "shared_thermic_x3d"),
+        AssociationChoice("TYPASS ATL", "typass_atl_x3d"),
+        AssociationChoice("TYPASS Saunier", "typass_saunier_x3d"),
+        AssociationChoice("Aéraulique Zigbee", "aeraulic_zigbee"),
+    ),
+    "Garage": (
+        AssociationChoice("Récepteur portail / garage X3D", "light_x3d"),
+        AssociationChoice("Récepteur volet / garage X3D", "shutter_x3d"),
+        AssociationChoice("Volet Profalux Zigbee", "shutter_profalux_zigbee"),
+    ),
+    "Portail": (
+        AssociationChoice("Récepteur portail X3D", "light_x3d"),
+        AssociationChoice("Produit générique X3D", "generic_x3d"),
+    ),
+    "Alarme": (
+        AssociationChoice("TYXAL / alarme X2D", "alarm_x2d"),
+        AssociationChoice("TYXAL+ / alarme X3D", "alarm_x3d"),
+        AssociationChoice("Détecteur X3D", "detector_x3d"),
+        AssociationChoice("Télécommande / clavier X3D", "remote_x3d"),
+    ),
+    "Caméras": (AssociationChoice("Aucun profil local documenté", None),),
+    "Consommation": (
+        AssociationChoice("Compteur ou mesure X3D", "meter_x3d"),
+        AssociationChoice("RT2012", "rt2012_x3d"),
+        AssociationChoice("RT2012 sans sonde extérieure", "rt2012_no_outdoor_temp_x3d"),
+        AssociationChoice("Mesure RT2012", "rt2012_measure_x3d"),
+    ),
+    "Porte": (
+        AssociationChoice("Ouvrant, porte ou fenêtre X3D", "opening_x3d"),
+        AssociationChoice("Produit POD X3D", "pod_x3d"),
+    ),
+    "Fenêtres": (
+        AssociationChoice("Ouvrant, porte ou fenêtre X3D", "opening_x3d"),
+        AssociationChoice("Produit POD X3D", "pod_x3d"),
+    ),
+    "Stores": (
+        AssociationChoice("Store banne X3D", "awning_x3d"),
+        AssociationChoice("Store projeté X3D", "shutter_projected_x3d"),
+    ),
+    "Prise": (
+        AssociationChoice("Prise / équipement électrique Zigbee", "electric_zigbee"),
+        AssociationChoice("Récepteur prise X3D", "light_x3d"),
+    ),
+    "Autres": (
+        AssociationChoice("Produit générique X3D", "generic_x3d"),
+        AssociationChoice("Produit multifonction X3D", "multi_x3d"),
+        AssociationChoice("Produit POD X3D", "pod_x3d"),
+        AssociationChoice("Station météo", "weather_plt"),
+    ),
+    "Télécommandes et claviers": (
+        AssociationChoice("Télécommande X3D", "remote_x3d"),
+        AssociationChoice("Contrôleur X3D", "controller_x3d"),
+    ),
+    "Interrupteurs": (
+        AssociationChoice("Interrupteur / récepteur éclairage X3D", "light_x3d"),
+        AssociationChoice("Éclairage Zigbee", "light_zigbee"),
+        AssociationChoice("Contrôleur X3D", "controller_x3d"),
+    ),
+    "Capteurs": (
+        AssociationChoice("Capteur X3D", "sensor_x3d"),
+        AssociationChoice("Détecteur X3D", "detector_x3d"),
+        AssociationChoice("Sonde de température X3D", "temperature_x3d"),
+        AssociationChoice("Station météo", "weather_plt"),
+    ),
+}
+
+
+def get_association_choices(category: str) -> tuple[AssociationChoice, ...]:
+    """Return the product families available under one displayed category."""
+    try:
+        return ASSOCIATION_CATALOG[category]
+    except KeyError as err:
+        raise ValueError(f"Unknown TYDOM association category: {category}") from err
+
+
+def get_install_payload(
+    profile_id: str, network: int | None = None
+) -> dict[str, str | int]:
+    """Build a validated ``POST /devices/install`` request body."""
+    try:
+        profile = DISCOVERY_PROFILES[profile_id]
+    except KeyError as err:
+        raise ValueError(f"Unknown TYDOM discovery profile: {profile_id}") from err
+    payload: dict[str, str | int] = {
+        "protocol": profile.protocol,
+        "type": profile.type,
+        "profile": profile.profile,
+    }
+    if network is not None:
+        if network < 0:
+            raise ValueError("TYDOM network must be a non-negative integer")
+        payload["net"] = network
+    elif profile.protocol == "ZIGBEE":
+        payload["net"] = 0
+    return payload
+
+
+async def start_product_association(
+    tydom_hub, profile_id: str, network: int | None = None
+) -> dict[str, str | int]:
+    """Start association on one configured TYDOM/Tywell gateway."""
+    payload = get_install_payload(profile_id, network)
+    await tydom_hub._tydom_client.post_device_install(payload)
+    return payload
+
+
+async def remove_product_association(device) -> None:
+    """Remove one already-associated product from its TYDOM gateway."""
+    device_id = getattr(device, "_id", None)
+    tydom_client = getattr(device, "_tydom_client", None)
+    if device_id is None or tydom_client is None:
+        raise ValueError("The selected entity does not expose a TYDOM device")
+    await tydom_client.delete_device(device_id)
 
 
 class Hub:
@@ -147,7 +390,14 @@ class Hub:
 
         self.online = True
         self._reload_button_created = False
+        self._association_controls_created = False
+        self._association_controls: list = []
+        self._association_category = next(iter(ASSOCIATION_CATALOG))
+        self._association_profile = get_association_choices(self._association_category)[
+            0
+        ].profile_id
         self._refresh_energy_buttons_created: set[str] = set()
+        self._device_association_buttons_created: set[tuple[str, str]] = set()
         self._remote_battery_entities: dict[str, HARemoteBattery] = {}
         self._interrupter_battery_entities: dict[str, HAInterrupterBattery] = {}
         self._twc_scene_sets: dict[str, dict[str, HAScene]] = {}
@@ -276,7 +526,103 @@ class Hub:
             self.add_button_callback([reload_button])
             self._reload_button_created = True
             LOGGER.debug("Bouton de rechargement créé")
+        if (
+            is_ready
+            and not self._association_controls_created
+            and self.add_button_callback is not None
+            and self.add_select_callback is not None
+        ):
+            self.add_select_callback(
+                [
+                    HAGatewayAssociationCategorySelect(self),
+                    HAGatewayAssociationProductSelect(self),
+                ]
+            )
+            self.add_button_callback([HAGatewayStartAssociationButton(self)])
+            self._association_controls_created = True
+            LOGGER.debug("Gateway product-association controls created")
         return is_ready
+
+    @property
+    def association_categories(self) -> tuple[str, ...]:
+        """Return the usage categories offered by gateway association."""
+        return tuple(ASSOCIATION_CATALOG)
+
+    @property
+    def association_category(self) -> str:
+        """Return the currently selected association category."""
+        return self._association_category
+
+    @property
+    def association_product_labels(self) -> tuple[str, ...]:
+        """Return product families for the selected category."""
+        return tuple(
+            choice.label
+            for choice in get_association_choices(self._association_category)
+        )
+
+    @property
+    def association_product_label(self) -> str:
+        """Return the label of the currently selected product family."""
+        return next(
+            choice.label
+            for choice in get_association_choices(self._association_category)
+            if choice.profile_id == self._association_profile
+        )
+
+    @property
+    def association_product_supported(self) -> bool:
+        """Whether the current choice has a documented local install profile."""
+        return self._association_profile is not None
+
+    def register_association_control(self, entity) -> None:
+        """Register a gateway control that needs selection-state updates."""
+        if entity not in self._association_controls:
+            self._association_controls.append(entity)
+
+    def unregister_association_control(self, entity) -> None:
+        """Forget a gateway control removed by Home Assistant."""
+        if entity in self._association_controls:
+            self._association_controls.remove(entity)
+
+    def _notify_association_controls(self) -> None:
+        """Update the category/product controls after a selection change."""
+        for entity in self._association_controls:
+            entity.async_write_ha_state()
+
+    def set_association_category(self, category: str) -> None:
+        """Choose a usage category and its first valid product family."""
+        choices = get_association_choices(category)
+        self._association_category = category
+        if not any(
+            choice.profile_id == self._association_profile for choice in choices
+        ):
+            self._association_profile = choices[0].profile_id
+        self._notify_association_controls()
+
+    def set_association_product(self, label: str) -> None:
+        """Choose one product family from the current category."""
+        for choice in get_association_choices(self._association_category):
+            if choice.label == label:
+                self._association_profile = choice.profile_id
+                self._notify_association_controls()
+                return
+        raise ValueError(
+            f"{label!r} is not available for {self._association_category!r}"
+        )
+
+    async def start_selected_product_association(self) -> None:
+        """Start association using the product selected in the gateway controls."""
+        if self._association_profile is None:
+            raise ValueError(
+                "The selected category has no documented local TYDOM install profile"
+            )
+        payload = await start_product_association(self, self._association_profile)
+        LOGGER.info(
+            "Started gateway association for %s on config entry %s",
+            payload,
+            self._entry.entry_id,
+        )
 
     def _add_discovered_entities(self, entities: list) -> None:
         """Add discovered entities to the platform matching their entity type."""
@@ -399,6 +745,7 @@ class Hub:
 
         try:
             await factory(device)
+            self._maybe_create_device_association_buttons(device)
         except Exception as e:
             LOGGER.exception(
                 "Error creating HA device for %s (%s): %s",
@@ -825,6 +1172,7 @@ class Hub:
                 self._add_discovered_entities(new_sensors)
             if isinstance(ha_device, HAEnergy):
                 self._maybe_create_refresh_energy_button(stored_device, ha_device)
+            self._maybe_create_device_association_buttons(stored_device)
             # ha_device.publish_updates()
             # ha_device.update()
         except KeyError as e:
@@ -837,6 +1185,24 @@ class Hub:
             LOGGER.exception(
                 "Erreur lors de la mise à jour du device %s", device.device_id
             )
+
+    def _maybe_create_device_association_buttons(self, device: TydomDevice) -> None:
+        """Expose only association controls advertised by a physical product."""
+        if self.add_button_callback is None:
+            return
+
+        buttons = []
+        for command in (ASSOCIATION_COMMAND, IDENTIFY_COMMAND):
+            key = (device.device_id, command)
+            if key in self._device_association_buttons_created:
+                continue
+            if not supports_command(device, command):
+                continue
+            buttons.append(HADeviceAssociationButton(device, self._hass, command))
+            self._device_association_buttons_created.add(key)
+
+        if buttons:
+            self.add_button_callback(buttons)
 
     async def ping(self) -> None:
         """Periodically send pings."""
@@ -1009,7 +1375,10 @@ class Hub:
         self._twc_cover_entities.clear()
         # Réinitialiser le flag pour recréer le bouton après le rechargement
         self._reload_button_created = False
+        self._association_controls_created = False
+        self._association_controls.clear()
         self._refresh_energy_buttons_created.clear()
+        self._device_association_buttons_created.clear()
 
         # Supprimer toutes les entités existantes via l'Entity Registry
         from homeassistant.helpers import entity_registry as er
@@ -1050,6 +1419,18 @@ class Hub:
             reload_button = HAReloadButton(self, self._hass)
             self.add_button_callback([reload_button])
             LOGGER.debug("Bouton de rechargement recréé après le rechargement")
+        if (
+            self.add_button_callback is not None
+            and self.add_select_callback is not None
+        ):
+            self.add_select_callback(
+                [
+                    HAGatewayAssociationCategorySelect(self),
+                    HAGatewayAssociationProductSelect(self),
+                ]
+            )
+            self.add_button_callback([HAGatewayStartAssociationButton(self)])
+            self._association_controls_created = True
 
         LOGGER.info(
             "Rechargement terminé, les nouveaux appareils seront découverts automatiquement"
