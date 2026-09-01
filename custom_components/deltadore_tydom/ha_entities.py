@@ -128,6 +128,7 @@ _BINARY_FALSE_VALUES = frozenset({"0", "off", "false", "no"})
 _PROBLEM_ATTRIBUTE_MARKERS = ("defect", "empty", "intrusion")
 _BINARY_OPEN_STATES = frozenset({"LOCKED", "UNLOCKED"})
 _AUTOMATIC_ALARM_HISTORY_TIMEOUT = 10.0
+_UNCONFIRMED_ARMING_SETTLE_DELAY = 6.0
 
 
 def normalize_binary_state(value: Any, *, allow_numeric: bool = False) -> bool | None:
@@ -3456,6 +3457,7 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         self._last_alarm_state = self.alarm_state
         self._last_alarm_event_sequence = self._device.alarm_event_sequence
         self._pending_alarm_actor: tuple[str, str, str] | None = None
+        self._open_issues_refresh_task = None
 
         self._attr_supported_features = (
             self._attr_supported_features
@@ -3474,6 +3476,8 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
     async def async_will_remove_from_hass(self) -> None:
         """Remove the push callback registered in async_added_to_hass."""
         self._device.remove_callback(self._handle_alarm_update)
+        if self._open_issues_refresh_task is not None:
+            self._open_issues_refresh_task.cancel()
         if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
             self._device._ha_device = None
         await super().async_will_remove_from_hass()
@@ -3523,6 +3527,44 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
 
         self.async_write_ha_state()
 
+    def _schedule_open_issues_refresh(
+        self, *, after_unconfirmed_arm: bool = False
+    ) -> None:
+        """Fetch the central-reported blockers after a refused arm command."""
+        if (
+            self._open_issues_refresh_task is None
+            or self._open_issues_refresh_task.done()
+        ):
+            self._open_issues_refresh_task = self.hass.async_create_task(
+                self._async_refresh_open_issues(after_unconfirmed_arm),
+                "Refresh TYXAL open issues after refused arming",
+            )
+
+    async def _async_refresh_open_issues(
+        self, after_unconfirmed_arm: bool = False
+    ) -> None:
+        """Refresh issue details after an arm command that did not complete."""
+        if after_unconfirmed_arm:
+            # Some older gateways do not publish ACK or DENIED for alarm
+            # cdata. Give their normal state push time to arrive before
+            # deciding whether the command was refused.
+            await asyncio.sleep(_UNCONFIRMED_ARMING_SETTLE_DELAY)
+            if self.alarm_state != AlarmControlPanelState.DISARMED:
+                self._device.clear_open_issues()
+                self.async_write_ha_state()
+                return
+        try:
+            # This is limited to refused or unconfirmed arm attempts. Use the
+            # normal history timeout, rather than the short startup probe for
+            # optional alarm-history sensors.
+            await self._device.get_open_issues()
+        except Exception:
+            LOGGER.debug(
+                "Unable to retrieve detailed open issues after refused arming for %s",
+                self._device.device_id,
+                exc_info=True,
+            )
+
     @staticmethod
     def _actor_target_matches_state(target, state) -> bool:
         """Return whether an actor event describes the current HA alarm state."""
@@ -3541,10 +3583,14 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the source type for the actor that changed alarm state."""
-        if self._changed_by_type is None:
-            return {}
-        return {"changed_by_type": self._changed_by_type}
+        """Return alarm actor metadata and current central-reported issues."""
+        attributes: dict[str, Any] = {}
+        if self._changed_by_type is not None:
+            attributes["changed_by_type"] = self._changed_by_type
+        if self._device.open_issues is not None:
+            attributes["open_issue_count"] = len(self._device.open_issues)
+            attributes["open_issues"] = self._device.open_issues
+        return attributes
 
     @property
     def alarm_state(self) -> AlarmControlPanelState:
@@ -3632,9 +3678,11 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
     async def _run_alarm_command(self, command, operation: str) -> None:
         """Run an alarm command and expose a negative gateway result in HA."""
         try:
-            await command
+            command_confirmed = await command
         except TydomAlarmCommandError as err:
             if err.result == "DENIED":
+                if operation == "arming":
+                    self._schedule_open_issues_refresh()
                 raise HomeAssistantError(
                     f"The alarm system refused {operation}. Check the reported "
                     "defects before trying again."
@@ -3642,6 +3690,13 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
             raise HomeAssistantError(
                 f"The alarm system rejected {operation} ({err.result})."
             ) from err
+        if operation == "arming" and command_confirmed is False:
+            # The gateway did not publish ACK/DENIED. Check its state after a
+            # short delay and retrieve blockers only if it remained disarmed.
+            self._schedule_open_issues_refresh(after_unconfirmed_arm=True)
+        elif operation == "arming":
+            self._device.clear_open_issues()
+            self.async_write_ha_state()
 
     async def async_force_arm(self, code: str, mode: str) -> None:
         """Force arming only after an explicit Home Assistant action."""
@@ -3661,6 +3716,10 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
     async def async_get_events(self, event_type=None) -> list:
         """Get alarm events."""
         return await self._device.get_events(event_type or "UNACKED_EVENTS")
+
+    async def async_get_open_issues(self) -> list:
+        """Return the products the central currently reports as blocking arming."""
+        return await self._device.get_open_issues()
 
     async def async_get_alarm_products(self) -> dict[str, list[dict[str, Any]]]:
         """Return the products and zones configured on the alarm."""

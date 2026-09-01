@@ -196,12 +196,26 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
         client._message_handler.create_alarm_command_waiter.return_value = waiter
         client.send_bytes = AsyncMock()
 
-        await client._put_alarm_cdata("20", "10", "123456", "ON")
+        confirmed = await client._put_alarm_cdata("20", "10", "123456", "ON")
+
+        self.assertTrue(confirmed)
 
         request = client.send_bytes.await_args.args[0].decode("ascii")
         self.assertIn("PUT /devices/20/endpoints/10/cdata?name=alarmCmd", request)
         self.assertIn("Transac-Id: 0", request)
         self.assertIn('{"value": "ON", "pwd": "123456"}', request)
+
+    async def test_silent_alarm_command_reports_unconfirmed_result(self) -> None:
+        """A gateway without a command outcome must not look like an ACK."""
+        client = self._client()
+        waiter = asyncio.get_running_loop().create_future()
+        waiter.set_exception(TimeoutError())
+        client._message_handler.create_alarm_command_waiter.return_value = waiter
+        client.send_bytes = AsyncMock()
+
+        confirmed = await client._put_alarm_cdata("20", "10", "123456", "ON")
+
+        self.assertFalse(confirmed)
 
     async def test_denied_zone_alarm_command_raises(self) -> None:
         """A gateway DENIED result must reach the Home Assistant action."""

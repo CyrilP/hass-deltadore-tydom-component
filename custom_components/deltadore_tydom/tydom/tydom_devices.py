@@ -1246,6 +1246,7 @@ class TydomAlarm(TydomDevice):
         """Initialise an alarm and its dashboard event cache."""
         super().__init__(*args, **kwargs)
         self._pending_events: list[dict[str, Any]] | None = None
+        self._open_issues: list[dict[str, Any]] | None = None
         self._command_metadata = command_metadata or {}
         self._alarm_event_sequence = 0
         self._latest_alarm_actor: str | None = None
@@ -1276,6 +1277,15 @@ class TydomAlarm(TydomDevice):
     def clear_pending_events(self) -> None:
         """Clear the local event cache after acknowledgement or a clear state."""
         self._pending_events = []
+
+    @property
+    def open_issues(self) -> list[dict[str, Any]] | None:
+        """Return the latest products reported as blocking alarm arming."""
+        return self._open_issues
+
+    def clear_open_issues(self) -> None:
+        """Clear the local cache once the central reports no open issue."""
+        self._open_issues = []
 
     @staticmethod
     def _actor_from_alarm_event(
@@ -1374,7 +1384,7 @@ class TydomAlarm(TydomDevice):
         value: str,
         code: str | None,
         zones: str | None,
-    ) -> None:
+    ) -> bool:
         """Select regular data or cdata from the alarm's advertised capability."""
         if zones in (None, "") and self._supports_regular_alarm_command(value):
             await self._tydom_client.put_devices_data(
@@ -1383,9 +1393,9 @@ class TydomAlarm(TydomDevice):
                 "alarmCmd",
                 value,
             )
-            return
+            return True
 
-        await self._tydom_client.put_alarm_cdata(
+        return await self._tydom_client.put_alarm_cdata(
             self._id,
             self._endpoint,
             code,
@@ -1405,7 +1415,7 @@ class TydomAlarm(TydomDevice):
             or getattr(self, f"zone{zone}State", "OFF") == "ON"
         }
 
-    async def _set_alarm_profile(self, code: str | None, configured_zones: Any) -> None:
+    async def _set_alarm_profile(self, code: str | None, configured_zones: Any) -> bool:
         """Transition to one configured profile without globally disarming."""
         target_zones = self._parse_alarm_zones(configured_zones)
         legacy = self.is_legacy_alarm()
@@ -1414,8 +1424,7 @@ class TydomAlarm(TydomDevice):
         # means "all zones" on installations which do not configure explicit
         # Away/Home/Night zone lists, rather than an empty desired zone set.
         if not target_zones:
-            await self._send_alarm_mode("ON", code, configured_zones)
-            return
+            return await self._send_alarm_mode("ON", code, configured_zones)
 
         active_zones = self._active_alarm_zones()
         zones_to_enable = target_zones - active_zones
@@ -1423,8 +1432,9 @@ class TydomAlarm(TydomDevice):
 
         # Extend protection before removing surplus coverage so zones shared
         # by both profiles remain armed throughout the transition.
+        confirmed = True
         if zones_to_enable:
-            await self._tydom_client.put_alarm_cdata(
+            confirmed = await self._tydom_client.put_alarm_cdata(
                 self._id,
                 self._endpoint,
                 code,
@@ -1433,14 +1443,18 @@ class TydomAlarm(TydomDevice):
                 legacy,
             )
         if zones_to_disable:
-            await self._tydom_client.put_alarm_cdata(
-                self._id,
-                self._endpoint,
-                code,
-                "OFF",
-                ",".join(str(zone) for zone in sorted(zones_to_disable)),
-                legacy,
+            confirmed = (
+                await self._tydom_client.put_alarm_cdata(
+                    self._id,
+                    self._endpoint,
+                    code,
+                    "OFF",
+                    ",".join(str(zone) for zone in sorted(zones_to_disable)),
+                    legacy,
+                )
+                and confirmed
             )
+        return confirmed
 
     def get_alarm_mode_from_zones(self) -> str | None:
         """Identify the configured alarm mode from the active zones."""
@@ -1458,24 +1472,24 @@ class TydomAlarm(TydomDevice):
 
         return None
 
-    async def alarm_disarm(self, code) -> None:
+    async def alarm_disarm(self, code) -> bool:
         """Disarm alarm."""
-        await self._send_alarm_mode("OFF", code, None)
+        return await self._send_alarm_mode("OFF", code, None)
         # self._tydom_client.add_poll_device_url_1s(f"/devices/{self._id}/endpoints/{self._endpoint}/cdata")
 
-    async def alarm_arm_away(self, code=None) -> None:
+    async def alarm_arm_away(self, code=None) -> bool:
         """Arm away alarm."""
-        await self._set_alarm_profile(code, self._tydom_client._zone_away)
+        return await self._set_alarm_profile(code, self._tydom_client._zone_away)
         # self._tydom_client.add_poll_device_url_1s(f"/devices/{self._id}/endpoints/{self._endpoint}/cdata")
 
-    async def alarm_arm_home(self, code=None) -> None:
+    async def alarm_arm_home(self, code=None) -> bool:
         """Arm home alarm."""
-        await self._set_alarm_profile(code, self._tydom_client._zone_home)
+        return await self._set_alarm_profile(code, self._tydom_client._zone_home)
         # self._tydom_client.add_poll_device_url_1s(f"/devices/{self._id}/endpoints/{self._endpoint}/cdata")
 
-    async def alarm_arm_night(self, code=None) -> None:
+    async def alarm_arm_night(self, code=None) -> bool:
         """Arm night alarm."""
-        await self._set_alarm_profile(code, self._tydom_client._zone_night)
+        return await self._set_alarm_profile(code, self._tydom_client._zone_night)
 
     async def force_arm(self, mode: str, code: str) -> None:
         """Explicitly force arming in one configured Home Assistant mode."""
@@ -1571,6 +1585,58 @@ class TydomAlarm(TydomDevice):
             self._pending_events = formatted_events
             await self.publish_updates()
         return formatted_events
+
+    async def get_open_issues(
+        self,
+        *,
+        timeout: float | None = None,
+        log_timeout: bool = True,
+    ) -> list[dict[str, Any]]:
+        """Return products currently preventing the alarm from being armed.
+
+        ``OPEN_ISSUES`` is the same history view used by the official TYDOM
+        application.  It is intentionally not inferred from local HA sensors:
+        the alarm central remains the authority for an arming refusal.
+        """
+        if self._endpoint is None:
+            LOGGER.error(
+                "Cannot get open issues: endpoint is None for device %s", self._id
+            )
+            return []
+        # CS8000 advertises a maximum of 50 history records.  Requesting more
+        # can yield an ``error detected`` cdata reply on some firmware.
+        kwargs: dict[str, Any] = {"nbElement": 50, "log_timeout": log_timeout}
+        if timeout is not None:
+            kwargs["timeout"] = timeout
+        messages = await self._tydom_client.get_historic_cdata(
+            self._id, self._endpoint, "OPEN_ISSUES", **kwargs
+        )
+        issues = []
+        for message in messages or []:
+            values = message.get("values", {}) if isinstance(message, dict) else {}
+            product = values.get("product")
+            if not isinstance(product, dict):
+                continue
+            issue = {
+                key: value
+                for key, value in {
+                    "id": product.get("id"),
+                    "name": product.get("nameCustom") or product.get("nameStd"),
+                    "name_custom": product.get("nameCustom"),
+                    "name_standard": product.get("nameStd"),
+                    "number": product.get("number"),
+                    "type_short": product.get("typeShort"),
+                    "type_long": product.get("typeLong"),
+                    "zone": product.get("zone"),
+                    "defects": values.get("defects"),
+                    "error": values.get("error"),
+                }.items()
+                if value is not None
+            }
+            issues.append(issue)
+        self._open_issues = issues
+        await self.publish_updates()
+        return issues
 
     def _require_endpoint(self) -> str:
         """Return the alarm endpoint or fail before building a request."""

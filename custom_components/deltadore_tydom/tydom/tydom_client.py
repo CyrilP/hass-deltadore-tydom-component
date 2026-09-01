@@ -1468,19 +1468,23 @@ class TydomClient:
         value=None,
         zone_id=None,
         legacy_zones=False,
-    ):
-        """Configure alarm mode."""
+    ) -> bool:
+        """Configure alarm mode and report whether the result was confirmed."""
         if legacy_zones and zone_id not in (None, ""):
             zones_array = str(zone_id).split(",")
+            confirmed = True
             for zone in zones_array:
-                await self._put_alarm_cdata(
-                    device_id, endpoint_id, alarm_pin, value, zone, legacy_zones
+                confirmed = (
+                    await self._put_alarm_cdata(
+                        device_id, endpoint_id, alarm_pin, value, zone, legacy_zones
+                    )
+                    and confirmed
                 )
-            return
+            return confirmed
 
         # Global legacy commands such as disarm have no zone. They still use
         # alarmCmd and must not be dropped by the legacy zone dispatcher.
-        await self._put_alarm_cdata(
+        return await self._put_alarm_cdata(
             device_id, endpoint_id, alarm_pin, value, zone_id, legacy_zones
         )
 
@@ -1492,8 +1496,13 @@ class TydomClient:
         value=None,
         zone_id=None,
         legacy_zones=False,
-    ):
-        """Configure alarm mode."""
+    ) -> bool:
+        """Configure alarm mode and await its asynchronous result.
+
+        ``False`` means the gateway did not publish an outcome. Older
+        gateways can still execute the command in that case, so callers must
+        not report a failure but also must not treat it as confirmed.
+        """
         # Credits to @mgcrea on github !
         # AWAY # "PUT /devices/{}/endpoints/{}/cdata?name=alarmCmd HTTP/1.1\r\ncontent-length: 29\r\ncontent-type: application/json; charset=utf-8\r\ntransac-id: request_124\r\n\r\n\r\n{"value":"ON","pwd":{}}\r\n\r\n"
         # HOME "PUT /devices/{}/endpoints/{}/cdata?name=zoneCmd HTTP/1.1\r\ncontent-length: 41\r\ncontent-type: application/json; charset=utf-8\r\ntransac-id: request_46\r\n\r\n\r\n{"value":"ON","pwd":"{}","zones":[1]}\r\n\r\n"
@@ -1557,9 +1566,10 @@ class TydomClient:
                 # Older gateways may execute alarm commands without publishing
                 # a command result. Preserve that established fire-and-forget
                 # behaviour rather than turning a successful command into an
-                # apparent Home Assistant failure.
+                # apparent Home Assistant failure. Retain the uncertainty for
+                # callers that need to react to a refused arm command.
                 LOGGER.debug("No asynchronous result received for %s", cmd)
-                return
+                return False
         finally:
             self._message_handler.remove_alarm_command_waiter(
                 str(device_id), str(endpoint_id), cmd, waiter
@@ -1568,6 +1578,7 @@ class TydomClient:
         result = str(reply.get("values", {}).get("result"))
         if result != "ACK":
             raise TydomAlarmCommandError(cmd, result)
+        return True
 
     async def put_ackevents_cdata(self, device_id, endpoint_id=None, alarm_pin=None):
         """Acknowledge alarm events using the command supported by the gateway.
