@@ -141,6 +141,27 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
     def _client(self) -> TydomClient:
         return TydomClient(None, "test", "001122334455", "password", host="local")
 
+    def test_cloud_credentials_select_the_matching_gateway(self) -> None:
+        """Credential lookup must not use another gateway from the same account."""
+        password = TydomClient._gateway_password_from_sites(
+            [
+                {"gateway": {"mac": "AABBCCDDEEFF", "password": "first"}},
+                {"gateway": {"mac": "001122334455", "password": "requested"}},
+            ],
+            "001122334455",
+        )
+
+        self.assertEqual(password, "requested")
+
+    def test_cloud_credentials_match_gateway_mac_without_case_sensitivity(self) -> None:
+        """The API's MAC casing must not prevent a matching gateway lookup."""
+        password = TydomClient._gateway_password_from_sites(
+            [{"gateway": {"mac": "001A2B3C4D5E", "password": "requested"}}],
+            "001a2b3c4d5e",
+        )
+
+        self.assertEqual(password, "requested")
+
     async def test_legacy_alarm_disarm_uses_global_alarm_command(self) -> None:
         """A zone-capable legacy alarm must not drop a global disarm."""
         client = self._client()

@@ -184,6 +184,21 @@ class TydomClient:
         self._zone_night = zone_night
 
     @staticmethod
+    def _gateway_password_from_sites(sites: list[dict], macaddress: str) -> str | None:
+        """Return the password belonging to the requested gateway MAC address."""
+        expected_mac = macaddress.casefold()
+        for site in sites:
+            gateway = site.get("gateway")
+            if not isinstance(gateway, dict):
+                continue
+            if str(gateway.get("mac", "")).casefold() != expected_mac:
+                continue
+            password = gateway.get("password")
+            if isinstance(password, str) and password:
+                return password
+        return None
+
+    @staticmethod
     async def async_get_credentials(
         session: ClientSession, email: str, password: str, macaddress: str
     ):
@@ -258,11 +273,11 @@ class TydomClient:
                 json_response = await response.json()
                 response.close()
 
-                if "sites" in json_response and len(json_response["sites"]) > 0:
-                    for site in json_response["sites"]:
-                        if "gateway" in site and site["gateway"]["mac"] == macaddress:
-                            password = json_response["sites"][0]["gateway"]["password"]
-                            return password
+                password = TydomClient._gateway_password_from_sites(
+                    json_response.get("sites", []), macaddress
+                )
+                if password is not None:
+                    return password
                 raise TydomClientApiClientAuthenticationError(
                     "Tydom credentials not found"
                 )
