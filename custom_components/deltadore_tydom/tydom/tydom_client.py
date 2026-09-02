@@ -349,6 +349,10 @@ class TydomClient:
                     '.*nonce="([a-zA-Z0-9+=]+)".*',
                     www_authenticate,
                 )
+                realm_matcher = re.match(
+                    r'.*realm="([^"]+)".*',
+                    www_authenticate,
+                )
                 response.close()
 
                 if re_matcher:
@@ -357,7 +361,10 @@ class TydomClient:
                     raise TydomClientApiClientError("Could't find auth nonce")
 
                 ws_headers = {
-                    "Authorization": self.build_digest_headers(re_matcher.group(1))
+                    "Authorization": self.build_digest_headers(
+                        re_matcher.group(1),
+                        realm_matcher.group(1) if realm_matcher else None,
+                    )
                 }
 
             connection = await session.ws_connect(
@@ -687,12 +694,12 @@ class TydomClient:
         """Handle a pong response and keep the pending ping counter non-negative."""
         self.pending_pings = max(0, self.pending_pings - 1)
 
-    def build_digest_headers(self, nonce):
+    def build_digest_headers(self, nonce, realm=None):
         """Build the headers of Digest Authentication."""
         digest_auth = HTTPDigestAuth(self._mac, self._password)
         chal = {}
         chal["nonce"] = nonce
-        chal["realm"] = (
+        chal["realm"] = realm or (
             "ServiceMedia" if self._remote_mode is True else "protected area"
         )
         chal["qop"] = "auth"
