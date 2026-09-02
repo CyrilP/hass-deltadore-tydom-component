@@ -141,6 +141,34 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
     def _client(self) -> TydomClient:
         return TydomClient(None, "test", "001122334455", "password", host="local")
 
+    async def test_refresh_all_sends_expected_empty_json_body(self) -> None:
+        """Initial refresh must carry JSON without waiting before listening starts."""
+        client = self._client()
+        client.send_request = AsyncMock()
+
+        await client.post_refresh()
+
+        client.send_request.assert_awaited_once_with(
+            "POST",
+            "/refresh/all",
+            body=b"{}",
+            headers={"Content-Type": "application/json; charset=UTF-8"},
+        )
+
+    async def test_refresh_all_can_await_acknowledgement_once_listening(self) -> None:
+        """Dynamic refreshes must support ordered follow-up reads."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+
+        await client.post_refresh(wait_for_acknowledgement=True)
+
+        client.get_reply_to_request.assert_awaited_once_with(
+            "POST",
+            "/refresh/all",
+            body=b"{}",
+            headers={"Content-Type": "application/json; charset=UTF-8"},
+        )
+
     async def test_legacy_alarm_disarm_uses_global_alarm_command(self) -> None:
         """A zone-capable legacy alarm must not drop a global disarm."""
         client = self._client()

@@ -970,11 +970,20 @@ class TydomClient:
         req = "PUT"
         await self.send_message(method=req, msg=msg_type)
 
-    async def post_refresh(self):
-        """Refresh (all)."""
-        msg_type = "/refresh/all"
-        req = "POST"
-        await self.send_message(method=req, msg=msg_type)
+    async def post_refresh(self, wait_for_acknowledgement: bool = False) -> None:
+        """Request a full gateway refresh, optionally awaiting its acknowledgement."""
+        # Known TYDOM clients serialise this POST with an empty JSON object.
+        # Some gateways acknowledge a bodyless request without refreshing
+        # radio-backed values, so preserve the expected request framing.
+        request = (
+            self.get_reply_to_request if wait_for_acknowledgement else self.send_request
+        )
+        await request(
+            "POST",
+            "/refresh/all",
+            body=b"{}",
+            headers={"Content-Type": "application/json; charset=UTF-8"},
+        )
 
     async def ping(self):
         """Send a ping (pong should be returned)."""

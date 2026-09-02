@@ -79,6 +79,13 @@ from .const import LOGGER, get_polling_interval_for_validity, STRUCTURED_LOGGER
 from .remote_registry_migration import migrate_legacy_remote_endpoint
 
 
+# Some dynamic values are reported as ``upToDate`` by the gateway even though
+# it does not push later changes. Poll their regular data endpoint using the
+# user-configured refresh interval when no validity-based interval is supplied.
+DYNAMIC_POLLING_FALLBACK_ATTRIBUTES = frozenset({"lightPower"})
+RADIO_REFRESH_SETTLE_SECONDS = 6
+
+
 class Hub:
     """Hub for Delta Dore Tydom."""
 
@@ -161,6 +168,7 @@ class Hub:
         self._polling_cache_timestamp = 0
         self._polling_cache_ttl = 300  # 5 minutes
         self._next_poll_due: dict[int, float] = {}  # interval -> monotonic due time
+        self._radio_refresh_intervals: set[int] = set()
 
         # Device factory registry for create_ha_device
         self._device_factories: dict[type, Callable] = {
@@ -311,6 +319,9 @@ class Hub:
                 for device in devices:
                     if device.device_id not in self.devices:
                         self.devices[device.device_id] = device
+                        # Device capabilities may appear after the polling task
+                        # built its cache during start-up discovery.
+                        self._polling_cache_timestamp = 0
                         STRUCTURED_LOGGER.device_operation(
                             "debug",
                             "create",
@@ -881,20 +892,40 @@ class Hub:
         - Devices with validity=ES_SUPERVISION are cached with 300s interval
         - Devices with validity=SENSOR_SUPERVISION are cached with 60s interval
         - Devices with validity=SYNCHRO_SUPERVISION are cached with 30s interval
+        - Dynamic fallback attributes are polled at the configured refresh
+          interval when their validity would otherwise exclude them
         """
         new_cache: dict[tuple[str, str], int] = {}
+        radio_refresh_intervals: set[int] = set()
         for device_key, device in self.devices.items():
-            if not hasattr(device, "_metadata") or device._metadata is None:
-                continue
-            for attr_name, attr_metadata in device._metadata.items():
-                if isinstance(attr_metadata, dict):
-                    validity = attr_metadata.get("validity")
-                    interval = get_polling_interval_for_validity(validity)
-                    if interval is not None:
-                        new_cache[(device_key, attr_name)] = interval
+            metadata = getattr(device, "_metadata", None)
+            if isinstance(metadata, dict):
+                for attr_name, attr_metadata in metadata.items():
+                    if isinstance(attr_metadata, dict):
+                        validity = attr_metadata.get("validity")
+                        interval = get_polling_interval_for_validity(validity)
+                        if interval is not None:
+                            new_cache[(device_key, attr_name)] = interval
+
+            # Some gateways include dynamic attributes in /devices/data but
+            # omit them from /devices/meta. Inspect both sources so those
+            # capabilities can still opt into the configured polling schedule.
+            for attr_name in DYNAMIC_POLLING_FALLBACK_ATTRIBUTES:
+                cache_key = (device_key, attr_name)
+                if cache_key in new_cache:
+                    continue
+                if hasattr(device, attr_name) or (
+                    isinstance(metadata, dict) and attr_name in metadata
+                ):
+                    fallback_interval = (
+                        self._refresh_interval if self._refresh_interval > 0 else 60
+                    )
+                    new_cache[cache_key] = fallback_interval
+                    radio_refresh_intervals.add(fallback_interval)
 
         # Update cache atomically
         self._polling_cache = new_cache
+        self._radio_refresh_intervals = radio_refresh_intervals
         LOGGER.debug("Polling cache rebuilt with %d entries", len(self._polling_cache))
 
     async def refresh_data(self) -> None:
@@ -943,6 +974,27 @@ class Hub:
                     if current_time < self._next_poll_due.get(interval, 0):
                         continue
                     self._next_poll_due[interval] = current_time + interval
+                    if interval in self._radio_refresh_intervals:
+                        try:
+                            # A regular endpoint GET only returns TYDOM's cache
+                            # for data-only lightPower values. One global refresh
+                            # per due interval triggers fresh radio measurements,
+                            # which arrive asynchronously as /devices/data pushes.
+                            await self._tydom_client.post_refresh(
+                                wait_for_acknowledgement=True
+                            )
+                            # The acknowledgement only confirms that TYDOM has
+                            # accepted the refresh. Solar motors then report
+                            # their radio-backed values progressively. Live
+                            # captures show a complete four-device pass taking
+                            # about five seconds after gateway start-up.
+                            await self._interruptible_sleep(
+                                RADIO_REFRESH_SETTLE_SECONDS
+                            )
+                        except Exception:
+                            LOGGER.exception(
+                                "Error requesting radio refresh for dynamic data"
+                            )
                     for device_key in device_keys:
                         if device_key in self.devices:
                             device = self.devices[device_key]

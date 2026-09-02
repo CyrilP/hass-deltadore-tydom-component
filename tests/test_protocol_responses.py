@@ -766,6 +766,23 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         self.assertIsNone(devices)
         logger.warning.assert_not_called()
 
+    async def test_tracked_empty_success_completes_waiting_request(self) -> None:
+        """A tracked empty response must release its waiting caller."""
+        handler = MessageHandler(MagicMock(), b"")
+        reply_event = asyncio.Event()
+        handler._end_reply_events["request-1"] = reply_event
+
+        await handler.route_response(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Uri-Origin: /refresh/all\r\n"
+            b"Content-Type: application/json\r\n"
+            b"Content-Length: 0\r\n"
+            b"Transac-Id: request-1\r\n\r\n"
+        )
+
+        self.assertTrue(reply_event.is_set())
+        self.assertEqual(handler.get_reply("request-1")["events"], [])
+
     async def test_single_alarm_configuration_cdata_completes_reply(self) -> None:
         """Non-history cdata must complete without a streamed EOR sentinel."""
         client = MagicMock()
