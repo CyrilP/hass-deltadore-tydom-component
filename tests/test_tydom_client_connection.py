@@ -177,6 +177,32 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
 
         self.assertEqual(password, "requested")
 
+    def test_digest_authentication_normalizes_the_mac_username(self) -> None:
+        """Digest must use the gateway's canonical uppercase MAC username."""
+        digest_auth = MagicMock()
+        digest_auth.build_digest_header.return_value = "Digest response"
+        client = TydomClient(
+            None,
+            "test",
+            "001a2505f4b1",
+            "gateway-password",
+            host="mediation.tydom.com",
+        )
+
+        with patch.object(
+            client_module, "HTTPDigestAuth", return_value=digest_auth
+        ) as digest_auth_class:
+            client.build_digest_headers(
+                'Digest realm="ServiceMedia", nonce="nonce", qop="auth"'
+            )
+
+        self.assertEqual(client._mac, "001A2505F4B1")
+        digest_auth_class.assert_called_once_with("001A2505F4B1", "gateway-password")
+        digest_auth.build_digest_header.assert_called_once_with(
+            "GET",
+            "https://mediation.tydom.com:443/mediation/client?mac=001A2505F4B1&appli=1",
+        )
+
     def test_digest_challenge_retains_all_server_parameters(self) -> None:
         """The mediation server may require parameters beyond its nonce."""
         challenge = parse_digest_challenge(

@@ -147,7 +147,12 @@ class TydomClient:
         self._hass = hass
         self.id = id
         self._password = password
-        self._mac = mac
+        # The MAC address is both a mediation query parameter and the Digest
+        # username.  The latter is case-sensitive on TYDOM gateways, whose
+        # stored username is the conventional uppercase MAC representation.
+        # Config flows accept either case, so keep the wire representation
+        # canonical for both local and cloud connections.
+        self._mac = mac.upper()
         self._host = host
         self._zone_home = zone_home
         self._zone_away = zone_away
