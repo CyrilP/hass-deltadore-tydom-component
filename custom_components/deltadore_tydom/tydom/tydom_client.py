@@ -11,6 +11,7 @@ import time
 import traceback
 from typing import TYPE_CHECKING, cast
 from urllib.parse import quote
+from urllib.request import parse_http_list, parse_keqv_list
 
 import aiohttp
 import async_timeout
@@ -99,6 +100,22 @@ class TydomClientApiClientAuthenticationError(TydomClientApiClientError):
     """Exception to indicate an authentication error."""
 
 
+def _parse_digest_challenge(www_authenticate: str) -> dict[str, str]:
+    """Parse the complete Digest challenge returned by the mediation server."""
+    scheme, separator, parameters = www_authenticate.partition(" ")
+    if not separator or scheme.casefold() != "digest":
+        raise TydomClientApiClientAuthenticationError(
+            "Mediation server did not provide a Digest challenge"
+        )
+
+    challenge = parse_keqv_list(parse_http_list(parameters))
+    if not challenge.get("realm") or not challenge.get("nonce"):
+        raise TydomClientApiClientAuthenticationError(
+            "Mediation server returned an incomplete Digest challenge"
+        )
+    return challenge
+
+
 proxy = None
 
 # DEBUG ONLY — replaces websocket with a local trace file
@@ -130,7 +147,12 @@ class TydomClient:
         self._hass = hass
         self.id = id
         self._password = password
-        self._mac = mac
+        # The MAC address is both a mediation query parameter and the Digest
+        # username.  The latter is case-sensitive on TYDOM gateways, whose
+        # stored username is the conventional uppercase MAC representation.
+        # Config flows accept either case, so keep the wire representation
+        # canonical for both local and cloud connections.
+        self._mac = mac.upper()
         self._host = host
         self._zone_home = zone_home
         self._zone_away = zone_away
@@ -182,6 +204,24 @@ class TydomClient:
         self._zone_home = zone_home
         self._zone_away = zone_away
         self._zone_night = zone_night
+
+    @staticmethod
+    def _gateway_password_from_sites(sites: list[dict], macaddress: str) -> str | None:
+        """Return the password belonging to the requested gateway MAC address."""
+        expected_mac = re.sub(r"[^0-9A-Fa-f]", "", macaddress).casefold()
+        for site in sites:
+            gateway = site.get("gateway")
+            if not isinstance(gateway, dict):
+                continue
+            gateway_mac = re.sub(
+                r"[^0-9A-Fa-f]", "", str(gateway.get("mac", ""))
+            ).casefold()
+            if gateway_mac != expected_mac:
+                continue
+            password = gateway.get("password")
+            if isinstance(password, str) and password:
+                return password
+        return None
 
     @staticmethod
     async def async_get_credentials(
@@ -258,11 +298,11 @@ class TydomClient:
                 json_response = await response.json()
                 response.close()
 
-                if "sites" in json_response and len(json_response["sites"]) > 0:
-                    for site in json_response["sites"]:
-                        if "gateway" in site and site["gateway"]["mac"] == macaddress:
-                            password = json_response["sites"][0]["gateway"]["password"]
-                            return password
+                password = TydomClient._gateway_password_from_sites(
+                    json_response.get("sites", []), macaddress
+                )
+                if password is not None:
+                    return password
                 raise TydomClientApiClientAuthenticationError(
                     "Tydom credentials not found"
                 )
@@ -274,6 +314,8 @@ class TydomClient:
             raise TydomClientApiClientCommunicationError(
                 "Error fetching information",
             ) from exception
+        except TydomClientApiClientAuthenticationError:
+            raise
         except Exception as exception:  # pylint: disable=broad-except
             traceback.print_exception(
                 type(exception), exception, exception.__traceback__
@@ -345,19 +387,10 @@ class TydomClient:
                         "Could't find WWW-Authenticate header"
                     )
 
-                re_matcher = re.match(
-                    '.*nonce="([a-zA-Z0-9+=]+)".*',
-                    www_authenticate,
-                )
                 response.close()
 
-                if re_matcher:
-                    pass
-                else:
-                    raise TydomClientApiClientError("Could't find auth nonce")
-
                 ws_headers = {
-                    "Authorization": self.build_digest_headers(re_matcher.group(1))
+                    "Authorization": self.build_digest_headers(www_authenticate)
                 }
 
             connection = await session.ws_connect(
@@ -379,10 +412,20 @@ class TydomClient:
             raise TydomClientApiClientCommunicationError(
                 "Timeout error fetching information",
             ) from exception
+        except aiohttp.WSServerHandshakeError as exception:
+            if exception.status == 401:
+                raise TydomClientApiClientAuthenticationError(
+                    "Mediation server rejected the Tydom gateway credentials"
+                ) from exception
+            raise TydomClientApiClientCommunicationError(
+                "Error fetching information",
+            ) from exception
         except (aiohttp.ClientError, socket.gaierror) as exception:
             raise TydomClientApiClientCommunicationError(
                 "Error fetching information",
             ) from exception
+        except TydomClientApiClientAuthenticationError:
+            raise
         except Exception as exception:  # pylint: disable=broad-except
             traceback.print_exception(exception)
             raise TydomClientApiClientError(
@@ -687,22 +730,21 @@ class TydomClient:
         """Handle a pong response and keep the pending ping counter non-negative."""
         self.pending_pings = max(0, self.pending_pings - 1)
 
-    def build_digest_headers(self, nonce):
+    def build_digest_headers(self, www_authenticate: str) -> str:
         """Build the headers of Digest Authentication."""
         digest_auth = HTTPDigestAuth(self._mac, self._password)
-        chal = {}
-        chal["nonce"] = nonce
-        chal["realm"] = (
-            "ServiceMedia" if self._remote_mode is True else "protected area"
-        )
-        chal["qop"] = "auth"
-        digest_auth._thread_local.chal = chal
-        digest_auth._thread_local.last_nonce = nonce
+        challenge = _parse_digest_challenge(www_authenticate)
+        digest_auth._thread_local.chal = challenge
+        digest_auth._thread_local.last_nonce = challenge["nonce"]
         digest_auth._thread_local.nonce_count = 1
         digest = digest_auth.build_digest_header(
             "GET",
             f"https://{self._host}:443/mediation/client?mac={self._mac}&appli=1",
         )
+        if digest is None:
+            raise TydomClientApiClientAuthenticationError(
+                "Unable to build Digest authorization header"
+            )
         return digest
 
     async def send_bytes(
@@ -969,6 +1011,20 @@ class TydomClient:
         msg_type = "/configs/gateway/api_mode"
         req = "PUT"
         await self.send_message(method=req, msg=msg_type)
+
+    async def async_set_local_gateway_password(self, password: str) -> None:
+        """Set the password used by the gateway's local Digest authentication."""
+        if self._remote_mode:
+            raise TydomClientApiClientError(
+                "Changing the local gateway password requires a direct local connection"
+            )
+
+        await self.get_reply_to_request(
+            "PUT", "/configs/gateway/password", body={"password": password}
+        )
+        # Keep the client ready for its next Digest handshake. The existing
+        # websocket remains authenticated until it reconnects.
+        self._password = password
 
     async def post_refresh(self):
         """Refresh (all)."""

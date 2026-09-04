@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 import types
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import AsyncMock, MagicMock, call
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 _MISSING = object()
 _original_modules: dict[str, object] = {}
@@ -24,6 +24,10 @@ def _module(name: str, **attributes) -> types.ModuleType:
 
 class _ClientConnectionError(Exception):
     """Stand-in for aiohttp.ClientConnectionError."""
+
+
+class _WSServerHandshakeError(Exception):
+    """Stand-in for aiohttp.WSServerHandshakeError."""
 
 
 class _WebSocketResponse:
@@ -51,6 +55,7 @@ aiohttp = _module(
     "aiohttp",
     ClientError=Exception,
     ClientConnectionError=_ClientConnectionError,
+    WSServerHandshakeError=_WSServerHandshakeError,
     ClientSession=object,
     ClientWebSocketResponse=_WebSocketResponse,
     WSMsgType=MagicMock(),
@@ -114,6 +119,7 @@ TydomClientApiClientCommunicationError = (
 )
 TydomAlarmCommandError = client_module.TydomAlarmCommandError
 sanitize_log_message = client_module.sanitize_log_message
+parse_digest_challenge = client_module._parse_digest_challenge
 
 for name, original in _original_modules.items():
     if original is _MISSING:
@@ -141,6 +147,106 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
     def _client(self) -> TydomClient:
         return TydomClient(None, "test", "001122334455", "password", host="local")
 
+    def test_cloud_credentials_select_the_matching_gateway(self) -> None:
+        """Credential lookup must not use another gateway from the same account."""
+        password = TydomClient._gateway_password_from_sites(
+            [
+                {"gateway": {"mac": "AABBCCDDEEFF", "password": "first"}},
+                {"gateway": {"mac": "001122334455", "password": "requested"}},
+            ],
+            "001122334455",
+        )
+
+        self.assertEqual(password, "requested")
+
+    def test_cloud_credentials_match_gateway_mac_without_case_sensitivity(self) -> None:
+        """The API's MAC casing must not prevent a matching gateway lookup."""
+        password = TydomClient._gateway_password_from_sites(
+            [{"gateway": {"mac": "001A2B3C4D5E", "password": "requested"}}],
+            "001a2b3c4d5e",
+        )
+
+        self.assertEqual(password, "requested")
+
+    def test_cloud_credentials_normalize_gateway_mac_separators(self) -> None:
+        """Cloud responses may format a MAC address with colon separators."""
+        password = TydomClient._gateway_password_from_sites(
+            [{"gateway": {"mac": "00:1A:2B:3C:4D:5E", "password": "requested"}}],
+            "001a2b3c4d5e",
+        )
+
+        self.assertEqual(password, "requested")
+
+    def test_digest_authentication_normalizes_the_mac_username(self) -> None:
+        """Digest must use the gateway's canonical uppercase MAC username."""
+        digest_auth = MagicMock()
+        digest_auth.build_digest_header.return_value = "Digest response"
+        client = TydomClient(
+            None,
+            "test",
+            "001a2505f4b1",
+            "gateway-password",
+            host="mediation.tydom.com",
+        )
+
+        with patch.object(
+            client_module, "HTTPDigestAuth", return_value=digest_auth
+        ) as digest_auth_class:
+            client.build_digest_headers(
+                'Digest realm="ServiceMedia", nonce="nonce", qop="auth"'
+            )
+
+        self.assertEqual(client._mac, "001A2505F4B1")
+        digest_auth_class.assert_called_once_with("001A2505F4B1", "gateway-password")
+        digest_auth.build_digest_header.assert_called_once_with(
+            "GET",
+            "https://mediation.tydom.com:443/mediation/client?mac=001A2505F4B1&appli=1",
+        )
+
+    def test_digest_challenge_retains_all_server_parameters(self) -> None:
+        """The mediation server may require parameters beyond its nonce."""
+        challenge = parse_digest_challenge(
+            'Digest realm="ServiceMedia", nonce="abc/123==", '
+            'qop="auth", algorithm="MD5", opaque="gateway-token"'
+        )
+
+        self.assertEqual(
+            challenge,
+            {
+                "realm": "ServiceMedia",
+                "nonce": "abc/123==",
+                "qop": "auth",
+                "algorithm": "MD5",
+                "opaque": "gateway-token",
+            },
+        )
+
+    def test_digest_header_uses_complete_server_challenge(self) -> None:
+        """Digest signing must retain every parameter sent by mediation."""
+        digest_auth = MagicMock()
+        digest_auth.build_digest_header.return_value = "Digest response"
+        client = TydomClient(
+            None,
+            "test",
+            "001A2505F4B1",
+            "gateway-password",
+            host="mediation.tydom.com",
+        )
+        header = (
+            'Digest realm="ServiceMedia", nonce="nonce", qop="auth", '
+            'algorithm="MD5", opaque="opaque"'
+        )
+
+        with patch.object(client_module, "HTTPDigestAuth", return_value=digest_auth):
+            authorization = client.build_digest_headers(header)
+
+        self.assertEqual(authorization, "Digest response")
+        self.assertEqual(digest_auth._thread_local.chal, parse_digest_challenge(header))
+        digest_auth.build_digest_header.assert_called_once_with(
+            "GET",
+            "https://mediation.tydom.com:443/mediation/client?mac=001A2505F4B1&appli=1",
+        )
+
     async def test_legacy_alarm_disarm_uses_global_alarm_command(self) -> None:
         """A zone-capable legacy alarm must not drop a global disarm."""
         client = self._client()
@@ -163,6 +269,49 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
             None,
             True,
         )
+
+    async def test_set_local_gateway_password_uses_gateway_endpoint(self) -> None:
+        """The local password update uses the generic gateway endpoint."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+
+        await client.async_set_local_gateway_password("NewPassword1")
+
+        client.get_reply_to_request.assert_awaited_once_with(
+            "PUT",
+            "/configs/gateway/password",
+            body={"password": "NewPassword1"},
+        )
+        self.assertEqual(client._password, "NewPassword1")
+
+    async def test_set_local_gateway_password_keeps_previous_password_on_failure(
+        self,
+    ) -> None:
+        """A rejected update must not poison the next Digest authentication."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(
+            side_effect=TydomClientApiClientCommunicationError("rejected")
+        )
+
+        with self.assertRaises(TydomClientApiClientCommunicationError):
+            await client.async_set_local_gateway_password("NewPassword1")
+
+        self.assertEqual(client._password, "password")
+
+    async def test_set_local_gateway_password_rejects_cloud_mediation(self) -> None:
+        """The password-changing API must remain a direct local operation."""
+        client = TydomClient(
+            None,
+            "test",
+            "001122334455",
+            "password",
+            host="mediation.tydom.com",
+        )
+
+        with self.assertRaisesRegex(
+            client_module.TydomClientApiClientError, "direct local connection"
+        ):
+            await client.async_set_local_gateway_password("NewPassword1")
 
     async def test_legacy_alarm_zone_commands_are_still_split(self) -> None:
         """Legacy arm commands must continue to address each configured part."""
@@ -366,15 +515,12 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
         """A negative asynchronous result must reach the service caller."""
         client = self._client()
         waiter = asyncio.get_running_loop().create_future()
-        waiter.set_result(
-            {"name": "ackEventCmd", "values": {"result": "DENIED"}}
-        )
+        waiter.set_result({"name": "ackEventCmd", "values": {"result": "DENIED"}})
         client._message_handler.create_alarm_command_waiter.return_value = waiter
         client.send_bytes = AsyncMock()
 
         with self.assertRaises(TydomAlarmCommandError):
             await client.put_ackevents_cdata("20", "10", "123456")
-
 
     async def test_alarm_remote_configuration_lock_uses_official_command(self) -> None:
         """Remote TYXAL configuration must be explicitly locked and unlocked."""

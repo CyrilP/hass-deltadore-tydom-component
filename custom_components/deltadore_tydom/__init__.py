@@ -5,10 +5,11 @@ from __future__ import annotations
 import asyncio
 
 import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 from homeassistant.const import CONF_HOST, CONF_MAC, CONF_PIN, Platform
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceEntry
 
 from . import hub
@@ -22,6 +23,7 @@ from .const import (
     LOGGER,
 )
 from .device_removal import can_remove_device
+from .ha_entities import HATydom
 
 # Config schema for hassfest validation
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -50,6 +52,98 @@ PLATFORMS: list[str] = [
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Delta Dore Tydom integration."""
+
+    async def handle_set_local_gateway_password(call):
+        """Change the local Digest password of one directly connected gateway."""
+        device_id = call.data["device_id"]
+        password = call.data["new_password"]
+        local_host = call.data.get("local_host")
+
+        if not call.data["confirm"]:
+            raise HomeAssistantError(
+                "Set confirm to true before changing a gateway password"
+            )
+        if (
+            len(password) < 8
+            or not any(char.isalpha() for char in password)
+            or not any(char.isdigit() for char in password)
+        ):
+            raise HomeAssistantError(
+                "The new gateway password must have at least 8 characters, "
+                "including one letter and one digit"
+            )
+
+        from homeassistant.helpers import device_registry as dr
+
+        device_entry = dr.async_get(hass).async_get(device_id)
+        if device_entry is None:
+            raise HomeAssistantError("Select a Delta Dore TYDOM gateway device")
+
+        entry_id = getattr(device_entry, "config_entry_id", None)
+        if entry_id is None:
+            matching_entry_ids = set(device_entry.config_entries) & set(
+                hass.data.get(DOMAIN, {})
+            )
+            if len(matching_entry_ids) != 1:
+                raise HomeAssistantError(
+                    "The selected device is not linked to one loaded Delta Dore "
+                    "TYDOM gateway"
+                )
+            entry_id = matching_entry_ids.pop()
+
+        tydom_hub = hass.data.get(DOMAIN, {}).get(str(entry_id))
+        if tydom_hub is None or not any(
+            isinstance(ha_device, HATydom)
+            and (DOMAIN, ha_device._device.device_id) in device_entry.identifiers
+            for ha_device in tydom_hub.ha_devices.values()
+        ):
+            raise HomeAssistantError(
+                "Select the Delta Dore TYDOM gateway device, not one of its "
+                "connected products"
+            )
+
+        if tydom_hub._tydom_client._remote_mode and not local_host:
+            raise HomeAssistantError(
+                "Changing the local gateway password requires a direct local "
+                "connection. The selected gateway is configured through Delta "
+                "Dore cloud mediation; provide its local IP address or hostname."
+            )
+
+        try:
+            await tydom_hub.async_set_local_gateway_password(password, local_host)
+        except Exception as err:
+            # Never include the password in an exception or log record.
+            raise HomeAssistantError(
+                "The gateway did not accept a local password change. "
+                "It may not support this endpoint or it may require a direct local connection."
+            ) from err
+
+        entry = hass.config_entries.async_get_entry(entry_id)
+        if entry is None:
+            raise HomeAssistantError(
+                "The selected Delta Dore TYDOM configuration entry no longer exists"
+            )
+
+        updated_data = dict(entry.data)
+        updated_data[CONF_TYDOM_PASSWORD] = password
+        hass.config_entries.async_update_entry(entry, data=updated_data)
+        LOGGER.info(
+            "Updated local gateway password for configuration entry %s", entry_id
+        )
+
+    hass.services.async_register(
+        DOMAIN,
+        "set_local_gateway_password",
+        handle_set_local_gateway_password,
+        schema=vol.Schema(
+            {
+                vol.Required("device_id"): cv.string,
+                vol.Required("new_password"): cv.string,
+                vol.Required("confirm"): cv.boolean,
+                vol.Optional("local_host"): cv.string,
+            }
+        ),
+    )
 
     # Enregistrer le service de rechargement une seule fois
     async def handle_reload_devices(call):
