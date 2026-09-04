@@ -5733,7 +5733,7 @@ class HASwitch(SwitchEntity, HAEntity):
     units = {
         "energyInstantTotElecP": UnitOfPower.WATT,
         "energyTotIndexWatt": UnitOfEnergy.WATT_HOUR,
-    }    
+    }
 
     def __init__(self, device: TydomDevice, hass) -> None:
         """Initialize HASwitch."""
