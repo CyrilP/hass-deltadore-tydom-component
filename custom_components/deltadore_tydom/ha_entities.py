@@ -5722,6 +5722,19 @@ class HASwitch(SwitchEntity, HAEntity):
     _attr_has_entity_name = True
     _attr_icon = "mdi:toggle-switch"
 
+    sensor_classes = {
+        "energyInstantTotElecP": SensorDeviceClass.POWER,
+        "energyTotIndexWatt": SensorDeviceClass.ENERGY,
+    }
+    state_classes = {
+        "energyInstantTotElecP": SensorStateClass.MEASUREMENT,
+        "energyTotIndexWatt": SensorStateClass.TOTAL_INCREASING,
+    }
+    units = {
+        "energyInstantTotElecP": UnitOfPower.WATT,
+        "energyTotIndexWatt": UnitOfEnergy.WATT_HOUR,
+    }    
+
     def __init__(self, device: TydomDevice, hass) -> None:
         """Initialize HASwitch."""
         self.hass = hass

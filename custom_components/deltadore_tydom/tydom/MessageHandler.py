@@ -1716,7 +1716,7 @@ class MessageHandler:
                                 ):
                                     data["eventAlarm"] = event
 
-                            if type_of_id == "conso":
+                            if type_of_id in {"conso", "plug"}:    
                                 data.update(_parse_energy_cdata_element(elem))
 
                             elif type_of_id == "alarm" and transaction_id not in (
