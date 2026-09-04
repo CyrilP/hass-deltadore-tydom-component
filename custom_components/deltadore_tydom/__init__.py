@@ -57,6 +57,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         """Change the local Digest password of one directly connected gateway."""
         device_id = call.data["device_id"]
         password = call.data["new_password"]
+        local_host = call.data.get("local_host")
 
         if not call.data["confirm"]:
             raise HomeAssistantError(
@@ -101,8 +102,15 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                 "connected products"
             )
 
+        if tydom_hub._tydom_client._remote_mode and not local_host:
+            raise HomeAssistantError(
+                "Changing the local gateway password requires a direct local "
+                "connection. The selected gateway is configured through Delta "
+                "Dore cloud mediation; provide its local IP address or hostname."
+            )
+
         try:
-            await tydom_hub.async_set_local_gateway_password(password)
+            await tydom_hub.async_set_local_gateway_password(password, local_host)
         except Exception as err:
             # Never include the password in an exception or log record.
             raise HomeAssistantError(
@@ -132,6 +140,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                 vol.Required("device_id"): cv.string,
                 vol.Required("new_password"): cv.string,
                 vol.Required("confirm"): cv.boolean,
+                vol.Optional("local_host"): cv.string,
             }
         ),
     )
