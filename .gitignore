@@ -20,3 +20,7 @@ config/*
 # Development documentation
 PR_DESCRIPTION.md
 /.vs
+
+
+# Add Python virtual env 
+.venv/
