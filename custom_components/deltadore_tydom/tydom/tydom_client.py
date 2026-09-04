@@ -176,6 +176,10 @@ class TydomClient:
             str, tuple[float, bool]
         ] = {}  # endpoint -> (timestamp, is_valid)
         self._metadata_cache_ttl = 3600.0  # 1 hour in seconds
+        # Older TYDOM gateways do not expose every optional endpoint. Once a
+        # 404 confirms that a feature is absent, avoid querying it on every
+        # reconnect or inventory reload.
+        self._unsupported_optional_paths: set[str] = set()
 
     def update_config(self, zone_home: str, zone_away: str, zone_night: str):
         """Update zones configuration."""
@@ -1214,6 +1218,8 @@ class TydomClient:
     async def get_moments(self):
         """Get the moments (programs)."""
         msg_type = "/moments/file"
+        if msg_type in self._unsupported_optional_paths:
+            return
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
@@ -1273,8 +1279,14 @@ class TydomClient:
     async def get_scenarii(self):
         """Get the scenarios."""
         msg_type = "/scenarios/file"
+        if msg_type in self._unsupported_optional_paths:
+            return
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
+
+    def mark_optional_path_unsupported(self, path: str) -> None:
+        """Remember an optional API path rejected by this gateway."""
+        self._unsupported_optional_paths.add(path)
 
     async def activate_scenario(self, scenario_id: str | int):
         """Activate a scenario.

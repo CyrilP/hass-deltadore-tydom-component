@@ -6635,7 +6635,7 @@ class HAGatewayAssociationCategorySelect(_GatewayAssociationEntity, SelectEntity
         """Initialise the association-category selector."""
         super().__init__(tydom_hub)
         self._attr_unique_id = f"{tydom_hub.hub_id}_association_category"
-        self._attr_name = "Catégorie à associer"
+        self._attr_name = "1. Catégorie à associer"
 
     @property
     def options(self) -> list[str]:
@@ -6661,7 +6661,7 @@ class HAGatewayAssociationProductSelect(_GatewayAssociationEntity, SelectEntity)
         """Initialise the product-family selector."""
         super().__init__(tydom_hub)
         self._attr_unique_id = f"{tydom_hub.hub_id}_association_product"
-        self._attr_name = "Produit à associer"
+        self._attr_name = "2. Produit à associer"
 
     @property
     def options(self) -> list[str]:
@@ -6687,7 +6687,7 @@ class HAGatewayStartAssociationButton(_GatewayAssociationEntity, ButtonEntity):
         """Initialise the start-association button."""
         super().__init__(tydom_hub)
         self._attr_unique_id = f"{tydom_hub.hub_id}_start_product_association"
-        self._attr_name = "Démarrer l'association"
+        self._attr_name = "3. Démarrer l'association"
 
     @property
     def available(self) -> bool:

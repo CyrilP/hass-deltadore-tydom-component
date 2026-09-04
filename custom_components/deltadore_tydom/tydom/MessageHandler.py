@@ -60,6 +60,9 @@ if TYPE_CHECKING:
 _MAX_REPLIES_SIZE = 5
 """Maximal number of replies to keep track of."""
 
+_OPTIONAL_PATHS = frozenset({"/moments/file", "/scenarios/file"})
+"""Feature endpoints absent from some older TYDOM gateway firmware."""
+
 _HISTO_END_INDEX = 255
 """Index value (0xFF) of the sentinel element closing an histo reply stream.
 
@@ -559,6 +562,13 @@ class MessageHandler:
             transaction_id = parsed_message.headers.get("Transac-Id")
 
             if status is not None and status >= 400:
+                if status == 404 and uri_origin in _OPTIONAL_PATHS:
+                    self.tydom_client.mark_optional_path_unsupported(uri_origin)
+                    LOGGER.debug(
+                        "TYDOM gateway does not support optional endpoint %s",
+                        uri_origin,
+                    )
+                    return None
                 # The box rejected the request; surface the error body (an
                 # HTML page naming the cause) instead of dropping it in the
                 # html no-op, and resolve any pending reply right away
@@ -709,6 +719,7 @@ class MessageHandler:
             "/areas/data": self.parse_areas_data,
             "/configs/file": MessageHandler.parse_config_data,
             "/configs/gateway/api_mode": partial(no_op, "msg_api_mode"),
+            "/devices/data": self.parse_devices_data,
             "/devices/cdata": self.parse_devices_cdata,
             "/devices/cmeta": self.parse_cmeta_data,
             "/devices/install": partial(no_op, "msg_pairing"),

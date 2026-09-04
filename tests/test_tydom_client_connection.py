@@ -263,6 +263,18 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
             body={"protocol": "X3D", "type": "x3d_rm", "profile": "light"},
         )
 
+    async def test_missing_optional_endpoints_are_not_retried(self) -> None:
+        """A legacy gateway's 404 capabilities are remembered per session."""
+        client = self._client()
+        client.send_message = AsyncMock()
+        client.mark_optional_path_unsupported("/scenarios/file")
+        client.mark_optional_path_unsupported("/moments/file")
+
+        await client.get_scenarii()
+        await client.get_moments()
+
+        client.send_message.assert_not_awaited()
+
     async def test_rejected_tracked_request_raises_protocol_error(self) -> None:
         """A gateway rejection must not be returned as an empty success."""
         client = self._client()

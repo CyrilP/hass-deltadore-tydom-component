@@ -766,6 +766,37 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         self.assertIsNone(devices)
         logger.warning.assert_not_called()
 
+    async def test_empty_devices_response_is_a_valid_inventory(self) -> None:
+        """An empty TYDOM inventory must not be reported as an unknown message."""
+        logger.reset_mock()
+        handler = MessageHandler(MagicMock(), b"")
+        handler.parse_devices_data = AsyncMock(return_value=[])
+
+        devices = await handler.route_response(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Uri-Origin: /devices/data\r\n"
+            b"Content-Type: application/json\r\n\r\n[]"
+        )
+
+        self.assertEqual(devices, [])
+        handler.parse_devices_data.assert_awaited_once_with([], None)
+        logger.warning.assert_not_called()
+
+    async def test_unsupported_optional_endpoint_is_remembered(self) -> None:
+        """A legacy gateway's missing scenarios endpoint is not a warning."""
+        logger.reset_mock()
+        client = MagicMock()
+        handler = MessageHandler(client, b"")
+
+        await handler.route_response(
+            b"HTTP/1.1 404 Not Found\r\n"
+            b"Uri-Origin: /scenarios/file\r\n"
+            b"Content-Type: text/html\r\n\r\nnot found"
+        )
+
+        client.mark_optional_path_unsupported.assert_called_once_with("/scenarios/file")
+        logger.warning.assert_not_called()
+
     async def test_single_alarm_configuration_cdata_completes_reply(self) -> None:
         """Non-history cdata must complete without a streamed EOR sentinel."""
         client = MagicMock()
