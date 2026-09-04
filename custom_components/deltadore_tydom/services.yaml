@@ -2,9 +2,11 @@ set_local_gateway_password:
   name: Set local gateway password
   description: >-
     Change the local Digest password of a directly connected TYDOM or Tywell
-    gateway. This does not reset the gateway and never uses the Delta Dore
-    cloud. The gateway may reject the request when its firmware does not
-    support local password changes.
+    gateway. For a gateway configured through Delta Dore cloud mediation,
+    provide its LAN host so the change is still sent locally. This does not
+    reset the gateway and never sends the password-change request through the
+    Delta Dore cloud. The gateway may reject the request when its firmware
+    does not support local password changes.
   fields:
     device_id:
       name: Gateway device
@@ -15,6 +17,14 @@ set_local_gateway_password:
       selector:
         device:
           integration: deltadore_tydom
+    local_host:
+      name: Local gateway host
+      description: >-
+        LAN IP address or hostname of the selected gateway. Required only when
+        that gateway is configured through Delta Dore cloud mediation.
+      required: false
+      selector:
+        text:
     new_password:
       name: New local gateway password
       description: At least 8 characters, including at least one letter and one digit.

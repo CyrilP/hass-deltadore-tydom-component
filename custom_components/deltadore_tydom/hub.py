@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 from collections.abc import Callable
 from aiohttp import ClientWebSocketResponse, ClientSession
@@ -246,9 +247,47 @@ class Hub:
                     "Timed out closing Tydom websocket after credential test"
                 )
 
-    async def async_set_local_gateway_password(self, password: str) -> None:
-        """Change this directly connected gateway's local authentication secret."""
-        await self._tydom_client.async_set_local_gateway_password(password)
+    async def async_set_local_gateway_password(
+        self, password: str, local_host: str | None = None
+    ) -> None:
+        """Change the local authentication secret, optionally via a LAN host."""
+        if not self._tydom_client._remote_mode or not local_host:
+            await self._tydom_client.async_set_local_gateway_password(password)
+            self._pass = password
+            return
+
+        # The configured connection may use Delta Dore mediation, while this
+        # endpoint is deliberately LAN-only. Reuse its already retrieved
+        # gateway credential for one short-lived direct connection instead of
+        # requiring the user to remove and reconfigure the integration.
+        local_client = TydomClient(
+            hass=self._hass,
+            id=self._id,
+            mac=self._mac,
+            host=local_host,
+            password=self._pass,
+            zone_home=self._zone_home,
+            zone_away=self._zone_away,
+            zone_night=self._zone_night,
+            alarm_pin=self._pin,
+        )
+        connection = await local_client.async_connect()
+        local_client._connection = connection
+        local_client._connection_ready = True
+
+        async def consume_responses() -> None:
+            while not local_client._shutting_down:
+                await local_client.consume_messages()
+
+        consumer_task = asyncio.create_task(consume_responses())
+        try:
+            await local_client.async_set_local_gateway_password(password)
+        finally:
+            consumer_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await consumer_task
+            await local_client.async_disconnect()
+
         self._pass = password
 
     def ready(self) -> bool:
