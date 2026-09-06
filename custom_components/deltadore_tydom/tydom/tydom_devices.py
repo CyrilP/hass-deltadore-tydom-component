@@ -270,6 +270,10 @@ class TydomAlarmCommandError(Exception):
         super().__init__(f"TYDOM rejected {command} with result {result}")
 
 
+class TydomOpenIssuesNotReadyError(Exception):
+    """Raised when the central has not yet recorded its open-issues history."""
+
+
 # Import TydomGroup at the end to avoid circular import
 
 
@@ -1611,6 +1615,17 @@ class TydomAlarm(TydomDevice):
         messages = await self._tydom_client.get_historic_cdata(
             self._id, self._endpoint, "OPEN_ISSUES", **kwargs
         )
+        if any(
+            isinstance(message, dict)
+            and (message.get("values") or {}).get("error") is not None
+            for message in messages or []
+        ):
+            # A refusal may be published before the central commits its
+            # associated OPEN_ISSUES history record. Do not turn that
+            # temporary error response into a misleading empty issue list.
+            raise TydomOpenIssuesNotReadyError(
+                "The central has not yet recorded OPEN_ISSUES"
+            )
         issues = []
         for message in messages or []:
             values = message.get("values", {}) if isinstance(message, dict) else {}

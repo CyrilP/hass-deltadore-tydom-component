@@ -110,6 +110,7 @@ from .tydom.tydom_devices import (
     TydomRemoteControl,
     TydomInterrupter,
     TydomAlarmCommandError,
+    TydomOpenIssuesNotReadyError,
     get_twc_scene_action,
 )
 
@@ -128,7 +129,9 @@ _BINARY_FALSE_VALUES = frozenset({"0", "off", "false", "no"})
 _PROBLEM_ATTRIBUTE_MARKERS = ("defect", "empty", "intrusion")
 _BINARY_OPEN_STATES = frozenset({"LOCKED", "UNLOCKED"})
 _AUTOMATIC_ALARM_HISTORY_TIMEOUT = 10.0
+_REFUSED_ARMING_SETTLE_DELAY = 2.0
 _UNCONFIRMED_ARMING_SETTLE_DELAY = 6.0
+_OPEN_ISSUES_RETRY_DELAY = 2.0
 
 
 def normalize_binary_state(value: Any, *, allow_numeric: bool = False) -> bool | None:
@@ -3553,11 +3556,27 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
                 self._device.clear_open_issues()
                 self.async_write_ha_state()
                 return
+        else:
+            # The command result can precede the central's event/history
+            # update. Waiting avoids querying OPEN_ISSUES before it exists.
+            await asyncio.sleep(_REFUSED_ARMING_SETTLE_DELAY)
         try:
             # This is limited to refused or unconfirmed arm attempts. Use the
             # normal history timeout, rather than the short startup probe for
             # optional alarm-history sensors.
             await self._device.get_open_issues()
+        except TydomOpenIssuesNotReadyError:
+            # One central reports the DENIED command outcome before publishing
+            # its refusal event. Retry once after the history record settles.
+            await asyncio.sleep(_OPEN_ISSUES_RETRY_DELAY)
+            try:
+                await self._device.get_open_issues()
+            except Exception:
+                LOGGER.debug(
+                    "Unable to retrieve detailed open issues after refused arming for %s",
+                    self._device.device_id,
+                    exc_info=True,
+                )
         except Exception:
             LOGGER.debug(
                 "Unable to retrieve detailed open issues after refused arming for %s",
