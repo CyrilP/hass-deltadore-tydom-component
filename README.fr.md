@@ -67,7 +67,8 @@ Plateforme | Description
   commandes météo ou volets associées sur le même appareil physique, quelle
   que soit la disposition des points de terminaison annoncée par TYDOM.
 - Expose les modes et zones d'alarme, l'historique et l'acquittement des
-  événements, l'auteur de la dernière transition d'état, les opérations de
+  événements, les produits signalés par la centrale comme empêchant
+  l'armement, l'auteur de la dernière transition d'état, les opérations de
   maintenance à distance et d'armement forcé confirmées, ainsi que les
   événements d'automatisation natifs des interrupteurs et télécommandes
   compatibles.
@@ -283,6 +284,8 @@ TYXAL+ utiles dans Home Assistant :
 - `deltadore_tydom.get_events` renvoie l'historique et permet de le filtrer sur
   les alarmes, les activations/désactivations ou les événements non acquittés ;
 - `deltadore_tydom.acknowledge_events` acquitte les événements en attente ;
+- `deltadore_tydom.get_open_issues` renvoie les produits exacts signalés par la
+  centrale comme empêchant un armement normal ;
 - `deltadore_tydom.force_arm` arme explicitement un mode Absent, Présent ou
   Nuit configuré lorsqu'un armement normal a été refusé en raison de défauts ;
 - `deltadore_tydom.get_alarm_products` répertorie les produits et zones
@@ -310,6 +313,45 @@ configuration des sirènes ne sont pas exposés.
 `force_arm` ne remplace pas les commandes d'alarme habituelles de Home
 Assistant. Utilisez-le uniquement après avoir vérifié les défauts signalés et
 déterminé qu'un armement forcé est approprié.
+
+### Produits empêchant l'armement
+
+`deltadore_tydom.get_open_issues` interroge la centrale pour obtenir les
+produits qui empêchent **actuellement** un armement normal. La centrale reste
+la source de vérité : le résultat n'est pas déduit de l'état des capteurs de
+contact de Home Assistant. Elle peut donc signaler tout produit protégé
+compatible, notamment des contacts MDO, DO, DOS ou MO lorsqu'ils sont fournis
+par la centrale.
+
+Appelez cette action depuis un script, une automatisation ou **Outils de
+développement > Actions**. Comme elle renvoie une réponse, Home Assistant exige
+une variable de réponse dans les Outils de développement :
+
+```yaml
+action: deltadore_tydom.get_open_issues
+target:
+  entity_id: alarm_control_panel.tyxal_alarm
+response_variable: open_issues
+```
+
+La variable de réponse contient une liste de produits. Chaque entrée reprend
+les métadonnées fournies par la centrale, telles que `id`, `name`,
+`type_short`, `type_long`, `zone`, `defects` et `error` lorsqu'elles sont
+disponibles. Le dernier résultat est aussi conservé dans les attributs
+`open_issue_count` et `open_issues` de l'entité d'alarme. Il peut ainsi être
+utilisé dans les tableaux de bord et les modèles sans créer d'assistant
+supplémentaire.
+
+Après le refus d'un armement normal, l'intégration lance automatiquement la
+même lecture. Certains firmwares CS8000 enregistrent l'événement de refus peu
+après leur réponse à la commande ; l'intégration attend donc brièvement et
+réessaie une fois si la centrale n'a pas encore rendu le blocage disponible. Un
+armement normal réussi vide la liste mémorisée.
+
+Il ne s'agit pas d'un suivi continu des contacts : l'ouverture ou la fermeture
+d'un contact ne met pas à jour `open_issues` à elle seule. Utilisez l'action
+avant de proposer un armement forcé, après un refus, ou dans une automatisation
+déclenchée par des contacts réellement disponibles dans votre installation.
 
 L'appareil d'alarme TYXAL fournit également un bouton **Acquitter les
 événements** utilisable directement dans un tableau de bord, sans appel de

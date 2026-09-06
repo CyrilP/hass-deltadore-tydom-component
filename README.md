@@ -63,10 +63,10 @@ Platform | Description
 - Keep Tywell wall-controller sensors, area-backed climate control and
   companion weather or shutter controls attached to the same physical device
   across the different endpoint layouts advertised by TYDOM.
-- Expose alarm modes and zones, event history and acknowledgement, the actor
-  behind the latest alarm state change, supported remote maintenance and
-  forced-arming operations, and native automation events from compatible wall
-  switches and remote controls.
+- Expose alarm modes and zones, event history and acknowledgement, central-
+  reported arming blockers, the actor behind the latest alarm state change,
+  supported remote maintenance and forced-arming operations, and native
+  automation events from compatible wall switches and remote controls.
 
 ### Tested hardware
 
@@ -262,6 +262,8 @@ useful in Home Assistant:
 - `deltadore_tydom.get_events` returns alarm history and can filter it to alarm,
   activation/deactivation or unacknowledged events;
 - `deltadore_tydom.acknowledge_events` acknowledges pending alarm events;
+- `deltadore_tydom.get_open_issues` returns the exact products currently
+  reported by the alarm central as preventing normal arming;
 - `deltadore_tydom.force_arm` explicitly arms a configured Away, Home or Night
   mode when normal arming was refused because of defects;
 - `deltadore_tydom.get_alarm_products` lists configured products and zones;
@@ -287,6 +289,42 @@ configuration are not exposed.
 `force_arm` does not replace the normal Home Assistant alarm controls. Use it
 only after checking the reported defects and deciding that forced arming is
 appropriate.
+
+### Alarm blockers and refused arming
+
+`deltadore_tydom.get_open_issues` asks the alarm central for the products which
+currently prevent a **normal** arm operation. The central is the source of
+truth: the result is not inferred from the state of Home Assistant contact
+sensors. It can therefore report any compatible protected product, including
+contacts such as MDO, DO, DOS or MO products when the central provides them.
+
+Call the action from a script, automation, or **Developer tools > Actions**.
+Because it returns data, Home Assistant requires a response variable when it is
+run from Developer tools:
+
+```yaml
+action: deltadore_tydom.get_open_issues
+target:
+  entity_id: alarm_control_panel.tyxal_alarm
+response_variable: open_issues
+```
+
+The response variable is a list of products. Each entry contains the metadata
+supplied by the central, such as `id`, `name`, `type_short`, `type_long`,
+`zone`, `defects` and `error` when available. The latest result is also stored
+on the alarm entity as `open_issue_count` and `open_issues`, so it can be used
+in dashboards and templates without keeping a separate helper.
+
+After a refused normal arm operation, the integration automatically requests
+the same information. Some CS8000 firmware records the refusal event shortly
+after its command response, so the integration waits briefly and retries once
+if the central has not yet made the blocker record available. A successful
+normal arm clears the stored list.
+
+This is not continuous contact monitoring: opening or closing a contact does
+not by itself refresh `open_issues`. Use the action before offering a force-arm
+choice, after a refusal, or from an automation triggered by contact entities
+which are available in your installation.
 
 The TYXAL alarm device also provides an **Acknowledge events** button for
 convenient dashboard use without requiring a service call or automation.
