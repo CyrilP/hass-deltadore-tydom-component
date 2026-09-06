@@ -199,6 +199,13 @@ Erreur | Signification | Vérifications
 Erreur d'authentification | Les identifiants fournis ou récupérés ont été refusés. | En mode Cloud, vérifiez l'adresse e-mail Delta Dore, le mot de passe du compte et l'adresse MAC de la passerelle. En mode Manuel, vérifiez que vous avez saisi le mot de passe de la passerelle TYDOM, et non celui du compte Delta Dore.
 Erreur de communication | Home Assistant n'a pas pu joindre l'hôte configuré ou terminer la connexion. | Vérifiez le nom d'hôte ou l'adresse IP, l'accès au réseau local, le DNS, l'alimentation de la passerelle et, pour un accès cloud, la connectivité avec `mediation.tydom.com`.
 
+En connexion locale, l'intégration utilise automatiquement le domaine HTTP
+Digest annoncé par la passerelle. Aucun paramètre de domaine distinct n'est
+nécessaire. Cela prend notamment en charge les passerelles dont le firmware
+utilise un domaine différent, y compris le Hub Tyxal+ en version 3.25.x. Si une
+connexion locale se ferme immédiatement après l'authentification, mettez à jour
+l'intégration et joignez un journal de débogage à un nouveau ticket.
+
 ### Les relevés TYWATT n'apparaissent pas immédiatement
 
 Les données énergétiques des TYWATT 1000, TYWATT 2000 et TYWATT 5400/EMIC

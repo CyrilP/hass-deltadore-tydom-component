@@ -187,6 +187,12 @@ Error | Meaning | Checks
 Authentication error | The supplied or retrieved credentials were rejected. | In Cloud mode, verify the Delta Dore email address, account password and gateway MAC. In Manual mode, verify that the TYDOM gateway password—not the Delta Dore account password—was entered.
 Communication error | Home Assistant could not reach the configured host or complete the connection. | Verify the hostname or IP address, local network access, DNS, gateway power and, when using cloud access, connectivity to `mediation.tydom.com`.
 
+For a local connection, the integration automatically uses the HTTP Digest realm
+announced by the gateway. No separate realm setting is required. This supports
+gateways whose firmware uses a different realm, including Hub Tyxal+ firmware
+3.25.x. If a local connection disconnects immediately after authentication,
+update the integration and attach a debug log to a new issue.
+
 ### TYWATT readings do not appear immediately
 
 TYWATT 1000, TYWATT 2000 and TYWATT 5400/EMIC energy data may not all appear
