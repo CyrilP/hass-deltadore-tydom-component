@@ -86,7 +86,7 @@ Catégorie | Matériel ou configuration confirmés | Prise en charge dans Home A
 Alarme et sécurité | TYXAL+, CS8000, CSX40 et détecteurs de fumée DFR TYXAL+ | Pilotage de l'alarme, modes par zone, diagnostics, état de détection de fumée, historique et acquittement des événements, ainsi que la gestion à distance des produits et zones compatibles.
 Chauffage et régulation | Tybox 5101 avec Typass ATL, Tywell Control, Tywell 2050, TYXIA 1137, Calybox et RF 6600 FP | Régulation par zone, températures, consignes de chauffage et de refroidissement, modes de fonctionnement, humidité, batterie et commandes de chauffage ou de fil pilote annoncées par l'appareil.
 Suivi énergétique | TYWATT 1000, TYWATT 2000 et TYWATT 5400 avec EMIC | Mesures de puissance, courant et énergie, y compris les canaux de chauffage, d'eau chaude sanitaire et de refroidissement lorsqu'ils sont annoncés.
-Portails et portes de garage | Récepteurs à contact sec TYXIA 4620 | Boutons impulsionnels reproduisant la séquence ouverture/arrêt/fermeture du récepteur, sans prétendre connaître une position qui n'est pas remontée.
+Portails et portes de garage | Récepteurs à contact sec TYXIA 4620, et points de terminaison de portail ou garage annonçant un retour `level` lisible | Les récepteurs à contact sec utilisent un bouton impulsionnel reproduisant la séquence ouverture/arrêt/fermeture. Les points de terminaison disposant d'un retour exposent une entité `cover` native avec état ouvert/fermé et position lorsqu'ils sont fournis.
 Éclairage et commutation | Récepteurs TYXIA 4910 à sortie fixe et TYXIA 4940 à variation configurés dans l'usage `Autres` de TYDOM, TYXIA 6610, Delta Dore Easy Plug et équipements X3D compatibles | Éclairages, luminosité, interrupteurs et prises selon les capacités annoncées par le point de terminaison.
 Ouvertures et protections solaires | Volets roulants TYMOOV et Well'com, installations BSO, volets Zigbee Profalux `MOT-C1Z06F` et `MOT-C1Z10F`, bannes TYXIA 5731, ouvrants K-Line DVI et portes K-Line POD | Volets natifs avec montée, descente, arrêt et position lorsqu'ils sont annoncés ; les commandes et positions des bannes sont converties selon la sémantique ouverture/fermeture de Home Assistant ; l'état d'ouverture ou de contact est exposé lorsqu'un retour est fourni.
 Commandes physiques | Interrupteurs muraux TYXIA 2600, télécommandes TYXIA 1410 et télécommandes TL 2000 Tyxal+ | Événements Home Assistant natifs utilisables dans les automatisations, avec diagnostic de batterie lorsqu'il est fourni.
@@ -368,7 +368,9 @@ attributs décrivent la dernière transition d'armement ou de désarmement reçu
   fournissent une commande impulsionnelle, mais aucun retour de position ou de
   direction. Home Assistant expose donc un bouton sans état et ne peut pas
   déterminer si l'impulsion suivante ouvrira, arrêtera ou fermera la
-  motorisation.
+  motorisation. Un portail ou garage n'est exposé comme entité `cover` que lorsque
+  son point de terminaison annonce un retour `level` lisible ; une commande
+  inscriptible seule ne permet pas de connaître sa position réelle.
 - Le volet Tywell natif rejoue les scénarios `TWC_UP`, `TWC_DOWN` et
   `TWC_STOP` créés par TYDOM. Les volets concernés doivent donc être configurés
   dans l'application officielle, et la position globale n'est disponible que
