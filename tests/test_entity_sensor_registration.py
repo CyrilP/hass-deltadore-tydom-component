@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock
 
@@ -17,11 +18,15 @@ def _load_ha_entity_class():
         / "ha_entities.py"
     )
     module = ast.parse(source_path.read_text(encoding="utf-8"))
-    class_node = next(
+    selected_nodes = [
         node
         for node in module.body
-        if isinstance(node, ast.ClassDef) and node.name == "HAEntity"
-    )
+        if (
+            isinstance(node, ast.FunctionDef)
+            and node.name == "_get_hub_for_tydom_device"
+        )
+        or (isinstance(node, ast.ClassDef) and node.name == "HAEntity")
+    ]
     isolated_module = ast.Module(
         body=[
             ast.ImportFrom(
@@ -29,7 +34,7 @@ def _load_ha_entity_class():
                 names=[ast.alias(name="annotations")],
                 level=0,
             ),
-            class_node,
+            *selected_nodes,
         ],
         type_ignores=[],
     )
@@ -137,6 +142,25 @@ class EntitySensorRegistrationTests(TestCase):
 
         self.assertEqual(len(first.get_sensors()), 1)
         self.assertEqual(len(second.get_sensors()), 1)
+
+    def test_hub_resolution_uses_the_owning_gateway_not_load_order(self) -> None:
+        """A second TYDOM must not be linked through the first one."""
+        first_client = object()
+        second_client = object()
+        first_hub = SimpleNamespace(_tydom_client=first_client, devices={})
+        second_hub = SimpleNamespace(_tydom_client=second_client, devices={})
+        entity = HAEntity()
+        entity._device = SimpleNamespace(_tydom_client=second_client)
+        entity.hass = SimpleNamespace(
+            data={
+                "deltadore_tydom": {
+                    "first-entry": first_hub,
+                    "second-entry": second_hub,
+                }
+            }
+        )
+
+        self.assertIs(entity._get_hub(), second_hub)
 
     def test_attribute_is_not_registered_twice_on_one_device(self) -> None:
         """Repeated discovery for one device must not duplicate its sensor."""
