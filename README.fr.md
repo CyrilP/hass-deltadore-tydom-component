@@ -156,6 +156,7 @@ Mode | Identifiants | Connexion
 -- | -- | --
 Cloud | Saisissez l'adresse e-mail et le mot de passe du compte Delta Dore. L'intégration récupère automatiquement le mot de passe de la passerelle correspondante. | Utilisez le nom d'hôte ou l'adresse IP de la passerelle pour une connexion locale, ou `mediation.tydom.com` pour une connexion cloud.
 Manuel | Saisissez directement le mot de passe de la passerelle TYDOM. Aucun compte Delta Dore n'est nécessaire pendant la configuration. | Normalement le nom d'hôte ou l'adresse IP de la passerelle locale ; tout hôte compatible explicitement configuré est accepté.
+Appairer en local avec le bouton de la passerelle | Saisissez le nom d'hôte ou l'adresse IP locale de la passerelle et son adresse MAC. Aucun mot de passe de passerelle ni compte Delta Dore n'est nécessaire. | Connexion LAN locale directe uniquement ; ni la médiation ni le cloud Delta Dore ne sont utilisés.
 
 ### Champs de configuration
 
@@ -171,6 +172,28 @@ Code PIN de l'alarme | Non | Nécessaire pour modifier le mode de l'alarme depui
 
 Après la configuration, ouvrez le menu **Configurer** de l'intégration pour
 modifier l'intervalle de rafraîchissement, les zones d'alarme ou le code PIN.
+
+### Appairer en local avec le bouton de la passerelle
+
+Utilisez ce mode lorsque la passerelle est joignable sur le réseau local mais
+que son mot de passe local est inconnu. Il nécessite un accès physique à la
+passerelle :
+
+1. Sélectionnez **« Appairer en local avec le bouton de la passerelle »** et remplissez tous les champs.
+1. Effectuez un appui **bref** sur le bouton physique de la passerelle.
+1. Validez immédiatement le formulaire déjà rempli dans Home Assistant.
+
+L'appui bref ouvre une courte fenêtre d'appairage local. Pendant cette fenêtre,
+l'intégration récupère une seule fois le secret local de la passerelle, le
+valide avec la connexion Digest locale normale, puis l'enregistre dans l'entrée
+de configuration. Le secret n'est ni affiché ni journalisé. Les connexions
+ultérieures de cette entrée restent locales et ne nécessitent plus d'appui sur
+le bouton.
+
+Cette fonctionnalité ne réinitialise pas la passerelle, ne modifie pas son mot
+de passe, ne supprime aucun produit et n'altère aucune association. Elle
+n'utilise pas le cloud Delta Dore. Une entrée distincte configurée en
+cloud/médiation continue à utiliser sa propre connexion configurée.
 
 ## Dépannage
 
@@ -205,6 +228,15 @@ nécessaire. Cela prend notamment en charge les passerelles dont le firmware
 utilise un domaine différent, y compris le Hub Tyxal+ en version 3.25.x. Si une
 connexion locale se ferme immédiatement après l'authentification, mettez à jour
 l'intégration et joignez un journal de débogage à un nouveau ticket.
+
+### L'appairage local par bouton ne se termine pas
+
+Vérifiez que Home Assistant peut joindre le nom d'hôte ou l'adresse IP locale
+de la passerelle et que tous les champs du formulaire étaient remplis avant
+l'appui. Effectuez un appui **bref**, puis validez immédiatement le formulaire :
+la fenêtre d'appairage local est courte. L'intégration n'interroge pas la
+passerelle et ne réessaie pas en arrière-plan ; un nouvel essai nécessite donc
+un nouvel appui bref.
 
 ### Les relevés TYWATT n'apparaissent pas immédiatement
 

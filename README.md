@@ -146,6 +146,7 @@ Mode | Credentials | Connection
 -- | -- | --
 Cloud | Enter the Delta Dore account email address and password. The integration retrieves the matching gateway password automatically. | Use the gateway hostname or IP address for a local connection, or `mediation.tydom.com` for a cloud connection.
 Manual | Enter the TYDOM gateway password directly. A Delta Dore account is not required during setup. | Normally the local gateway hostname or IP address; any compatible explicitly configured host is accepted.
+Pair locally using the gateway button | Enter the local gateway hostname or IP address and its MAC address. No gateway password or Delta Dore account is required. | Direct local LAN connection only; Delta Dore mediation and cloud are not used.
 
 ### Configuration fields
 
@@ -161,6 +162,25 @@ Alarm PIN | No | Required when using Home Assistant to change the alarm mode; no
 
 After setup, open the integration's **Configure** menu to change the refresh
 interval, alarm zones or PIN.
+
+### Pair locally using the gateway button
+
+Use this mode when the gateway is reachable on the local network but its local
+password is unknown. It requires physical access to the gateway:
+
+1. Select **Pair locally using the gateway button** and complete every field.
+1. Press the physical gateway button **briefly**.
+1. Immediately submit the completed form in Home Assistant.
+
+The brief button press opens a short local pairing window. During that window,
+the integration retrieves the local gateway secret once, validates it with the
+normal local Digest connection, and saves it in the configuration entry. The
+secret is never shown or logged. Later connections for this entry remain local
+and do not need another button press.
+
+This feature does not reset the gateway, change its password, remove products
+or alter associations. It does not use the Delta Dore cloud. A separate entry
+configured for cloud/mediation continues to use its own configured connection.
 
 ## Troubleshooting
 
@@ -192,6 +212,14 @@ announced by the gateway. No separate realm setting is required. This supports
 gateways whose firmware uses a different realm, including Hub Tyxal+ firmware
 3.25.x. If a local connection disconnects immediately after authentication,
 update the integration and attach a debug log to a new issue.
+
+### Local button pairing does not complete
+
+Ensure that Home Assistant can reach the gateway's local hostname or IP address
+and that every form field was completed before pressing the button. Use a
+**brief** press and submit the form immediately afterwards: the local pairing
+window is short. The integration does not probe the gateway or retry in the
+background, so a new attempt requires a new brief press.
 
 ### TYWATT readings do not appear immediately
 
