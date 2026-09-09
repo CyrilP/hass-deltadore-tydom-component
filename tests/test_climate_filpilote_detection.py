@@ -252,7 +252,7 @@ for name, original in _original_modules.items():
         sys.modules[name] = original
 
 
-def _thermostat(*, metadata, data):
+def _thermostat(*, metadata, data, device_type="boiler"):
     """Create a TydomBoiler device and its HaClimate entity."""
     client = MagicMock()
     client.put_devices_data = AsyncMock()
@@ -261,7 +261,7 @@ def _thermostat(*, metadata, data):
         "10_20",
         "20",
         "Thermostat",
-        "boiler",
+        device_type,
         "10",
         metadata,
         data,
@@ -365,6 +365,45 @@ class FilPiloteDetectionTests(TestCase):
             },
         )
         self.assertFalse(entity._is_filpilote)
+
+
+class AreaTrvClimateTests(IsolatedAsyncioTestCase):
+    """Ensure a TRV adopts its area capabilities after late discovery."""
+
+    async def test_area_link_exposes_target_temperature_and_writes_a_number(self):
+        """A late area link must replace the generic heat/off UI with a setpoint."""
+        entity, client = _thermostat(
+            metadata={
+                "regTemperature": {"permission": "r"},
+                "waterFlowReq": {"permission": "r"},
+            },
+            data={"regTemperature": 23.5, "waterFlowReq": False},
+            device_type="sh_hvac",
+        )
+
+        # /devices/data can be parsed before its linked /areas/data response.
+        # The association must therefore be evaluated at state-write time, not
+        # only while this entity is constructed.
+        entity._device.area_id = "7"
+        entity._device.currentSetpoint = 21.0
+
+        self.assertEqual(entity.hvac_modes, [HVACMode.HEAT])
+        self.assertEqual(entity.target_temperature, 21.0)
+        self.assertEqual(
+            entity.supported_features, ClimateEntityFeature.TARGET_TEMPERATURE
+        )
+
+        client.put_area_data_attributes = AsyncMock()
+        await entity.async_set_temperature(temperature=20.5)
+
+        client.put_area_data_attributes.assert_awaited_once_with(
+            "7",
+            {
+                "localSetpoint": 20.5,
+                "localSetpRemainingTimeStr": "UNTIL_SCHED",
+                "localMode": "LOCAL_SETPOINT",
+            },
+        )
 
 
 class PresetNoneSendsAutoTests(IsolatedAsyncioTestCase):
