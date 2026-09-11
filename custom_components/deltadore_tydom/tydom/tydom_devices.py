@@ -608,6 +608,11 @@ class TydomBoiler(TydomDevice):
         return self._type == "sh_hvac" and hasattr(self, "area_id")
 
     @property
+    def boost_active(self) -> bool:
+        """Return whether the area-backed TRV currently has Boost enabled."""
+        return str(getattr(self, "boost", "OFF")).upper() == "ON"
+
+    @property
     def is_derived_area_climate(self) -> bool:
         """Return whether this climate proxies a passive controller's area."""
         return self.device_id.endswith("_area_climate")
@@ -977,6 +982,17 @@ class TydomBoiler(TydomDevice):
             await self._tydom_client.put_devices_data(
                 self._id, self._endpoint, setpoint_attribute, temperature
             )
+
+    async def cancel_boost(self) -> None:
+        """Cancel the active Boost on an area-backed radiator thermostat."""
+        if not self.is_area_trv:
+            LOGGER.warning("Boost cancellation is not supported for %s", self.device_id)
+            return
+
+        await self._tydom_client.put_area_data_attributes(
+            self.area_id,
+            {"boost": "OFF"},
+        )
 
     async def set_thermic_level(self, level):
         """Set the pilot-wire order directly (fil-pilote zones)."""

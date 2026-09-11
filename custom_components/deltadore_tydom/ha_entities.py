@@ -6692,6 +6692,53 @@ class HAAlarmAcknowledgeButton(ButtonEntity, HAEntity):
         await self._device.acknowledge_events()
 
 
+class HACancelBoostButton(ButtonEntity, HAEntity):
+    """Button which cancels an active Boost on an area-backed TRV."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_translation_key = "cancel_boost"
+    _attr_icon = "mdi:timer-off-outline"
+
+    def __init__(self, device: TydomBoiler, hass) -> None:
+        """Initialise the TRV Boost cancellation button."""
+        self.hass = hass
+        self._device = device
+        self._attr_unique_id = f"{device.device_id}_cancel_boost"
+
+    @property
+    def available(self) -> bool:
+        """Expose the control only while the TRV reports an active Boost."""
+        return super().available and self._device.boost_active
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Link the button to the physical radiator thermostat."""
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
+            "identifiers": {(DOMAIN, self._device.device_id)},
+            "name": self._device.device_name,
+            "manufacturer": device_info["manufacturer"],
+        }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return self._enrich_device_info(info)
+
+    async def async_added_to_hass(self) -> None:
+        """Refresh availability whenever TYDOM publishes area state."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Remove the update callback when Home Assistant removes the button."""
+        self._device.remove_callback(self.async_write_ha_state)
+        await super().async_will_remove_from_hass()
+
+    async def async_press(self) -> None:
+        """Cancel the active Boost without changing the normal setpoint."""
+        await self._device.cancel_boost()
+
+
 class HAAlarmPendingEventsSensor(SensorEntity, HAEntity):
     """Dashboard-friendly view of unacknowledged TYXAL alarm events."""
 

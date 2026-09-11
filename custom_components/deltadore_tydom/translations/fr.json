@@ -271,6 +271,9 @@
             "acknowledge_events": {
                 "name": "Acquitter les évènements"
             },
+            "cancel_boost": {
+                "name": "Annuler le Boost"
+            },
             "group_light": {
                 "name": "Groupe Lumières"
             },

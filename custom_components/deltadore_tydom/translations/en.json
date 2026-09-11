@@ -270,6 +270,9 @@
             "acknowledge_events": {
                 "name": "Acknowledge events"
             },
+            "cancel_boost": {
+                "name": "Cancel Boost"
+            },
             "group_light": {
                 "name": "Light Group"
             },

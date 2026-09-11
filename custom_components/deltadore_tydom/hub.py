@@ -63,6 +63,7 @@ from .ha_entities import (
     HASwitch,
     HAButton,
     HAAlarmAcknowledgeButton,
+    HACancelBoostButton,
     HAAlarmPendingEventsSensor,
     HAReloadButton,
     HARefreshEnergyButton,
@@ -480,6 +481,8 @@ class Hub:
         self.ha_devices[device.device_id] = ha_device
         if self.add_climate_callback is not None:
             self.add_climate_callback([ha_device])
+        if device.is_area_trv and self.add_button_callback is not None:
+            self.add_button_callback([HACancelBoostButton(device, self._hass)])
         self._add_discovered_entities(ha_device.get_sensors())
 
     async def _create_window_device(self, device: TydomWindow) -> None:

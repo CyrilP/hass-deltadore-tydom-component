@@ -799,7 +799,12 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
                             "name": "currentSetpoint",
                             "value": 20.5,
                             "validity": "upToDate",
-                        }
+                        },
+                        {
+                            "name": "boost",
+                            "value": "ON",
+                            "validity": "upToDate",
+                        },
                     ],
                 }
             ],
@@ -814,6 +819,7 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         self.assertEqual(devices[0].device_id, trv.device_id)
         self.assertEqual(devices[0].area_setpoint_attribute(), "currentSetpoint")
         self.assertEqual(devices[0].currentSetpoint, 20.5)
+        self.assertTrue(devices[0].boost_active)
 
     async def test_trv_override_does_not_require_local_setpoint_metadata(self) -> None:
         """Issue #259 TRVs can set a target without device-level area metadata."""
@@ -830,6 +836,29 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
                 "localMode": "LOCAL_SETPOINT",
             },
         )
+
+    async def test_trv_cancel_boost_uses_the_area_boost_register(self) -> None:
+        """Cancelling Boost leaves the user's normal setpoint and mode intact."""
+        trv = await self._discover_trv()
+        self.client.put_area_data_attributes = AsyncMock()
+        trv.boost = "ON"
+
+        self.assertTrue(trv.boost_active)
+        await trv.cancel_boost()
+
+        self.client.put_area_data_attributes.assert_awaited_once_with(
+            "7", {"boost": "OFF"}
+        )
+
+    async def test_trv_boost_state_is_normalised(self) -> None:
+        """The action is exposed only for an explicitly active Boost."""
+        trv = await self._discover_trv()
+
+        self.assertFalse(trv.boost_active)
+        trv.boost = "on"
+        self.assertTrue(trv.boost_active)
+        trv.boost = "OFF"
+        self.assertFalse(trv.boost_active)
 
     async def test_trv_uses_local_setpoint_limits_when_advertised(self) -> None:
         """Optional TRV metadata controls the Home Assistant range and step."""
