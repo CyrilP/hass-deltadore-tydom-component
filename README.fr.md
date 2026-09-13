@@ -345,31 +345,31 @@ instruction est réécrite pour le parcours Home Assistant.
 2. Maintenez le bouton A/B physique choisi pendant 6 secondes. La LED rouge
    s'allume, s'éteint, puis reste fixe : relâchez le bouton.
 
-   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step1.svg" width="48%" alt="TYXIA 2600 : maintenir le bouton choisi six secondes, bouton A ou 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step1.svg" width="48%" alt="TYXIA 2600 : maintenir le bouton choisi six secondes, bouton B ou 2">
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step1.png" width="48%" alt="TYXIA 2600 : maintenir le bouton choisi six secondes, bouton A ou 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step1.png" width="48%" alt="TYXIA 2600 : maintenir le bouton choisi six secondes, bouton B ou 2">
 
 3. La LED verte clignote par séries. Appuyez brièvement sur A pour faire
    défiler les modes, puis conservez celui correspondant au type
    d'interrupteur câblé.
 
-   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step2.svg" width="48%" alt="TYXIA 2600 : sélectionner le mode de l'interrupteur, bouton A ou 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step2.svg" width="48%" alt="TYXIA 2600 : sélectionner le mode de l'interrupteur, bouton B ou 2">
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step2.png" width="48%" alt="TYXIA 2600 : sélectionner le mode de l'interrupteur, bouton A ou 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step2.png" width="48%" alt="TYXIA 2600 : sélectionner le mode de l'interrupteur, bouton B ou 2">
 
 4. Maintenez B pendant 3 secondes, jusqu'à l'allumage fixe de la LED verte,
    pour valider le mode.
 
-   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step3.svg" width="48%" alt="TYXIA 2600 : valider le mode sélectionné, bouton A ou 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step3.svg" width="48%" alt="TYXIA 2600 : valider le mode sélectionné, bouton B ou 2">
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step3.png" width="48%" alt="TYXIA 2600 : valider le mode sélectionné, bouton A ou 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step3.png" width="48%" alt="TYXIA 2600 : valider le mode sélectionné, bouton B ou 2">
 
 5. Dans Home Assistant, cliquez sur **Lancer l'écoute de la passerelle**.
 6. Maintenez le bouton A/B physique choisi pendant 3 secondes, jusqu'au
    clignotement rouge.
 
-   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step4.svg" width="48%" alt="TYXIA 2600 : lancer l'association radio, bouton A ou 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step4.svg" width="48%" alt="TYXIA 2600 : lancer l'association radio, bouton B ou 2">
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step4.png" width="48%" alt="TYXIA 2600 : lancer l'association radio, bouton A ou 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step4.png" width="48%" alt="TYXIA 2600 : lancer l'association radio, bouton B ou 2">
 
 7. Attendez que Home Assistant détecte le nouveau produit.
 8. Pour confirmer la voie choisie, appuyez sur l'interrupteur mural câblé
    relié à cette voie A/B. N'appuyez pas à nouveau sur le bouton du module
    TYXIA.
 
-   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step5.svg" width="48%" alt="TYXIA 2600 : confirmer avec l'interrupteur mural câblé, bouton A ou 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step5.svg" width="48%" alt="TYXIA 2600 : confirmer avec l'interrupteur mural câblé, bouton B ou 2">
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step5.png" width="48%" alt="TYXIA 2600 : confirmer avec l'interrupteur mural câblé, bouton A ou 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step5.png" width="48%" alt="TYXIA 2600 : confirmer avec l'interrupteur mural câblé, bouton B ou 2">
 
 Utilisez **Dissocier ce bouton** pour retirer A ou B indépendamment ; l'autre
 voie reste associée.
@@ -382,19 +382,19 @@ voie reste associée.
 1. Vérifiez au dos le logo **Works with Tydom**. Une version visuellement
    identique, sans ce logo de compatibilité, ne peut pas être associée.
 
-   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step1.svg" width="24%" alt="TYXIA 1410 : vérification de compatibilité, bouton 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step1.svg" width="24%" alt="TYXIA 1410 : vérification de compatibilité, bouton 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step1.svg" width="24%" alt="TYXIA 1410 : vérification de compatibilité, bouton 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step1.svg" width="24%" alt="TYXIA 1410 : vérification de compatibilité, bouton 4">
+   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step1.png" width="24%" alt="TYXIA 1410 : vérification de compatibilité, bouton 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step1.png" width="24%" alt="TYXIA 1410 : vérification de compatibilité, bouton 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step1.png" width="24%" alt="TYXIA 1410 : vérification de compatibilité, bouton 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step1.png" width="24%" alt="TYXIA 1410 : vérification de compatibilité, bouton 4">
 
 2. Dans Home Assistant, choisissez Bouton 1, 2, 3 ou 4, puis cliquez sur
    **Lancer l'écoute de la passerelle**.
 3. Pendant l'écoute, maintenez le bouton sélectionné de la télécommande
    pendant 5 secondes, jusqu'au clignotement rouge. Relâchez-le.
 
-   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step2.svg" width="24%" alt="TYXIA 1410 : maintenir le bouton choisi, bouton 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step2.svg" width="24%" alt="TYXIA 1410 : maintenir le bouton choisi, bouton 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step2.svg" width="24%" alt="TYXIA 1410 : maintenir le bouton choisi, bouton 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step2.svg" width="24%" alt="TYXIA 1410 : maintenir le bouton choisi, bouton 4">
+   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step2.png" width="24%" alt="TYXIA 1410 : maintenir le bouton choisi, bouton 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step2.png" width="24%" alt="TYXIA 1410 : maintenir le bouton choisi, bouton 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step2.png" width="24%" alt="TYXIA 1410 : maintenir le bouton choisi, bouton 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step2.png" width="24%" alt="TYXIA 1410 : maintenir le bouton choisi, bouton 4">
 
 4. Attendez la détection dans Home Assistant. Il n'y a ni confirmation dans
    l'application mobile, ni second appui physique.
 
-   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step3.svg" width="24%" alt="TYXIA 1410 : confirmation du bouton sélectionné, bouton 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step3.svg" width="24%" alt="TYXIA 1410 : confirmation du bouton sélectionné, bouton 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step3.svg" width="24%" alt="TYXIA 1410 : confirmation du bouton sélectionné, bouton 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step3.svg" width="24%" alt="TYXIA 1410 : confirmation du bouton sélectionné, bouton 4">
+   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step3.png" width="24%" alt="TYXIA 1410 : confirmation du bouton sélectionné, bouton 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step3.png" width="24%" alt="TYXIA 1410 : confirmation du bouton sélectionné, bouton 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step3.png" width="24%" alt="TYXIA 1410 : confirmation du bouton sélectionné, bouton 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step3.png" width="24%" alt="TYXIA 1410 : confirmation du bouton sélectionné, bouton 4">
 
 Utilisez **Dissocier ce bouton** uniquement pour la voie sélectionnée.
 
@@ -406,33 +406,33 @@ Utilisez **Dissocier ce bouton** uniquement pour la voie sélectionnée.
 1. Vérifiez le logo **Works with Tydom**, puis choisissez Bouton 1 ou 2 dans
    Home Assistant.
 
-   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step1.svg" width="48%" alt="TL 2000 : vérification de compatibilité, bouton A ou 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step1.svg" width="48%" alt="TL 2000 : vérification de compatibilité, bouton B ou 2">
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step1.png" width="48%" alt="TL 2000 : vérification de compatibilité, bouton A ou 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step1.png" width="48%" alt="TL 2000 : vérification de compatibilité, bouton B ou 2">
 
 2. Maintenez 1 + 2 pendant 5 secondes, jusqu'à ce que la LED soit orange.
 
-   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step2.svg" width="48%" alt="TL 2000 : maintenir 1 et 2, bouton A ou 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step2.svg" width="48%" alt="TL 2000 : maintenir 1 et 2, bouton B ou 2">
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step2.png" width="48%" alt="TL 2000 : maintenir 1 et 2, bouton A ou 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step2.png" width="48%" alt="TL 2000 : maintenir 1 et 2, bouton B ou 2">
 
 3. Appuyez une fois sur le bouton sélectionné. Continuez lorsque la LED
    clignote par séries de quatre ; un nouvel appui sur ce bouton change le
    nombre de clignotements.
 
-   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step3.svg" width="48%" alt="TL 2000 : sélectionner le mode d'association, bouton A ou 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step3.svg" width="48%" alt="TL 2000 : sélectionner le mode d'association, bouton B ou 2">
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step3.png" width="48%" alt="TL 2000 : sélectionner le mode d'association, bouton A ou 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step3.png" width="48%" alt="TL 2000 : sélectionner le mode d'association, bouton B ou 2">
 
 4. Si la LED clignote encore, appuyez sur ON jusqu'à ce qu'elle devienne
    verte.
 
-   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step4.svg" width="48%" alt="TL 2000 : valider avec ON, bouton A ou 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step4.svg" width="48%" alt="TL 2000 : valider avec ON, bouton B ou 2">
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step4.png" width="48%" alt="TL 2000 : valider avec ON, bouton A ou 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step4.png" width="48%" alt="TL 2000 : valider avec ON, bouton B ou 2">
 
 5. Dans Home Assistant, cliquez sur **Lancer l'écoute de la passerelle**.
 6. Pendant l'écoute, maintenez ON + le bouton sélectionné pendant
    5 secondes, jusqu'à ce que la LED soit rouge.
 
-   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step5.svg" width="48%" alt="TL 2000 : lancer l'association, bouton A ou 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step5.svg" width="48%" alt="TL 2000 : lancer l'association, bouton B ou 2">
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step5.png" width="48%" alt="TL 2000 : lancer l'association, bouton A ou 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step5.png" width="48%" alt="TL 2000 : lancer l'association, bouton B ou 2">
 
 7. Attendez que Home Assistant détecte la télécommande, puis appuyez une
    fois sur le bouton sélectionné pour confirmer la voie.
 
-   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step6.svg" width="48%" alt="TL 2000 : confirmer la voie sélectionnée, bouton A ou 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step6.svg" width="48%" alt="TL 2000 : confirmer la voie sélectionnée, bouton B ou 2">
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step6.png" width="48%" alt="TL 2000 : confirmer la voie sélectionnée, bouton A ou 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step6.png" width="48%" alt="TL 2000 : confirmer la voie sélectionnée, bouton B ou 2">
 
 Utilisez **Dissocier ce bouton** uniquement pour la voie sélectionnée.
 
@@ -444,13 +444,13 @@ Utilisez **Dissocier ce bouton** uniquement pour la voie sélectionnée.
 1. Dans Home Assistant, choisissez **Portail coulissant** ou **Portillon**,
    puis maintenez la touche du récepteur 3 secondes.
 
-   <img src="docs/images/association/catalog_7_tyxia_serie4000_tuto1.svg" width="48%" alt="TYXIA 4620 : maintenir la touche du récepteur">
+   <img src="docs/images/association/catalog_7_tyxia_serie4000_tuto1.png" width="48%" alt="TYXIA 4620 : maintenir la touche du récepteur">
 
 2. Lorsque la LED rouge clignote, le récepteur est prêt. Dans Home
    Assistant, cliquez sur **Lancer l'écoute de la passerelle**, puis
    attendez la détection.
 
-   <img src="docs/images/association/catalog_7_tyxia_serie4000_tuto2.svg" width="48%" alt="TYXIA 4620 : LED rouge clignotante">
+   <img src="docs/images/association/catalog_7_tyxia_serie4000_tuto2.png" width="48%" alt="TYXIA 4620 : LED rouge clignotante">
 
 L'usage choisi transforme le point découvert en produit de portail nommé,
 plutôt qu'en Produit N non géré. Utilisez **Dissocier définitivement
@@ -464,20 +464,20 @@ l'appareil** pour le retirer de la passerelle et de sa configuration TYDOM.
 1. À la première étape du guide, cliquez sur **Lancer l'écoute de la
    passerelle** dans Home Assistant.
 
-   <img src="docs/images/association/catalog_32_tywatt_5100_tuto1.svg" width="48%" alt="TYWATT 5100 : étape d'écoute Home Assistant">
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto1.png" width="48%" alt="TYWATT 5100 : étape d'écoute Home Assistant">
 
 2. Reportez-vous à la notice officielle pour positionner les sélecteurs et
    choisir la valeur mesurée.
 
-   <img src="docs/images/association/catalog_32_tywatt_5100_tuto1.svg" width="48%" alt="TYWATT 5100 : réglage des sélecteurs">
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto1.png" width="48%" alt="TYWATT 5100 : réglage des sélecteurs">
 
 3. Placez le switch sur ON. Sa LED s'allume pendant une seconde.
 
-   <img src="docs/images/association/catalog_32_tywatt_5100_tuto2.svg" width="48%" alt="TYWATT 5100 : switch sur ON">
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto2.png" width="48%" alt="TYWATT 5100 : switch sur ON">
 
 4. Maintenez la touche du produit pendant 3 secondes.
 
-   <img src="docs/images/association/catalog_32_tywatt_5100_tuto3.svg" width="48%" alt="TYWATT 5100 : maintenir la touche">
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto3.png" width="48%" alt="TYWATT 5100 : maintenir la touche">
 
 Ce parcours a été validé par un contributeur sur TYDOM 1.0. La configuration
 du compteur fournie par la passerelle est préservée ; ne réécrivez pas un
@@ -493,12 +493,12 @@ compteur découvert comme produit générique.
    du guide, cliquez sur **Lancer l'écoute de la passerelle** dans Home
    Assistant.
 
-   <img src="docs/images/association/catalog_tysense_sun_tuto1.svg" width="48%" alt="Tysense Sun : interrupteur sur ON">
+   <img src="docs/images/association/catalog_tysense_sun_tuto1.png" width="48%" alt="Tysense Sun : interrupteur sur ON">
 
 2. Maintenez le bouton du produit pendant 3 secondes. Sa LED s'allume ;
    attendez environ 30 secondes pour la détection.
 
-   <img src="docs/images/association/catalog_tysense_sun_tuto2.svg" width="48%" alt="Tysense Sun : maintenir le bouton du produit">
+   <img src="docs/images/association/catalog_tysense_sun_tuto2.png" width="48%" alt="Tysense Sun : maintenir le bouton du produit">
 
 Utilisez **Dissocier définitivement l'appareil** pour le retirer. Une
 association ultérieure restaure la configuration dédiée sensorSun plutôt

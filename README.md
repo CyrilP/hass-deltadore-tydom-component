@@ -318,28 +318,28 @@ below is written for the Home Assistant flow.
 2. Hold the selected physical A/B button for 6 seconds. The red LED turns on,
    turns off, then becomes steady; release the button.
 
-   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step1.svg" width="48%" alt="TYXIA 2600: hold the selected button for six seconds, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step1.svg" width="48%" alt="TYXIA 2600: hold the selected button for six seconds, Button B or 2">
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step1.png" width="48%" alt="TYXIA 2600: hold the selected button for six seconds, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step1.png" width="48%" alt="TYXIA 2600: hold the selected button for six seconds, Button B or 2">
 
 3. The green LED flashes in groups. Briefly press A to cycle the modes, then
    retain the mode matching the wired switch type.
 
-   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step2.svg" width="48%" alt="TYXIA 2600: select the wired-switch mode, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step2.svg" width="48%" alt="TYXIA 2600: select the wired-switch mode, Button B or 2">
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step2.png" width="48%" alt="TYXIA 2600: select the wired-switch mode, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step2.png" width="48%" alt="TYXIA 2600: select the wired-switch mode, Button B or 2">
 
 4. Hold B for 3 seconds, until the green LED is steady, to validate the mode.
 
-   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step3.svg" width="48%" alt="TYXIA 2600: validate the selected mode, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step3.svg" width="48%" alt="TYXIA 2600: validate the selected mode, Button B or 2">
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step3.png" width="48%" alt="TYXIA 2600: validate the selected mode, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step3.png" width="48%" alt="TYXIA 2600: validate the selected mode, Button B or 2">
 
 5. In Home Assistant, press **Start gateway listening**.
 6. Hold the selected physical A/B button for 3 seconds until the red LED
    flashes.
 
-   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step4.svg" width="48%" alt="TYXIA 2600: start the radio association, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step4.svg" width="48%" alt="TYXIA 2600: start the radio association, Button B or 2">
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step4.png" width="48%" alt="TYXIA 2600: start the radio association, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step4.png" width="48%" alt="TYXIA 2600: start the radio association, Button B or 2">
 
 7. Wait while Home Assistant detects the new product.
 8. To confirm the selected channel, press the wired wall switch connected to
    that A/B channel. Do not press the TYXIA module button again.
 
-   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step5.svg" width="48%" alt="TYXIA 2600: confirm with the wired wall switch, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step5.svg" width="48%" alt="TYXIA 2600: confirm with the wired wall switch, Button B or 2">
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step5.png" width="48%" alt="TYXIA 2600: confirm with the wired wall switch, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step5.png" width="48%" alt="TYXIA 2600: confirm with the wired wall switch, Button B or 2">
 
 Use **Dissociate this button** to remove A or B independently; the other
 channel remains associated.
@@ -352,19 +352,19 @@ channel remains associated.
 1. Check the **Works with Tydom** mark on the rear of the remote. A visually
    identical version without that compatibility mark cannot be associated.
 
-   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step1.svg" width="24%" alt="TYXIA 1410 compatibility mark, Button 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step1.svg" width="24%" alt="TYXIA 1410 compatibility mark, Button 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step1.svg" width="24%" alt="TYXIA 1410 compatibility mark, Button 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step1.svg" width="24%" alt="TYXIA 1410 compatibility mark, Button 4">
+   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step1.png" width="24%" alt="TYXIA 1410 compatibility mark, Button 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step1.png" width="24%" alt="TYXIA 1410 compatibility mark, Button 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step1.png" width="24%" alt="TYXIA 1410 compatibility mark, Button 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step1.png" width="24%" alt="TYXIA 1410 compatibility mark, Button 4">
 
 2. In Home Assistant, select Button 1, 2, 3 or 4, then press **Start gateway
    listening**.
 3. While listening is active, hold the selected remote button for 5 seconds,
    until the red LED flashes. Release it.
 
-   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step2.svg" width="24%" alt="TYXIA 1410 hold the selected button, Button 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step2.svg" width="24%" alt="TYXIA 1410 hold the selected button, Button 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step2.svg" width="24%" alt="TYXIA 1410 hold the selected button, Button 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step2.svg" width="24%" alt="TYXIA 1410 hold the selected button, Button 4">
+   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step2.png" width="24%" alt="TYXIA 1410 hold the selected button, Button 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step2.png" width="24%" alt="TYXIA 1410 hold the selected button, Button 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step2.png" width="24%" alt="TYXIA 1410 hold the selected button, Button 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step2.png" width="24%" alt="TYXIA 1410 hold the selected button, Button 4">
 
 4. Wait for detection in Home Assistant. There is no mobile-app confirmation
    and no second physical press.
 
-   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step3.svg" width="24%" alt="TYXIA 1410 selected-button confirmation, Button 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step3.svg" width="24%" alt="TYXIA 1410 selected-button confirmation, Button 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step3.svg" width="24%" alt="TYXIA 1410 selected-button confirmation, Button 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step3.svg" width="24%" alt="TYXIA 1410 selected-button confirmation, Button 4">
+   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step3.png" width="24%" alt="TYXIA 1410 selected-button confirmation, Button 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step3.png" width="24%" alt="TYXIA 1410 selected-button confirmation, Button 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step3.png" width="24%" alt="TYXIA 1410 selected-button confirmation, Button 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step3.png" width="24%" alt="TYXIA 1410 selected-button confirmation, Button 4">
 
 Use **Dissociate this button** for the selected channel only.
 
@@ -376,31 +376,31 @@ Use **Dissociate this button** for the selected channel only.
 1. Check the **Works with Tydom** mark on the rear and select Button 1 or 2 in
    Home Assistant.
 
-   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step1.svg" width="48%" alt="TL 2000 compatibility mark, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step1.svg" width="48%" alt="TL 2000 compatibility mark, Button B or 2">
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step1.png" width="48%" alt="TL 2000 compatibility mark, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step1.png" width="48%" alt="TL 2000 compatibility mark, Button B or 2">
 
 2. Hold 1 + 2 for 5 seconds until the LED is orange.
 
-   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step2.svg" width="48%" alt="TL 2000 hold 1 and 2, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step2.svg" width="48%" alt="TL 2000 hold 1 and 2, Button B or 2">
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step2.png" width="48%" alt="TL 2000 hold 1 and 2, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step2.png" width="48%" alt="TL 2000 hold 1 and 2, Button B or 2">
 
 3. Press the selected button once. Continue when the LED flashes in groups of
    four; another press on the selected button changes the group count.
 
-   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step3.svg" width="48%" alt="TL 2000 select the association mode, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step3.svg" width="48%" alt="TL 2000 select the association mode, Button B or 2">
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step3.png" width="48%" alt="TL 2000 select the association mode, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step3.png" width="48%" alt="TL 2000 select the association mode, Button B or 2">
 
 4. If the LED is still flashing, press ON until it becomes green.
 
-   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step4.svg" width="48%" alt="TL 2000 validate with ON, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step4.svg" width="48%" alt="TL 2000 validate with ON, Button B or 2">
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step4.png" width="48%" alt="TL 2000 validate with ON, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step4.png" width="48%" alt="TL 2000 validate with ON, Button B or 2">
 
 5. In Home Assistant, press **Start gateway listening**.
 6. While listening is active, hold ON + the selected button for 5 seconds,
    until the LED is red.
 
-   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step5.svg" width="48%" alt="TL 2000 start association, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step5.svg" width="48%" alt="TL 2000 start association, Button B or 2">
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step5.png" width="48%" alt="TL 2000 start association, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step5.png" width="48%" alt="TL 2000 start association, Button B or 2">
 
 7. Wait for Home Assistant to detect the remote, then press the selected
    button once to confirm the channel.
 
-   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step6.svg" width="48%" alt="TL 2000 confirm the selected channel, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step6.svg" width="48%" alt="TL 2000 confirm the selected channel, Button B or 2">
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step6.png" width="48%" alt="TL 2000 confirm the selected channel, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step6.png" width="48%" alt="TL 2000 confirm the selected channel, Button B or 2">
 
 Use **Dissociate this button** for the selected channel only.
 
@@ -412,12 +412,12 @@ Use **Dissociate this button** for the selected channel only.
 1. In Home Assistant, select **Sliding gate** or **Wicket gate**, then hold
    the receiver touch control for 3 seconds.
 
-   <img src="docs/images/association/catalog_7_tyxia_serie4000_tuto1.svg" width="48%" alt="TYXIA 4620: hold the receiver touch control">
+   <img src="docs/images/association/catalog_7_tyxia_serie4000_tuto1.png" width="48%" alt="TYXIA 4620: hold the receiver touch control">
 
 2. When the red LED flashes, the receiver is ready. In Home Assistant, press
    **Start gateway listening** and wait for discovery.
 
-   <img src="docs/images/association/catalog_7_tyxia_serie4000_tuto2.svg" width="48%" alt="TYXIA 4620: red LED flashes">
+   <img src="docs/images/association/catalog_7_tyxia_serie4000_tuto2.png" width="48%" alt="TYXIA 4620: red LED flashes">
 
 The selected usage turns the discovered endpoint into a named gate product,
 rather than an unmanaged Produit N. Use **Permanently dissociate device** to
@@ -431,19 +431,19 @@ remove it from the gateway and its TYDOM configuration.
 1. At the first guide step, press **Start gateway listening** in Home
    Assistant.
 
-   <img src="docs/images/association/catalog_32_tywatt_5100_tuto1.svg" width="48%" alt="TYWATT 5100: Home Assistant listening step">
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto1.png" width="48%" alt="TYWATT 5100: Home Assistant listening step">
 
 2. Refer to the official installation manual to set the measurement selectors.
 
-   <img src="docs/images/association/catalog_32_tywatt_5100_tuto1.svg" width="48%" alt="TYWATT 5100: selector configuration">
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto1.png" width="48%" alt="TYWATT 5100: selector configuration">
 
 3. Set the switch to ON. Its LED lights for one second.
 
-   <img src="docs/images/association/catalog_32_tywatt_5100_tuto2.svg" width="48%" alt="TYWATT 5100: switch ON">
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto2.png" width="48%" alt="TYWATT 5100: switch ON">
 
 4. Hold the touch control for 3 seconds.
 
-   <img src="docs/images/association/catalog_32_tywatt_5100_tuto3.svg" width="48%" alt="TYWATT 5100: hold the touch control">
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto3.png" width="48%" alt="TYWATT 5100: hold the touch control">
 
 This flow was validated by a contributor on TYDOM 1.0. The gateway-owned
 meter configuration is preserved; do not rewrite a discovered meter as a
@@ -458,12 +458,12 @@ generic product.
    and move the internal switch left to ON. At this guide step, press **Start
    gateway listening** in Home Assistant.
 
-   <img src="docs/images/association/catalog_tysense_sun_tuto1.svg" width="48%" alt="Tysense Sun: switch ON">
+   <img src="docs/images/association/catalog_tysense_sun_tuto1.png" width="48%" alt="Tysense Sun: switch ON">
 
 2. Hold the product button for 3 seconds. Its LED lights; wait about
    30 seconds for discovery.
 
-   <img src="docs/images/association/catalog_tysense_sun_tuto2.svg" width="48%" alt="Tysense Sun: hold the product button">
+   <img src="docs/images/association/catalog_tysense_sun_tuto2.png" width="48%" alt="Tysense Sun: hold the product button">
 
 Use **Permanently dissociate device** to remove it. A later association
 restores the dedicated sensorSun configuration rather than a generic sensor.
