@@ -326,13 +326,15 @@ gestion ; elles ne modifient pas les automatisations existantes.
 
 ## Guides d'association illustrés
 
-Les sections repliables ci-dessous donnent le parcours Home Assistant de
-chaque produit, avec les illustrations correspondantes. Sélectionnez le
-produit et la voie concernés dans Home Assistant, puis suivez les étapes dans
-l'ordre.
+L'association et la dissociation guidées seront incluses dans la prochaine
+version. Cette fonctionnalité reste en cours de validation : les guides
+ci-dessous sont confirmés sur le type de passerelle indiqué, tandis que la
+prise en charge des autres produits compatibles est ajoutée et doit encore
+être confirmée sur le matériel. Sélectionnez le produit et la voie concernés
+dans Home Assistant, puis suivez les étapes illustrées dans l'ordre.
 
 <details>
-<summary><strong>Interrupteur mural TYXIA 2600 — Tywell Pro — Bouton A ou B</strong></summary>
+<summary><strong>Interrupteur mural TYXIA 2600 — Bouton A ou B — Passerelle confirmée : Tywell Pro</strong></summary>
 
 1. Dans Home Assistant, choisissez la voie à associer : **Bouton A** ou
    **Bouton B**. Un module peut n'avoir qu'une seule voie câblée : n'ajoutez
@@ -372,7 +374,7 @@ voie reste associée.
 </details>
 
 <details>
-<summary><strong>Télécommande TYXIA 1410 — Tywell Pro — Bouton 1 à 4</strong></summary>
+<summary><strong>Télécommande TYXIA 1410 — Bouton 1 à 4 — Passerelle confirmée : Tywell Pro</strong></summary>
 
 1. Vérifiez au dos le logo **Works with Tydom**. Une version visuellement
    identique, sans ce logo de compatibilité, ne peut pas être associée.
@@ -396,7 +398,7 @@ Utilisez **Dissocier ce bouton** uniquement pour la voie sélectionnée.
 </details>
 
 <details>
-<summary><strong>Télécommande TL 2000 — Tywell Pro — Bouton 1 ou 2</strong></summary>
+<summary><strong>Télécommande TL 2000 — Bouton 1 ou 2 — Passerelle confirmée : Tywell Pro</strong></summary>
 
 1. Vérifiez le logo **Works with Tydom**, puis choisissez Bouton 1 ou 2 dans
    Home Assistant.
@@ -434,7 +436,7 @@ Utilisez **Dissocier ce bouton** uniquement pour la voie sélectionnée.
 </details>
 
 <details>
-<summary><strong>Récepteur à contact sec TYXIA 4620 — Tywell Pro</strong></summary>
+<summary><strong>Récepteur à contact sec TYXIA 4620 — Passerelle confirmée : Tywell Pro</strong></summary>
 
 1. Dans Home Assistant, choisissez **Portail coulissant** ou **Portillon**,
    puis maintenez la touche du récepteur 3 secondes.
@@ -454,7 +456,7 @@ la passerelle et de l'application TYDOM.
 </details>
 
 <details>
-<summary><strong>TYWATT 5100 — TYDOM 1.0</strong></summary>
+<summary><strong>TYWATT 5100 — Passerelle confirmée : TYDOM 1.0</strong></summary>
 
 1. À la première étape du guide, cliquez sur **Lancer l'écoute de la
    passerelle** dans Home Assistant.
@@ -479,7 +481,7 @@ Le produit est ajouté automatiquement une fois l'association terminée.
 </details>
 
 <details>
-<summary><strong>Tysense Sun — Tywell Pro</strong></summary>
+<summary><strong>Tysense Sun — Passerelle confirmée : Tywell Pro</strong></summary>
 
 1. Ce produit est proposé uniquement sur passerelle Tywell Pro/Home. Ouvrez
    le capot et basculez l'interrupteur interne à gauche, sur ON. À cette étape

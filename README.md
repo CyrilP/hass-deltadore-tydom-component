@@ -301,12 +301,14 @@ existing automations.
 
 ## Illustrated association guides
 
-The expandable guides below give the Home Assistant procedure for each
-product, with the matching illustrations. Select the relevant product and
-channel in Home Assistant, then follow the steps in order.
+Guided association and dissociation will be included in the next release.
+This feature is still a work in progress: the guides below have been confirmed
+on the stated gateway type, while support for other compatible products is
+being added and needs real-world confirmation. Select the relevant product and
+channel in Home Assistant, then follow the illustrated steps in order.
 
 <details>
-<summary><strong>TYXIA 2600 wall switch — Tywell Pro — Button A or B</strong></summary>
+<summary><strong>TYXIA 2600 wall switch — Button A or B — Confirmed gateway: Tywell Pro</strong></summary>
 
 1. In Home Assistant, select the channel to associate: **Button A** or
    **Button B**. A module can have only one wired channel; add only the
@@ -343,7 +345,7 @@ channel remains associated.
 </details>
 
 <details>
-<summary><strong>TYXIA 1410 remote control — Tywell Pro — Button 1 to 4</strong></summary>
+<summary><strong>TYXIA 1410 remote control — Button 1 to 4 — Confirmed gateway: Tywell Pro</strong></summary>
 
 1. Check the **Works with Tydom** mark on the rear of the remote. A visually
    identical version without that compatibility mark cannot be associated.
@@ -367,7 +369,7 @@ Use **Dissociate this button** for the selected channel only.
 </details>
 
 <details>
-<summary><strong>TL 2000 remote control — Tywell Pro — Button 1 or 2</strong></summary>
+<summary><strong>TL 2000 remote control — Button 1 or 2 — Confirmed gateway: Tywell Pro</strong></summary>
 
 1. Check the **Works with Tydom** mark on the rear and select Button 1 or 2 in
    Home Assistant.
@@ -403,7 +405,7 @@ Use **Dissociate this button** for the selected channel only.
 </details>
 
 <details>
-<summary><strong>TYXIA 4620 dry-contact receiver — Tywell Pro</strong></summary>
+<summary><strong>TYXIA 4620 dry-contact receiver — Confirmed gateway: Tywell Pro</strong></summary>
 
 1. In Home Assistant, select **Sliding gate** or **Wicket gate**, then hold
    the receiver touch control for 3 seconds.
@@ -422,7 +424,7 @@ gateway and TYDOM app.
 </details>
 
 <details>
-<summary><strong>TYWATT 5100 — TYDOM 1.0</strong></summary>
+<summary><strong>TYWATT 5100 — Confirmed gateway: TYDOM 1.0</strong></summary>
 
 1. At the first guide step, press **Start gateway listening** in Home
    Assistant.
@@ -446,7 +448,7 @@ The product is added automatically once the association is complete.
 </details>
 
 <details>
-<summary><strong>Tysense Sun — Tywell Pro</strong></summary>
+<summary><strong>Tysense Sun — Confirmed gateway: Tywell Pro</strong></summary>
 
 1. This product is offered only on Tywell Pro/Home gateways. Open the cover
    and move the internal switch left to ON. At this guide step, press **Start
