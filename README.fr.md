@@ -26,7 +26,7 @@ passerelle Delta Dore peut être détectée par découverte DHCP.
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Dépannage](#dépannage)
-- [Association, identification et dissociation radio](#association-identification-et-dissociation-radio)
+- [Association, identification et dissociation radio — nouveauté en cours de validation](#association-identification-et-dissociation-radio--nouveauté-en-cours-de-validation)
 - [Guides d'association illustrés](#guides-dassociation-illustrés)
 - [Capturer les données d'un appareil non pris en charge](#capturer-les-données-dun-appareil-non-pris-en-charge)
 - [Gestion à distance TYXAL+](#gestion-à-distance-tyxal)
@@ -273,7 +273,7 @@ apparaître comme **Indisponible** ou **Plus fournie**. Vérifiez que l'appareil
 de remplacement est présent et fonctionne avant d'utiliser **Supprimer
 l'appareil**.
 
-## Association, identification et dissociation radio
+## Association, identification et dissociation radio — nouveauté en cours de validation
 
 La carte **Configuration** de l'appareil passerelle TYDOM/Tywell fournit les
 commandes de gestion radio. Elles agissent sur la passerelle physique : ce ne

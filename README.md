@@ -24,7 +24,7 @@ The Delta Dore gateway can be detected using DHCP discovery.
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Troubleshooting](#troubleshooting)
-- [Gateway association, identification and radio removal](#gateway-association-identification-and-radio-removal)
+- [Gateway association, identification and radio removal — new, work in progress](#gateway-association-identification-and-radio-removal--new-work-in-progress)
 - [Illustrated association guides](#illustrated-association-guides)
 - [Capturing data for unsupported devices](#capturing-data-for-unsupported-devices)
 - [TYXAL+ remote management](#tyxal-remote-management)
@@ -251,7 +251,7 @@ After a configuration change, an old registry entry may first appear as
 **Unavailable** or **No longer provided**. Verify that the replacement device
 is present and working before using **Remove device**.
 
-## Gateway association, identification and radio removal
+## Gateway association, identification and radio removal — new, work in progress
 
 The **Configuration** card on the TYDOM/Tywell gateway device provides the
 radio-management controls. These act on the physical gateway; they are not
