@@ -304,77 +304,171 @@ Configuration category; they do not change existing event types.
 
 ## Validated association guides
 
-The integration presents the official guide for the selected product. The
-following procedures were additionally validated on real hardware. They are a
-tested subset, not a guarantee for every gateway firmware.
+The expandable guides below reproduce the Home Assistant procedure used for
+the validated hardware, including the same official illustrations. The APK
+is used only for the physical gesture and illustration; every instruction
+below is written for the Home Assistant flow.
 
-### TYXIA 2600 wall switch — Tywell Pro
+<details>
+<summary><strong>TYXIA 2600 wall switch — Tywell Pro — Button A or B</strong></summary>
 
-1. Select **Button A** or **Button B** in Home Assistant.
-2. Hold that physical button for 6 seconds, until the red LED becomes steady.
-3. Select the wired-switch mode with brief presses of A, then hold B for
-   3 seconds until the green LED is steady.
-4. At the indicated guide step, press **Start gateway listening** in Home
-   Assistant.
-5. Hold the selected A/B button for 3 seconds until the red LED flashes; wait
-   for discovery, then press the wired wall switch connected to that channel
-   to confirm it.
+1. In Home Assistant, select the channel to associate: **Button A** or
+   **Button B**. A module can have only one wired channel; add only the
+   channels actually used.
+2. Hold the selected physical A/B button for 6 seconds. The red LED turns on,
+   turns off, then becomes steady; release the button.
 
-Use **Dissociate this button** to remove A or B independently. The other
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step1.svg" width="48%" alt="TYXIA 2600: hold the selected button for six seconds, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step1.svg" width="48%" alt="TYXIA 2600: hold the selected button for six seconds, Button B or 2">
+
+3. The green LED flashes in groups. Briefly press A to cycle the modes, then
+   retain the mode matching the wired switch type.
+
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step2.svg" width="48%" alt="TYXIA 2600: select the wired-switch mode, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step2.svg" width="48%" alt="TYXIA 2600: select the wired-switch mode, Button B or 2">
+
+4. Hold B for 3 seconds, until the green LED is steady, to validate the mode.
+
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step3.svg" width="48%" alt="TYXIA 2600: validate the selected mode, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step3.svg" width="48%" alt="TYXIA 2600: validate the selected mode, Button B or 2">
+
+5. In Home Assistant, press **Start gateway listening**.
+6. Hold the selected physical A/B button for 3 seconds until the red LED
+   flashes.
+
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step4.svg" width="48%" alt="TYXIA 2600: start the radio association, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step4.svg" width="48%" alt="TYXIA 2600: start the radio association, Button B or 2">
+
+7. Wait while Home Assistant detects the new product.
+8. To confirm the selected channel, press the wired wall switch connected to
+   that A/B channel. Do not press the TYXIA module button again.
+
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step5.svg" width="48%" alt="TYXIA 2600: confirm with the wired wall switch, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step5.svg" width="48%" alt="TYXIA 2600: confirm with the wired wall switch, Button B or 2">
+
+Use **Dissociate this button** to remove A or B independently; the other
 channel remains associated.
 
-### TYXIA 1410 remote control (C3 and AMG) — Tywell Pro
+</details>
 
-1. Check the **Works with Tydom** mark on the rear; visually identical
-   non-TYDOM versions exist.
-2. Select Button 1, 2, 3 or 4, then press **Start gateway listening**.
-3. While listening is active, hold the selected remote key for 5 seconds until
-   its red LED flashes. Release it and wait for discovery.
+<details>
+<summary><strong>TYXIA 1410 remote control (C3 and AMG) — Tywell Pro — Button 1 to 4</strong></summary>
 
-There is no mobile-app confirmation or second physical press. **Dissociate
-this button** preserves the other buttons on the same remote.
+1. Check the **Works with Tydom** mark on the rear of the remote. A visually
+   identical version without that compatibility mark cannot be associated.
 
-### TL 2000 remote control — Tywell Pro
+   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step1.svg" width="24%" alt="TYXIA 1410 compatibility mark, Button 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step1.svg" width="24%" alt="TYXIA 1410 compatibility mark, Button 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step1.svg" width="24%" alt="TYXIA 1410 compatibility mark, Button 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step1.svg" width="24%" alt="TYXIA 1410 compatibility mark, Button 4">
 
-1. Check the **Works with Tydom** mark and select Button 1 or 2.
-2. Hold 1 + 2 for 5 seconds until orange. Press the selected button once and
-   retain the mode which flashes in groups of four; press ON so the LED is
-   green.
-3. Press **Start gateway listening**, then hold ON + the selected button for
-   5 seconds until red. Wait for discovery and press the selected button to
-   confirm it.
+2. In Home Assistant, select Button 1, 2, 3 or 4, then press **Start gateway
+   listening**.
+3. While listening is active, hold the selected remote button for 5 seconds,
+   until the red LED flashes. Release it.
 
-Use **Dissociate this button** for the selected channel; do not remove the
-whole remote while another channel is in use.
+   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step2.svg" width="24%" alt="TYXIA 1410 hold the selected button, Button 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step2.svg" width="24%" alt="TYXIA 1410 hold the selected button, Button 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step2.svg" width="24%" alt="TYXIA 1410 hold the selected button, Button 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step2.svg" width="24%" alt="TYXIA 1410 hold the selected button, Button 4">
 
-### TYXIA 4620 dry-contact receiver — Tywell Pro
+4. Wait for detection in Home Assistant. There is no mobile-app confirmation
+   and no second physical press.
 
-1. Select **Sliding gate** or **Wicket gate** before starting.
-2. Hold the receiver touch control for 3 seconds.
-3. When its red LED flashes, press **Start gateway listening** at the
-   guide's **Associate** step and wait for discovery.
+   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step3.svg" width="24%" alt="TYXIA 1410 selected-button confirmation, Button 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step3.svg" width="24%" alt="TYXIA 1410 selected-button confirmation, Button 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step3.svg" width="24%" alt="TYXIA 1410 selected-button confirmation, Button 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step3.svg" width="24%" alt="TYXIA 1410 selected-button confirmation, Button 4">
 
-The selected usage promotes the discovered endpoint to a named gate product,
-rather than an unmanaged `Produit N`. Use **Permanently dissociate device**
-to remove the product from both the gateway and TYDOM configuration.
+Use **Dissociate this button** for the selected channel only.
 
-### TYWATT 5100 — TYDOM 1.0
+</details>
 
-From Home Assistant, start gateway listening at the guide step. Follow the
-official installation manual to set the measurement selectors, switch the
-product ON, then hold its touch control for 3 seconds. This was validated by a
-contributor on TYDOM 1.0. The gateway-owned meter configuration is preserved;
-do not rewrite a discovered meter as a generic product.
+<details>
+<summary><strong>TL 2000 remote control — Tywell Pro — Button 1 or 2</strong></summary>
 
-### Tysense Sun — Tywell Pro
+1. Check the **Works with Tydom** mark on the rear and select Button 1 or 2 in
+   Home Assistant.
 
-This product is offered only on Tywell Pro/Home gateways. Open the cover and
-move the internal switch left to ON. At the guide step, start gateway listening,
-then hold the product button for 3 seconds. Its LED lights and discovery can
-take roughly 30 seconds. **Permanently dissociate device** removes it; a later
-association restores the dedicated `sensorSun` configuration rather than a
-generic sensor.
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step1.svg" width="48%" alt="TL 2000 compatibility mark, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step1.svg" width="48%" alt="TL 2000 compatibility mark, Button B or 2">
 
+2. Hold 1 + 2 for 5 seconds until the LED is orange.
+
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step2.svg" width="48%" alt="TL 2000 hold 1 and 2, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step2.svg" width="48%" alt="TL 2000 hold 1 and 2, Button B or 2">
+
+3. Press the selected button once. Continue when the LED flashes in groups of
+   four; another press on the selected button changes the group count.
+
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step3.svg" width="48%" alt="TL 2000 select the association mode, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step3.svg" width="48%" alt="TL 2000 select the association mode, Button B or 2">
+
+4. If the LED is still flashing, press ON until it becomes green.
+
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step4.svg" width="48%" alt="TL 2000 validate with ON, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step4.svg" width="48%" alt="TL 2000 validate with ON, Button B or 2">
+
+5. In Home Assistant, press **Start gateway listening**.
+6. While listening is active, hold ON + the selected button for 5 seconds,
+   until the LED is red.
+
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step5.svg" width="48%" alt="TL 2000 start association, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step5.svg" width="48%" alt="TL 2000 start association, Button B or 2">
+
+7. Wait for Home Assistant to detect the remote, then press the selected
+   button once to confirm the channel.
+
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step6.svg" width="48%" alt="TL 2000 confirm the selected channel, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step6.svg" width="48%" alt="TL 2000 confirm the selected channel, Button B or 2">
+
+Use **Dissociate this button** for the selected channel only.
+
+</details>
+
+<details>
+<summary><strong>TYXIA 4620 dry-contact receiver — Tywell Pro</strong></summary>
+
+1. In Home Assistant, select **Sliding gate** or **Wicket gate**, then hold
+   the receiver touch control for 3 seconds.
+
+   <img src="docs/images/association/catalog_7_tyxia_serie4000_tuto1.svg" width="48%" alt="TYXIA 4620: hold the receiver touch control">
+
+2. When the red LED flashes, the receiver is ready. In Home Assistant, press
+   **Start gateway listening** and wait for discovery.
+
+   <img src="docs/images/association/catalog_7_tyxia_serie4000_tuto2.svg" width="48%" alt="TYXIA 4620: red LED flashes">
+
+The selected usage turns the discovered endpoint into a named gate product,
+rather than an unmanaged Produit N. Use **Permanently dissociate device** to
+remove it from the gateway and its TYDOM configuration.
+
+</details>
+
+<details>
+<summary><strong>TYWATT 5100 — TYDOM 1.0</strong></summary>
+
+1. At the first guide step, press **Start gateway listening** in Home
+   Assistant.
+
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto1.svg" width="48%" alt="TYWATT 5100: Home Assistant listening step">
+
+2. Refer to the official installation manual to set the measurement selectors.
+
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto1.svg" width="48%" alt="TYWATT 5100: selector configuration">
+
+3. Set the switch to ON. Its LED lights for one second.
+
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto2.svg" width="48%" alt="TYWATT 5100: switch ON">
+
+4. Hold the touch control for 3 seconds.
+
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto3.svg" width="48%" alt="TYWATT 5100: hold the touch control">
+
+This flow was validated by a contributor on TYDOM 1.0. The gateway-owned
+meter configuration is preserved; do not rewrite a discovered meter as a
+generic product.
+
+</details>
+
+<details>
+<summary><strong>Tysense Sun — Tywell Pro</strong></summary>
+
+1. This product is offered only on Tywell Pro/Home gateways. Open the cover
+   and move the internal switch left to ON. At this guide step, press **Start
+   gateway listening** in Home Assistant.
+
+   <img src="docs/images/association/catalog_tysense_sun_tuto1.svg" width="48%" alt="Tysense Sun: switch ON">
+
+2. Hold the product button for 3 seconds. Its LED lights; wait about
+   30 seconds for discovery.
+
+   <img src="docs/images/association/catalog_tysense_sun_tuto2.svg" width="48%" alt="Tysense Sun: hold the product button">
+
+Use **Permanently dissociate device** to remove it. A later association
+restores the dedicated sensorSun configuration rather than a generic sensor.
+
+</details>
 ## Capturing data for unsupported devices
 
 The repository includes a read-only capture tool for documenting devices and
