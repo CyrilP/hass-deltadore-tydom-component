@@ -462,6 +462,7 @@ The product is added automatically once the association is complete.
 Use **Permanently dissociate device** to remove it from the gateway.
 
 </details>
+
 ## Capturing data for unsupported devices
 
 The repository includes a read-only capture tool for documenting devices and

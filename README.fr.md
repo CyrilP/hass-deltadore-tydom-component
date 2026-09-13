@@ -497,6 +497,7 @@ Utilisez **Dissocier définitivement l'appareil** pour le retirer de la
 passerelle.
 
 </details>
+
 ## Capturer les données d'un appareil non pris en charge
 
 Le dépôt fournit un outil de capture en lecture seule destiné à documenter les
