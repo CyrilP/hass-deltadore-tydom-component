@@ -14,13 +14,10 @@ def remove_legacy_remote_endpoint(
     endpoint_unique_id: str,
 ) -> list[str]:
     """Remove one obsolete generic endpoint when it is safe to do so."""
-    legacy_device = device_registry.async_get_device(
-        identifiers={(DOMAIN, endpoint_unique_id)}
+    legacy_device = device_registry.async_get_device_by_identifier(
+        (DOMAIN, endpoint_unique_id), config_entry_id
     )
     if legacy_device is None:
-        return []
-
-    if config_entry_id not in getattr(legacy_device, "config_entries", set()):
         return []
 
     allowed_unique_ids = {

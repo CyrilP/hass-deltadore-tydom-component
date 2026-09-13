@@ -70,6 +70,92 @@ def _load_ha_entity_class():
 HAEntity = _load_ha_entity_class()
 
 
+def _load_gateway_registry_helper(registry):
+    """Load the registry-link helper without Home Assistant dependencies."""
+    source_path = (
+        Path(__file__).parents[1]
+        / "custom_components"
+        / "deltadore_tydom"
+        / "ha_entities.py"
+    )
+    module = ast.parse(source_path.read_text(encoding="utf-8"))
+    selected_nodes = [
+        node
+        for node in module.body
+        if isinstance(node, ast.FunctionDef)
+        and node.name
+        in {"_get_hub_for_tydom_device", "_get_tydom_gateway_registry_device_id"}
+    ]
+    isolated_module = ast.Module(
+        body=[
+            ast.ImportFrom(
+                module="__future__",
+                names=[ast.alias(name="annotations")],
+                level=0,
+            ),
+            *selected_nodes,
+        ],
+        type_ignores=[],
+    )
+    ast.fix_missing_locations(isolated_module)
+
+    class Tydom:
+        pass
+
+    namespace = {
+        "Any": object,
+        "DOMAIN": "deltadore_tydom",
+        "Tydom": Tydom,
+        "dr": registry,
+    }
+    exec(compile(isolated_module, source_path, "exec"), namespace)
+    return namespace["_get_tydom_gateway_registry_device_id"], Tydom
+
+
+class TestGatewayRegistryLink(TestCase):
+    """Verify registry parent links are scoped to the owning config entry."""
+
+    def test_resolves_gateway_device_id_in_owning_config_entry(self) -> None:
+        """A child device never looks up a same-named gateway in another entry."""
+        registry = MagicMock()
+        registry.async_get_device_id_by_identifier.return_value = "registry-gateway"
+        helper, Tydom = _load_gateway_registry_helper(registry)
+        client = object()
+        gateway = Tydom()
+        gateway.device_id = "gateway-id"
+        hub = SimpleNamespace(
+            _entry=SimpleNamespace(entry_id="entry-a"),
+            _tydom_client=client,
+            devices={"gateway-id": gateway},
+        )
+        hass = SimpleNamespace(data={"deltadore_tydom": {"entry-a": hub}})
+        child = SimpleNamespace(_tydom_client=client)
+
+        self.assertEqual(helper(hass, child), "registry-gateway")
+        registry.async_get_device_id_by_identifier.assert_called_once_with(
+            hass,
+            ("deltadore_tydom", "gateway-id"),
+            config_entry_id="entry-a",
+        )
+
+    def test_returns_none_until_gateway_is_registered(self) -> None:
+        """A startup ordering race leaves the optional parent link unset."""
+        registry = MagicMock()
+        registry.async_get_device_id_by_identifier.side_effect = ValueError
+        helper, Tydom = _load_gateway_registry_helper(registry)
+        client = object()
+        gateway = Tydom()
+        gateway.device_id = "gateway-id"
+        hub = SimpleNamespace(
+            _entry=SimpleNamespace(entry_id="entry-a"),
+            _tydom_client=client,
+            devices={"gateway-id": gateway},
+        )
+        hass = SimpleNamespace(data={"deltadore_tydom": {"entry-a": hub}})
+
+        self.assertIsNone(helper(hass, SimpleNamespace(_tydom_client=client)))
+
+
 def _load_opening_consumed_attrs():
     """Load the metadata helper without Home Assistant dependencies."""
     source_path = (

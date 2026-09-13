@@ -317,13 +317,14 @@ class _Registry:
         self.devices = values
         self.removed: list[str] = []
 
-    def async_get_device(self, *, identifiers):
-        """Return the device whose identifiers match."""
+    def async_get_device_by_identifier(self, identifier, config_entry_id):
+        """Return the device matching one identifier in one config entry."""
         return next(
             (
                 device
                 for device in self.devices.values()
-                if device.identifiers & identifiers
+                if identifier in device.identifiers
+                and device.config_entry_id == config_entry_id
             ),
             None,
         )
@@ -348,7 +349,7 @@ class TestRemoteRegistryMigration(TestCase):
         device = types.SimpleNamespace(
             id="legacy-device",
             identifiers={("deltadore_tydom", self.endpoint_unique_id)},
-            config_entries={"entry"},
+            config_entry_id="entry",
         )
         for name, value in overrides.items():
             setattr(device, name, value)
@@ -419,7 +420,7 @@ class TestRemoteRegistryMigration(TestCase):
         device_registry = _Registry(
             {
                 "legacy-device": self._device(
-                    config_entries={"another-entry"}
+                    config_entry_id="another-entry"
                 )
             }
         )
