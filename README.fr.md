@@ -27,7 +27,7 @@ passerelle Delta Dore peut être détectée par découverte DHCP.
 - [Configuration](#configuration)
 - [Dépannage](#dépannage)
 - [Association, identification et dissociation radio](#association-identification-et-dissociation-radio)
-- [Guides d'association validés](#guides-dassociation-validés)
+- [Guides d'association illustrés](#guides-dassociation-illustrés)
 - [Capturer les données d'un appareil non pris en charge](#capturer-les-données-dun-appareil-non-pris-en-charge)
 - [Gestion à distance TYXAL+](#gestion-à-distance-tyxal)
 - [Limites connues](#limites-connues)
@@ -268,12 +268,10 @@ elle ne supprime rien de la passerelle TYDOM ni de l'application officielle.
 L'appareil peut être découvert de nouveau si la passerelle continue à
 l'annoncer.
 
-Après un changement de type d'entité ou le filtrage d'un point de terminaison
-technique, l'ancienne entrée peut d'abord apparaître comme **Indisponible** ou
-**Plus fournie**. Vérifiez que l'appareil réel de remplacement est présent et
-fonctionnel avant d'utiliser **Supprimer l'appareil**. Les points de terminaison
-vides filtrés, tels que les doublons Profalux « Produit X », ne seront pas
-recréés tant qu'ils restent vides.
+Après un changement de configuration, une ancienne entrée peut d'abord
+apparaître comme **Indisponible** ou **Plus fournie**. Vérifiez que l'appareil
+de remplacement est présent et fonctionne avant d'utiliser **Supprimer
+l'appareil**.
 
 ## Association, identification et dissociation radio
 
@@ -294,47 +292,44 @@ sont pas des étapes à effectuer dans l'application mobile TYDOM.
 4. Cliquez sur **Afficher le guide d'association**. Suivez ses étapes
    physiques illustrées et cliquez sur **Lancer l'écoute de la passerelle**
    uniquement à l'étape qui le demande.
-5. Effectuez la manipulation du produit. Home Assistant détecte le point
-   radio, applique si nécessaire la configuration du modèle et de l'usage
-   choisis, puis actualise automatiquement l'inventaire de la passerelle.
+5. Effectuez la manipulation du produit. Home Assistant détecte le produit
+   radio, l'ajoute à l'inventaire de la passerelle, puis actualise
+   automatiquement la liste des appareils.
 
-Le parcours est volontairement propre à chaque modèle : ne remplacez pas les
-étapes affichées par un appui générique de trois secondes. Après une association
-réussie, **Recharger les appareils** n'est normalement pas nécessaire. Si rien
-n'apparaît après environ une minute, utilisez ce bouton pour diagnostiquer,
-conservez un journal de débogage, puis recommencez.
+Le parcours est volontairement propre à chaque modèle : suivez le guide du
+produit concerné plutôt qu'un appui générique de trois secondes. Après une
+association réussie, **Recharger les appareils** n'est normalement pas
+nécessaire. Si rien n'apparaît après environ une minute, utilisez ce bouton
+puis recommencez la procédure.
 
 Certains produits compatibles déjà présents proposent aussi **Démarrer le mode
-association** et **Identifier l'appareil** sur leur propre page. Ces commandes
-sont annoncées par leur point de terminaison ; elles sont utiles lorsque la
-notice du produit le demande, mais ne remplacent pas le parcours guidé de la
-passerelle.
+association** et **Identifier l'appareil** sur leur propre page. Utilisez-les
+uniquement si la notice du produit le demande ; elles ne remplacent pas le
+parcours guidé de la passerelle.
 
 ### Dissocier un produit radio sans risque
 
 L'action Home Assistant **Supprimer l'appareil** retire uniquement l'entrée du
 registre local : elle ne modifie pas la passerelle. **Dissocier définitivement
-l'appareil** retire le produit radio et sa configuration TYDOM de la
-passerelle physique, puis actualise automatiquement l'inventaire.
+l'appareil** retire le produit radio de la passerelle physique et de
+l'application TYDOM, puis actualise automatiquement l'inventaire.
 
 Pour les produits à plusieurs voies, utilisez **Dissocier ce bouton**. Cette
 commande retire seulement la voie concernée tout en conservant les autres
-voies et le conteneur commun de la télécommande ou de l'interrupteur. Utilisez
-la dissociation définitive uniquement pour un produit autonome ou lorsque
-l'ensemble du produit doit disparaître. La passerelle elle-même ne peut pas
-être dissociée.
+voies. Utilisez la dissociation définitive uniquement pour un produit autonome
+ou lorsque l'ensemble du produit doit disparaître. La passerelle elle-même ne
+peut pas être dissociée.
 
-Les appuis physiques restent des entités `event.*` pour les automatisations.
-L'association, l'identification et la dissociation sont des contrôles
-administratifs `button.*` dans la catégorie Configuration ; ils ne modifient
-pas les types d'événements existants.
+Les appuis physiques restent disponibles comme déclencheurs d'automatisation.
+L'association, l'identification et la dissociation sont des commandes de
+gestion ; elles ne modifient pas les automatisations existantes.
 
-## Guides d'association validés
+## Guides d'association illustrés
 
-Les sections repliables ci-dessous reproduisent les parcours Home Assistant
-du matériel validé, avec les mêmes illustrations officielles que la fenêtre
-HA. L'APK ne sert qu'à identifier le geste physique et le visuel ; chaque
-instruction est réécrite pour le parcours Home Assistant.
+Les sections repliables ci-dessous donnent le parcours Home Assistant de
+chaque produit, avec les illustrations correspondantes. Sélectionnez le
+produit et la voie concernés dans Home Assistant, puis suivez les étapes dans
+l'ordre.
 
 <details>
 <summary><strong>Interrupteur mural TYXIA 2600 — Tywell Pro — Bouton A ou B</strong></summary>
@@ -452,9 +447,9 @@ Utilisez **Dissocier ce bouton** uniquement pour la voie sélectionnée.
 
    <img src="docs/images/association/catalog_7_tyxia_serie4000_tuto2.png" width="48%" alt="TYXIA 4620 : LED rouge clignotante">
 
-L'usage choisi transforme le point découvert en produit de portail nommé,
-plutôt qu'en Produit N non géré. Utilisez **Dissocier définitivement
-l'appareil** pour le retirer de la passerelle et de sa configuration TYDOM.
+L'usage choisi détermine si le produit est ajouté comme portail coulissant ou
+portillon. Utilisez **Dissocier définitivement l'appareil** pour le retirer de
+la passerelle et de l'application TYDOM.
 
 </details>
 
@@ -479,9 +474,7 @@ l'appareil** pour le retirer de la passerelle et de sa configuration TYDOM.
 
    <img src="docs/images/association/catalog_32_tywatt_5100_tuto3.png" width="48%" alt="TYWATT 5100 : maintenir la touche">
 
-Ce parcours a été validé par un contributeur sur TYDOM 1.0. La configuration
-du compteur fournie par la passerelle est préservée ; ne réécrivez pas un
-compteur découvert comme produit générique.
+Le produit est ajouté automatiquement une fois l'association terminée.
 
 </details>
 
@@ -500,9 +493,8 @@ compteur découvert comme produit générique.
 
    <img src="docs/images/association/catalog_tysense_sun_tuto2.png" width="48%" alt="Tysense Sun : maintenir le bouton du produit">
 
-Utilisez **Dissocier définitivement l'appareil** pour le retirer. Une
-association ultérieure restaure la configuration dédiée sensorSun plutôt
-qu'un capteur générique.
+Utilisez **Dissocier définitivement l'appareil** pour le retirer de la
+passerelle.
 
 </details>
 ## Capturer les données d'un appareil non pris en charge

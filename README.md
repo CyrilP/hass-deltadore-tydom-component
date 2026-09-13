@@ -25,7 +25,7 @@ The Delta Dore gateway can be detected using DHCP discovery.
 - [Configuration](#configuration)
 - [Troubleshooting](#troubleshooting)
 - [Gateway association, identification and radio removal](#gateway-association-identification-and-radio-removal)
-- [Validated association guides](#validated-association-guides)
+- [Illustrated association guides](#illustrated-association-guides)
 - [Capturing data for unsupported devices](#capturing-data-for-unsupported-devices)
 - [TYXAL+ remote management](#tyxal-remote-management)
 - [Known limitations](#known-limitations)
@@ -247,11 +247,9 @@ Assistant device-registry entry; it does not delete anything from the TYDOM
 gateway or official application. A device may be discovered again if the
 gateway still advertises it.
 
-After an entity type changes or a technical placeholder is filtered out, its
-old registry entry may first appear as **Unavailable** or **No longer provided**.
-Verify that the genuine replacement device is present and working before using
-**Remove device**. Filtered placeholders, such as empty Profalux `Produit X`
-endpoints, will not be recreated while they remain empty.
+After a configuration change, an old registry entry may first appear as
+**Unavailable** or **No longer provided**. Verify that the replacement device
+is present and working before using **Remove device**.
 
 ## Gateway association, identification and radio removal
 
@@ -271,43 +269,41 @@ steps to perform in the TYDOM mobile app.
    is retained.
 4. Select **Show association guide**. Follow its illustrated physical steps and
    press **Start gateway listening** only at the step which asks for it.
-5. Complete the product procedure. Home Assistant detects the radio endpoint,
-   applies the selected model-and-usage configuration when needed, and refreshes
-   the gateway inventory automatically.
+5. Complete the product procedure. Home Assistant detects the radio product,
+   adds it to the gateway inventory, and refreshes the device list
+   automatically.
 
-The procedure is deliberately model-specific: do not replace it with a generic
-three-second press. A successful association does not normally require
-**Reload devices**. If nothing appears after about one minute, reload as a
-diagnostic step, collect a debug log, then retry.
+The procedure is deliberately model-specific: follow the guide for the exact
+product rather than using a generic three-second press. A successful
+association does not normally require **Reload devices**. If nothing appears
+after about one minute, use **Reload devices** and repeat the procedure.
 
 Existing compatible products may also expose **Start association mode** and
-**Identify device** on their own device page. Those commands are advertised by
-the endpoint itself and are useful when its installation instructions request
-them; they do not replace the guided gateway association flow.
+**Identify device** on their own device page. Use them only when the product
+instructions request them; they do not replace the guided gateway association
+flow.
 
 ### Dissociate a radio product safely
 
 **Remove device** in Home Assistant only deletes the local registry entry. It
 does not change the gateway. **Permanently dissociate device** removes the
-radio product and its TYDOM configuration from the physical gateway, then
-automatically refreshes the inventory.
+radio product from the physical gateway and TYDOM app, then automatically
+refreshes the inventory.
 
 For multi-channel products, use **Dissociate this button**. It removes only
-that channel while retaining the other channels and the shared remote/switch
-container. Use permanent dissociation only for a standalone product or when
-the complete product is intended to disappear. The gateway itself cannot be
-dissociated.
+that channel while retaining the other channels. Use permanent dissociation
+only for a standalone product or when the complete product is intended to
+disappear. The gateway itself cannot be dissociated.
 
-Physical key presses remain `event.*` entities for automations. Association,
-identification and dissociation are administrative `button.*` controls in the
-Configuration category; they do not change existing event types.
+Physical key presses remain available as automation triggers. Association,
+identification and dissociation are management controls and do not change
+existing automations.
 
-## Validated association guides
+## Illustrated association guides
 
-The expandable guides below reproduce the Home Assistant procedure used for
-the validated hardware, including the same official illustrations. The APK
-is used only for the physical gesture and illustration; every instruction
-below is written for the Home Assistant flow.
+The expandable guides below give the Home Assistant procedure for each
+product, with the matching illustrations. Select the relevant product and
+channel in Home Assistant, then follow the steps in order.
 
 <details>
 <summary><strong>TYXIA 2600 wall switch — Tywell Pro — Button A or B</strong></summary>
@@ -419,9 +415,9 @@ Use **Dissociate this button** for the selected channel only.
 
    <img src="docs/images/association/catalog_7_tyxia_serie4000_tuto2.png" width="48%" alt="TYXIA 4620: red LED flashes">
 
-The selected usage turns the discovered endpoint into a named gate product,
-rather than an unmanaged Produit N. Use **Permanently dissociate device** to
-remove it from the gateway and its TYDOM configuration.
+The selected usage determines whether the product is added as a sliding gate
+or wicket gate. Use **Permanently dissociate device** to remove it from the
+gateway and TYDOM app.
 
 </details>
 
@@ -445,9 +441,7 @@ remove it from the gateway and its TYDOM configuration.
 
    <img src="docs/images/association/catalog_32_tywatt_5100_tuto3.png" width="48%" alt="TYWATT 5100: hold the touch control">
 
-This flow was validated by a contributor on TYDOM 1.0. The gateway-owned
-meter configuration is preserved; do not rewrite a discovered meter as a
-generic product.
+The product is added automatically once the association is complete.
 
 </details>
 
@@ -465,8 +459,7 @@ generic product.
 
    <img src="docs/images/association/catalog_tysense_sun_tuto2.png" width="48%" alt="Tysense Sun: hold the product button">
 
-Use **Permanently dissociate device** to remove it. A later association
-restores the dedicated sensorSun configuration rather than a generic sensor.
+Use **Permanently dissociate device** to remove it from the gateway.
 
 </details>
 ## Capturing data for unsupported devices
