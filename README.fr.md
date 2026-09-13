@@ -377,7 +377,7 @@ voie reste associée.
 </details>
 
 <details>
-<summary><strong>Télécommande TYXIA 1410 (C3 et AMG) — Tywell Pro — Bouton 1 à 4</strong></summary>
+<summary><strong>Télécommande TYXIA 1410 — Tywell Pro — Bouton 1 à 4</strong></summary>
 
 1. Vérifiez au dos le logo **Works with Tydom**. Une version visuellement
    identique, sans ce logo de compatibilité, ne peut pas être associée.

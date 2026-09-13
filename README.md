@@ -347,7 +347,7 @@ channel remains associated.
 </details>
 
 <details>
-<summary><strong>TYXIA 1410 remote control (C3 and AMG) — Tywell Pro — Button 1 to 4</strong></summary>
+<summary><strong>TYXIA 1410 remote control — Tywell Pro — Button 1 to 4</strong></summary>
 
 1. Check the **Works with Tydom** mark on the rear of the remote. A visually
    identical version without that compatibility mark cannot be associated.
