@@ -24,6 +24,8 @@ The Delta Dore gateway can be detected using DHCP discovery.
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Troubleshooting](#troubleshooting)
+- [Gateway association, identification and radio removal](#gateway-association-identification-and-radio-removal)
+- [Validated association guides](#validated-association-guides)
 - [Capturing data for unsupported devices](#capturing-data-for-unsupported-devices)
 - [TYXAL+ remote management](#tyxal-remote-management)
 - [Known limitations](#known-limitations)
@@ -67,6 +69,9 @@ Platform | Description
   reported arming blockers, the actor behind the latest alarm state change,
   supported remote maintenance and forced-arming operations, and native
   automation events from compatible wall switches and remote controls.
+- Add, identify and safely remove compatible radio products directly from the
+  gateway device page, with model-specific guidance and automatic inventory
+  refresh after a successful operation.
 
 ### Tested hardware
 
@@ -247,6 +252,128 @@ old registry entry may first appear as **Unavailable** or **No longer provided**
 Verify that the genuine replacement device is present and working before using
 **Remove device**. Filtered placeholders, such as empty Profalux `Produit X`
 endpoints, will not be recreated while they remain empty.
+
+## Gateway association, identification and radio removal
+
+The **Configuration** card on the TYDOM/Tywell gateway device provides the
+radio-management controls. These act on the physical gateway; they are not
+steps to perform in the TYDOM mobile app.
+
+### Associate a new radio product from Home Assistant
+
+1. Open the **TYDOM/Tywell gateway device**, rather than an existing receiver
+   or remote-control device.
+2. In **Configuration**, select the category, exact product and, where offered,
+   the channel to associate. Select the intended usage too: for example,
+   **Sliding gate** or **Wicket gate** for a TYXIA 4620.
+3. Optionally enter a name before beginning. Home Assistant applies it when it
+   creates the discovered product container; without one, the gateway default
+   is retained.
+4. Select **Show association guide**. Follow its illustrated physical steps and
+   press **Start gateway listening** only at the step which asks for it.
+5. Complete the product procedure. Home Assistant detects the radio endpoint,
+   applies the selected model-and-usage configuration when needed, and refreshes
+   the gateway inventory automatically.
+
+The procedure is deliberately model-specific: do not replace it with a generic
+three-second press. A successful association does not normally require
+**Reload devices**. If nothing appears after about one minute, reload as a
+diagnostic step, collect a debug log, then retry.
+
+Existing compatible products may also expose **Start association mode** and
+**Identify device** on their own device page. Those commands are advertised by
+the endpoint itself and are useful when its installation instructions request
+them; they do not replace the guided gateway association flow.
+
+### Dissociate a radio product safely
+
+**Remove device** in Home Assistant only deletes the local registry entry. It
+does not change the gateway. **Permanently dissociate device** removes the
+radio product and its TYDOM configuration from the physical gateway, then
+automatically refreshes the inventory.
+
+For multi-channel products, use **Dissociate this button**. It removes only
+that channel while retaining the other channels and the shared remote/switch
+container. Use permanent dissociation only for a standalone product or when
+the complete product is intended to disappear. The gateway itself cannot be
+dissociated.
+
+Physical key presses remain `event.*` entities for automations. Association,
+identification and dissociation are administrative `button.*` controls in the
+Configuration category; they do not change existing event types.
+
+## Validated association guides
+
+The integration presents the official guide for the selected product. The
+following procedures were additionally validated on real hardware. They are a
+tested subset, not a guarantee for every gateway firmware.
+
+### TYXIA 2600 wall switch — Tywell Pro
+
+1. Select **Button A** or **Button B** in Home Assistant.
+2. Hold that physical button for 6 seconds, until the red LED becomes steady.
+3. Select the wired-switch mode with brief presses of A, then hold B for
+   3 seconds until the green LED is steady.
+4. At the indicated guide step, press **Start gateway listening** in Home
+   Assistant.
+5. Hold the selected A/B button for 3 seconds until the red LED flashes; wait
+   for discovery, then press the wired wall switch connected to that channel
+   to confirm it.
+
+Use **Dissociate this button** to remove A or B independently. The other
+channel remains associated.
+
+### TYXIA 1410 remote control (C3 and AMG) — Tywell Pro
+
+1. Check the **Works with Tydom** mark on the rear; visually identical
+   non-TYDOM versions exist.
+2. Select Button 1, 2, 3 or 4, then press **Start gateway listening**.
+3. While listening is active, hold the selected remote key for 5 seconds until
+   its red LED flashes. Release it and wait for discovery.
+
+There is no mobile-app confirmation or second physical press. **Dissociate
+this button** preserves the other buttons on the same remote.
+
+### TL 2000 remote control — Tywell Pro
+
+1. Check the **Works with Tydom** mark and select Button 1 or 2.
+2. Hold 1 + 2 for 5 seconds until orange. Press the selected button once and
+   retain the mode which flashes in groups of four; press ON so the LED is
+   green.
+3. Press **Start gateway listening**, then hold ON + the selected button for
+   5 seconds until red. Wait for discovery and press the selected button to
+   confirm it.
+
+Use **Dissociate this button** for the selected channel; do not remove the
+whole remote while another channel is in use.
+
+### TYXIA 4620 dry-contact receiver — Tywell Pro
+
+1. Select **Sliding gate** or **Wicket gate** before starting.
+2. Hold the receiver touch control for 3 seconds.
+3. When its red LED flashes, press **Start gateway listening** at the
+   guide's **Associate** step and wait for discovery.
+
+The selected usage promotes the discovered endpoint to a named gate product,
+rather than an unmanaged `Produit N`. Use **Permanently dissociate device**
+to remove the product from both the gateway and TYDOM configuration.
+
+### TYWATT 5100 — TYDOM 1.0
+
+From Home Assistant, start gateway listening at the guide step. Follow the
+official installation manual to set the measurement selectors, switch the
+product ON, then hold its touch control for 3 seconds. This was validated by a
+contributor on TYDOM 1.0. The gateway-owned meter configuration is preserved;
+do not rewrite a discovered meter as a generic product.
+
+### Tysense Sun — Tywell Pro
+
+This product is offered only on Tywell Pro/Home gateways. Open the cover and
+move the internal switch left to ON. At the guide step, start gateway listening,
+then hold the product button for 3 seconds. Its LED lights and discovery can
+take roughly 30 seconds. **Permanently dissociate device** removes it; a later
+association restores the dedicated `sensorSun` configuration rather than a
+generic sensor.
 
 ## Capturing data for unsupported devices
 

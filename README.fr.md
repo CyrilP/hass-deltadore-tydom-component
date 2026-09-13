@@ -26,6 +26,8 @@ passerelle Delta Dore peut être détectée par découverte DHCP.
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Dépannage](#dépannage)
+- [Association, identification et dissociation radio](#association-identification-et-dissociation-radio)
+- [Guides d'association validés](#guides-dassociation-validés)
 - [Capturer les données d'un appareil non pris en charge](#capturer-les-données-dun-appareil-non-pris-en-charge)
 - [Gestion à distance TYXAL+](#gestion-à-distance-tyxal)
 - [Limites connues](#limites-connues)
@@ -72,6 +74,9 @@ Plateforme | Description
   maintenance à distance et d'armement forcé confirmées, ainsi que les
   événements d'automatisation natifs des interrupteurs et télécommandes
   compatibles.
+- Ajoute, identifie et dissocie proprement les produits radio compatibles
+  depuis la page de la passerelle, avec des guides propres à chaque modèle et
+  une actualisation automatique de l'inventaire après succès.
 
 ### Matériel testé
 
@@ -269,6 +274,141 @@ technique, l'ancienne entrée peut d'abord apparaître comme **Indisponible** ou
 fonctionnel avant d'utiliser **Supprimer l'appareil**. Les points de terminaison
 vides filtrés, tels que les doublons Profalux « Produit X », ne seront pas
 recréés tant qu'ils restent vides.
+
+## Association, identification et dissociation radio
+
+La carte **Configuration** de l'appareil passerelle TYDOM/Tywell fournit les
+commandes de gestion radio. Elles agissent sur la passerelle physique : ce ne
+sont pas des étapes à effectuer dans l'application mobile TYDOM.
+
+### Associer un nouveau produit radio depuis Home Assistant
+
+1. Ouvrez l'appareil **passerelle TYDOM/Tywell**, et non un récepteur ou une
+   télécommande déjà existante.
+2. Dans **Configuration**, choisissez la catégorie, le produit exact et, si
+   elle est proposée, la voie à associer. Choisissez aussi l'usage voulu : par
+   exemple **Portail coulissant** ou **Portillon** pour un TYXIA 4620.
+3. Vous pouvez renseigner le nom de l'appareil avant de commencer. Home
+   Assistant l'applique à la création du conteneur du produit détecté ; sans
+   nom, le nom par défaut de la passerelle est conservé.
+4. Cliquez sur **Afficher le guide d'association**. Suivez ses étapes
+   physiques illustrées et cliquez sur **Lancer l'écoute de la passerelle**
+   uniquement à l'étape qui le demande.
+5. Effectuez la manipulation du produit. Home Assistant détecte le point
+   radio, applique si nécessaire la configuration du modèle et de l'usage
+   choisis, puis actualise automatiquement l'inventaire de la passerelle.
+
+Le parcours est volontairement propre à chaque modèle : ne remplacez pas les
+étapes affichées par un appui générique de trois secondes. Après une association
+réussie, **Recharger les appareils** n'est normalement pas nécessaire. Si rien
+n'apparaît après environ une minute, utilisez ce bouton pour diagnostiquer,
+conservez un journal de débogage, puis recommencez.
+
+Certains produits compatibles déjà présents proposent aussi **Démarrer le mode
+association** et **Identifier l'appareil** sur leur propre page. Ces commandes
+sont annoncées par leur point de terminaison ; elles sont utiles lorsque la
+notice du produit le demande, mais ne remplacent pas le parcours guidé de la
+passerelle.
+
+### Dissocier un produit radio sans risque
+
+L'action Home Assistant **Supprimer l'appareil** retire uniquement l'entrée du
+registre local : elle ne modifie pas la passerelle. **Dissocier définitivement
+l'appareil** retire le produit radio et sa configuration TYDOM de la
+passerelle physique, puis actualise automatiquement l'inventaire.
+
+Pour les produits à plusieurs voies, utilisez **Dissocier ce bouton**. Cette
+commande retire seulement la voie concernée tout en conservant les autres
+voies et le conteneur commun de la télécommande ou de l'interrupteur. Utilisez
+la dissociation définitive uniquement pour un produit autonome ou lorsque
+l'ensemble du produit doit disparaître. La passerelle elle-même ne peut pas
+être dissociée.
+
+Les appuis physiques restent des entités `event.*` pour les automatisations.
+L'association, l'identification et la dissociation sont des contrôles
+administratifs `button.*` dans la catégorie Configuration ; ils ne modifient
+pas les types d'événements existants.
+
+## Guides d'association validés
+
+L'intégration affiche le guide officiel du produit choisi. Les parcours
+ci-dessous ont en plus été validés sur matériel réel. Ils constituent un
+sous-ensemble testé, sans promettre un comportement identique sur tous les
+firmwares de passerelle.
+
+### Interrupteur mural TYXIA 2600 — Tywell Pro
+
+1. Dans Home Assistant, choisissez **Bouton A** ou **Bouton B**.
+2. Maintenez ce bouton physique 6 secondes, jusqu'à ce que la LED rouge devienne
+   fixe.
+3. Sélectionnez le mode correspondant à l'interrupteur câblé par des appuis
+   brefs sur A, puis maintenez B pendant 3 secondes jusqu'à ce que la LED verte
+   soit fixe.
+4. À l'étape indiquée du guide, cliquez sur **Lancer l'écoute de la
+   passerelle** dans Home Assistant.
+5. Maintenez le bouton A/B choisi 3 secondes jusqu'au clignotement rouge ;
+   attendez la détection, puis appuyez sur l'interrupteur mural relié à cette
+   voie pour confirmer.
+
+Utilisez **Dissocier ce bouton** pour retirer A ou B indépendamment. L'autre
+voie reste associée.
+
+### Télécommande TYXIA 1410 (C3 et AMG) — Tywell Pro
+
+1. Vérifiez au dos le logo **Works with Tydom** : une version visuellement
+   identique, non compatible TYDOM, existe.
+2. Dans Home Assistant, choisissez Bouton 1, 2, 3 ou 4, puis cliquez sur
+   **Lancer l'écoute de la passerelle**.
+3. Pendant l'écoute, maintenez la touche choisie de la télécommande 5 secondes,
+   jusqu'au clignotement rouge. Relâchez-la et attendez la détection.
+
+Il n'y a ni confirmation dans l'application mobile, ni second appui physique.
+**Dissocier ce bouton** préserve les autres boutons de la télécommande.
+
+### Télécommande TL 2000 — Tywell Pro
+
+1. Vérifiez le logo **Works with Tydom**, puis choisissez Bouton 1 ou 2 dans
+   Home Assistant.
+2. Maintenez 1 + 2 pendant 5 secondes jusqu'à l'orange. Appuyez une fois sur
+   le bouton choisi et conservez le mode qui clignote par séries de quatre ;
+   appuyez sur ON pour obtenir le vert.
+3. Cliquez sur **Lancer l'écoute de la passerelle**, puis maintenez ON + le
+   bouton choisi 5 secondes jusqu'au rouge. Attendez la détection et appuyez
+   sur le bouton choisi pour confirmer.
+
+Utilisez **Dissocier ce bouton** pour la voie concernée ; ne retirez pas la
+télécommande entière tant qu'une autre voie est utilisée.
+
+### Récepteur à contact sec TYXIA 4620 — Tywell Pro
+
+1. Dans Home Assistant, choisissez **Portail coulissant** ou **Portillon**
+   avant de commencer.
+2. Maintenez la touche du récepteur 3 secondes.
+3. Lorsque sa LED rouge clignote, cliquez sur **Lancer l'écoute de la
+   passerelle** à l'étape **Associer** du guide, puis attendez la détection.
+
+L'usage choisi transforme le point découvert en produit de portail nommé,
+plutôt qu'en `Produit N` non géré. Utilisez **Dissocier définitivement
+l'appareil** pour le retirer de la passerelle et de la configuration TYDOM.
+
+### TYWATT 5100 — TYDOM 1.0
+
+Depuis Home Assistant, lancez l'écoute de la passerelle à l'étape prévue par
+le guide. Suivez ensuite la notice officielle : positionnez les sélecteurs de
+mesure, placez le switch sur ON, puis maintenez la touche du produit 3 secondes.
+Ce parcours a été validé par un contributeur sur TYDOM 1.0. La configuration
+de compteur fournie par la passerelle est conservée : ne réécrivez pas un
+compteur découvert comme produit générique.
+
+### Tysense Sun — Tywell Pro
+
+Ce produit est proposé uniquement sur passerelle Tywell Pro/Home. Ouvrez le
+capot et basculez l'interrupteur interne à gauche, sur ON. À l'étape indiquée
+du guide, cliquez sur **Lancer l'écoute de la passerelle**, puis maintenez le
+bouton du produit 3 secondes. Sa LED s'allume et la détection peut prendre
+environ 30 secondes. **Dissocier définitivement l'appareil** le retire ; une
+association ultérieure restaure la configuration dédiée `sensorSun`, et non un
+capteur générique.
 
 ## Capturer les données d'un appareil non pris en charge
 
