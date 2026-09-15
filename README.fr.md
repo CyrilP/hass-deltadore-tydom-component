@@ -26,6 +26,8 @@ passerelle Delta Dore peut être détectée par découverte DHCP.
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Dépannage](#dépannage)
+- [Association, identification et dissociation radio — nouveauté en cours de validation](#association-identification-et-dissociation-radio--nouveauté-en-cours-de-validation)
+- [Guides d'association illustrés](#guides-dassociation-illustrés)
 - [Capturer les données d'un appareil non pris en charge](#capturer-les-données-dun-appareil-non-pris-en-charge)
 - [Gestion à distance TYXAL+](#gestion-à-distance-tyxal)
 - [Limites connues](#limites-connues)
@@ -67,10 +69,14 @@ Plateforme | Description
   commandes météo ou volets associées sur le même appareil physique, quelle
   que soit la disposition des points de terminaison annoncée par TYDOM.
 - Expose les modes et zones d'alarme, l'historique et l'acquittement des
-  événements, l'auteur de la dernière transition d'état, les opérations de
+  événements, les produits signalés par la centrale comme empêchant
+  l'armement, l'auteur de la dernière transition d'état, les opérations de
   maintenance à distance et d'armement forcé confirmées, ainsi que les
   événements d'automatisation natifs des interrupteurs et télécommandes
   compatibles.
+- Ajoute, identifie et dissocie proprement les produits radio compatibles
+  depuis la page de la passerelle, avec des guides propres à chaque modèle et
+  une actualisation automatique de l'inventaire après succès.
 
 ### Matériel testé
 
@@ -83,9 +89,9 @@ liste de compatibilité n'est pas exhaustive.
 Catégorie | Matériel ou configuration confirmés | Prise en charge dans Home Assistant
 -- | -- | --
 Alarme et sécurité | TYXAL+, CS8000, CSX40 et détecteurs de fumée DFR TYXAL+ | Pilotage de l'alarme, modes par zone, diagnostics, état de détection de fumée, historique et acquittement des événements, ainsi que la gestion à distance des produits et zones compatibles.
-Chauffage et régulation | Tybox 5101 avec Typass ATL, Tywell Control, Tywell 2050, TYXIA 1137, Calybox et RF 6600 FP | Régulation par zone, températures, consignes de chauffage et de refroidissement, modes de fonctionnement, humidité, batterie et commandes de chauffage ou de fil pilote annoncées par l'appareil.
-Suivi énergétique | TYWATT 1000, TYWATT 2000 et TYWATT 5400 avec EMIC | Mesures de puissance, courant et énergie, y compris les canaux de chauffage, d'eau chaude sanitaire et de refroidissement lorsqu'ils sont annoncés.
-Portails et portes de garage | Récepteurs à contact sec TYXIA 4620 | Boutons impulsionnels reproduisant la séquence ouverture/arrêt/fermeture du récepteur, sans prétendre connaître une position qui n'est pas remontée.
+Chauffage et régulation | Tybox 5101 avec Typass ATL, Tywell Control, Tywell 2050, têtes thermostatiques TRV 1.0, TYXIA 1137, Calybox et RF 6600 FP | Régulation par zone, températures, consignes de chauffage et de refroidissement, modes de fonctionnement, humidité, batterie et commandes de chauffage ou de fil pilote annoncées par l'appareil.
+Suivi énergétique | TYWATT 1000, TYWATT 2000 et TYWATT 5400 avec EMIC ; Delta Dore Easy Plug | Mesures de puissance, courant et énergie, y compris les canaux de chauffage, d'eau chaude sanitaire et de refroidissement lorsqu'ils sont annoncés. Les points de terminaison Easy Plug qui publient des données énergétiques exposent aussi la puissance instantanée et l'énergie cumulée utilisables dans le tableau de bord Énergie de Home Assistant.
+Portails et portes de garage | Récepteurs à contact sec TYXIA 4620, et points de terminaison de portail ou garage annonçant un retour `level` lisible | Les récepteurs à contact sec utilisent un bouton impulsionnel reproduisant la séquence ouverture/arrêt/fermeture. Les points de terminaison disposant d'un retour exposent une entité `cover` native avec état ouvert/fermé et position lorsqu'ils sont fournis.
 Éclairage et commutation | Récepteurs TYXIA 4910 à sortie fixe et TYXIA 4940 à variation configurés dans l'usage `Autres` de TYDOM, TYXIA 6610, Delta Dore Easy Plug et équipements X3D compatibles | Éclairages, luminosité, interrupteurs et prises selon les capacités annoncées par le point de terminaison.
 Ouvertures et protections solaires | Volets roulants TYMOOV et Well'com, installations BSO, volets Zigbee Profalux `MOT-C1Z06F` et `MOT-C1Z10F`, bannes TYXIA 5731, ouvrants K-Line DVI et portes K-Line POD | Volets natifs avec montée, descente, arrêt et position lorsqu'ils sont annoncés ; les commandes et positions des bannes sont converties selon la sémantique ouverture/fermeture de Home Assistant ; l'état d'ouverture ou de contact est exposé lorsqu'un retour est fourni.
 Commandes physiques | Interrupteurs muraux TYXIA 2600, télécommandes TYXIA 1410 et télécommandes TL 2000 Tyxal+ | Événements Home Assistant natifs utilisables dans les automatisations, avec diagnostic de batterie lorsqu'il est fourni.
@@ -155,6 +161,7 @@ Mode | Identifiants | Connexion
 -- | -- | --
 Cloud | Saisissez l'adresse e-mail et le mot de passe du compte Delta Dore. L'intégration récupère automatiquement le mot de passe de la passerelle correspondante. | Utilisez le nom d'hôte ou l'adresse IP de la passerelle pour une connexion locale, ou `mediation.tydom.com` pour une connexion cloud.
 Manuel | Saisissez directement le mot de passe de la passerelle TYDOM. Aucun compte Delta Dore n'est nécessaire pendant la configuration. | Normalement le nom d'hôte ou l'adresse IP de la passerelle locale ; tout hôte compatible explicitement configuré est accepté.
+Appairer en local avec le bouton de la passerelle | Saisissez le nom d'hôte ou l'adresse IP locale de la passerelle et son adresse MAC. Aucun mot de passe de passerelle ni compte Delta Dore n'est nécessaire. | Connexion LAN locale directe uniquement ; ni la médiation ni le cloud Delta Dore ne sont utilisés.
 
 ### Champs de configuration
 
@@ -170,6 +177,28 @@ Code PIN de l'alarme | Non | Nécessaire pour modifier le mode de l'alarme depui
 
 Après la configuration, ouvrez le menu **Configurer** de l'intégration pour
 modifier l'intervalle de rafraîchissement, les zones d'alarme ou le code PIN.
+
+### Appairer en local avec le bouton de la passerelle
+
+Utilisez ce mode lorsque la passerelle est joignable sur le réseau local mais
+que son mot de passe local est inconnu. Il nécessite un accès physique à la
+passerelle :
+
+1. Sélectionnez **« Appairer en local avec le bouton de la passerelle »** et remplissez tous les champs.
+1. Effectuez un appui **bref** sur le bouton physique de la passerelle.
+1. Validez immédiatement le formulaire déjà rempli dans Home Assistant.
+
+L'appui bref ouvre une courte fenêtre d'appairage local. Pendant cette fenêtre,
+l'intégration récupère une seule fois le secret local de la passerelle, le
+valide avec la connexion Digest locale normale, puis l'enregistre dans l'entrée
+de configuration. Le secret n'est ni affiché ni journalisé. Les connexions
+ultérieures de cette entrée restent locales et ne nécessitent plus d'appui sur
+le bouton.
+
+Cette fonctionnalité ne réinitialise pas la passerelle, ne modifie pas son mot
+de passe, ne supprime aucun produit et n'altère aucune association. Elle
+n'utilise pas le cloud Delta Dore. Une entrée distincte configurée en
+cloud/médiation continue à utiliser sa propre connexion configurée.
 
 ## Dépannage
 
@@ -198,6 +227,22 @@ Erreur | Signification | Vérifications
 Erreur d'authentification | Les identifiants fournis ou récupérés ont été refusés. | En mode Cloud, vérifiez l'adresse e-mail Delta Dore, le mot de passe du compte et l'adresse MAC de la passerelle. En mode Manuel, vérifiez que vous avez saisi le mot de passe de la passerelle TYDOM, et non celui du compte Delta Dore.
 Erreur de communication | Home Assistant n'a pas pu joindre l'hôte configuré ou terminer la connexion. | Vérifiez le nom d'hôte ou l'adresse IP, l'accès au réseau local, le DNS, l'alimentation de la passerelle et, pour un accès cloud, la connectivité avec `mediation.tydom.com`.
 
+En connexion locale, l'intégration utilise automatiquement le domaine HTTP
+Digest annoncé par la passerelle. Aucun paramètre de domaine distinct n'est
+nécessaire. Cela prend notamment en charge les passerelles dont le firmware
+utilise un domaine différent, y compris le Hub Tyxal+ en version 3.25.x. Si une
+connexion locale se ferme immédiatement après l'authentification, mettez à jour
+l'intégration et joignez un journal de débogage à un nouveau ticket.
+
+### L'appairage local par bouton ne se termine pas
+
+Vérifiez que Home Assistant peut joindre le nom d'hôte ou l'adresse IP locale
+de la passerelle et que tous les champs du formulaire étaient remplis avant
+l'appui. Effectuez un appui **bref**, puis validez immédiatement le formulaire :
+la fenêtre d'appairage local est courte. L'intégration n'interroge pas la
+passerelle et ne réessaie pas en arrière-plan ; un nouvel essai nécessite donc
+un nouvel appui bref.
+
 ### Les relevés TYWATT n'apparaissent pas immédiatement
 
 Les données énergétiques des TYWATT 1000, TYWATT 2000 et TYWATT 5400/EMIC
@@ -223,12 +268,237 @@ elle ne supprime rien de la passerelle TYDOM ni de l'application officielle.
 L'appareil peut être découvert de nouveau si la passerelle continue à
 l'annoncer.
 
-Après un changement de type d'entité ou le filtrage d'un point de terminaison
-technique, l'ancienne entrée peut d'abord apparaître comme **Indisponible** ou
-**Plus fournie**. Vérifiez que l'appareil réel de remplacement est présent et
-fonctionnel avant d'utiliser **Supprimer l'appareil**. Les points de terminaison
-vides filtrés, tels que les doublons Profalux « Produit X », ne seront pas
-recréés tant qu'ils restent vides.
+Après un changement de configuration, une ancienne entrée peut d'abord
+apparaître comme **Indisponible** ou **Plus fournie**. Vérifiez que l'appareil
+de remplacement est présent et fonctionne avant d'utiliser **Supprimer
+l'appareil**.
+
+## Association, identification et dissociation radio — nouveauté en cours de validation
+
+La carte **Configuration** de l'appareil passerelle TYDOM/Tywell fournit les
+commandes de gestion radio. Elles agissent sur la passerelle physique : ce ne
+sont pas des étapes à effectuer dans l'application mobile TYDOM.
+
+### Associer un nouveau produit radio depuis Home Assistant
+
+1. Ouvrez l'appareil **passerelle TYDOM/Tywell**, et non un récepteur ou une
+   télécommande déjà existante.
+2. Dans **Configuration**, choisissez la catégorie, le produit exact et, si
+   elle est proposée, la voie à associer. Choisissez aussi l'usage voulu : par
+   exemple **Portail coulissant** ou **Portillon** pour un TYXIA 4620.
+3. Vous pouvez renseigner le nom de l'appareil avant de commencer. Home
+   Assistant l'applique à la création du conteneur du produit détecté ; sans
+   nom, le nom par défaut de la passerelle est conservé.
+4. Cliquez sur **Afficher le guide d'association**. Suivez ses étapes
+   physiques illustrées et cliquez sur **Lancer l'écoute de la passerelle**
+   uniquement à l'étape qui le demande.
+5. Effectuez la manipulation du produit. Home Assistant détecte le produit
+   radio, l'ajoute à l'inventaire de la passerelle, puis actualise
+   automatiquement la liste des appareils.
+
+Le parcours est volontairement propre à chaque modèle : suivez le guide du
+produit concerné plutôt qu'un appui générique de trois secondes. Après une
+association réussie, **Recharger les appareils** n'est normalement pas
+nécessaire. Si rien n'apparaît après environ une minute, utilisez ce bouton
+puis recommencez la procédure.
+
+Certains produits compatibles déjà présents proposent aussi **Démarrer le mode
+association** et **Identifier l'appareil** sur leur propre page. Utilisez-les
+uniquement si la notice du produit le demande ; elles ne remplacent pas le
+parcours guidé de la passerelle.
+
+### Dissocier un produit radio sans risque
+
+L'action Home Assistant **Supprimer l'appareil** retire uniquement l'entrée du
+registre local : elle ne modifie pas la passerelle. **Dissocier définitivement
+l'appareil** retire le produit radio de la passerelle physique et de
+l'application TYDOM, puis actualise automatiquement l'inventaire.
+
+Pour les produits à plusieurs voies, utilisez **Dissocier ce bouton**. Cette
+commande retire seulement la voie concernée tout en conservant les autres
+voies. Utilisez la dissociation définitive uniquement pour un produit autonome
+ou lorsque l'ensemble du produit doit disparaître. La passerelle elle-même ne
+peut pas être dissociée.
+
+Les appuis physiques restent disponibles comme déclencheurs d'automatisation.
+L'association, l'identification et la dissociation sont des commandes de
+gestion ; elles ne modifient pas les automatisations existantes.
+
+## Guides d'association illustrés
+
+L'association et la dissociation guidées seront incluses dans la prochaine
+version. Cette fonctionnalité reste en cours de validation : les guides
+ci-dessous sont confirmés sur le type de passerelle indiqué, tandis que la
+prise en charge des autres produits compatibles est ajoutée et doit encore
+être confirmée sur le matériel. Sélectionnez le produit et la voie concernés
+dans Home Assistant, puis suivez les étapes illustrées dans l'ordre.
+
+<details>
+<summary><strong>Interrupteur mural TYXIA 2600 — Bouton A ou B — Passerelle confirmée : Tywell Pro</strong></summary>
+
+1. Dans Home Assistant, choisissez la voie à associer : **Bouton A** ou
+   **Bouton B**. Un module peut n'avoir qu'une seule voie câblée : n'ajoutez
+   que les voies réellement utilisées.
+2. Maintenez le bouton A/B physique choisi pendant 6 secondes. La LED rouge
+   s'allume, s'éteint, puis reste fixe : relâchez le bouton.
+
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step1.png" width="48%" alt="TYXIA 2600 : maintenir le bouton choisi six secondes, bouton A ou 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step1.png" width="48%" alt="TYXIA 2600 : maintenir le bouton choisi six secondes, bouton B ou 2">
+
+3. La LED verte clignote par séries. Appuyez brièvement sur A pour faire
+   défiler les modes, puis conservez celui correspondant au type
+   d'interrupteur câblé.
+
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step2.png" width="48%" alt="TYXIA 2600 : sélectionner le mode de l'interrupteur, bouton A ou 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step2.png" width="48%" alt="TYXIA 2600 : sélectionner le mode de l'interrupteur, bouton B ou 2">
+
+4. Maintenez B pendant 3 secondes, jusqu'à l'allumage fixe de la LED verte,
+   pour valider le mode.
+
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step3.png" width="48%" alt="TYXIA 2600 : valider le mode sélectionné, bouton A ou 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step3.png" width="48%" alt="TYXIA 2600 : valider le mode sélectionné, bouton B ou 2">
+
+5. Dans Home Assistant, cliquez sur **Lancer l'écoute de la passerelle**.
+6. Maintenez le bouton A/B physique choisi pendant 3 secondes, jusqu'au
+   clignotement rouge.
+
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step4.png" width="48%" alt="TYXIA 2600 : lancer l'association radio, bouton A ou 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step4.png" width="48%" alt="TYXIA 2600 : lancer l'association radio, bouton B ou 2">
+
+7. Attendez que Home Assistant détecte le nouveau produit.
+8. Pour confirmer la voie choisie, appuyez sur l'interrupteur mural câblé
+   relié à cette voie A/B. N'appuyez pas à nouveau sur le bouton du module
+   TYXIA.
+
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step5.png" width="48%" alt="TYXIA 2600 : confirmer avec l'interrupteur mural câblé, bouton A ou 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step5.png" width="48%" alt="TYXIA 2600 : confirmer avec l'interrupteur mural câblé, bouton B ou 2">
+
+Utilisez **Dissocier ce bouton** pour retirer A ou B indépendamment ; l'autre
+voie reste associée.
+
+</details>
+
+<details>
+<summary><strong>Télécommande TYXIA 1410 — Bouton 1 à 4 — Passerelle confirmée : Tywell Pro</strong></summary>
+
+1. Vérifiez au dos le logo **Works with Tydom**. Une version visuellement
+   identique, sans ce logo de compatibilité, ne peut pas être associée.
+
+   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step1.png" width="24%" alt="TYXIA 1410 : vérification de compatibilité, bouton 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step1.png" width="24%" alt="TYXIA 1410 : vérification de compatibilité, bouton 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step1.png" width="24%" alt="TYXIA 1410 : vérification de compatibilité, bouton 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step1.png" width="24%" alt="TYXIA 1410 : vérification de compatibilité, bouton 4">
+
+2. Dans Home Assistant, choisissez Bouton 1, 2, 3 ou 4, puis cliquez sur
+   **Lancer l'écoute de la passerelle**.
+3. Pendant l'écoute, maintenez le bouton sélectionné de la télécommande
+   pendant 5 secondes, jusqu'au clignotement rouge. Relâchez-le.
+
+   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step2.png" width="24%" alt="TYXIA 1410 : maintenir le bouton choisi, bouton 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step2.png" width="24%" alt="TYXIA 1410 : maintenir le bouton choisi, bouton 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step2.png" width="24%" alt="TYXIA 1410 : maintenir le bouton choisi, bouton 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step2.png" width="24%" alt="TYXIA 1410 : maintenir le bouton choisi, bouton 4">
+
+4. Attendez la détection dans Home Assistant. Il n'y a ni confirmation dans
+   l'application mobile, ni second appui physique.
+
+   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step3.png" width="24%" alt="TYXIA 1410 : confirmation du bouton sélectionné, bouton 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step3.png" width="24%" alt="TYXIA 1410 : confirmation du bouton sélectionné, bouton 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step3.png" width="24%" alt="TYXIA 1410 : confirmation du bouton sélectionné, bouton 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step3.png" width="24%" alt="TYXIA 1410 : confirmation du bouton sélectionné, bouton 4">
+
+Utilisez **Dissocier ce bouton** uniquement pour la voie sélectionnée.
+
+</details>
+
+<details>
+<summary><strong>Télécommande TL 2000 — Bouton 1 ou 2 — Passerelle confirmée : Tywell Pro</strong></summary>
+
+1. Vérifiez le logo **Works with Tydom**, puis choisissez Bouton 1 ou 2 dans
+   Home Assistant.
+
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step1.png" width="48%" alt="TL 2000 : vérification de compatibilité, bouton A ou 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step1.png" width="48%" alt="TL 2000 : vérification de compatibilité, bouton B ou 2">
+
+2. Maintenez 1 + 2 pendant 5 secondes, jusqu'à ce que la LED soit orange.
+
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step2.png" width="48%" alt="TL 2000 : maintenir 1 et 2, bouton A ou 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step2.png" width="48%" alt="TL 2000 : maintenir 1 et 2, bouton B ou 2">
+
+3. Appuyez une fois sur le bouton sélectionné. Continuez lorsque la LED
+   clignote par séries de quatre ; un nouvel appui sur ce bouton change le
+   nombre de clignotements.
+
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step3.png" width="48%" alt="TL 2000 : sélectionner le mode d'association, bouton A ou 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step3.png" width="48%" alt="TL 2000 : sélectionner le mode d'association, bouton B ou 2">
+
+4. Si la LED clignote encore, appuyez sur ON jusqu'à ce qu'elle devienne
+   verte.
+
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step4.png" width="48%" alt="TL 2000 : valider avec ON, bouton A ou 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step4.png" width="48%" alt="TL 2000 : valider avec ON, bouton B ou 2">
+
+5. Dans Home Assistant, cliquez sur **Lancer l'écoute de la passerelle**.
+6. Pendant l'écoute, maintenez ON + le bouton sélectionné pendant
+   5 secondes, jusqu'à ce que la LED soit rouge.
+
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step5.png" width="48%" alt="TL 2000 : lancer l'association, bouton A ou 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step5.png" width="48%" alt="TL 2000 : lancer l'association, bouton B ou 2">
+
+7. Attendez que Home Assistant détecte la télécommande, puis appuyez une
+   fois sur le bouton sélectionné pour confirmer la voie.
+
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step6.png" width="48%" alt="TL 2000 : confirmer la voie sélectionnée, bouton A ou 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step6.png" width="48%" alt="TL 2000 : confirmer la voie sélectionnée, bouton B ou 2">
+
+Utilisez **Dissocier ce bouton** uniquement pour la voie sélectionnée.
+
+</details>
+
+<details>
+<summary><strong>Récepteur à contact sec TYXIA 4620 — Passerelle confirmée : Tywell Pro</strong></summary>
+
+1. Dans Home Assistant, choisissez **Portail coulissant** ou **Portillon**,
+   puis maintenez la touche du récepteur 3 secondes.
+
+   <img src="docs/images/association/catalog_7_tyxia_serie4000_tuto1.png" width="48%" alt="TYXIA 4620 : maintenir la touche du récepteur">
+
+2. Lorsque la LED rouge clignote, le récepteur est prêt. Dans Home
+   Assistant, cliquez sur **Lancer l'écoute de la passerelle**, puis
+   attendez la détection.
+
+   <img src="docs/images/association/catalog_7_tyxia_serie4000_tuto2.png" width="48%" alt="TYXIA 4620 : LED rouge clignotante">
+
+L'usage choisi détermine si le produit est ajouté comme portail coulissant ou
+portillon. Utilisez **Dissocier définitivement l'appareil** pour le retirer de
+la passerelle et de l'application TYDOM.
+
+</details>
+
+<details>
+<summary><strong>TYWATT 5100 — Passerelle confirmée : TYDOM 1.0</strong></summary>
+
+1. À la première étape du guide, cliquez sur **Lancer l'écoute de la
+   passerelle** dans Home Assistant.
+
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto1.png" width="48%" alt="TYWATT 5100 : étape d'écoute Home Assistant">
+
+2. Reportez-vous à la notice officielle pour positionner les sélecteurs et
+   choisir la valeur mesurée.
+
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto1.png" width="48%" alt="TYWATT 5100 : réglage des sélecteurs">
+
+3. Placez le switch sur ON. Sa LED s'allume pendant une seconde.
+
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto2.png" width="48%" alt="TYWATT 5100 : switch sur ON">
+
+4. Maintenez la touche du produit pendant 3 secondes.
+
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto3.png" width="48%" alt="TYWATT 5100 : maintenir la touche">
+
+Le produit est ajouté automatiquement une fois l'association terminée.
+
+</details>
+
+<details>
+<summary><strong>Tysense Sun — Passerelle confirmée : Tywell Pro</strong></summary>
+
+1. Ce produit est proposé uniquement sur passerelle Tywell Pro/Home. Ouvrez
+   le capot et basculez l'interrupteur interne à gauche, sur ON. À cette étape
+   du guide, cliquez sur **Lancer l'écoute de la passerelle** dans Home
+   Assistant.
+
+   <img src="docs/images/association/catalog_tysense_sun_tuto1.png" width="48%" alt="Tysense Sun : interrupteur sur ON">
+
+2. Maintenez le bouton du produit pendant 3 secondes. Sa LED s'allume ;
+   attendez environ 30 secondes pour la détection.
+
+   <img src="docs/images/association/catalog_tysense_sun_tuto2.png" width="48%" alt="Tysense Sun : maintenir le bouton du produit">
+
+Utilisez **Dissocier définitivement l'appareil** pour le retirer de la
+passerelle.
+
+</details>
 
 ## Capturer les données d'un appareil non pris en charge
 
@@ -283,6 +553,8 @@ TYXAL+ utiles dans Home Assistant :
 - `deltadore_tydom.get_events` renvoie l'historique et permet de le filtrer sur
   les alarmes, les activations/désactivations ou les événements non acquittés ;
 - `deltadore_tydom.acknowledge_events` acquitte les événements en attente ;
+- `deltadore_tydom.get_open_issues` renvoie les produits exacts signalés par la
+  centrale comme empêchant un armement normal ;
 - `deltadore_tydom.force_arm` arme explicitement un mode Absent, Présent ou
   Nuit configuré lorsqu'un armement normal a été refusé en raison de défauts ;
 - `deltadore_tydom.get_alarm_products` répertorie les produits et zones
@@ -311,6 +583,45 @@ configuration des sirènes ne sont pas exposés.
 Assistant. Utilisez-le uniquement après avoir vérifié les défauts signalés et
 déterminé qu'un armement forcé est approprié.
 
+### Produits empêchant l'armement
+
+`deltadore_tydom.get_open_issues` interroge la centrale pour obtenir les
+produits qui empêchent **actuellement** un armement normal. La centrale reste
+la source de vérité : le résultat n'est pas déduit de l'état des capteurs de
+contact de Home Assistant. Elle peut donc signaler tout produit protégé
+compatible, notamment des contacts MDO, DO, DOS ou MO lorsqu'ils sont fournis
+par la centrale.
+
+Appelez cette action depuis un script, une automatisation ou **Outils de
+développement > Actions**. Comme elle renvoie une réponse, Home Assistant exige
+une variable de réponse dans les Outils de développement :
+
+```yaml
+action: deltadore_tydom.get_open_issues
+target:
+  entity_id: alarm_control_panel.tyxal_alarm
+response_variable: open_issues
+```
+
+La variable de réponse contient une liste de produits. Chaque entrée reprend
+les métadonnées fournies par la centrale, telles que `id`, `name`,
+`type_short`, `type_long`, `zone`, `defects` et `error` lorsqu'elles sont
+disponibles. Le dernier résultat est aussi conservé dans les attributs
+`open_issue_count` et `open_issues` de l'entité d'alarme. Il peut ainsi être
+utilisé dans les tableaux de bord et les modèles sans créer d'assistant
+supplémentaire.
+
+Après le refus d'un armement normal, l'intégration lance automatiquement la
+même lecture. Certains firmwares CS8000 enregistrent l'événement de refus peu
+après leur réponse à la commande ; l'intégration attend donc brièvement et
+réessaie une fois si la centrale n'a pas encore rendu le blocage disponible. Un
+armement normal réussi vide la liste mémorisée.
+
+Il ne s'agit pas d'un suivi continu des contacts : l'ouverture ou la fermeture
+d'un contact ne met pas à jour `open_issues` à elle seule. Utilisez l'action
+avant de proposer un armement forcé, après un refus, ou dans une automatisation
+déclenchée par des contacts réellement disponibles dans votre installation.
+
 L'appareil d'alarme TYXAL fournit également un bouton **Acquitter les
 événements** utilisable directement dans un tableau de bord, sans appel de
 service ni automatisation.
@@ -326,7 +637,9 @@ attributs décrivent la dernière transition d'armement ou de désarmement reçu
   fournissent une commande impulsionnelle, mais aucun retour de position ou de
   direction. Home Assistant expose donc un bouton sans état et ne peut pas
   déterminer si l'impulsion suivante ouvrira, arrêtera ou fermera la
-  motorisation.
+  motorisation. Un portail ou garage n'est exposé comme entité `cover` que lorsque
+  son point de terminaison annonce un retour `level` lisible ; une commande
+  inscriptible seule ne permet pas de connaître sa position réelle.
 - Le volet Tywell natif rejoue les scénarios `TWC_UP`, `TWC_DOWN` et
   `TWC_STOP` créés par TYDOM. Les volets concernés doivent donc être configurés
   dans l'application officielle, et la position globale n'est disponible que

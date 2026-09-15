@@ -24,6 +24,8 @@ The Delta Dore gateway can be detected using DHCP discovery.
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Troubleshooting](#troubleshooting)
+- [Gateway association, identification and radio removal — new, work in progress](#gateway-association-identification-and-radio-removal--new-work-in-progress)
+- [Illustrated association guides](#illustrated-association-guides)
 - [Capturing data for unsupported devices](#capturing-data-for-unsupported-devices)
 - [TYXAL+ remote management](#tyxal-remote-management)
 - [Known limitations](#known-limitations)
@@ -63,10 +65,13 @@ Platform | Description
 - Keep Tywell wall-controller sensors, area-backed climate control and
   companion weather or shutter controls attached to the same physical device
   across the different endpoint layouts advertised by TYDOM.
-- Expose alarm modes and zones, event history and acknowledgement, the actor
-  behind the latest alarm state change, supported remote maintenance and
-  forced-arming operations, and native automation events from compatible wall
-  switches and remote controls.
+- Expose alarm modes and zones, event history and acknowledgement, central-
+  reported arming blockers, the actor behind the latest alarm state change,
+  supported remote maintenance and forced-arming operations, and native
+  automation events from compatible wall switches and remote controls.
+- Add, identify and safely remove compatible radio products directly from the
+  gateway device page, with model-specific guidance and automatic inventory
+  refresh after a successful operation.
 
 ### Tested hardware
 
@@ -78,9 +83,9 @@ contributors; this is not an exhaustive compatibility list.
 Category | Confirmed hardware or configuration | Home Assistant support
 -- | -- | --
 Alarm and safety | TYXAL+, CS8000, CSX40 and DFR TYXAL+ smoke detectors | Alarm control, zone modes, diagnostics, smoke state, event history, acknowledgement and supported remote product/zone management.
-Climate and heating | Tybox 5101 with Typass ATL, Tywell Control, Tywell 2050, TYXIA 1137, Calybox and RF 6600 FP | Area-backed climate control, temperatures, heating and cooling setpoints, operating modes, humidity, battery and capability-driven heating or pilot-wire commands where advertised.
-Energy monitoring | TYWATT 1000, TYWATT 2000 and TYWATT 5400 with EMIC | Power, current and energy measurements, including heating, domestic hot water and cooling channels where advertised.
-Gates and garage doors | TYXIA 4620 dry-contact receivers | Stateless toggle buttons matching the receiver's open/stop/close pulse sequence, without claiming unavailable position feedback.
+Climate and heating | Tybox 5101 with Typass ATL, Tywell Control, Tywell 2050, TRV 1.0 thermostatic radiator valves, TYXIA 1137, Calybox and RF 6600 FP | Area-backed climate control, temperatures, heating and cooling setpoints, operating modes, humidity, battery and capability-driven heating or pilot-wire commands where advertised.
+Energy monitoring | TYWATT 1000, TYWATT 2000 and TYWATT 5400 with EMIC; Delta Dore Easy Plug | Power, current and energy measurements, including heating, domestic hot water and cooling channels where advertised. Easy Plug endpoints which publish energy data also expose instantaneous power and cumulative energy for Home Assistant's Energy dashboard.
+Gates and garage doors | TYXIA 4620 dry-contact receivers, and gate or garage endpoints which advertise readable `level` feedback | Dry-contact receivers use a stateless toggle matching the open/stop/close pulse sequence. Feedback-capable endpoints expose a native cover with open/closed state and supported position feedback.
 Lighting and switching | TYXIA 4910 fixed-output and TYXIA 4940 dimming receivers configured under TYDOM's `Others` usage, TYXIA 6610, Delta Dore Easy Plug and compatible X3D equipment | Lights, brightness, switches and plugs according to the capabilities reported by the endpoint.
 Openings and covers | TYMOOV and Well'com roller shutters, BSO installations, Profalux `MOT-C1Z06F` and `MOT-C1Z10F` Zigbee shutters, TYXIA 5731 awnings, K-Line DVI openings and K-Line POD doors | Native covers with up, down, stop and position control where advertised; awning commands and positions are translated into Home Assistant open/close semantics; opening/contact state is exposed when feedback is supplied.
 Physical controls | TYXIA 2600 wall switches, TYXIA 1410 remote controls and TL 2000 Tyxal+ remote controls | Native Home Assistant button events for automations, with battery diagnostics where supplied.
@@ -146,6 +151,7 @@ Mode | Credentials | Connection
 -- | -- | --
 Cloud | Enter the Delta Dore account email address and password. The integration retrieves the matching gateway password automatically. | Use the gateway hostname or IP address for a local connection, or `mediation.tydom.com` for a cloud connection.
 Manual | Enter the TYDOM gateway password directly. A Delta Dore account is not required during setup. | Normally the local gateway hostname or IP address; any compatible explicitly configured host is accepted.
+Pair locally using the gateway button | Enter the local gateway hostname or IP address and its MAC address. No gateway password or Delta Dore account is required. | Direct local LAN connection only; Delta Dore mediation and cloud are not used.
 
 ### Configuration fields
 
@@ -161,6 +167,25 @@ Alarm PIN | No | Required when using Home Assistant to change the alarm mode; no
 
 After setup, open the integration's **Configure** menu to change the refresh
 interval, alarm zones or PIN.
+
+### Pair locally using the gateway button
+
+Use this mode when the gateway is reachable on the local network but its local
+password is unknown. It requires physical access to the gateway:
+
+1. Select **Pair locally using the gateway button** and complete every field.
+1. Press the physical gateway button **briefly**.
+1. Immediately submit the completed form in Home Assistant.
+
+The brief button press opens a short local pairing window. During that window,
+the integration retrieves the local gateway secret once, validates it with the
+normal local Digest connection, and saves it in the configuration entry. The
+secret is never shown or logged. Later connections for this entry remain local
+and do not need another button press.
+
+This feature does not reset the gateway, change its password, remove products
+or alter associations. It does not use the Delta Dore cloud. A separate entry
+configured for cloud/mediation continues to use its own configured connection.
 
 ## Troubleshooting
 
@@ -187,6 +212,20 @@ Error | Meaning | Checks
 Authentication error | The supplied or retrieved credentials were rejected. | In Cloud mode, verify the Delta Dore email address, account password and gateway MAC. In Manual mode, verify that the TYDOM gateway password—not the Delta Dore account password—was entered.
 Communication error | Home Assistant could not reach the configured host or complete the connection. | Verify the hostname or IP address, local network access, DNS, gateway power and, when using cloud access, connectivity to `mediation.tydom.com`.
 
+For a local connection, the integration automatically uses the HTTP Digest realm
+announced by the gateway. No separate realm setting is required. This supports
+gateways whose firmware uses a different realm, including Hub Tyxal+ firmware
+3.25.x. If a local connection disconnects immediately after authentication,
+update the integration and attach a debug log to a new issue.
+
+### Local button pairing does not complete
+
+Ensure that Home Assistant can reach the gateway's local hostname or IP address
+and that every form field was completed before pressing the button. Use a
+**brief** press and submit the form immediately afterwards: the local pairing
+window is short. The integration does not probe the gateway or retry in the
+background, so a new attempt requires a new brief press.
+
 ### TYWATT readings do not appear immediately
 
 TYWATT 1000, TYWATT 2000 and TYWATT 5400/EMIC energy data may not all appear
@@ -208,11 +247,223 @@ Assistant device-registry entry; it does not delete anything from the TYDOM
 gateway or official application. A device may be discovered again if the
 gateway still advertises it.
 
-After an entity type changes or a technical placeholder is filtered out, its
-old registry entry may first appear as **Unavailable** or **No longer provided**.
-Verify that the genuine replacement device is present and working before using
-**Remove device**. Filtered placeholders, such as empty Profalux `Produit X`
-endpoints, will not be recreated while they remain empty.
+After a configuration change, an old registry entry may first appear as
+**Unavailable** or **No longer provided**. Verify that the replacement device
+is present and working before using **Remove device**.
+
+## Gateway association, identification and radio removal — new, work in progress
+
+The **Configuration** card on the TYDOM/Tywell gateway device provides the
+radio-management controls. These act on the physical gateway; they are not
+steps to perform in the TYDOM mobile app.
+
+### Associate a new radio product from Home Assistant
+
+1. Open the **TYDOM/Tywell gateway device**, rather than an existing receiver
+   or remote-control device.
+2. In **Configuration**, select the category, exact product and, where offered,
+   the channel to associate. Select the intended usage too: for example,
+   **Sliding gate** or **Wicket gate** for a TYXIA 4620.
+3. Optionally enter a name before beginning. Home Assistant applies it when it
+   creates the discovered product container; without one, the gateway default
+   is retained.
+4. Select **Show association guide**. Follow its illustrated physical steps and
+   press **Start gateway listening** only at the step which asks for it.
+5. Complete the product procedure. Home Assistant detects the radio product,
+   adds it to the gateway inventory, and refreshes the device list
+   automatically.
+
+The procedure is deliberately model-specific: follow the guide for the exact
+product rather than using a generic three-second press. A successful
+association does not normally require **Reload devices**. If nothing appears
+after about one minute, use **Reload devices** and repeat the procedure.
+
+Existing compatible products may also expose **Start association mode** and
+**Identify device** on their own device page. Use them only when the product
+instructions request them; they do not replace the guided gateway association
+flow.
+
+### Dissociate a radio product safely
+
+**Remove device** in Home Assistant only deletes the local registry entry. It
+does not change the gateway. **Permanently dissociate device** removes the
+radio product from the physical gateway and TYDOM app, then automatically
+refreshes the inventory.
+
+For multi-channel products, use **Dissociate this button**. It removes only
+that channel while retaining the other channels. Use permanent dissociation
+only for a standalone product or when the complete product is intended to
+disappear. The gateway itself cannot be dissociated.
+
+Physical key presses remain available as automation triggers. Association,
+identification and dissociation are management controls and do not change
+existing automations.
+
+## Illustrated association guides
+
+Guided association and dissociation will be included in the next release.
+This feature is still a work in progress: the guides below have been confirmed
+on the stated gateway type, while support for other compatible products is
+being added and needs real-world confirmation. Select the relevant product and
+channel in Home Assistant, then follow the illustrated steps in order.
+
+<details>
+<summary><strong>TYXIA 2600 wall switch — Button A or B — Confirmed gateway: Tywell Pro</strong></summary>
+
+1. In Home Assistant, select the channel to associate: **Button A** or
+   **Button B**. A module can have only one wired channel; add only the
+   channels actually used.
+2. Hold the selected physical A/B button for 6 seconds. The red LED turns on,
+   turns off, then becomes steady; release the button.
+
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step1.png" width="48%" alt="TYXIA 2600: hold the selected button for six seconds, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step1.png" width="48%" alt="TYXIA 2600: hold the selected button for six seconds, Button B or 2">
+
+3. The green LED flashes in groups. Briefly press A to cycle the modes, then
+   retain the mode matching the wired switch type.
+
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step2.png" width="48%" alt="TYXIA 2600: select the wired-switch mode, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step2.png" width="48%" alt="TYXIA 2600: select the wired-switch mode, Button B or 2">
+
+4. Hold B for 3 seconds, until the green LED is steady, to validate the mode.
+
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step3.png" width="48%" alt="TYXIA 2600: validate the selected mode, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step3.png" width="48%" alt="TYXIA 2600: validate the selected mode, Button B or 2">
+
+5. In Home Assistant, press **Start gateway listening**.
+6. Hold the selected physical A/B button for 3 seconds until the red LED
+   flashes.
+
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step4.png" width="48%" alt="TYXIA 2600: start the radio association, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step4.png" width="48%" alt="TYXIA 2600: start the radio association, Button B or 2">
+
+7. Wait while Home Assistant detects the new product.
+8. To confirm the selected channel, press the wired wall switch connected to
+   that A/B channel. Do not press the TYXIA module button again.
+
+   <img src="docs/images/association/catalog_switch_tyxia2600_btna_step5.png" width="48%" alt="TYXIA 2600: confirm with the wired wall switch, Button A or 1"> <img src="docs/images/association/catalog_switch_tyxia2600_btnb_step5.png" width="48%" alt="TYXIA 2600: confirm with the wired wall switch, Button B or 2">
+
+Use **Dissociate this button** to remove A or B independently; the other
+channel remains associated.
+
+</details>
+
+<details>
+<summary><strong>TYXIA 1410 remote control — Button 1 to 4 — Confirmed gateway: Tywell Pro</strong></summary>
+
+1. Check the **Works with Tydom** mark on the rear of the remote. A visually
+   identical version without that compatibility mark cannot be associated.
+
+   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step1.png" width="24%" alt="TYXIA 1410 compatibility mark, Button 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step1.png" width="24%" alt="TYXIA 1410 compatibility mark, Button 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step1.png" width="24%" alt="TYXIA 1410 compatibility mark, Button 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step1.png" width="24%" alt="TYXIA 1410 compatibility mark, Button 4">
+
+2. In Home Assistant, select Button 1, 2, 3 or 4, then press **Start gateway
+   listening**.
+3. While listening is active, hold the selected remote button for 5 seconds,
+   until the red LED flashes. Release it.
+
+   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step2.png" width="24%" alt="TYXIA 1410 hold the selected button, Button 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step2.png" width="24%" alt="TYXIA 1410 hold the selected button, Button 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step2.png" width="24%" alt="TYXIA 1410 hold the selected button, Button 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step2.png" width="24%" alt="TYXIA 1410 hold the selected button, Button 4">
+
+4. Wait for detection in Home Assistant. There is no mobile-app confirmation
+   and no second physical press.
+
+   <img src="docs/images/association/catalog_rcu_tyxia1410_btn1_step3.png" width="24%" alt="TYXIA 1410 selected-button confirmation, Button 1"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn2_step3.png" width="24%" alt="TYXIA 1410 selected-button confirmation, Button 2"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn3_step3.png" width="24%" alt="TYXIA 1410 selected-button confirmation, Button 3"> <img src="docs/images/association/catalog_rcu_tyxia1410_btn4_step3.png" width="24%" alt="TYXIA 1410 selected-button confirmation, Button 4">
+
+Use **Dissociate this button** for the selected channel only.
+
+</details>
+
+<details>
+<summary><strong>TL 2000 remote control — Button 1 or 2 — Confirmed gateway: Tywell Pro</strong></summary>
+
+1. Check the **Works with Tydom** mark on the rear and select Button 1 or 2 in
+   Home Assistant.
+
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step1.png" width="48%" alt="TL 2000 compatibility mark, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step1.png" width="48%" alt="TL 2000 compatibility mark, Button B or 2">
+
+2. Hold 1 + 2 for 5 seconds until the LED is orange.
+
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step2.png" width="48%" alt="TL 2000 hold 1 and 2, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step2.png" width="48%" alt="TL 2000 hold 1 and 2, Button B or 2">
+
+3. Press the selected button once. Continue when the LED flashes in groups of
+   four; another press on the selected button changes the group count.
+
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step3.png" width="48%" alt="TL 2000 select the association mode, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step3.png" width="48%" alt="TL 2000 select the association mode, Button B or 2">
+
+4. If the LED is still flashing, press ON until it becomes green.
+
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step4.png" width="48%" alt="TL 2000 validate with ON, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step4.png" width="48%" alt="TL 2000 validate with ON, Button B or 2">
+
+5. In Home Assistant, press **Start gateway listening**.
+6. While listening is active, hold ON + the selected button for 5 seconds,
+   until the LED is red.
+
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step5.png" width="48%" alt="TL 2000 start association, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step5.png" width="48%" alt="TL 2000 start association, Button B or 2">
+
+7. Wait for Home Assistant to detect the remote, then press the selected
+   button once to confirm the channel.
+
+   <img src="docs/images/association/catalog_rcu_tl2000_btn1_step6.png" width="48%" alt="TL 2000 confirm the selected channel, Button A or 1"> <img src="docs/images/association/catalog_rcu_tl2000_btn2_step6.png" width="48%" alt="TL 2000 confirm the selected channel, Button B or 2">
+
+Use **Dissociate this button** for the selected channel only.
+
+</details>
+
+<details>
+<summary><strong>TYXIA 4620 dry-contact receiver — Confirmed gateway: Tywell Pro</strong></summary>
+
+1. In Home Assistant, select **Sliding gate** or **Wicket gate**, then hold
+   the receiver touch control for 3 seconds.
+
+   <img src="docs/images/association/catalog_7_tyxia_serie4000_tuto1.png" width="48%" alt="TYXIA 4620: hold the receiver touch control">
+
+2. When the red LED flashes, the receiver is ready. In Home Assistant, press
+   **Start gateway listening** and wait for discovery.
+
+   <img src="docs/images/association/catalog_7_tyxia_serie4000_tuto2.png" width="48%" alt="TYXIA 4620: red LED flashes">
+
+The selected usage determines whether the product is added as a sliding gate
+or wicket gate. Use **Permanently dissociate device** to remove it from the
+gateway and TYDOM app.
+
+</details>
+
+<details>
+<summary><strong>TYWATT 5100 — Confirmed gateway: TYDOM 1.0</strong></summary>
+
+1. At the first guide step, press **Start gateway listening** in Home
+   Assistant.
+
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto1.png" width="48%" alt="TYWATT 5100: Home Assistant listening step">
+
+2. Refer to the official installation manual to set the measurement selectors.
+
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto1.png" width="48%" alt="TYWATT 5100: selector configuration">
+
+3. Set the switch to ON. Its LED lights for one second.
+
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto2.png" width="48%" alt="TYWATT 5100: switch ON">
+
+4. Hold the touch control for 3 seconds.
+
+   <img src="docs/images/association/catalog_32_tywatt_5100_tuto3.png" width="48%" alt="TYWATT 5100: hold the touch control">
+
+The product is added automatically once the association is complete.
+
+</details>
+
+<details>
+<summary><strong>Tysense Sun — Confirmed gateway: Tywell Pro</strong></summary>
+
+1. This product is offered only on Tywell Pro/Home gateways. Open the cover
+   and move the internal switch left to ON. At this guide step, press **Start
+   gateway listening** in Home Assistant.
+
+   <img src="docs/images/association/catalog_tysense_sun_tuto1.png" width="48%" alt="Tysense Sun: switch ON">
+
+2. Hold the product button for 3 seconds. Its LED lights; wait about
+   30 seconds for discovery.
+
+   <img src="docs/images/association/catalog_tysense_sun_tuto2.png" width="48%" alt="Tysense Sun: hold the product button">
+
+Use **Permanently dissociate device** to remove it from the gateway.
+
+</details>
 
 ### Device association and identification
 
@@ -306,6 +557,8 @@ useful in Home Assistant:
 - `deltadore_tydom.get_events` returns alarm history and can filter it to alarm,
   activation/deactivation or unacknowledged events;
 - `deltadore_tydom.acknowledge_events` acknowledges pending alarm events;
+- `deltadore_tydom.get_open_issues` returns the exact products currently
+  reported by the alarm central as preventing normal arming;
 - `deltadore_tydom.force_arm` explicitly arms a configured Away, Home or Night
   mode when normal arming was refused because of defects;
 - `deltadore_tydom.get_alarm_products` lists configured products and zones;
@@ -332,6 +585,42 @@ configuration are not exposed.
 only after checking the reported defects and deciding that forced arming is
 appropriate.
 
+### Alarm blockers and refused arming
+
+`deltadore_tydom.get_open_issues` asks the alarm central for the products which
+currently prevent a **normal** arm operation. The central is the source of
+truth: the result is not inferred from the state of Home Assistant contact
+sensors. It can therefore report any compatible protected product, including
+contacts such as MDO, DO, DOS or MO products when the central provides them.
+
+Call the action from a script, automation, or **Developer tools > Actions**.
+Because it returns data, Home Assistant requires a response variable when it is
+run from Developer tools:
+
+```yaml
+action: deltadore_tydom.get_open_issues
+target:
+  entity_id: alarm_control_panel.tyxal_alarm
+response_variable: open_issues
+```
+
+The response variable is a list of products. Each entry contains the metadata
+supplied by the central, such as `id`, `name`, `type_short`, `type_long`,
+`zone`, `defects` and `error` when available. The latest result is also stored
+on the alarm entity as `open_issue_count` and `open_issues`, so it can be used
+in dashboards and templates without keeping a separate helper.
+
+After a refused normal arm operation, the integration automatically requests
+the same information. Some CS8000 firmware records the refusal event shortly
+after its command response, so the integration waits briefly and retries once
+if the central has not yet made the blocker record available. A successful
+normal arm clears the stored list.
+
+This is not continuous contact monitoring: opening or closing a contact does
+not by itself refresh `open_issues`. Use the action before offering a force-arm
+choice, after a refusal, or from an automation triggered by contact entities
+which are available in your installation.
+
 The TYXAL alarm device also provides an **Acknowledge events** button for
 convenient dashboard use without requiring a service call or automation.
 
@@ -345,7 +634,9 @@ reported arm or disarm transition.
 - Dry-contact TYXIA 4620 gate and garage configurations provide an impulse
   command but no position or direction feedback. Home Assistant therefore
   exposes a stateless toggle button and cannot determine whether the next pulse
-  will open, stop or close the motor.
+  will open, stop or close the motor. A gate or garage is exposed as a cover
+  only when its endpoint advertises readable `level` feedback; a writable
+  command alone is not enough to establish its actual position.
 - The native Tywell shutter cover replays the `TWC_UP`, `TWC_DOWN` and
   `TWC_STOP` scenarios created by TYDOM. Its shutter membership must therefore
   be configured in the official application, and aggregate position is only
