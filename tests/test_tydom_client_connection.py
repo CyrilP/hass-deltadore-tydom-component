@@ -250,6 +250,106 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
             True,
         )
 
+    async def test_set_local_gateway_password_uses_gateway_endpoint(self) -> None:
+        """The local password update uses the generic gateway endpoint."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+
+        await client.async_set_local_gateway_password("NewPassword1")
+
+        client.get_reply_to_request.assert_awaited_once_with(
+            "PUT",
+            "/configs/gateway/password",
+            body={"password": "NewPassword1"},
+        )
+        self.assertEqual(client._password, "NewPassword1")
+
+    async def test_set_local_gateway_password_keeps_previous_password_on_failure(
+        self,
+    ) -> None:
+        """A rejected update must not poison the next Digest authentication."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(
+            side_effect=TydomClientApiClientCommunicationError("rejected")
+        )
+
+        with self.assertRaises(TydomClientApiClientCommunicationError):
+            await client.async_set_local_gateway_password("NewPassword1")
+
+        self.assertEqual(client._password, "password")
+
+    async def test_delete_device_uses_parent_device_route(self) -> None:
+        """Permanent removal deletes the complete product rather than one endpoint."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+
+        await client.delete_device("device/1")
+
+        client.get_reply_to_request.assert_awaited_once_with(
+            "DELETE", "/devices/device%2F1"
+        )
+
+    async def test_delete_group_uses_group_route(self) -> None:
+        """Related-endpoints groups use their dedicated group resource."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+
+        await client.delete_group("group/1")
+
+        client.get_reply_to_request.assert_awaited_once_with(
+            "DELETE", "/groups/group%2F1"
+        )
+
+    async def test_file_document_requests_preserve_the_complete_json(self) -> None:
+        """Dedicated-group removal reads and writes complete gateway files."""
+        client = self._client()
+        config = {"endpoints": [], "groups": []}
+        groups = {"groups": []}
+        client.get_reply_to_request = AsyncMock(
+            side_effect=[[[config]], [[groups]], [], []]
+        )
+
+        self.assertEqual(await client.get_config_file_document(), config)
+        self.assertEqual(await client.get_groups_file_document(), groups)
+        await client.post_config_file_document(config)
+        await client.post_groups_file_document(groups)
+
+        self.assertEqual(
+            client.get_reply_to_request.await_args_list,
+            [
+                call("GET", "/configs/file"),
+                call("GET", "/groups/file"),
+                call("POST", "/configs/file", body=config),
+                call("POST", "/groups/file", body=groups),
+            ],
+        )
+
+    async def test_delete_endpoint_keeps_the_channel_specific_route(self) -> None:
+        """Endpoint removal remains distinct from complete product removal."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(return_value=[])
+
+        await client.delete_endpoint("device/1", "endpoint 2")
+
+        client.get_reply_to_request.assert_awaited_once_with(
+            "DELETE", "/devices/device%2F1/endpoints/endpoint%202"
+        )
+
+    async def test_set_local_gateway_password_rejects_cloud_mediation(self) -> None:
+        """The password-changing API must remain a direct local operation."""
+        client = TydomClient(
+            None,
+            "test",
+            "001122334455",
+            "password",
+            host="mediation.tydom.com",
+        )
+
+        with self.assertRaisesRegex(
+            client_module.TydomClientApiClientError, "direct local connection"
+        ):
+            await client.async_set_local_gateway_password("NewPassword1")
+
     async def test_legacy_alarm_zone_commands_are_still_split(self) -> None:
         """Legacy arm commands must continue to address each configured part."""
         client = self._client()
@@ -347,6 +447,72 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
                 ),
             ],
         )
+
+    async def test_product_discovery_tolerates_a_gateway_scan_timeout(self) -> None:
+        """Discovery must not fail when a gateway keeps its radio scan open."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(
+            side_effect=TydomClientApiClientCommunicationError(
+                "Timeout waiting for reply to POST /devices/install"
+            )
+        )
+
+        await client.post_device_discovery(
+            {"protocol": "X3D", "type": "x3d_rm", "profile": "light"}
+        )
+
+        client.get_reply_to_request.assert_awaited_once_with(
+            "POST",
+            "/devices/install",
+            body={"protocol": "X3D", "type": "x3d_rm", "profile": "light"},
+            timeout=1,
+            log_timeout=False,
+        )
+
+    async def test_product_discovery_falls_back_when_install_is_not_supported(
+        self,
+    ) -> None:
+        """A gateway uses the compatibility action only after install returns 404."""
+        client = self._client()
+        client.get_reply_to_request = AsyncMock(
+            side_effect=TydomClientApiClientCommunicationError(
+                "Request POST /devices/install failed: HTTP 404"
+            )
+        )
+        client.send_request = AsyncMock(return_value="compatibility-request")
+        payload = {"protocol": "X3D", "type": "direct", "profile": "meter"}
+
+        await client.post_device_discovery(payload)
+
+        client.send_request.assert_awaited_once_with(
+            "POST", "/devices", body=payload
+        )
+        self.assertEqual(client._device_discovery_endpoint, "/devices")
+
+    async def test_product_discovery_remembers_the_compatibility_action(self) -> None:
+        """Once unsupported, do not probe the official route again this session."""
+        client = self._client()
+        client._device_discovery_endpoint = "/devices"
+        client.get_reply_to_request = AsyncMock()
+        client.send_request = AsyncMock(return_value="compatibility-request")
+        payload = {"protocol": "X3D", "type": "direct", "profile": "meter"}
+
+        await client.post_device_discovery(payload)
+
+        client.get_reply_to_request.assert_not_awaited()
+        client.send_request.assert_awaited_once_with("POST", "/devices", body=payload)
+
+    async def test_missing_optional_endpoints_are_not_retried(self) -> None:
+        """A legacy gateway's 404 capabilities are remembered per session."""
+        client = self._client()
+        client.send_message = AsyncMock()
+        client.mark_optional_path_unsupported("/scenarios/file")
+        client.mark_optional_path_unsupported("/moments/file")
+
+        await client.get_scenarii()
+        await client.get_moments()
+
+        client.send_message.assert_not_awaited()
 
     async def test_rejected_tracked_request_raises_protocol_error(self) -> None:
         """A gateway rejection must not be returned as an empty success."""

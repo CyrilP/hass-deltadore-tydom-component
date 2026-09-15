@@ -297,7 +297,14 @@
         },
         "number": {},
         "select": {},
-        "event": {},
+        "event": {
+            "remote_button": {
+                "name": "Button {button_number}"
+            },
+            "interrupter_button": {
+                "name": "Button {button_number}"
+            }
+        },
         "cover": {
             "tywell_shutters": {
                 "name": "Shutters"

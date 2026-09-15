@@ -31,8 +31,11 @@ _CONFIRMED_TUTORIAL_MODELS = {
 }
 
 _TUTORIAL_PREFIX_MODELS = {
+    "cle8000": "CLE 8000",
     "rcu_tyxia1410": "TYXIA 1410",
+    "switch_tyxia2310": "TYXIA 2310",
     "switch_tyxia2600": "TYXIA 2600",
+    "switch_tyxia2700": "TYXIA 2700",
     "tl2000": "TL 2000 Tyxal+",
 }
 
@@ -558,6 +561,7 @@ class TydomRemoteControl(TydomDevice):
         )
         info = remote_info or {}
         self._physical_device_id = str(info.get("physical_device_id", device_id))
+        self._association_group_id = info.get("group_id")
         self._remote_name = str(
             info.get("name", f"Remote control {self._physical_device_id}")
         )
@@ -570,6 +574,13 @@ class TydomRemoteControl(TydomDevice):
     def physical_device_id(self) -> str:
         """Return the identifier shared by every button on the remote."""
         return self._physical_device_id
+
+    @property
+    def association_group_id(self) -> str | None:
+        """Return the dedicated related-endpoints group, when TYDOM provides it."""
+        if self._association_group_id is None:
+            return None
+        return str(self._association_group_id)
 
     @property
     def remote_name(self) -> str:
@@ -1062,6 +1073,7 @@ class TydomInterrupter(TydomDevice):
         )
         info = interrupter_info or {}
         self._physical_device_id = str(info.get("physical_device_id", device_id))
+        self._association_group_id = info.get("group_id")
         self._interrupter_name = str(
             info.get("name", f"Wall switch {self._physical_device_id}")
         )
@@ -1074,6 +1086,13 @@ class TydomInterrupter(TydomDevice):
     def physical_device_id(self) -> str:
         """Return the identifier shared by both wall-switch buttons."""
         return self._physical_device_id
+
+    @property
+    def association_group_id(self) -> str | None:
+        """Return the dedicated related-endpoints group, when TYDOM provides it."""
+        if self._association_group_id is None:
+            return None
+        return str(self._association_group_id)
 
     @property
     def interrupter_name(self) -> str:

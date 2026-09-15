@@ -85,8 +85,8 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.components.button import ButtonEntity
 from homeassistant.components.number import NumberEntity
 from homeassistant.components.select import SelectEntity
+from homeassistant.components.text import TextEntity, TextMode
 from homeassistant.components.event import EventDeviceClass, EventEntity
-
 from .tydom.tydom_devices import (
     Tydom,
     TydomDevice,
@@ -122,6 +122,9 @@ from .const import (
     get_naviclim_fan_modes,
 )
 from .tydom.MessageHandler import device_name, groups_data
+from .official_association_tutorials import get_association_illustration_data_url
+
+ASSOCIATION_GUIDE_EVENT = f"{DOMAIN}_association_guide"
 
 
 _BINARY_TRUE_VALUES = frozenset({"1", "on", "true", "yes"})
@@ -6732,6 +6735,467 @@ class HAButton(ButtonEntity, HAEntity):
             )
 
 
+ASSOCIATION_COMMAND = "modeAsso"
+IDENTIFY_COMMAND = "localisation"
+_COMMAND_START_VALUE = "START"
+
+
+def supports_command(device: Any, command: str) -> bool:
+    """Return whether an endpoint advertises a writable START command."""
+    metadata = getattr(device, "_metadata", None)
+    if not isinstance(metadata, dict):
+        return False
+    command_metadata = metadata.get(command)
+    if not isinstance(command_metadata, dict):
+        return False
+    permission = str(command_metadata.get("permission", "")).lower()
+    values = command_metadata.get("enum_values")
+    return (
+        "w" in permission
+        and isinstance(values, list)
+        and _COMMAND_START_VALUE in values
+    )
+
+
+async def start_command(device: Any, command: str) -> None:
+    """Run an association or localisation command advertised by a device."""
+    if not supports_command(device, command):
+        raise ValueError(f"Device does not support the {command} command")
+    endpoint_id = getattr(device, "_endpoint", None)
+    if endpoint_id is None:
+        raise ValueError("Device has no TYDOM endpoint")
+    await device._tydom_client.put_devices_data(
+        device._id,
+        endpoint_id,
+        command,
+        _COMMAND_START_VALUE,
+    )
+
+
+class HADeviceAssociationButton(ButtonEntity, HAEntity):
+    """Button for an association capability advertised by one product."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+
+    def __init__(self, device: TydomDevice, hass, command: str) -> None:
+        """Initialise an association or physical-identification button."""
+        action_name, icon = {
+            ASSOCIATION_COMMAND: (
+                "Démarrer le mode association",
+                "mdi:link-variant-plus",
+            ),
+            IDENTIFY_COMMAND: ("Identifier l'appareil", "mdi:map-marker-radius"),
+        }[command]
+        self.hass = hass
+        self._device = device
+        self._association_command = command
+        self._attr_icon = icon
+        self._attr_name = action_name
+        self._attr_unique_id = f"{device.device_id}_button_{command}"
+
+    async def async_added_to_hass(self) -> None:
+        """Refresh when the associated product is updated."""
+        await super().async_added_to_hass()
+        self._device.register_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Detach the update callback without replacing the primary entity."""
+        self._device.remove_callback(self.async_write_ha_state)
+        await super().async_will_remove_from_hass()
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Attach this control to the existing physical product."""
+        if isinstance(self._device, TydomInterrupter):
+            return self._enrich_device_info(
+                {
+                    "identifiers": {
+                        (DOMAIN, f"interrupter_{self._device.physical_device_id}")
+                    },
+                    "name": self._device.interrupter_name,
+                    "manufacturer": "Delta Dore",
+                    "model": self._device.interrupter_model,
+                }
+            )
+
+        if isinstance(self._device, TydomRemoteControl):
+            return self._enrich_device_info(
+                {
+                    "identifiers": {
+                        (
+                            DOMAIN,
+                            f"remote_control_{self._device.physical_device_id}",
+                        )
+                    },
+                    "name": self._device.remote_name,
+                    "manufacturer": "Delta Dore",
+                    "model": self._device.remote_model,
+                }
+            )
+
+        # Auxiliary protocol endpoints (e.g. the weather endpoint grouped
+        # under a Tywell controller) share a physical registry identity with
+        # their parent.  The control must use that same identity: otherwise
+        # Home Assistant creates a separate generic ``Produit N`` device only
+        # to host the button.
+        registry_device_id = str(
+            getattr(self._device, "registry_device_id", self._device.device_id)
+        )
+        grouped_with_parent = registry_device_id != self._device.device_id
+        registry_device_name = str(
+            getattr(
+                self._device,
+                "registry_device_name",
+                getattr(self._device, "device_name", self._device.device_id),
+            )
+        )
+        device_info = self._get_device_info()
+        info: DeviceInfo = {
+            "identifiers": {(DOMAIN, registry_device_id)},
+            "name": registry_device_name
+            if grouped_with_parent
+            else getattr(self._device, "device_name", self._device.device_id),
+            "manufacturer": device_info["manufacturer"],
+        }
+        if "model" in device_info:
+            info["model"] = device_info["model"]
+        return self._enrich_device_info(info)
+
+    async def async_press(self) -> None:
+        """Run the START command advertised by this endpoint."""
+        await start_command(self._device, self._association_command)
+
+
+class HADeviceRemovalButton(HADeviceAssociationButton):
+    """Control for permanently removing one product."""
+
+    # This is an administrative gateway operation, never a day-to-day device
+    # control.  Keeping it in Configuration also avoids confusing it with the
+    # event entities which report real presses on physical remotes.
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, device: TydomDevice, hass, removal_callback=None) -> None:
+        """Initialise a permanent-removal control.
+
+        The gateway is the one exceptional device: removing it would sever the
+        entire integration, so keep that control opt-in.  Radio products remain
+        immediately removable by default.
+        """
+        self.hass = hass
+        self._device = device
+        self._removal_callback = removal_callback
+        self._attr_icon = "mdi:link-variant-remove"
+        self._attr_entity_registry_enabled_default = not isinstance(device, Tydom)
+        if isinstance(device, (TydomInterrupter, TydomRemoteControl)):
+            button_number = getattr(device, "button_number", None)
+            self._attr_name = (
+                f"Dissocier le bouton {button_number}"
+                if button_number is not None
+                else "Dissocier ce bouton"
+            )
+        else:
+            self._attr_name = "Dissocier définitivement l'appareil"
+        self._attr_unique_id = f"{device.device_id}_button_remove_association"
+
+    @property
+    def available(self) -> bool:
+        """Keep this explicit user control available whenever its product exists."""
+        return self._device is not None
+
+    async def async_press(self) -> None:
+        """Permanently remove this product from its TYDOM gateway."""
+        if self._removal_callback is None:
+            raise HomeAssistantError(
+                "No safe TYDOM product-removal workflow is available"
+            )
+        await self._removal_callback(self._device)
+
+
+class HAGroupableProductFinalizeAssociationButton(HADeviceAssociationButton):
+    """Finalize the configuration of one discovered multi-channel product."""
+
+    _attr_icon = "mdi:form-select"
+
+    def __init__(
+        self,
+        device: TydomDevice,
+        hass,
+        product_label: str,
+        channel: str,
+        usage_label: str,
+        callback,
+    ) -> None:
+        """Initialise the safe post-discovery configuration action."""
+        self.hass = hass
+        self._device = device
+        self._product_label = product_label
+        self._channel = channel
+        self._callback = callback
+        self._attr_name = f"Configurer {channel} comme {usage_label}"
+        self._attr_unique_id = f"{device.device_id}_button_finalize_{product_label.lower().replace(' ', '_')}"
+
+    async def async_press(self) -> None:
+        """Persist the selected channel with its official product metadata."""
+        await self._callback(self._device, self._channel)
+
+
+class _GatewayAssociationEntity:
+    """Shared Home Assistant device information for gateway controls."""
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, tydom_hub) -> None:
+        """Attach a control to its configured TYDOM gateway."""
+        self._hub = tydom_hub
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, tydom_hub.hub_id)},
+            name=tydom_hub._name,
+            manufacturer=tydom_hub.manufacturer,
+        )
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to selection changes made by companion controls."""
+        await super().async_added_to_hass()
+        self._hub.register_association_control(self)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Stop receiving selection changes after removal."""
+        self._hub.unregister_association_control(self)
+        await super().async_will_remove_from_hass()
+
+
+class HAGatewayAssociationCategorySelect(_GatewayAssociationEntity, SelectEntity):
+    """Choose the intended usage before choosing a product family."""
+
+    _attr_icon = "mdi:shape-outline"
+
+    def __init__(self, tydom_hub) -> None:
+        """Initialise the association-category selector."""
+        super().__init__(tydom_hub)
+        self._attr_unique_id = f"{tydom_hub.hub_id}_association_category"
+        self._attr_name = "1. Catégorie à associer"
+
+    @property
+    def options(self) -> list[str]:
+        """Return the product categories from the official workflow."""
+        return list(self._hub.association_categories)
+
+    @property
+    def current_option(self) -> str:
+        """Return the selected product category."""
+        return self._hub.association_category
+
+    async def async_select_option(self, option: str) -> None:
+        """Select a category and reset the product selection if needed."""
+        self._hub.set_association_category(option)
+
+
+class HAGatewayAssociationProductSelect(_GatewayAssociationEntity, SelectEntity):
+    """Choose a product family compatible with the selected category."""
+
+    _attr_icon = "mdi:devices"
+
+    def __init__(self, tydom_hub) -> None:
+        """Initialise the product-family selector."""
+        super().__init__(tydom_hub)
+        self._attr_unique_id = f"{tydom_hub.hub_id}_association_product"
+        self._attr_name = "2. Produit à associer"
+
+    @property
+    def options(self) -> list[str]:
+        """Return products for the selected category only."""
+        return list(self._hub.association_product_labels)
+
+    @property
+    def current_option(self) -> str:
+        """Return the selected product-family label."""
+        return self._hub.association_product_label
+
+    async def async_select_option(self, option: str) -> None:
+        """Select the protocol profile represented by an option."""
+        self._hub.set_association_product(option)
+
+
+class HAGatewayAssociationChannelSelect(_GatewayAssociationEntity, SelectEntity):
+    """Choose an independently associated channel where the product has one."""
+
+    _attr_icon = "mdi:gesture-tap-button"
+
+    def __init__(self, tydom_hub) -> None:
+        """Initialise the physical-channel selector."""
+        super().__init__(tydom_hub)
+        self._attr_unique_id = f"{tydom_hub.hub_id}_association_channel"
+        self._attr_name = "3. Voie à associer"
+
+    @property
+    def available(self) -> bool:
+        """Only expose this selector for products with independent channels."""
+        return bool(self._hub.association_channel_labels)
+
+    @property
+    def options(self) -> list[str]:
+        """Return physical channels documented for the selected product."""
+        return list(self._hub.association_channel_labels)
+
+    @property
+    def current_option(self) -> str | None:
+        """Return the selected physical channel."""
+        return self._hub.association_channel_label
+
+    @property
+    def extra_state_attributes(self) -> dict[str, list[str]]:
+        """Show the model-specific physical procedure in the entity dialog."""
+        return {"instructions": list(self._hub.association_instructions)}
+
+    async def async_select_option(self, option: str) -> None:
+        """Select a physical channel."""
+        self._hub.set_association_channel(option)
+
+
+class HAGatewayAssociationUsageSelect(_GatewayAssociationEntity, SelectEntity):
+    """Choose the supported application usage for the selected product."""
+
+    _attr_icon = "mdi:format-list-bulleted-type"
+
+    def __init__(self, tydom_hub) -> None:
+        """Initialise the product-usage selector."""
+        super().__init__(tydom_hub)
+        self._attr_unique_id = f"{tydom_hub.hub_id}_association_usage"
+        self._attr_name = "4. Usage / type d'association"
+
+    @property
+    def options(self) -> list[str]:
+        """Return only usages documented for the selected product."""
+        return list(self._hub.association_usage_labels)
+
+    @property
+    def current_option(self) -> str:
+        """Return the selected application usage."""
+        return self._hub.association_usage_label
+
+    async def async_select_option(self, option: str) -> None:
+        """Select a valid product usage and its exact discovery recipe."""
+        self._hub.set_association_usage(option)
+
+
+class HAGatewayAssociationNameText(_GatewayAssociationEntity, TextEntity):
+    """Choose the optional product name before starting its association."""
+
+    _attr_icon = "mdi:form-textbox"
+    _attr_mode = TextMode.TEXT
+    _attr_native_max = 64
+
+    def __init__(self, tydom_hub) -> None:
+        """Initialise the optional association-name field."""
+        super().__init__(tydom_hub)
+        self._attr_unique_id = f"{tydom_hub.hub_id}_association_name"
+        self._attr_name = "Nom de l'appareil (facultatif)"
+
+    @property
+    def available(self) -> bool:
+        """Show the field for every product the gateway can associate."""
+        return self._hub.association_name_supported
+
+    @property
+    def native_value(self) -> str:
+        """Return the optional name, or an empty field by default."""
+        return self._hub.association_name
+
+    async def async_set_value(self, value: str) -> None:
+        """Store the value until the selected association is finalised."""
+        self._hub.set_association_name(value)
+
+
+class HAGatewayAssociationGuideButton(_GatewayAssociationEntity, ButtonEntity):
+    """Display a model-specific association procedure in Home Assistant."""
+
+    _attr_icon = "mdi:book-open-variant"
+
+    def __init__(self, tydom_hub) -> None:
+        """Initialise the association guide button."""
+        super().__init__(tydom_hub)
+        self._attr_unique_id = f"{tydom_hub.hub_id}_association_guide"
+        self._attr_name = "5. Afficher le guide d'association"
+
+    @property
+    def available(self) -> bool:
+        """Only show a guide when the selected product has one."""
+        return bool(self._hub.association_instructions)
+
+    async def async_press(self) -> None:
+        """Open the selected procedure in the local HA guide dialog."""
+        channel = self._hub.association_channel_label
+        title = f"{self._hub.association_product_label} — guide d'association"
+        if channel:
+            title = f"{title} ({channel})"
+        overview_id, illustration_ids, stepwise_illustrations = (
+            self._hub.association_illustration_layout
+        )
+        overview = (
+            get_association_illustration_data_url(overview_id)
+            if overview_id is not None
+            else None
+        )
+        illustrations = [
+            image
+            for image_id in illustration_ids
+            if (image := get_association_illustration_data_url(image_id)) is not None
+        ]
+        start_association_entity_id = None
+        try:
+            from homeassistant.helpers import entity_registry as er
+
+            registry = er.async_get(self.hass)
+            start_association_entity_id = registry.async_get_entity_id(
+                "button",
+                DOMAIN,
+                f"{self._hub.hub_id}_start_product_association",
+            )
+        except (AttributeError, KeyError, TypeError):
+            # The guide remains usable during setup before the companion
+            # button has been registered. The normal configuration page still
+            # exposes the action in that short-lived situation.
+            pass
+        self.hass.bus.async_fire(
+            ASSOCIATION_GUIDE_EVENT,
+            {
+                "title": title,
+                "instructions": list(self._hub.association_instructions),
+                "overview": overview,
+                "illustrations": illustrations,
+                "illustration_mode": ("steps" if stepwise_illustrations else "gallery"),
+                "illustration_step_indexes": list(
+                    getattr(self._hub, "association_illustration_step_indexes", ())
+                ),
+                "start_association_entity_id": start_association_entity_id,
+            },
+        )
+
+
+class HAGatewayStartAssociationButton(_GatewayAssociationEntity, ButtonEntity):
+    """Start the generic add-product workflow on the selected gateway."""
+
+    _attr_icon = "mdi:link-plus"
+
+    def __init__(self, tydom_hub) -> None:
+        """Initialise the start-association button."""
+        super().__init__(tydom_hub)
+        self._attr_unique_id = f"{tydom_hub.hub_id}_start_product_association"
+        self._attr_name = "6. Lancer l'écoute de la passerelle"
+
+    @property
+    def available(self) -> bool:
+        """Disable the action if the category has no local install profile."""
+        return self._hub.association_product_supported
+
+    async def async_press(self) -> None:
+        """Start association using the selected product family."""
+        await self._hub.start_selected_product_association()
+
+
 class HAAlarmAcknowledgeButton(ButtonEntity, HAEntity):
     """Button which acknowledges pending TYXAL alarm events."""
 
@@ -6940,10 +7404,21 @@ class HAReloadButton(ButtonEntity):
             name=hub._name,
             manufacturer=hub.manufacturer,
         )
+        hub.register_association_control(self)
+
+    @property
+    def available(self) -> bool:
+        """Avoid concurrent inventory rebuilds from the gateway page."""
+        return not self._hub.inventory_syncing
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str]:
+        """Expose explicit progress instead of making disappearance look final."""
+        return {"synchronisation": self._hub.inventory_sync_status}
 
     async def async_press(self) -> None:
         """Handle the button press."""
-        await self._hub.reload_devices()
+        await self._hub.reload_devices_with_status()
 
 
 class HARefreshEnergyButton(ButtonEntity):
@@ -7133,11 +7608,13 @@ class HARemoteEvent(EventEntity, HAEntity):
         self._last_event_sequence = device.event_sequence
         self._attr_unique_id = f"{self._device.device_id}_remote_event"
         button_number = device.button_number
-        self._attr_name = (
-            f"Button {button_number}"
-            if button_number is not None
-            else device.device_name
-        )
+        if button_number is None:
+            self._attr_name = device.device_name
+        else:
+            self._attr_translation_key = "remote_button"
+            self._attr_translation_placeholders = {
+                "button_number": str(button_number),
+            }
 
     async def async_added_to_hass(self) -> None:
         """Listen for fresh actions from this physical button endpoint."""
@@ -7317,11 +7794,13 @@ class HAInterrupterEvent(EventEntity, HAEntity):
         self._device._ha_device = self
         self._last_event_sequence = device.event_sequence
         self._attr_unique_id = f"{self._device.device_id}_interrupter_event"
-        self._attr_name = (
-            f"Button {device.button}"
-            if device.button is not None
-            else device.device_name
-        )
+        if device.button is None:
+            self._attr_name = device.device_name
+        else:
+            self._attr_translation_key = "interrupter_button"
+            self._attr_translation_placeholders = {
+                "button_number": str(device.button),
+            }
 
     async def async_added_to_hass(self) -> None:
         """Listen for fresh actions from this physical button endpoint."""
