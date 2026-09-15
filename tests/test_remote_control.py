@@ -64,6 +64,8 @@ handler_spec.loader.exec_module(handler_module)
 
 MessageHandler = handler_module.MessageHandler
 TydomRemoteControl = devices_module.TydomRemoteControl
+TydomEnergy = devices_module.TydomEnergy
+TydomThermo = devices_module.TydomThermo
 
 migration_name = "custom_components.deltadore_tydom.remote_registry_migration"
 migration_path = (
@@ -102,6 +104,9 @@ class TestRemoteControl(IsolatedAsyncioTestCase):
             "groups_data",
             "endpoint_config",
             "remote_control_info",
+            "device_endpoint",
+            "device_tutorial_id",
+            "interrupter_endpoint_config",
         ):
             getattr(handler_module, mapping_name).clear()
         logger.reset_mock()
@@ -227,6 +232,188 @@ class TestRemoteControl(IsolatedAsyncioTestCase):
             {device.remote_model for device in devices}, {"TL 2000 Tyxal+"}
         )
 
+    async def test_unconfigured_x3d_remote_is_exposed_for_removal(self) -> None:
+        """A newly associated X3D remote must not be hidden without config data."""
+        device_id = 1788902774
+        unique_id = f"{device_id}_{device_id}"
+        handler_module.device_metadata[unique_id] = {
+            "battDefect": {"type": "boolean", "validity": "INFINITE"},
+            "action": {"type": "string", "validity": "REMOTE"},
+        }
+
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": device_id,
+                    "endpoints": [
+                        {
+                            "id": device_id,
+                            "error": 0,
+                            "data": [
+                                {
+                                    "name": "battDefect",
+                                    "validity": "upToDate",
+                                    "value": False,
+                                },
+                                {
+                                    "name": "action",
+                                    "validity": "upToDate",
+                                    "value": "TOGGLE",
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+
+        self.assertEqual(len(devices), 1)
+        device = devices[0]
+        self.assertIsInstance(device, TydomRemoteControl)
+        self.assertEqual(device.remote_name, f"X3D remote control {device_id}")
+        self.assertEqual(device.button_number, 1)
+
+    async def test_pending_remote_button_is_restored_from_configured_sibling(self) -> None:
+        """A re-added remote button must not remain TYDOM's generic Produit N."""
+        device_id = 1693573310
+        configured_uid = f"{device_id}_{device_id}"
+        pending_endpoint_id = 1693573380
+        pending_uid = f"{pending_endpoint_id}_{device_id}"
+        handler_module.config_file_data = {"endpoints": []}
+        handler_module.endpoint_config[configured_uid] = {
+            "device_id": device_id,
+            "endpoint_id": device_id,
+            "usage": "remoteControl",
+        }
+        handler_module.remote_control_info[configured_uid] = {
+            "physical_device_id": str(device_id),
+            "group_id": "1558462107",
+            "name": "TÃ©lÃ©commande C3",
+            "model": "TYXIA 1410",
+            "button_number": 1,
+            "configured_action": "TOGGLE",
+        }
+        handler_module.device_name[pending_uid] = "Produit 2"
+        handler_module.device_type[pending_uid] = "unknown"
+        handler_module.device_metadata[pending_uid] = {
+            "action": {"type": "string"},
+        }
+
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": device_id,
+                    "endpoints": [
+                        {
+                            "id": pending_endpoint_id,
+                            "error": 0,
+                            "data": [
+                                {
+                                    "name": "action",
+                                    "validity": "upToDate",
+                                    "value": "TOGGLE",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+
+        self.assertEqual(len(devices), 1)
+        device = devices[0]
+        self.assertIsInstance(device, TydomRemoteControl)
+        self.assertEqual(device.device_name, f"X3D remote control {device_id}")
+        self.assertEqual(device.remote_name, "TÃ©lÃ©commande C3")
+        self.assertIsNone(device.button_number)
+
+    async def test_unconfigured_x3d_meter_is_exposed_from_access_event(self) -> None:
+        """A Tywatt announced by /devices/access must not be discarded."""
+        device_id = 1789146156
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": device_id,
+                    "endpoints": [
+                        {
+                            "id": device_id,
+                            "error": 0,
+                            "access": {
+                                "protocol": "X3D",
+                                "type": "direct",
+                                "profile": "meter",
+                            },
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+
+        self.assertEqual(len(devices), 1)
+        self.assertIsInstance(devices[0], TydomEnergy)
+        self.assertEqual(devices[0].device_name, f"X3D meter {device_id}")
+
+    async def test_unconfigured_x3d_meter_is_recovered_from_its_data(self) -> None:
+        """A previously associated Tywatt survives a later HA restart/reload."""
+        device_id = 1789146156
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": device_id,
+                    "endpoints": [
+                        {
+                            "id": device_id,
+                            "error": 0,
+                            "data": [
+                                {
+                                    "name": "energyIndexHeatGas",
+                                    "validity": "upToDate",
+                                    "value": 0,
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+
+        self.assertEqual(len(devices), 1)
+        self.assertIsInstance(devices[0], TydomEnergy)
+        self.assertEqual(devices[0].energyIndexHeatGas, 0)
+
+    async def test_unconfigured_x3d_temperature_is_exposed_from_access_event(
+        self,
+    ) -> None:
+        """A STE 2000 announced by /devices/access gets a sensor fallback."""
+        device_id = 1789146157
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": device_id,
+                    "endpoints": [
+                        {
+                            "id": device_id,
+                            "error": 0,
+                            "access": {
+                                "protocol": "X3D",
+                                "type": "direct",
+                                "profile": "temperature",
+                            },
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+
+        self.assertEqual(len(devices), 1)
+        self.assertIsInstance(devices[0], TydomThermo)
+        self.assertEqual(devices[0].device_name, f"X3D temperature sensor {device_id}")
+
     async def test_tyxia_1410_has_four_button_endpoints(self) -> None:
         """TYXIA 1410 discovery exposes four buttons under one remote."""
         device_id = 1693573310
@@ -256,6 +443,56 @@ class TestRemoteControl(IsolatedAsyncioTestCase):
             },
             {"TYXIA 1410"},
         )
+
+    async def test_removed_remote_button_is_not_recreated_from_radio_data(self) -> None:
+        """A removed remote button stays absent while sibling buttons remain."""
+        device_id = 1693573310
+        endpoint_ids = await self._configure_remote(
+            device_id=device_id,
+            group_id=1558462107,
+            group_name="Télécommande C3",
+            tutorial_id="rcu_tyxia1410",
+            button_count=4,
+        )
+
+        configured_endpoints = handler_module.config_file_data["endpoints"][:3]
+        await self.handler.parse_config_data(
+            {
+                "endpoints": configured_endpoints,
+                "groups": handler_module.config_file_data["groups"],
+            },
+            None,
+        )
+        for endpoint_id in endpoint_ids:
+            handler_module.device_metadata[f"{endpoint_id}_{device_id}"] = {
+                "action": {"type": "string", "validity": "REMOTE"},
+            }
+
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": device_id,
+                    "endpoints": [
+                        {
+                            "id": endpoint_id,
+                            "error": 0,
+                            "data": [
+                                {
+                                    "name": "action",
+                                    "validity": "upToDate",
+                                    "value": "TOGGLE",
+                                }
+                            ],
+                        }
+                        for endpoint_id in endpoint_ids
+                    ],
+                }
+            ],
+            None,
+        )
+
+        self.assertEqual([device.button_number for device in devices], [1, 2, 3])
+        self.assertNotIn(f"{endpoint_ids[3]}_{device_id}", handler_module.device_name)
 
     async def test_only_fresh_non_idle_action_advances_event_sequence(self) -> None:
         """Polling without a fresh action must not repeat the previous press."""

@@ -209,6 +209,54 @@ class TestInterrupter(IsolatedAsyncioTestCase):
             {device.interrupter_model for device in devices}, {"TYXIA 2600"}
         )
 
+    async def test_pending_switch_button_is_restored_from_configured_sibling(self) -> None:
+        """A re-added wall-switch channel must not remain TYDOM's Produit N."""
+        device_id = 1759742040
+        endpoint_ids = [1759742040, 1759742338]
+        pending_endpoint_id = 1759742600
+        await self._configure_switch(
+            device_id=device_id,
+            endpoint_ids=endpoint_ids,
+            endpoint_buttons=["A", "B"],
+            group_id=845782971,
+            group_name="Portillon/Portail",
+        )
+        pending_uid = f"{pending_endpoint_id}_{device_id}"
+        handler_module.device_name[pending_uid] = "Produit 2"
+        handler_module.device_type[pending_uid] = "unknown"
+        handler_module.device_metadata[pending_uid] = {
+            "action": {"type": "string"},
+        }
+
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": device_id,
+                    "endpoints": [
+                        {
+                            "id": pending_endpoint_id,
+                            "error": 0,
+                            "data": [
+                                {
+                                    "name": "action",
+                                    "validity": "upToDate",
+                                    "value": "TOGGLE",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+
+        self.assertEqual(len(devices), 1)
+        device = devices[0]
+        self.assertIsInstance(device, TydomInterrupter)
+        self.assertEqual(device.device_name, f"X3D wall switch {device_id}")
+        self.assertEqual(device.interrupter_name, "Portillon/Portail")
+        self.assertIsNone(device.button)
+
     async def test_all_three_captured_switch_names_are_retained(self) -> None:
         """The group names configured in the Delta Dore app remain available."""
         captures = (

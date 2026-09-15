@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+import copy
 import json
 import os
 import re
@@ -184,6 +185,15 @@ class TydomClient:
             str, tuple[float, bool]
         ] = {}  # endpoint -> (timestamp, is_valid)
         self._metadata_cache_ttl = 3600.0  # 1 hour in seconds
+        # Older TYDOM gateways do not expose every optional endpoint. Once a
+        # 404 confirms that a feature is absent, avoid querying it on every
+        # reconnect or inventory reload.
+        self._unsupported_optional_paths: set[str] = set()
+        # The current official application uses /devices/install for product
+        # discovery. Some older or vendor-specific gateway firmware retains
+        # the former /devices action instead; remember an explicit fallback
+        # for the lifetime of this client.
+        self._device_discovery_endpoint = "/devices/install"
 
     def update_config(self, zone_home: str, zone_away: str, zone_night: str):
         """Update zones configuration."""
@@ -1111,6 +1121,124 @@ class TydomClient:
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
+    async def post_device_discovery(self, payload: dict[str, str | int]) -> None:
+        """Start the gateway's generic product-discovery workflow.
+
+        The official TYDOM application sends its standard ``DISCOVER``
+        request to ``/devices/install``, independently of the selected radio
+        profile. Some gateway firmware retains the former ``/devices``
+        action. Probe the official route first and use that compatibility
+        route only after an explicit HTTP 404; a scan timeout means the
+        gateway is listening and must not trigger a second request.
+        """
+        required = {"protocol", "type", "profile"}
+        missing = required.difference(payload)
+        if missing:
+            raise ValueError(
+                "Product association payload is missing: " + ", ".join(sorted(missing))
+            )
+        endpoint = self._device_discovery_endpoint
+        if endpoint == "/devices":
+            transaction_id = await self.send_request("POST", endpoint, body=payload)
+            LOGGER.debug(
+                "Dispatched compatibility product-association request "
+                "(transaction_id: %s)",
+                transaction_id,
+            )
+            return
+
+        try:
+            await self.get_reply_to_request(
+                "POST",
+                endpoint,
+                body=payload,
+                timeout=1,
+                log_timeout=False,
+            )
+        except TydomClientApiClientCommunicationError as err:
+            error = str(err)
+            if "Timeout waiting for reply" in error:
+                LOGGER.debug(
+                    "Product-association request dispatched; gateway is listening: %s",
+                    error,
+                )
+                return
+            if "HTTP 404" not in error:
+                raise
+
+            self._device_discovery_endpoint = "/devices"
+            transaction_id = await self.send_request("POST", "/devices", body=payload)
+            LOGGER.info(
+                "Gateway does not support %s; dispatched compatibility "
+                "product-association request (transaction_id: %s)",
+                endpoint,
+                transaction_id,
+            )
+            return
+
+        LOGGER.debug(
+            "Gateway acknowledged product-association request on %s",
+            endpoint,
+        )
+
+    async def delete_device(self, device_id: str | int) -> None:
+        """Permanently delete one complete product from the TYDOM inventory.
+
+        This deliberately targets the parent device, not one of its endpoints.
+        A product such as a TYXIA 2600 can expose an endpoint per physical
+        button; deleting an endpoint merely removes that button and leaves the
+        product shell in the gateway inventory. The official product-removal
+        workflow uses the device route for a complete disassociation.
+        """
+        safe_device_id = quote(str(device_id), safe="")
+        await self.get_reply_to_request("DELETE", f"/devices/{safe_device_id}")
+
+    async def delete_group(self, group_id: str | int) -> None:
+        """Delete one dedicated TYDOM configuration group."""
+        safe_group_id = quote(str(group_id), safe="")
+        await self.get_reply_to_request("DELETE", f"/groups/{safe_group_id}")
+
+    @staticmethod
+    def _file_reply_document(reply: list[dict] | None, path: str) -> dict[str, object]:
+        """Return the single JSON document returned by a TYDOM file endpoint."""
+        if not reply or not isinstance(reply[0], dict):
+            raise TydomClientApiClientCommunicationError(
+                f"TYDOM returned no JSON document for {path}"
+            )
+        return copy.deepcopy(reply[0])
+
+    async def get_config_file_document(self) -> dict[str, object]:
+        """Read a fresh complete ``/configs/file`` document."""
+        return self._file_reply_document(
+            await self.get_reply_to_request("GET", "/configs/file"),
+            "/configs/file",
+        )
+
+    async def get_groups_file_document(self) -> dict[str, object]:
+        """Read a fresh complete ``/groups/file`` document."""
+        return self._file_reply_document(
+            await self.get_reply_to_request("GET", "/groups/file"),
+            "/groups/file",
+        )
+
+    async def post_config_file_document(self, document: dict[str, object]) -> None:
+        """Replace the gateway configuration document with a validated snapshot."""
+        await self.get_reply_to_request("POST", "/configs/file", body=document)
+
+    async def post_groups_file_document(self, document: dict[str, object]) -> None:
+        """Replace the gateway group-membership document with a validated snapshot."""
+        await self.get_reply_to_request("POST", "/groups/file", body=document)
+
+    async def delete_endpoint(
+        self, device_id: str | int, endpoint_id: str | int
+    ) -> None:
+        """Delete one endpoint only, without removing its parent product."""
+        safe_device_id = quote(str(device_id), safe="")
+        safe_endpoint_id = quote(str(endpoint_id), safe="")
+        await self.get_reply_to_request(
+            "DELETE", f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}"
+        )
+
     async def get_local_claim(self):
         """Ask some information from Tydom."""
         msg_type = "/configs/gateway/local_claim"
@@ -1344,6 +1472,8 @@ class TydomClient:
     async def get_moments(self):
         """Get the moments (programs)."""
         msg_type = "/moments/file"
+        if msg_type in self._unsupported_optional_paths:
+            return
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
@@ -1403,8 +1533,14 @@ class TydomClient:
     async def get_scenarii(self):
         """Get the scenarios."""
         msg_type = "/scenarios/file"
+        if msg_type in self._unsupported_optional_paths:
+            return
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
+
+    def mark_optional_path_unsupported(self, path: str) -> None:
+        """Remember an optional API path rejected by this gateway."""
+        self._unsupported_optional_paths.add(path)
 
     async def activate_scenario(self, scenario_id: str | int):
         """Activate a scenario.

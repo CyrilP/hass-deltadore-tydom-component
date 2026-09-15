@@ -5,7 +5,7 @@
     "@CyrilP"
   ],
   "config_flow": true,
-  "dependencies": ["dhcp"],
+  "dependencies": ["dhcp", "http"],
   "dhcp": [
     {
       "hostname": "tydom-*",
