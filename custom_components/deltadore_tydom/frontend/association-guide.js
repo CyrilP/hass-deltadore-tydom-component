@@ -174,7 +174,7 @@ class DeltaDoreAssociationGuideDialog extends HTMLElement {
               entity_id: this._startAssociationEntityId,
             });
             startButton.textContent = "Écoute de la passerelle démarrée";
-            status.textContent = "Passez maintenant à l'étape suivante.";
+            status.textContent = "Écoute active — suivez les instructions affichées dans ce guide.";
           } catch (error) {
             startButton.disabled = false;
             status.textContent = "Impossible de lancer l'écoute. Réessayez.";

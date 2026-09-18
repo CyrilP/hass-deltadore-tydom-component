@@ -187,6 +187,24 @@ class GatewayAssociationTests(IsolatedAsyncioTestCase):
         self.assertIsNotNone(illustration)
         self.assertIn("#354254", illustration)
 
+    def test_tywell_control_guide_orders_device_then_gateway_actions(self) -> None:
+        """The Android app's combined instruction is explicit in HA."""
+        tydom_hub = object.__new__(Hub)
+        tydom_hub._association_controls = []
+        tydom_hub._association_category = "Thermique"
+        tydom_hub._association_product = "Tywell Control"
+        tydom_hub._association_profile = "official:thermic_X3D_x3d_pps"
+
+        self.assertEqual(
+            tydom_hub.association_instructions,
+            (
+                "1. Sur le Tywell Control, lancez « Association avec la box Tywell ».",
+                "2. Dans Home Assistant, cliquez sur « Lancer l'écoute de la passerelle » ci-dessous.",
+                "3. Attendez la découverte et l'ajout automatique du contrôleur.",
+            ),
+        )
+        self.assertEqual(tydom_hub.association_illustration_step_indexes, (0,))
+
     async def test_raw_standalone_product_is_promoted_to_gate_configuration(
         self,
     ) -> None:

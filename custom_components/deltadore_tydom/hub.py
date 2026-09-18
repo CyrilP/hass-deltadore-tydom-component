@@ -2295,6 +2295,10 @@ class Hub:
         product = self._selected_groupable_product()
         if product is not None:
             return product.illustration_step_indexes
+        if self._association_product == "Tywell Control":
+            # The Android tutorial has a device-side preparation followed by
+            # the gateway action. Its sole visual depicts that preparation.
+            return (0,)
         _, illustrations, _ = self.association_illustration_layout
         return tuple(range(len(illustrations)))
 
@@ -2312,6 +2316,17 @@ class Hub:
                     channel_lower=channel.lower(),
                 )
                 for step in product.guide
+            )
+
+        if self._association_product == "Tywell Control":
+            # The official sentence combines a control on the device with the
+            # TYDOM application's "Associer" button. Split it into the order
+            # required by Home Assistant, whose button opens the gateway's
+            # listening window instead.
+            return (
+                "1. Sur le Tywell Control, lancez « Association avec la box Tywell ».",
+                "2. Dans Home Assistant, cliquez sur « Lancer l'écoute de la passerelle » ci-dessous.",
+                "3. Attendez la découverte et l'ajout automatique du contrôleur.",
             )
 
         tutorial = get_official_association_tutorial(
