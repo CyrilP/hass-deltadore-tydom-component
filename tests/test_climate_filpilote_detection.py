@@ -337,6 +337,40 @@ class FilPiloteDetectionTests(TestCase):
         )
         self.assertFalse(entity._is_filpilote)
 
+    def test_live_setpoint_without_metadata_is_not_pilot_wire(self) -> None:
+        """Keep a Tywell/Typass zone controllable before metadata is loaded.
+
+        Some gateways publish /devices/data before /devices/meta.  A live
+        writable setpoint is enough evidence that the zone is not an RF 6600
+        pilot-wire heater, even when its min/max metadata is not available yet.
+        """
+        entity, _client = _thermostat(
+            metadata={
+                "authorization": {
+                    "type": "string",
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "thermicLevel": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["ECO", "COMFORT", "STOP", "ANTI_FROST"],
+                },
+            },
+            data={
+                "authorization": "HEATING",
+                "thermicLevel": "COMFORT",
+                "setpoint": 20.0,
+                "minSetpoint": 5.0,
+                "maxSetpoint": 30.0,
+            },
+        )
+
+        self.assertFalse(entity._is_filpilote)
+        self.assertTrue(
+            entity.supported_features & ClimateEntityFeature.TARGET_TEMPERATURE
+        )
+
     def test_authorization_with_cool_setpoint_is_not_pilot_wire(self) -> None:
         """Same guard, using `coolSetpoint` instead of `heatSetpoint`."""
         entity, _client = _thermostat(

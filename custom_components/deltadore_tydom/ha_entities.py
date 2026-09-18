@@ -2535,6 +2535,16 @@ class HaClimate(ClimateEntity, HAEntity):
             attr in metadata and ("min" in metadata[attr] or "max" in metadata[attr])
             for attr in ("setpoint", "heatSetpoint", "coolSetpoint")
         )
+        # The metadata endpoint is not guaranteed to be available when HA builds
+        # the entity.  TYWELL Control and Typass ATL zones nevertheless expose
+        # their writable setpoint and its bounds in /devices/data.  Treat that as
+        # an authoritative setpoint capability too; otherwise those zones are
+        # wrongly presented as pilot-wire heaters and lose their temperature
+        # control entirely.
+        has_live_setpoint = any(
+            getattr(self._device, attribute, None) is not None
+            for attribute in ("setpoint", "heatSetpoint", "coolSetpoint")
+        )
         has_cool_enum_meta = metadata is not None and any(
             isinstance(metadata.get(attr), dict)
             and "COOLING" in metadata[attr].get("enum_values", [])
@@ -2554,6 +2564,7 @@ class HaClimate(ClimateEntity, HAEntity):
             has_pilot_wire_command
             and has_thermic_level
             and not has_setpoint_meta
+            and not has_live_setpoint
             and not has_cool_enum_meta
         )
 
