@@ -3134,7 +3134,13 @@ class Hub:
         zone_key = ha_device._get_zone_from_scene()
         controller_id = ha_device._find_tywell_device(zone_key)
         parent_key = controller_id or f"tywell_control_{zone_key or 'default'}"
-        grouping_key = f"{parent_key}:{zone_key or 'default'}"
+        # A Tywell Control can expose more than one UP/DOWN/STOP trio.  The
+        # scenario names only contain the action, so group by the exact target
+        # set as well as its parent.  Otherwise a second Tywell Control (or a
+        # second shutter zone) overwrites the first controller's actions.
+        target_ids = sorted(ha_device._get_affected_device_ids())
+        target_key = "-".join(target_ids) if target_ids else "unknown-targets"
+        grouping_key = f"{parent_key}:{zone_key or 'default'}:{target_key}"
         scenes = self._twc_scene_sets.setdefault(grouping_key, {})
         scenes[action] = ha_device
 

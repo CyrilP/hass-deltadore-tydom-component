@@ -5,6 +5,7 @@ import asyncio
 from contextlib import suppress
 import inspect
 import math
+import unicodedata
 from datetime import datetime
 
 from homeassistant.components.binary_sensor import (
@@ -4908,6 +4909,26 @@ class HAScene(Scene, HAEntity):
                 )
                 return device_id
 
+            # A TWC scenario references the shutters it controls, but not the
+            # Tywell Control which owns that shutter set.  With two controllers
+            # the old "one controller" fallback therefore collapsed unrelated
+            # floor controls into a single virtual device.  When the controller
+            # and shutter names explicitly identify a floor, use that
+            # installation-level information.  This is deliberately
+            # conservative: an unlabelled installation remains separate rather
+            # than attaching shutters to the wrong controller.
+            controller_id = self._find_tywell_controller_by_floor(
+                physical_controllers, affected_device_ids
+            )
+            if controller_id is not None:
+                self._cached_tywell_device_id = controller_id
+                LOGGER.debug(
+                    "Matched TWC scene %s to Tywell controller %s from its shutter targets",
+                    self._device.device_id,
+                    controller_id,
+                )
+                return controller_id
+
             LOGGER.debug(
                 "No unambiguous physical Tywell controller found for scene %s",
                 self._device.device_id,
@@ -4921,6 +4942,95 @@ class HAScene(Scene, HAEntity):
                 exc_info=True,
             )
             return None
+
+    @staticmethod
+    def _normalise_floor_text(value: object) -> str:
+        """Return a case- and accent-insensitive label for floor matching."""
+        normalised = unicodedata.normalize("NFKD", str(value or ""))
+        return "".join(
+            character
+            for character in normalised
+            if not unicodedata.combining(character)
+        ).lower()
+
+    def _find_tywell_controller_by_floor(
+        self,
+        physical_controllers: list[tuple[str, TydomDevice]],
+        affected_device_ids: set[str],
+    ) -> str | None:
+        """Match clearly named shutter targets to a clearly named controller.
+
+        The TYDOM scenario API only exposes ``epAct`` shutter targets.  It does
+        not include the originating Tywell Control or area identifier.  This
+        fallback makes use of unambiguous user-facing floor labels while never
+        guessing for generic controller or shutter names.
+        """
+        hub_instance = self._get_hub()
+        if hub_instance is None:
+            return None
+
+        target_text = " ".join(
+            self._normalise_floor_text(
+                getattr(hub_instance.devices.get(device_id), "device_name", "")
+            )
+            for device_id in affected_device_ids
+        )
+        if not target_text:
+            return None
+
+        floor_markers = {
+            "ground": ("rdc", "rez de chaussee", "ground", "downstairs"),
+            "upper": ("etg", "etage", "upstairs", "upper", "first floor"),
+        }
+        shutter_markers = {
+            "ground": (
+                "salon",
+                "sejour",
+                "living",
+                "cuisine",
+                "kitchen",
+                "salle a manger",
+                "dining",
+            ),
+            "upper": (
+                "chambre",
+                "bedroom",
+                "sdb",
+                "salle de bain",
+                "bathroom",
+                "bureau",
+                "office",
+                "salle de jeux",
+                "playroom",
+            ),
+        }
+
+        target_scores = {
+            floor: sum(marker in target_text for marker in markers)
+            for floor, markers in shutter_markers.items()
+        }
+        matches: list[tuple[int, str]] = []
+        for device_id, controller in physical_controllers:
+            controller_text = self._normalise_floor_text(
+                getattr(controller, "device_name", "")
+            )
+            floors = [
+                floor
+                for floor, markers in floor_markers.items()
+                if any(marker in controller_text for marker in markers)
+            ]
+            if len(floors) != 1:
+                continue
+            score = target_scores[floors[0]]
+            if score:
+                matches.append((score, device_id))
+
+        if not matches:
+            return None
+        matches.sort(reverse=True)
+        if len(matches) > 1 and matches[0][0] == matches[1][0]:
+            return None
+        return matches[0][1]
 
     def _get_zone_from_device(self, device: TydomDevice) -> str | None:
         """Extract zone from device name.
