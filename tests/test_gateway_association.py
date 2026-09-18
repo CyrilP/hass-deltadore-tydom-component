@@ -158,6 +158,35 @@ class GatewayAssociationTests(IsolatedAsyncioTestCase):
         self.assertEqual(recipe.usage, "sensorSun")
         self.assertEqual(recipe.picto, "picto_sensor6")
 
+    def test_tywell_control_uses_its_official_re2020_recipe(self) -> None:
+        """Tywell Control is not interchangeable with a Tywell 2050."""
+        recipe = get_standalone_association_recipe("Thermique", "Tywell Control")
+
+        self.assertIsNotNone(recipe)
+        self.assertEqual(recipe.usage, "re2020ControlBoiler")
+        self.assertEqual(recipe.first_usage, "hvac")
+        self.assertEqual(recipe.widget_action, "shutterCmd")
+        self.assertEqual(
+            get_install_payload("official:thermic_X3D_x3d_pps"),
+            {"protocol": "X3D", "type": "x3d_pps", "profile": "controller"},
+        )
+        self.assertTrue(get_official_association_tutorial("Tywell Control"))
+
+    def test_tywell_control_uses_its_single_official_step_visual(self) -> None:
+        """Its one guide visual belongs to the one physical action."""
+        overview, steps, stepwise = get_association_illustration_layout(
+            "tywell_control"
+        )
+
+        self.assertIsNone(overview)
+        self.assertEqual(steps, ("catalog_tywell_control_step1",))
+        self.assertTrue(stepwise)
+        illustration = get_association_illustration_svg(
+            "catalog_tywell_control_step1"
+        )
+        self.assertIsNotNone(illustration)
+        self.assertIn("#354254", illustration)
+
     async def test_raw_standalone_product_is_promoted_to_gate_configuration(
         self,
     ) -> None:
@@ -223,6 +252,48 @@ class GatewayAssociationTests(IsolatedAsyncioTestCase):
         self.assertEqual(len(posted["endpoints"]), 1)
         self.assertEqual(posted["endpoints"][0]["name"], "Portillon")
         self.assertEqual(posted["endpoints"][0]["last_usage"], "gate")
+
+    async def test_tywell_control_is_written_with_its_re2020_configuration(
+        self,
+    ) -> None:
+        """A paired Tywell Control remains a controller in the TYDOM app."""
+        client = SimpleNamespace(
+            get_config_file_document=AsyncMock(return_value={"endpoints": []}),
+            post_config_file_document=AsyncMock(),
+        )
+        device = SimpleNamespace(
+            _id=1789330301,
+            _endpoint=1789330301,
+            _tydom_client=client,
+        )
+        recipe = get_standalone_association_recipe("Thermique", "Tywell Control")
+
+        name = await configure_standalone_product(
+            device, recipe, "tywell_control", "Tywell Control étage"
+        )
+
+        self.assertEqual(name, "Tywell Control étage")
+        posted = client.post_config_file_document.await_args.args[0]
+        self.assertEqual(
+            posted["endpoints"],
+            [
+                {
+                    "id_device": 1789330301,
+                    "id_endpoint": 1789330301,
+                    "name": "Tywell Control étage",
+                    "picto": "",
+                    "first_usage": "hvac",
+                    "last_usage": "re2020ControlBoiler",
+                    "anticipation_start": False,
+                    "skill": "TYDOM_X3D",
+                    "space_id": "",
+                    "widget_behavior": {
+                        "tutorial_id": "tywell_control",
+                        "action": "shutterCmd",
+                    },
+                }
+            ],
+        )
 
     async def test_tysense_sun_repairs_previous_generic_sensor_entry(self) -> None:
         """The previously created generic entry can be fixed without re-pairing."""
@@ -778,6 +849,26 @@ class GatewayAssociationTests(IsolatedAsyncioTestCase):
 
         self.assertIn("Tysense Sun", tydom_hub.association_product_labels)
         self.assertIn("Tysense Thermo", tydom_hub.association_product_labels)
+        self.assertTrue(tydom_hub.association_product_supported)
+
+    def test_tywell_control_requires_a_tywell_gateway(self) -> None:
+        """Do not offer the RE2020 controller to standard TYDOM gateways."""
+        tydom_hub = object.__new__(Hub)
+        tydom_hub._association_controls = []
+        tydom_hub._association_category = "Thermique"
+        tydom_hub._association_product = "Tywell Control"
+        tydom_hub._association_profile = "official:thermic_X3D_x3d_pps"
+        tydom_hub._id = "gateway"
+        tydom_hub.devices = {
+            "gateway": SimpleNamespace(productName="TYDOM PRO"),
+        }
+
+        self.assertNotIn("Tywell Control", tydom_hub.association_product_labels)
+        self.assertFalse(tydom_hub.association_product_supported)
+
+        tydom_hub.devices["gateway"].productName = "TYWELL PRO"
+
+        self.assertIn("Tywell Control", tydom_hub.association_product_labels)
         self.assertTrue(tydom_hub.association_product_supported)
 
     def test_official_products_hide_ambiguous_generic_recipes(self) -> None:

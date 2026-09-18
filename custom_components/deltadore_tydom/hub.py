@@ -164,6 +164,7 @@ class StandaloneAssociationRecipe:
     picto: str
     name_prefix: str
     first_usage: str | None = None
+    widget_action: str | None = None
 
 
 # These profiles are the request values used by the official TYDOM app. The
@@ -790,6 +791,11 @@ OFFICIAL_ASSOCIATION_CATALOG: dict[str, tuple[AssociationChoice, ...]] = {
         AssociationChoice("TYPASS ATL", "official:thermic_X3D_x3d_rm"),
         AssociationChoice("TYPASS CHX", "official:thermic_X3D_x3d_rm"),
         AssociationChoice("TYPASS SD", "official:thermic_X3D_x3d_rm"),
+        AssociationChoice(
+            "Tywell Control",
+            "official:thermic_X3D_x3d_pps",
+            required_gateway_names=frozenset({"tywell pro", "tywell home"}),
+        ),
         AssociationChoice("Tywell 2050 (RF 6050+)", "official:thermic_X3D_x3d_rm_es"),
         AssociationChoice("Tywell 2050 L (RF 6050+)", "official:thermic_X3D_x3d_rm_es"),
     ),
@@ -1040,6 +1046,15 @@ _OFFICIAL_THERMIC_BOILER_PRODUCTS = frozenset(
 _OFFICIAL_MODEL_ASSOCIATION_RECIPES: dict[
     tuple[str, str], StandaloneAssociationRecipe
 ] = {
+    # Tywell Control is a RE2020 wall controller, distinct from the Tywell
+    # 2050 thermostat kits. The values mirror its Tywell Pro/Home recipe.
+    ("Thermique", "Tywell Control"): StandaloneAssociationRecipe(
+        "re2020ControlBoiler",
+        "",
+        "Tywell Control",
+        "hvac",
+        "shutterCmd",
+    ),
     ("Fenêtres", "DETECTEUR VERROUILLAGE DVI SLIDING"): StandaloneAssociationRecipe(
         "windowSliding", "picto_window", "Fenêtre", "window"
     ),
@@ -1868,6 +1883,8 @@ async def configure_standalone_product(
     }
     if tutorial_id:
         configured_endpoint["widget_behavior"] = {"tutorial_id": tutorial_id}
+        if recipe.widget_action:
+            configured_endpoint["widget_behavior"]["action"] = recipe.widget_action
 
     updated_config = copy.deepcopy(config)
     if endpoint is None:

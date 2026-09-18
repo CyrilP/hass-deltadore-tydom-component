@@ -13,6 +13,7 @@ fou de régression pour les parcours qui ont déjà été validés.
 | TYXIA 4620 | Dissociation complète puis réassociation en portail coulissant et portillon | Validé |
 | TYWATT 5100 / essai Quiet | Association radio et reprise par rechargement ; la configuration native de la passerelle n'est jamais réécrite | Validé |
 | Tysense Sun / Tywell Pro | Dissociation réussie ; réassociation corrigée pour écrire `sensorSun` au lieu du capteur générique | À revalider après déploiement de la correction |
+| Tywell Control / Tywell Pro | Second contrôleur RE2020, association guidée et configuration `re2020ControlBoiler` | À valider |
 
 ## Invariants couverts par le code
 
