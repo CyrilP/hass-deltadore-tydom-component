@@ -4129,6 +4129,12 @@ _COLOURS: Final = {
     "@color/uiGray90": "#495465",
 }
 
+# ``catalog_tywell_control_step1.xml`` from the official Android catalogue.
+# It is kept outside the compressed current-catalogue bundle because Tywell
+# Control is offered only on Tywell gateways, rather than standard TYDOM ones.
+# The resource references resolve to the same application palette above.
+_TYWELL_CONTROL_STEP_ILLUSTRATION: Final = """<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="375dp" android:height="216dp" android:viewportWidth="375" android:viewportHeight="216"><path android:fillColor="@color/brandDark" android:pathData="M162 111.03c0-2.2 1.8-4 4-4h43c2.2 0 4 1.8 4 4V120h-51v-8.97Z"/><path android:strokeColor="@color/uiLight" android:strokeWidth="2" android:pathData="M113.58 43.08c0-4.97 4.03-9 9-9h129.85c4.97 0 9 4.03 9 9v129.85c0 4.97-4.03 9-9 9h-129.85c-4.97 0-9-4.03-9-9z"/><path android:strokeColor="@color/uiLight" android:strokeWidth="2" android:pathData="M120.8 45.33c0-2.21 1.79-4 4-4h125.4c2.21 0 4 1.79 4 4v125.37c0 2.21-1.79 4-4 4h-125.4c-2.21 0-4-1.79-4-4z"/><path android:strokeColor="@color/uiLight" android:strokeWidth="2" android:pathData="M136.36 58.55c0-1.1 0.9-2 2-2h98.28c1.1 0 2 0.9 2 2v59.6c0 1.1-0.9 2-2 2h-98.28c-1.1 0-2-0.9-2-2z"/><path android:strokeColor="@color/uiLight" android:strokeWidth="2" android:pathData="M143.6 135.04a8.02 8.02 0 1 0 0 16.04 8.02 8.02 0 1 0 0-16.04z"/><path android:strokeColor="@color/uiLight" android:strokeWidth="2" android:pathData="M172.87 135.04a8.02 8.02 0 1 0 0 16.04 8.02 8.02 0 1 0 0-16.04z"/><path android:strokeColor="@color/uiLight" android:strokeWidth="2" android:pathData="M202.13 135.04a8.02 8.02 0 1 0 0 16.04 8.02 8.02 0 1 0 0-16.04z"/><path android:strokeColor="@color/uiLight" android:strokeWidth="2" android:pathData="M231.4 135.04a8.02 8.02 0 1 0 0 16.04 8.02 8.02 0 1 0 0-16.04z"/><path android:fillColor="@color/uiLight" android:pathData="M169 65h37v5h-37z"/><path android:fillColor="@color/uiLight" android:pathData="M145 81h84.35v3H145z"/><path android:fillColor="@color/uiLight" android:pathData="M158.78 89.95h54.61v3h-54.61z"/></vector>"""
+
 
 def _load_complex_illustrations() -> tuple[dict[str, tuple[str, ...]], dict[str, str]]:
     """Decode the official channel-specific tutorial illustrations."""
@@ -4161,6 +4167,10 @@ def get_association_illustration_layout(
     """
     if tutorial_id is None:
         return None, (), False
+    if tutorial_id == "tywell_control":
+        # The catalogue contains one physical instruction, not a thumbnail.
+        # Keep it with that instruction rather than showing it as a gallery.
+        return None, ("catalog_tywell_control_step1",), True
     if tutorial_id in _COMPLEX_TUTORIAL_ILLUSTRATIONS:
         return None, _COMPLEX_TUTORIAL_ILLUSTRATIONS[tutorial_id], False
     if tutorial_id in _CURRENT_CATALOGUE_TUTORIAL_ILLUSTRATIONS:
@@ -4188,6 +4198,8 @@ def get_association_illustration_ids(tutorial_id: str | None) -> tuple[str, ...]
     """Return the full official illustration sequence for a product or channel."""
     if tutorial_id is None:
         return ()
+    if tutorial_id == "tywell_control":
+        return ("catalog_tywell_control_step1",)
     return _COMPLEX_TUTORIAL_ILLUSTRATIONS.get(
         tutorial_id,
         _CURRENT_CATALOGUE_TUTORIAL_ILLUSTRATIONS.get(
@@ -4217,7 +4229,14 @@ def get_association_illustration_svg(image_id: str) -> str | None:
             image_id,
             _STANDARD_ILLUSTRATION_VECTORS.get(
                 image_id,
-                _EXACT_STANDARD_ILLUSTRATION_VECTORS.get(image_id),
+                _EXACT_STANDARD_ILLUSTRATION_VECTORS.get(
+                    image_id,
+                    (
+                        _TYWELL_CONTROL_STEP_ILLUSTRATION
+                        if image_id == "catalog_tywell_control_step1"
+                        else None
+                    ),
+                ),
             ),
         ),
     )

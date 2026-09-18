@@ -19,6 +19,7 @@ class DeltaDoreAssociationGuideDialog extends HTMLElement {
     illustrations,
     illustration_mode: illustrationMode,
     illustration_step_indexes: illustrationStepIndexes,
+    gateway_listening_step_indexes: gatewayListeningStepIndexes,
     start_association_entity_id: startAssociationEntityId,
   }) {
     this._title = title;
@@ -27,6 +28,7 @@ class DeltaDoreAssociationGuideDialog extends HTMLElement {
     this._illustrations = illustrations;
     this._illustrationMode = illustrationMode;
     this._illustrationStepIndexes = illustrationStepIndexes;
+    this._gatewayListeningStepIndexes = gatewayListeningStepIndexes;
     this._startAssociationEntityId = startAssociationEntityId;
     this._render();
     this.shadowRoot.querySelector(".backdrop")?.classList.add("visible");
@@ -156,7 +158,7 @@ class DeltaDoreAssociationGuideDialog extends HTMLElement {
       });
       if (
         this._startAssociationEntityId
-        && instruction.includes("Lancer l'écoute de la passerelle")
+        && (this._gatewayListeningStepIndexes || []).includes(index)
       ) {
         const startButton = document.createElement("button");
         startButton.className = "start-association";
@@ -174,7 +176,7 @@ class DeltaDoreAssociationGuideDialog extends HTMLElement {
               entity_id: this._startAssociationEntityId,
             });
             startButton.textContent = "Écoute de la passerelle démarrée";
-            status.textContent = "Passez maintenant à l'étape suivante.";
+            status.textContent = "Écoute active — suivez les instructions affichées dans ce guide.";
           } catch (error) {
             startButton.disabled = false;
             status.textContent = "Impossible de lancer l'écoute. Réessayez.";

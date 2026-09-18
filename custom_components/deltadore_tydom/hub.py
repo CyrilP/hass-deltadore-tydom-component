@@ -164,6 +164,7 @@ class StandaloneAssociationRecipe:
     picto: str
     name_prefix: str
     first_usage: str | None = None
+    widget_action: str | None = None
 
 
 # These profiles are the request values used by the official TYDOM app. The
@@ -790,6 +791,11 @@ OFFICIAL_ASSOCIATION_CATALOG: dict[str, tuple[AssociationChoice, ...]] = {
         AssociationChoice("TYPASS ATL", "official:thermic_X3D_x3d_rm"),
         AssociationChoice("TYPASS CHX", "official:thermic_X3D_x3d_rm"),
         AssociationChoice("TYPASS SD", "official:thermic_X3D_x3d_rm"),
+        AssociationChoice(
+            "Tywell Control",
+            "official:thermic_X3D_x3d_pps",
+            required_gateway_names=frozenset({"tywell pro", "tywell home"}),
+        ),
         AssociationChoice("Tywell 2050 (RF 6050+)", "official:thermic_X3D_x3d_rm_es"),
         AssociationChoice("Tywell 2050 L (RF 6050+)", "official:thermic_X3D_x3d_rm_es"),
     ),
@@ -1040,6 +1046,15 @@ _OFFICIAL_THERMIC_BOILER_PRODUCTS = frozenset(
 _OFFICIAL_MODEL_ASSOCIATION_RECIPES: dict[
     tuple[str, str], StandaloneAssociationRecipe
 ] = {
+    # Tywell Control is a RE2020 wall controller, distinct from the Tywell
+    # 2050 thermostat kits. The values mirror its Tywell Pro/Home recipe.
+    ("Thermique", "Tywell Control"): StandaloneAssociationRecipe(
+        "re2020ControlBoiler",
+        "",
+        "Tywell Control",
+        "hvac",
+        "shutterCmd",
+    ),
     ("Fenêtres", "DETECTEUR VERROUILLAGE DVI SLIDING"): StandaloneAssociationRecipe(
         "windowSliding", "picto_window", "Fenêtre", "window"
     ),
@@ -1868,6 +1883,8 @@ async def configure_standalone_product(
     }
     if tutorial_id:
         configured_endpoint["widget_behavior"] = {"tutorial_id": tutorial_id}
+        if recipe.widget_action:
+            configured_endpoint["widget_behavior"]["action"] = recipe.widget_action
 
     updated_config = copy.deepcopy(config)
     if endpoint is None:
@@ -2278,8 +2295,39 @@ class Hub:
         product = self._selected_groupable_product()
         if product is not None:
             return product.illustration_step_indexes
+        if self._association_product == "Tywell Control":
+            # The Android tutorial has a device-side preparation followed by
+            # the gateway action. Its sole visual depicts that preparation.
+            return (0,)
         _, illustrations, _ = self.association_illustration_layout
         return tuple(range(len(illustrations)))
+
+    @property
+    def association_gateway_listening_step_indexes(self) -> tuple[int, ...]:
+        """Return the precise guide steps where gateway listening starts.
+
+        The frontend uses this structured information rather than infer an
+        action location from translated guide text. The official catalogue
+        exposes this marker for every standard product.
+        """
+        product = self._selected_groupable_product()
+        if product is not None:
+            return tuple(
+                index
+                for index, step in enumerate(product.guide)
+                if "Lancer l'écoute de la passerelle" in step
+            )
+        if self._association_product == "Tywell Control":
+            return (1,)
+        return tuple(
+            index
+            for index, step in enumerate(
+                get_official_association_tutorial(
+                    self._association_product, self._association_category
+                )
+            )
+            if step.starts_gateway_listening
+        )
 
     @property
     def association_instructions(self) -> tuple[str, ...]:
@@ -2295,6 +2343,17 @@ class Hub:
                     channel_lower=channel.lower(),
                 )
                 for step in product.guide
+            )
+
+        if self._association_product == "Tywell Control":
+            # The official sentence combines a control on the device with the
+            # TYDOM application's "Associer" button. Split it into the order
+            # required by Home Assistant, whose button opens the gateway's
+            # listening window instead.
+            return (
+                "1. Sur le Tywell Control, lancez « Association avec la box Tywell ».",
+                "2. Dans Home Assistant, cliquez sur « Lancer l'écoute de la passerelle » ci-dessous.",
+                "3. Attendez la découverte et l'ajout automatique du contrôleur.",
             )
 
         tutorial = get_official_association_tutorial(
@@ -3075,7 +3134,13 @@ class Hub:
         zone_key = ha_device._get_zone_from_scene()
         controller_id = ha_device._find_tywell_device(zone_key)
         parent_key = controller_id or f"tywell_control_{zone_key or 'default'}"
-        grouping_key = f"{parent_key}:{zone_key or 'default'}"
+        # A Tywell Control can expose more than one UP/DOWN/STOP trio.  The
+        # scenario names only contain the action, so group by the exact target
+        # set as well as its parent.  Otherwise a second Tywell Control (or a
+        # second shutter zone) overwrites the first controller's actions.
+        target_ids = sorted(ha_device._get_affected_device_ids())
+        target_key = "-".join(target_ids) if target_ids else "unknown-targets"
+        grouping_key = f"{parent_key}:{zone_key or 'default'}:{target_key}"
         scenes = self._twc_scene_sets.setdefault(grouping_key, {})
         scenes[action] = ha_device
 
