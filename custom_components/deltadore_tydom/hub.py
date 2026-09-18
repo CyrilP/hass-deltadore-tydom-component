@@ -2303,6 +2303,33 @@ class Hub:
         return tuple(range(len(illustrations)))
 
     @property
+    def association_gateway_listening_step_indexes(self) -> tuple[int, ...]:
+        """Return the precise guide steps where gateway listening starts.
+
+        The frontend uses this structured information rather than infer an
+        action location from translated guide text. The official catalogue
+        exposes this marker for every standard product.
+        """
+        product = self._selected_groupable_product()
+        if product is not None:
+            return tuple(
+                index
+                for index, step in enumerate(product.guide)
+                if "Lancer l'écoute de la passerelle" in step
+            )
+        if self._association_product == "Tywell Control":
+            return (1,)
+        return tuple(
+            index
+            for index, step in enumerate(
+                get_official_association_tutorial(
+                    self._association_product, self._association_category
+                )
+            )
+            if step.starts_gateway_listening
+        )
+
+    @property
     def association_instructions(self) -> tuple[str, ...]:
         """Return the app-derived procedure for the selected product/channel."""
         product = self._selected_groupable_product()

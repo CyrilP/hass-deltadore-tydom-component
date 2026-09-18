@@ -204,6 +204,17 @@ class GatewayAssociationTests(IsolatedAsyncioTestCase):
             ),
         )
         self.assertEqual(tydom_hub.association_illustration_step_indexes, (0,))
+        self.assertEqual(tydom_hub.association_gateway_listening_step_indexes, (1,))
+
+    def test_atlantic_guide_marks_its_gateway_listening_step(self) -> None:
+        """The guide button is placed by the catalogue action marker."""
+        tydom_hub = object.__new__(Hub)
+        tydom_hub._association_controls = []
+        tydom_hub._association_category = "Thermique"
+        tydom_hub._association_product = "ATLANTIC"
+        tydom_hub._association_profile = "official:thermic_X3D_x3d_rm"
+
+        self.assertEqual(tydom_hub.association_gateway_listening_step_indexes, (1,))
 
     async def test_raw_standalone_product_is_promoted_to_gate_configuration(
         self,

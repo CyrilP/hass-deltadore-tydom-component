@@ -7170,6 +7170,13 @@ class HAGatewayAssociationGuideButton(_GatewayAssociationEntity, ButtonEntity):
                 "illustration_step_indexes": list(
                     getattr(self._hub, "association_illustration_step_indexes", ())
                 ),
+                "gateway_listening_step_indexes": list(
+                    getattr(
+                        self._hub,
+                        "association_gateway_listening_step_indexes",
+                        (),
+                    ),
+                ),
                 "start_association_entity_id": start_association_entity_id,
             },
         )
