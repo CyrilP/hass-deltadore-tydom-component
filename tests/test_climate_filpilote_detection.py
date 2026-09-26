@@ -270,6 +270,54 @@ def _thermostat(*, metadata, data, device_type="boiler"):
     return entity, client
 
 
+def _reversible_zone(*, thermic_level="ANTI_FROST"):
+    """Create a cool+heat zone exposing ANTI_FROST through thermicLevel."""
+    return _thermostat(
+        metadata={
+            "authorization": {
+                "type": "string",
+                "permission": "r",
+                "enum_values": ["STOP", "HEATING", "COOLING", "AUTO"],
+            },
+            "comfortMode": {
+                "type": "string",
+                "permission": "w",
+                "enum_values": ["STOP", "HEATING", "COOLING"],
+            },
+            "thermicLevel": {
+                "type": "string",
+                "permission": "rw",
+                "enum_values": ["STOP", "ANTI_FROST"],
+            },
+            "setpoint": {
+                "type": "numeric",
+                "permission": "rw",
+                "min": 10,
+                "max": 30,
+            },
+            "heatSetpoint": {
+                "type": "numeric",
+                "permission": "rw",
+                "min": 10,
+                "max": 30,
+            },
+            "coolSetpoint": {
+                "type": "numeric",
+                "permission": "rw",
+                "min": 10,
+                "max": 30,
+            },
+        },
+        data={
+            "authorization": "COOLING",
+            "thermicLevel": thermic_level,
+            "setpoint": None,
+            "heatSetpoint": None,
+            "coolSetpoint": None,
+        },
+    )
+
+
 class FilPiloteDetectionTests(TestCase):
     """Ensure _is_filpilote correctly discriminates pilot-wire zones."""
 
@@ -403,6 +451,28 @@ class AreaTrvClimateTests(IsolatedAsyncioTestCase):
                 "localSetpRemainingTimeStr": "UNTIL_SCHED",
                 "localMode": "LOCAL_SETPOINT",
             },
+        )
+
+
+class ReversibleZoneAntiFrostPresetTests(IsolatedAsyncioTestCase):
+    """Ensure reversible zones expose and write the frost-protection preset."""
+
+    async def test_anti_frost_is_exposed_as_away(self) -> None:
+        """A thermicLevel ANTI_FROST state must not fall back to `none`."""
+        entity, _client = _reversible_zone()
+
+        self.assertFalse(entity._is_filpilote)
+        self.assertIn(entities_module.PRESET_AWAY, entity._attr_preset_modes)
+        self.assertEqual(entity.preset_mode, entities_module.PRESET_AWAY)
+
+    async def test_away_writes_anti_frost_to_thermic_level(self) -> None:
+        """The standard HA away preset must target thermicLevel ANTI_FROST."""
+        entity, client = _reversible_zone(thermic_level="STOP")
+
+        await entity.async_set_preset_mode(entities_module.PRESET_AWAY)
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "thermicLevel", "ANTI_FROST"
         )
 
 
