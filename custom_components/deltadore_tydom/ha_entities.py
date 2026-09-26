@@ -2413,23 +2413,27 @@ class HaClimate(ClimateEntity, HAEntity):
 
         # Initialize preset modes
         self._attr_preset_modes = []
-        # Add presets based on available modes
-        if (
-            self._device._metadata is not None
-            and "comfortMode" in self._device._metadata
-            and "enum_values" in self._device._metadata["comfortMode"]
-        ):
-            for mode in self._device._metadata["comfortMode"]["enum_values"]:
-                if mode not in ["HEATING", "COOLING", "STOP"]:
-                    self._attr_preset_modes.append(mode)
-        elif (
-            self._device._metadata is not None
-            and "thermicLevel" in self._device._metadata
-            and "enum_values" in self._device._metadata["thermicLevel"]
-        ):
-            for mode in self._device._metadata["thermicLevel"]["enum_values"]:
-                if mode not in ["STOP", "AUTO"]:
-                    self._attr_preset_modes.append(mode)
+        # Add presets from both registers.  Some zone thermostats expose a
+        # write-only `comfortMode` command alongside the read/write
+        # `thermicLevel` state register.  Looking at `comfortMode` exclusively
+        # hides the actual thermic levels (including ANTI_FROST).
+        metadata = self._device._metadata or {}
+
+        def add_preset(mode: str) -> None:
+            if mode == "ANTI_FROST":
+                mode = PRESET_AWAY
+            if mode not in self._attr_preset_modes:
+                self._attr_preset_modes.append(mode)
+
+        comfort_mode = metadata.get("comfortMode", {})
+        for mode in comfort_mode.get("enum_values", []):
+            if mode not in ["HEATING", "COOLING", "STOP"]:
+                add_preset(mode)
+
+        thermic_level = metadata.get("thermicLevel", {})
+        for mode in thermic_level.get("enum_values", []):
+            if mode not in ["STOP", "AUTO"]:
+                add_preset(mode)
 
         # Add common presets if available
         if not self._attr_preset_modes:
@@ -2880,10 +2884,14 @@ class HaClimate(ClimateEntity, HAEntity):
             return PRESET_NONE
         if hasattr(self._device, "comfortMode"):
             comfort_mode = getattr(self._device, "comfortMode", None)
+            if comfort_mode == "ANTI_FROST":
+                return PRESET_AWAY
             if comfort_mode is not None and comfort_mode in self._attr_preset_modes:
                 return comfort_mode
         if hasattr(self._device, "thermicLevel"):
             thermic_level = getattr(self._device, "thermicLevel", None)
+            if thermic_level == "ANTI_FROST":
+                return PRESET_AWAY
             if thermic_level is not None and thermic_level in self._attr_preset_modes:
                 return thermic_level
         return PRESET_NONE if self._attr_preset_modes else None
@@ -2912,25 +2920,26 @@ class HaClimate(ClimateEntity, HAEntity):
             return
         if preset_mode == PRESET_NONE:
             return
+        tydom_preset = "ANTI_FROST" if preset_mode == PRESET_AWAY else preset_mode
         # Try to set comfortMode first
         if (
             self._device._metadata is not None
             and "comfortMode" in self._device._metadata
-            and preset_mode
+            and tydom_preset
             in self._device._metadata["comfortMode"].get("enum_values", [])
         ):
             await self._device._tydom_client.put_devices_data(
-                self._device._id, self._device._endpoint, "comfortMode", preset_mode
+                self._device._id, self._device._endpoint, "comfortMode", tydom_preset
             )
         # Otherwise try thermicLevel
         elif (
             self._device._metadata is not None
             and "thermicLevel" in self._device._metadata
-            and preset_mode
+            and tydom_preset
             in self._device._metadata["thermicLevel"].get("enum_values", [])
         ):
             await self._device._tydom_client.put_devices_data(
-                self._device._id, self._device._endpoint, "thermicLevel", preset_mode
+                self._device._id, self._device._endpoint, "thermicLevel", tydom_preset
             )
 
     async def async_set_temperature(self, **kwargs):
