@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from hashlib import sha256
 from pathlib import Path
 
 import homeassistant.helpers.config_validation as cv
@@ -60,6 +61,15 @@ ASSOCIATION_GUIDE_FRONTEND_URL = f"/{DOMAIN}/frontend/association-guide.js"
 ASSOCIATION_GUIDE_FRONTEND_PATH = (
     Path(__file__).parent / "frontend" / "association-guide.js"
 )
+# The mobile companion app can keep an older frontend asset in its WebView
+# cache even after the custom integration has been updated.  Give each script
+# revision its own URL so a fresh frontend bootstrap cannot reuse that asset.
+ASSOCIATION_GUIDE_FRONTEND_VERSION = sha256(
+    ASSOCIATION_GUIDE_FRONTEND_PATH.read_bytes()
+).hexdigest()[:12]
+ASSOCIATION_GUIDE_FRONTEND_RESOURCE_URL = (
+    f"{ASSOCIATION_GUIDE_FRONTEND_URL}?v={ASSOCIATION_GUIDE_FRONTEND_VERSION}"
+)
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -74,7 +84,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             )
         ]
     )
-    add_extra_js_url(hass, ASSOCIATION_GUIDE_FRONTEND_URL)
+    add_extra_js_url(hass, ASSOCIATION_GUIDE_FRONTEND_RESOURCE_URL)
 
     def get_tydom_device(entity_id: str):
         """Return the TYDOM device represented by an integration entity."""
