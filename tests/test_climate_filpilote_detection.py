@@ -689,6 +689,48 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
         self.assertEqual(getattr(entity._device, "authorization"), "HEATING")
         self.assertEqual(entity.hvac_mode, HVACMode.OFF)
 
+    def test_presets_are_the_ones_the_zone_actually_has(self) -> None:
+        """The hardcoded NORMAL/ECO/COMFORT fallback is not implemented here."""
+        entity, _client = self._zone()
+
+        self.assertEqual(
+            entity._attr_preset_modes,
+            [entities_module.PRESET_NONE, entities_module.PRESET_AWAY],
+        )
+
+    def test_absence_reads_as_away(self) -> None:
+        """ABSENCE is the zone's away order."""
+        entity, _client = self._zone(local_mode="ABSENCE")
+
+        self.assertEqual(entity.preset_mode, entities_module.PRESET_AWAY)
+        self.assertEqual(entity.hvac_mode, HVACMode.HEAT)
+
+    def test_running_zone_has_no_preset(self) -> None:
+        """A NORMAL zone reports none rather than a phantom preset."""
+        entity, _client = self._zone(local_mode="NORMAL")
+
+        self.assertEqual(entity.preset_mode, entities_module.PRESET_NONE)
+
+    async def test_away_writes_absence(self) -> None:
+        """Selecting away drives localMode ABSENCE."""
+        entity, client = self._zone(local_mode="NORMAL")
+
+        await entity.async_set_preset_mode(entities_module.PRESET_AWAY)
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "localMode", "ABSENCE"
+        )
+
+    async def test_preset_none_returns_the_zone_to_normal(self) -> None:
+        """Clearing the preset lifts ABSENCE rather than doing nothing."""
+        entity, client = self._zone(local_mode="ABSENCE")
+
+        await entity.async_set_preset_mode(entities_module.PRESET_NONE)
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "localMode", "NORMAL"
+        )
+
     async def test_turning_off_writes_anti_frost_to_local_mode(self) -> None:
         """Off drives the register the app drives, not comfortMode STOP."""
         entity, client = self._zone(local_mode="NORMAL")
