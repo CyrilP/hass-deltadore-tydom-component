@@ -186,6 +186,11 @@ _module("homeassistant.components.button", ButtonEntity=_StubEntity)
 _module("homeassistant.components.number", NumberEntity=_StubEntity)
 _module("homeassistant.components.select", SelectEntity=_StubEntity)
 _module(
+    "homeassistant.components.text",
+    TextEntity=_StubEntity,
+    TextMode=MagicMock(),
+)
+_module(
     "homeassistant.components.event",
     EventDeviceClass=MagicMock(),
     EventEntity=_StubEntity,
@@ -216,6 +221,11 @@ _module(
     "custom_components.deltadore_tydom.tydom.MessageHandler",
     device_name={},
     groups_data={},
+)
+
+_module(
+    "custom_components.deltadore_tydom.official_association_tutorials",
+    get_association_illustration_data_url=MagicMock(return_value=None),
 )
 
 
