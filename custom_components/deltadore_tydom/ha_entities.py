@@ -2585,6 +2585,38 @@ class HaClimate(ClimateEntity, HAEntity):
             # show a temperature control that would write a phantom setpoint.
             self._attr_supported_features &= ~ClimateEntityFeature.TARGET_TEMPERATURE
 
+        # X3D heating zones behind a TYDOM HOME carry their whole state in one
+        # read/write `localMode` register (NORMAL | ANTI_FROST | STOP |
+        # ABSENCE).  `authorization` and `comfortMode` only carry the
+        # installation-wide season (STOP/HEATING) and stay HEATING while a zone
+        # is switched off, so neither can yield the zone's own mode.  Frost
+        # protection is the order the app sends when a zone is switched off: it
+        # is armed permanently and cannot be lifted, so it reads as off here.
+        local_mode_meta = (metadata or {}).get("localMode")
+        self._local_mode_values = (
+            list(local_mode_meta.get("enum_values") or [])
+            if isinstance(local_mode_meta, dict)
+            and "w" in local_mode_meta.get("permission", "")
+            else []
+        )
+        self._uses_local_mode = (
+            "NORMAL" in self._local_mode_values
+            and "ANTI_FROST" in self._local_mode_values
+            # `localMode` is not unique to these zones: area attributes use the
+            # same name with LOCAL_SETPOINT for temporary overrides on
+            # TRV-backed areas and Typass ATL zones.  Area-derived entities
+            # build their mode list from area_hvac_modes() above, which can
+            # include COOL, so they must keep it.
+            and not hasattr(self._device, "area_id")
+            # Reversible zones (heat pump / AC) reach [off, heat, cool] above
+            # from their own enum metadata.  Frost protection is a preset on
+            # those, not an off state, and collapsing them here would drop
+            # cooling altogether — see #453 / #455.
+            and HVACMode.COOL not in self._attr_hvac_modes
+        )
+        if self._uses_local_mode:
+            self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
+
         # Fan speed (Naviclim X3D reversible AC). Naviclim zones expose a numeric
         # `speed` (1..3) for manual speeds and a `speedString` ["AUTO"] register
         # for automatic mode; we surface these as HA fan modes ("auto", "1", "2",
@@ -2702,10 +2734,19 @@ class HaClimate(ClimateEntity, HAEntity):
                 return step
         return super().target_temperature_step
 
+    OFF_LOCAL_MODES = ("ANTI_FROST", "STOP")
+
     def _resolve_hvac_mode(self) -> HVACMode:
         """Derive HA HVAC mode from Tydom thermostat registers."""
         if self._device.is_area_trv:
             return HVACMode.HEAT
+
+        if self._uses_local_mode:
+            local_mode = getattr(self._device, "localMode", None)
+            if local_mode in self.OFF_LOCAL_MODES:
+                return HVACMode.OFF
+            if local_mode is not None:
+                return HVACMode.HEAT
 
         if getattr(self, "_is_filpilote", False):
             # Derive from thermicLevel (the live pilot-wire order), not hvacMode:
@@ -2764,6 +2805,11 @@ class HaClimate(ClimateEntity, HAEntity):
             # from idle: report OFF when the order is STOP, HEATING otherwise.
             level = getattr(self._device, "thermicLevel", None)
             return HVACAction.OFF if level == "STOP" else HVACAction.HEATING
+
+        if self._uses_local_mode:
+            local_mode = getattr(self._device, "localMode", None)
+            if local_mode in self.OFF_LOCAL_MODES:
+                return HVACAction.OFF
 
         authorization = getattr(self._device, "authorization", None)
         thermic_level = getattr(self._device, "thermicLevel", None)
@@ -2867,6 +2913,14 @@ class HaClimate(ClimateEntity, HAEntity):
                 await self._device.set_thermic_level("STOP")
             elif getattr(self._device, "thermicLevel", None) in (None, "STOP"):
                 await self._device.set_thermic_level("COMFORT")
+            return
+        if self._uses_local_mode and hvac_mode in (HVACMode.OFF, HVACMode.HEAT):
+            # Drive the same register the app does.  Writing comfortMode STOP
+            # instead would stop the zone through the season register, which is
+            # not the state the app's on/off button produces.
+            await self._device.set_local_mode(
+                "ANTI_FROST" if hvac_mode == HVACMode.OFF else "NORMAL"
+            )
             return
         await self._device.set_hvac_mode(self.dict_modes_ha_to_dd[hvac_mode])
 
