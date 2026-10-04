@@ -839,6 +839,16 @@ class TydomBoiler(TydomDevice):
             if area_mode is None:
                 LOGGER.error("Unknown area HVAC mode: %s", mode)
                 return
+
+            # Some area-linked thermostats expose the HVAC command
+            # through the writable comfortMode attribute.
+            if self._supports_command_value("comfortMode", area_mode):
+                await self._tydom_client.put_devices_data(
+                    self._id, self._endpoint, "comfortMode", area_mode
+                )
+                return
+
+            # Fallback for controllers using area authorization.
             await self._tydom_client.put_area_data(
                 self.area_id, "authorization", area_mode
             )
