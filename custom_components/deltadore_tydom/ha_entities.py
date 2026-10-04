@@ -250,6 +250,10 @@ class HAEntity:
     sensor_classes: dict[str, Any] = {}
     state_classes: dict[str, Any] = {}
     units: dict[str, Any] = {}
+    # If set, only these device attributes may be exposed as generic sensors.
+    # When None, keep the legacy discovery behaviour for entities which still
+    # rely on generic attribute discovery.
+    sensor_attrs: frozenset[str] | None = None
     filtered_attrs: list[str] = []
     consumed_attrs: frozenset[str] = frozenset()
     _device: Any = None
@@ -358,6 +362,7 @@ class HAEntity:
             return sensors
 
         consumed_attrs = self._get_consumed_attrs()
+
         for attribute, value in self._device.__dict__.items():
             if (
                 attribute[:1] != "_"
@@ -365,6 +370,18 @@ class HAEntity:
                 and attribute not in registered_sensors
             ):
                 alt_name = attribute.split("_")[0]
+
+                # Some entity types deliberately expose a controlled subset of
+                # TYDOM attributes as generic sensors.  Do not turn every
+                # internal/static device attribute into a Home Assistant
+                # entity when an explicit allowlist is provided.
+                if self.sensor_attrs is not None and (
+                    attribute not in self.sensor_attrs
+                    and alt_name not in self.sensor_attrs
+                ):
+                    continue
+
+    
                 if attribute in self.filtered_attrs or alt_name in self.filtered_attrs:
                     continue
                 if attribute in consumed_attrs or alt_name in consumed_attrs:
@@ -2320,6 +2337,26 @@ class HaClimate(ClimateEntity, HAEntity):
     _attr_should_poll = False
     _attr_icon = "mdi:thermostat"
     _attr_has_entity_name = True
+
+    # Only expose actual measurements which are not already represented by
+    # the climate entity itself.
+    #
+    # In particular, temperature and setpoint are deliberately excluded:
+    # they are exposed by ClimateEntity as current_temperature and
+    # target_temperature.
+    #
+    # The TYDOM device contains many additional attributes such as uid,
+    # area_id, activation counters, configuration values, jobs, useMode,
+    # authorization, etc. Those values remain available on TydomBoiler but
+    # must not automatically become Home Assistant sensor entities.
+    sensor_attrs = frozenset(
+        {
+            "ambientTemperature",
+            "outTemperature",
+            "battLevel",
+            "hygroIn",
+        }
+    )
 
     sensor_classes = {
         "temperature": SensorDeviceClass.TEMPERATURE,
