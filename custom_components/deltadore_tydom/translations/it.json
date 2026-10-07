@@ -1,0 +1,3868 @@
+{
+    "entity": {
+        "sensor": {
+            "absence": {
+                "name": "Modalità assenza"
+            },
+            "absencesetpoint": {
+                "name": "Temperatura in assenza"
+            },
+            "absmaxcoolsetpoint": {
+                "name": "Temperatura massima di raffrescamento"
+            },
+            "absmaxheatsetpoint": {
+                "name": "Temperatura massima di riscaldamento"
+            },
+            "absmincoolsetpoint": {
+                "name": "Temperatura minima di raffrescamento"
+            },
+            "absminheatsetpoint": {
+                "name": "Temperatura minima di riscaldamento"
+            },
+            "ackeventcmd": {
+                "name": "Comando di conferma eventi"
+            },
+            "activationcpt": {
+                "name": "Numero di attivazioni"
+            },
+            "activationindex": {
+                "name": "Indice di attivazione"
+            },
+            "alarmcmd": {
+                "name": "Comando allarme"
+            },
+            "alarmintrusion": {
+                "name": "Intrusione"
+            },
+            "alarmmode": {
+                "name": "Modalità allarme"
+            },
+            "alarmsos": {
+                "name": "Allarme SOS"
+            },
+            "alarmstate": {
+                "name": "Stato dell’allarme"
+            },
+            "alarmtechnical": {
+                "name": "Allarme tecnico"
+            },
+            "ambienttemperature": {
+                "name": "Temperatura ambiente"
+            },
+            "anticipcoeff": {
+                "name": "Coefficiente di anticipo"
+            },
+            "anticpcoeff": {
+                "name": "Coefficiente di anticipo"
+            },
+            "antifroston": {
+                "name": "Protezione antigelo"
+            },
+            "antifrostsetpoint": {
+                "name": "Temperatura antigelo"
+            },
+            "antifrostwhenoff": {
+                "name": "Protezione antigelo"
+            },
+            "antiseizurecmd": {
+                "name": "Comando antibloccaggio"
+            },
+            "antiseizureperiod": {
+                "name": "Intervallo antibloccaggio"
+            },
+            "api_mode": {
+                "name": "Modalità API"
+            },
+            "area_id": {
+                "name": "Identificativo della zona"
+            },
+            "authorization": {
+                "name": "Autorizzazione"
+            },
+            "batt_defect": {
+                "name": "Anomalia pila"
+            },
+            "battdefect": {
+                "name": "Anomalia pila"
+            },
+            "batterycmddefect": {
+                "name": "Guasto del comando della batteria"
+            },
+            "battlevel": {
+                "name": "Livello batteria"
+            },
+            "bdd_empty": {
+                "name": "Database vuoto"
+            },
+            "bdd_status": {
+                "name": "Stato del database"
+            },
+            "boost": {
+                "name": "Boost"
+            },
+            "booston": {
+                "name": "Boost"
+            },
+            "bootreference": {
+                "name": "Riferimento del bootloader"
+            },
+            "bootversion": {
+                "name": "Versione del bootloader"
+            },
+            "brightness": {
+                "name": "Luminosità"
+            },
+            "calibrationdefect": {
+                "name": "Errore taratura"
+            },
+            "clock": {
+                "name": "Ora del gateway"
+            },
+            "clock_source": {
+                "name": "Origine dell’orologio"
+            },
+            "cmddefect": {
+                "name": "Anomalia comando"
+            },
+            "comfortmode": {
+                "name": "Modalità comfort"
+            },
+            "config": {
+                "name": "Configurazione"
+            },
+            "configsensor": {
+                "name": "Configurazione del sensore"
+            },
+            "configtemp": {
+                "name": "Configurazione della temperatura"
+            },
+            "coolsetpoint": {
+                "name": "Temperatura di raffrescamento"
+            },
+            "current": {
+                "name": "Corrente"
+            },
+            "currentpower": {
+                "name": "Potenza"
+            },
+            "currentsetpoint": {
+                "name": "Temperatura impostata"
+            },
+            "dailypower": {
+                "name": "Potenza giornaliera"
+            },
+            "delaysetpoint": {
+                "name": "Ritardo della temperatura impostata"
+            },
+            "delaythermiclevel": {
+                "name": "Ritardo del livello di riscaldamento"
+            },
+            "device_endpoint": {
+                "name": "Endpoint"
+            },
+            "device_id": {
+                "name": "Identificativo endpoint TYDOM"
+            },
+            "device_name": {
+                "name": "Nome del dispositivo"
+            },
+            "device_type": {
+                "name": "Tipo di dispositivo"
+            },
+            "direction": {
+                "name": "Direzione"
+            },
+            "down_defect": {
+                "name": "Discesa non autorizzata"
+            },
+            "downdefect": {
+                "name": "Discesa non autorizzata"
+            },
+            "energy": {
+                "name": "Energia"
+            },
+            "energydistrib": {
+                "name": "Ripartizione dei consumi"
+            },
+            "energydistrib_elec_a": {
+                "name": "Corrente (Elettricità)"
+            },
+            "energydistrib_elec_cooling": {
+                "name": "Ripartizione dei consumi (Elettricità, Raffrescamento)"
+            },
+            "energydistrib_elec_heating": {
+                "name": "Ripartizione dei consumi (Elettricità, Riscaldamento)"
+            },
+            "energydistrib_elec_hotwater": {
+                "name": "Ripartizione dei consumi (Elettricità, Acqua calda)"
+            },
+            "energydistrib_elec_other": {
+                "name": "Ripartizione dei consumi (Elettricità, Altro)"
+            },
+            "energydistrib_elec_outlet": {
+                "name": "Ripartizione dei consumi (Elettricità, Prese)"
+            },
+            "energydistrib_elec_total": {
+                "name": "Ripartizione dei consumi (Elettricità, Totale)"
+            },
+            "energydistrib_elec_w": {
+                "name": "Potenza (Elettricità)"
+            },
+            "energydistrib_gas_a": {
+                "name": "Corrente (Gas)"
+            },
+            "energydistrib_gas_cooling": {
+                "name": "Ripartizione dei consumi (Gas, Raffrescamento)"
+            },
+            "energydistrib_gas_heating": {
+                "name": "Ripartizione dei consumi (Gas, Riscaldamento)"
+            },
+            "energydistrib_gas_hotwater": {
+                "name": "Ripartizione dei consumi (Gas, Acqua calda)"
+            },
+            "energydistrib_gas_other": {
+                "name": "Ripartizione dei consumi (Gas, Altro)"
+            },
+            "energydistrib_gas_outlet": {
+                "name": "Ripartizione dei consumi (Gas, Prese)"
+            },
+            "energydistrib_gas_total": {
+                "name": "Ripartizione dei consumi (Gas, Totale)"
+            },
+            "energydistrib_gas_w": {
+                "name": "Potenza (Gas)"
+            },
+            "energydistrib_gaz_a": {
+                "name": "Corrente (Gas)"
+            },
+            "energydistrib_gaz_cooling": {
+                "name": "Ripartizione dei consumi (Gas, Raffrescamento)"
+            },
+            "energydistrib_gaz_heating": {
+                "name": "Ripartizione dei consumi (Gas, Riscaldamento)"
+            },
+            "energydistrib_gaz_hotwater": {
+                "name": "Ripartizione dei consumi (Gas, Acqua calda)"
+            },
+            "energydistrib_gaz_other": {
+                "name": "Ripartizione dei consumi (Gas, Altro)"
+            },
+            "energydistrib_gaz_outlet": {
+                "name": "Ripartizione dei consumi (Gas, Prese)"
+            },
+            "energydistrib_gaz_total": {
+                "name": "Ripartizione dei consumi (Gas, Totale)"
+            },
+            "energydistrib_gaz_w": {
+                "name": "Potenza (Gas)"
+            },
+            "energydistrib_water_a": {
+                "name": "Corrente (Acqua)"
+            },
+            "energydistrib_water_cooling": {
+                "name": "Ripartizione dei consumi (Acqua, Raffrescamento)"
+            },
+            "energydistrib_water_heating": {
+                "name": "Ripartizione dei consumi (Acqua, Riscaldamento)"
+            },
+            "energydistrib_water_hotwater": {
+                "name": "Ripartizione dei consumi (Acqua, Acqua calda)"
+            },
+            "energydistrib_water_other": {
+                "name": "Ripartizione dei consumi (Acqua, Altro)"
+            },
+            "energydistrib_water_outlet": {
+                "name": "Ripartizione dei consumi (Acqua, Prese)"
+            },
+            "energydistrib_water_total": {
+                "name": "Ripartizione dei consumi (Acqua, Totale)"
+            },
+            "energydistrib_water_w": {
+                "name": "Potenza (Acqua)"
+            },
+            "energyhisto": {
+                "name": "Storico dei consumi"
+            },
+            "energyhisto_elec_a": {
+                "name": "Corrente (Elettricità)"
+            },
+            "energyhisto_elec_cooling": {
+                "name": "Storico dei consumi (Elettricità, Raffrescamento)"
+            },
+            "energyhisto_elec_heating": {
+                "name": "Storico dei consumi (Elettricità, Riscaldamento)"
+            },
+            "energyhisto_elec_hotwater": {
+                "name": "Storico dei consumi (Elettricità, Acqua calda)"
+            },
+            "energyhisto_elec_other": {
+                "name": "Storico dei consumi (Elettricità, Altro)"
+            },
+            "energyhisto_elec_outlet": {
+                "name": "Storico dei consumi (Elettricità, Prese)"
+            },
+            "energyhisto_elec_total": {
+                "name": "Storico dei consumi (Elettricità, Totale)"
+            },
+            "energyhisto_elec_w": {
+                "name": "Potenza (Elettricità)"
+            },
+            "energyhisto_gas_a": {
+                "name": "Corrente (Gas)"
+            },
+            "energyhisto_gas_cooling": {
+                "name": "Storico dei consumi (Gas, Raffrescamento)"
+            },
+            "energyhisto_gas_heating": {
+                "name": "Storico dei consumi (Gas, Riscaldamento)"
+            },
+            "energyhisto_gas_hotwater": {
+                "name": "Storico dei consumi (Gas, Acqua calda)"
+            },
+            "energyhisto_gas_other": {
+                "name": "Storico dei consumi (Gas, Altro)"
+            },
+            "energyhisto_gas_outlet": {
+                "name": "Storico dei consumi (Gas, Prese)"
+            },
+            "energyhisto_gas_total": {
+                "name": "Storico dei consumi (Gas, Totale)"
+            },
+            "energyhisto_gas_w": {
+                "name": "Potenza (Gas)"
+            },
+            "energyhisto_gaz_a": {
+                "name": "Corrente (Gas)"
+            },
+            "energyhisto_gaz_cooling": {
+                "name": "Storico dei consumi (Gas, Raffrescamento)"
+            },
+            "energyhisto_gaz_heating": {
+                "name": "Storico dei consumi (Gas, Riscaldamento)"
+            },
+            "energyhisto_gaz_hotwater": {
+                "name": "Storico dei consumi (Gas, Acqua calda)"
+            },
+            "energyhisto_gaz_other": {
+                "name": "Storico dei consumi (Gas, Altro)"
+            },
+            "energyhisto_gaz_outlet": {
+                "name": "Storico dei consumi (Gas, Prese)"
+            },
+            "energyhisto_gaz_total": {
+                "name": "Storico dei consumi (Gas, Totale)"
+            },
+            "energyhisto_gaz_w": {
+                "name": "Potenza (Gas)"
+            },
+            "energyhisto_water_a": {
+                "name": "Corrente (Acqua)"
+            },
+            "energyhisto_water_cooling": {
+                "name": "Storico dei consumi (Acqua, Raffrescamento)"
+            },
+            "energyhisto_water_heating": {
+                "name": "Storico dei consumi (Acqua, Riscaldamento)"
+            },
+            "energyhisto_water_hotwater": {
+                "name": "Storico dei consumi (Acqua, Acqua calda)"
+            },
+            "energyhisto_water_other": {
+                "name": "Storico dei consumi (Acqua, Altro)"
+            },
+            "energyhisto_water_outlet": {
+                "name": "Storico dei consumi (Acqua, Prese)"
+            },
+            "energyhisto_water_total": {
+                "name": "Storico dei consumi (Acqua, Totale)"
+            },
+            "energyhisto_water_w": {
+                "name": "Potenza (Acqua)"
+            },
+            "energyindex": {
+                "name": "Indice dei consumi"
+            },
+            "energyindex_elec_a": {
+                "name": "Corrente (Elettricità)"
+            },
+            "energyindex_elec_cooling": {
+                "name": "Indice dei consumi (Elettricità, Raffrescamento)"
+            },
+            "energyindex_elec_heating": {
+                "name": "Indice dei consumi (Elettricità, Riscaldamento)"
+            },
+            "energyindex_elec_hotwater": {
+                "name": "Indice dei consumi (Elettricità, Acqua calda)"
+            },
+            "energyindex_elec_other": {
+                "name": "Indice dei consumi (Elettricità, Altro)"
+            },
+            "energyindex_elec_outlet": {
+                "name": "Indice dei consumi (Elettricità, Prese)"
+            },
+            "energyindex_elec_total": {
+                "name": "Indice dei consumi (Elettricità, Totale)"
+            },
+            "energyindex_elec_w": {
+                "name": "Potenza (Elettricità)"
+            },
+            "energyindex_gas_a": {
+                "name": "Corrente (Gas)"
+            },
+            "energyindex_gas_cooling": {
+                "name": "Indice dei consumi (Gas, Raffrescamento)"
+            },
+            "energyindex_gas_heating": {
+                "name": "Indice dei consumi (Gas, Riscaldamento)"
+            },
+            "energyindex_gas_hotwater": {
+                "name": "Indice dei consumi (Gas, Acqua calda)"
+            },
+            "energyindex_gas_other": {
+                "name": "Indice dei consumi (Gas, Altro)"
+            },
+            "energyindex_gas_outlet": {
+                "name": "Indice dei consumi (Gas, Prese)"
+            },
+            "energyindex_gas_total": {
+                "name": "Indice dei consumi (Gas, Totale)"
+            },
+            "energyindex_gas_w": {
+                "name": "Potenza (Gas)"
+            },
+            "energyindex_gaz_a": {
+                "name": "Corrente (Gas)"
+            },
+            "energyindex_gaz_cooling": {
+                "name": "Indice dei consumi (Gas, Raffrescamento)"
+            },
+            "energyindex_gaz_heating": {
+                "name": "Indice dei consumi (Gas, Riscaldamento)"
+            },
+            "energyindex_gaz_hotwater": {
+                "name": "Indice dei consumi (Gas, Acqua calda)"
+            },
+            "energyindex_gaz_other": {
+                "name": "Indice dei consumi (Gas, Altro)"
+            },
+            "energyindex_gaz_outlet": {
+                "name": "Indice dei consumi (Gas, Prese)"
+            },
+            "energyindex_gaz_total": {
+                "name": "Indice dei consumi (Gas, Totale)"
+            },
+            "energyindex_gaz_w": {
+                "name": "Potenza (Gas)"
+            },
+            "energyindex_water_a": {
+                "name": "Corrente (Acqua)"
+            },
+            "energyindex_water_cooling": {
+                "name": "Indice dei consumi (Acqua, Raffrescamento)"
+            },
+            "energyindex_water_heating": {
+                "name": "Indice dei consumi (Acqua, Riscaldamento)"
+            },
+            "energyindex_water_hotwater": {
+                "name": "Indice dei consumi (Acqua, Acqua calda)"
+            },
+            "energyindex_water_other": {
+                "name": "Indice dei consumi (Acqua, Altro)"
+            },
+            "energyindex_water_outlet": {
+                "name": "Indice dei consumi (Acqua, Prese)"
+            },
+            "energyindex_water_total": {
+                "name": "Indice dei consumi (Acqua, Totale)"
+            },
+            "energyindex_water_w": {
+                "name": "Potenza (Acqua)"
+            },
+            "energyindexcoolwatt": {
+                "name": "Energia (Raffrescamento)"
+            },
+            "energyindexdhwwatt": {
+                "name": "Energia (Acqua calda)"
+            },
+            "energyindexecswatt": {
+                "name": "Energia (Acqua calda)"
+            },
+            "energyindexheatgas": {
+                "name": "Indice dei consumi (Gas, Riscaldamento)"
+            },
+            "energyindexheatwatt": {
+                "name": "Energia (Riscaldamento)"
+            },
+            "energyindexti1": {
+                "name": "Indice dei consumi (TI1)"
+            },
+            "energyindexti1watt": {
+                "name": "Energia (TI1)"
+            },
+            "energyindextotelecwatt": {
+                "name": "Energia (Elettricità)"
+            },
+            "energyinstant": {
+                "name": "Consumo istantaneo"
+            },
+            "energyinstant_elec_a": {
+                "name": "Corrente (Elettricità)"
+            },
+            "energyinstant_elec_a_max": {
+                "name": "Corrente (Elettricità) (massimo)"
+            },
+            "energyinstant_elec_a_min": {
+                "name": "Corrente (Elettricità) (minimo)"
+            },
+            "energyinstant_elec_cooling": {
+                "name": "Consumo istantaneo (Elettricità, Raffrescamento)"
+            },
+            "energyinstant_elec_cooling_max": {
+                "name": "Consumo istantaneo (Elettricità, Raffrescamento) (massimo)"
+            },
+            "energyinstant_elec_cooling_min": {
+                "name": "Consumo istantaneo (Elettricità, Raffrescamento) (minimo)"
+            },
+            "energyinstant_elec_heating": {
+                "name": "Consumo istantaneo (Elettricità, Riscaldamento)"
+            },
+            "energyinstant_elec_heating_max": {
+                "name": "Consumo istantaneo (Elettricità, Riscaldamento) (massimo)"
+            },
+            "energyinstant_elec_heating_min": {
+                "name": "Consumo istantaneo (Elettricità, Riscaldamento) (minimo)"
+            },
+            "energyinstant_elec_hotwater": {
+                "name": "Consumo istantaneo (Elettricità, Acqua calda)"
+            },
+            "energyinstant_elec_hotwater_max": {
+                "name": "Consumo istantaneo (Elettricità, Acqua calda) (massimo)"
+            },
+            "energyinstant_elec_hotwater_min": {
+                "name": "Consumo istantaneo (Elettricità, Acqua calda) (minimo)"
+            },
+            "energyinstant_elec_other": {
+                "name": "Consumo istantaneo (Elettricità, Altro)"
+            },
+            "energyinstant_elec_other_max": {
+                "name": "Consumo istantaneo (Elettricità, Altro) (massimo)"
+            },
+            "energyinstant_elec_other_min": {
+                "name": "Consumo istantaneo (Elettricità, Altro) (minimo)"
+            },
+            "energyinstant_elec_outlet": {
+                "name": "Consumo istantaneo (Elettricità, Prese)"
+            },
+            "energyinstant_elec_outlet_max": {
+                "name": "Consumo istantaneo (Elettricità, Prese) (massimo)"
+            },
+            "energyinstant_elec_outlet_min": {
+                "name": "Consumo istantaneo (Elettricità, Prese) (minimo)"
+            },
+            "energyinstant_elec_total": {
+                "name": "Consumo istantaneo (Elettricità, Totale)"
+            },
+            "energyinstant_elec_total_max": {
+                "name": "Consumo istantaneo (Elettricità, Totale) (massimo)"
+            },
+            "energyinstant_elec_total_min": {
+                "name": "Consumo istantaneo (Elettricità, Totale) (minimo)"
+            },
+            "energyinstant_elec_w": {
+                "name": "Potenza (Elettricità)"
+            },
+            "energyinstant_elec_w_max": {
+                "name": "Potenza (Elettricità) (massimo)"
+            },
+            "energyinstant_elec_w_min": {
+                "name": "Potenza (Elettricità) (minimo)"
+            },
+            "energyinstant_gas_a": {
+                "name": "Corrente (Gas)"
+            },
+            "energyinstant_gas_a_max": {
+                "name": "Corrente (Gas) (massimo)"
+            },
+            "energyinstant_gas_a_min": {
+                "name": "Corrente (Gas) (minimo)"
+            },
+            "energyinstant_gas_cooling": {
+                "name": "Consumo istantaneo (Gas, Raffrescamento)"
+            },
+            "energyinstant_gas_cooling_max": {
+                "name": "Consumo istantaneo (Gas, Raffrescamento) (massimo)"
+            },
+            "energyinstant_gas_cooling_min": {
+                "name": "Consumo istantaneo (Gas, Raffrescamento) (minimo)"
+            },
+            "energyinstant_gas_heating": {
+                "name": "Consumo istantaneo (Gas, Riscaldamento)"
+            },
+            "energyinstant_gas_heating_max": {
+                "name": "Consumo istantaneo (Gas, Riscaldamento) (massimo)"
+            },
+            "energyinstant_gas_heating_min": {
+                "name": "Consumo istantaneo (Gas, Riscaldamento) (minimo)"
+            },
+            "energyinstant_gas_hotwater": {
+                "name": "Consumo istantaneo (Gas, Acqua calda)"
+            },
+            "energyinstant_gas_hotwater_max": {
+                "name": "Consumo istantaneo (Gas, Acqua calda) (massimo)"
+            },
+            "energyinstant_gas_hotwater_min": {
+                "name": "Consumo istantaneo (Gas, Acqua calda) (minimo)"
+            },
+            "energyinstant_gas_other": {
+                "name": "Consumo istantaneo (Gas, Altro)"
+            },
+            "energyinstant_gas_other_max": {
+                "name": "Consumo istantaneo (Gas, Altro) (massimo)"
+            },
+            "energyinstant_gas_other_min": {
+                "name": "Consumo istantaneo (Gas, Altro) (minimo)"
+            },
+            "energyinstant_gas_outlet": {
+                "name": "Consumo istantaneo (Gas, Prese)"
+            },
+            "energyinstant_gas_outlet_max": {
+                "name": "Consumo istantaneo (Gas, Prese) (massimo)"
+            },
+            "energyinstant_gas_outlet_min": {
+                "name": "Consumo istantaneo (Gas, Prese) (minimo)"
+            },
+            "energyinstant_gas_total": {
+                "name": "Consumo istantaneo (Gas, Totale)"
+            },
+            "energyinstant_gas_total_max": {
+                "name": "Consumo istantaneo (Gas, Totale) (massimo)"
+            },
+            "energyinstant_gas_total_min": {
+                "name": "Consumo istantaneo (Gas, Totale) (minimo)"
+            },
+            "energyinstant_gas_w": {
+                "name": "Potenza (Gas)"
+            },
+            "energyinstant_gas_w_max": {
+                "name": "Potenza (Gas) (massimo)"
+            },
+            "energyinstant_gas_w_min": {
+                "name": "Potenza (Gas) (minimo)"
+            },
+            "energyinstant_gaz_a": {
+                "name": "Corrente (Gas)"
+            },
+            "energyinstant_gaz_a_max": {
+                "name": "Corrente (Gas) (massimo)"
+            },
+            "energyinstant_gaz_a_min": {
+                "name": "Corrente (Gas) (minimo)"
+            },
+            "energyinstant_gaz_cooling": {
+                "name": "Consumo istantaneo (Gas, Raffrescamento)"
+            },
+            "energyinstant_gaz_cooling_max": {
+                "name": "Consumo istantaneo (Gas, Raffrescamento) (massimo)"
+            },
+            "energyinstant_gaz_cooling_min": {
+                "name": "Consumo istantaneo (Gas, Raffrescamento) (minimo)"
+            },
+            "energyinstant_gaz_heating": {
+                "name": "Consumo istantaneo (Gas, Riscaldamento)"
+            },
+            "energyinstant_gaz_heating_max": {
+                "name": "Consumo istantaneo (Gas, Riscaldamento) (massimo)"
+            },
+            "energyinstant_gaz_heating_min": {
+                "name": "Consumo istantaneo (Gas, Riscaldamento) (minimo)"
+            },
+            "energyinstant_gaz_hotwater": {
+                "name": "Consumo istantaneo (Gas, Acqua calda)"
+            },
+            "energyinstant_gaz_hotwater_max": {
+                "name": "Consumo istantaneo (Gas, Acqua calda) (massimo)"
+            },
+            "energyinstant_gaz_hotwater_min": {
+                "name": "Consumo istantaneo (Gas, Acqua calda) (minimo)"
+            },
+            "energyinstant_gaz_other": {
+                "name": "Consumo istantaneo (Gas, Altro)"
+            },
+            "energyinstant_gaz_other_max": {
+                "name": "Consumo istantaneo (Gas, Altro) (massimo)"
+            },
+            "energyinstant_gaz_other_min": {
+                "name": "Consumo istantaneo (Gas, Altro) (minimo)"
+            },
+            "energyinstant_gaz_outlet": {
+                "name": "Consumo istantaneo (Gas, Prese)"
+            },
+            "energyinstant_gaz_outlet_max": {
+                "name": "Consumo istantaneo (Gas, Prese) (massimo)"
+            },
+            "energyinstant_gaz_outlet_min": {
+                "name": "Consumo istantaneo (Gas, Prese) (minimo)"
+            },
+            "energyinstant_gaz_total": {
+                "name": "Consumo istantaneo (Gas, Totale)"
+            },
+            "energyinstant_gaz_total_max": {
+                "name": "Consumo istantaneo (Gas, Totale) (massimo)"
+            },
+            "energyinstant_gaz_total_min": {
+                "name": "Consumo istantaneo (Gas, Totale) (minimo)"
+            },
+            "energyinstant_gaz_w": {
+                "name": "Potenza (Gas)"
+            },
+            "energyinstant_gaz_w_max": {
+                "name": "Potenza (Gas) (massimo)"
+            },
+            "energyinstant_gaz_w_min": {
+                "name": "Potenza (Gas) (minimo)"
+            },
+            "energyinstant_max": {
+                "name": "Consumo istantaneo (massimo)"
+            },
+            "energyinstant_min": {
+                "name": "Consumo istantaneo (minimo)"
+            },
+            "energyinstant_water_a": {
+                "name": "Corrente (Acqua)"
+            },
+            "energyinstant_water_a_max": {
+                "name": "Corrente (Acqua) (massimo)"
+            },
+            "energyinstant_water_a_min": {
+                "name": "Corrente (Acqua) (minimo)"
+            },
+            "energyinstant_water_cooling": {
+                "name": "Consumo istantaneo (Acqua, Raffrescamento)"
+            },
+            "energyinstant_water_cooling_max": {
+                "name": "Consumo istantaneo (Acqua, Raffrescamento) (massimo)"
+            },
+            "energyinstant_water_cooling_min": {
+                "name": "Consumo istantaneo (Acqua, Raffrescamento) (minimo)"
+            },
+            "energyinstant_water_heating": {
+                "name": "Consumo istantaneo (Acqua, Riscaldamento)"
+            },
+            "energyinstant_water_heating_max": {
+                "name": "Consumo istantaneo (Acqua, Riscaldamento) (massimo)"
+            },
+            "energyinstant_water_heating_min": {
+                "name": "Consumo istantaneo (Acqua, Riscaldamento) (minimo)"
+            },
+            "energyinstant_water_hotwater": {
+                "name": "Consumo istantaneo (Acqua, Acqua calda)"
+            },
+            "energyinstant_water_hotwater_max": {
+                "name": "Consumo istantaneo (Acqua, Acqua calda) (massimo)"
+            },
+            "energyinstant_water_hotwater_min": {
+                "name": "Consumo istantaneo (Acqua, Acqua calda) (minimo)"
+            },
+            "energyinstant_water_other": {
+                "name": "Consumo istantaneo (Acqua, Altro)"
+            },
+            "energyinstant_water_other_max": {
+                "name": "Consumo istantaneo (Acqua, Altro) (massimo)"
+            },
+            "energyinstant_water_other_min": {
+                "name": "Consumo istantaneo (Acqua, Altro) (minimo)"
+            },
+            "energyinstant_water_outlet": {
+                "name": "Consumo istantaneo (Acqua, Prese)"
+            },
+            "energyinstant_water_outlet_max": {
+                "name": "Consumo istantaneo (Acqua, Prese) (massimo)"
+            },
+            "energyinstant_water_outlet_min": {
+                "name": "Consumo istantaneo (Acqua, Prese) (minimo)"
+            },
+            "energyinstant_water_total": {
+                "name": "Consumo istantaneo (Acqua, Totale)"
+            },
+            "energyinstant_water_total_max": {
+                "name": "Consumo istantaneo (Acqua, Totale) (massimo)"
+            },
+            "energyinstant_water_total_min": {
+                "name": "Consumo istantaneo (Acqua, Totale) (minimo)"
+            },
+            "energyinstant_water_w": {
+                "name": "Potenza (Acqua)"
+            },
+            "energyinstant_water_w_max": {
+                "name": "Potenza (Acqua) (massimo)"
+            },
+            "energyinstant_water_w_min": {
+                "name": "Potenza (Acqua) (minimo)"
+            },
+            "energyinstantcooli": {
+                "name": "Corrente (Raffrescamento)"
+            },
+            "energyinstantcooli_max": {
+                "name": "Corrente (Raffrescamento) (massimo)"
+            },
+            "energyinstantcooli_min": {
+                "name": "Corrente (Raffrescamento) (minimo)"
+            },
+            "energyinstantcoolp": {
+                "name": "Potenza (Raffrescamento)"
+            },
+            "energyinstantcoolp_max": {
+                "name": "Potenza (Raffrescamento) (massimo)"
+            },
+            "energyinstantcoolp_min": {
+                "name": "Potenza (Raffrescamento) (minimo)"
+            },
+            "energyinstantdhwi": {
+                "name": "Corrente (Acqua calda)"
+            },
+            "energyinstantdhwi_max": {
+                "name": "Corrente (Acqua calda) (massimo)"
+            },
+            "energyinstantdhwi_min": {
+                "name": "Corrente (Acqua calda) (minimo)"
+            },
+            "energyinstantdhwp": {
+                "name": "Potenza (Acqua calda)"
+            },
+            "energyinstantdhwp_max": {
+                "name": "Potenza (Acqua calda) (massimo)"
+            },
+            "energyinstantdhwp_min": {
+                "name": "Potenza (Acqua calda) (minimo)"
+            },
+            "energyinstantecsi": {
+                "name": "Corrente (Acqua calda)"
+            },
+            "energyinstantecsi_max": {
+                "name": "Corrente (Acqua calda) (massimo)"
+            },
+            "energyinstantecsi_min": {
+                "name": "Corrente (Acqua calda) (minimo)"
+            },
+            "energyinstantecsp": {
+                "name": "Potenza (Acqua calda)"
+            },
+            "energyinstantecsp_max": {
+                "name": "Potenza (Acqua calda) (massimo)"
+            },
+            "energyinstantecsp_min": {
+                "name": "Potenza (Acqua calda) (minimo)"
+            },
+            "energyinstantheati": {
+                "name": "Corrente (Riscaldamento)"
+            },
+            "energyinstantheati_max": {
+                "name": "Corrente (Riscaldamento) (massimo)"
+            },
+            "energyinstantheati_min": {
+                "name": "Corrente (Riscaldamento) (minimo)"
+            },
+            "energyinstantheatp": {
+                "name": "Potenza (Riscaldamento)"
+            },
+            "energyinstantheatp_max": {
+                "name": "Potenza (Riscaldamento) (massimo)"
+            },
+            "energyinstantheatp_min": {
+                "name": "Potenza (Riscaldamento) (minimo)"
+            },
+            "energyinstantti1i": {
+                "name": "Corrente (TI1)"
+            },
+            "energyinstantti1i_max": {
+                "name": "Corrente (TI1) (massimo)"
+            },
+            "energyinstantti1i_min": {
+                "name": "Corrente (TI1) (minimo)"
+            },
+            "energyinstantti1p": {
+                "name": "Potenza (TI1)"
+            },
+            "energyinstantti1p_max": {
+                "name": "Potenza (TI1) (massimo)"
+            },
+            "energyinstantti1p_min": {
+                "name": "Potenza (TI1) (minimo)"
+            },
+            "energyinstanttotelec": {
+                "name": "Corrente (Elettricità)"
+            },
+            "energyinstanttotelec_max": {
+                "name": "Corrente (Elettricità) (massimo)"
+            },
+            "energyinstanttotelec_min": {
+                "name": "Corrente (Elettricità) (minimo)"
+            },
+            "energyinstanttotelec_p": {
+                "name": "Potenza (Elettricità)"
+            },
+            "energyinstanttotelec_p_max": {
+                "name": "Potenza (Elettricità) (massimo)"
+            },
+            "energyinstanttotelec_p_min": {
+                "name": "Potenza (Elettricità) (minimo)"
+            },
+            "energyinstanttoteleci": {
+                "name": "Corrente (Elettricità)"
+            },
+            "energyinstanttoteleci_max": {
+                "name": "Corrente (Elettricità) (massimo)"
+            },
+            "energyinstanttoteleci_min": {
+                "name": "Corrente (Elettricità) (minimo)"
+            },
+            "energyinstanttotelecp": {
+                "name": "Potenza (Elettricità)"
+            },
+            "energyinstanttotelecp_max": {
+                "name": "Potenza (Elettricità) (massimo)"
+            },
+            "energyinstanttotelecp_min": {
+                "name": "Potenza (Elettricità) (minimo)"
+            },
+            "energyscalecooli": {
+                "name": "Corrente (Raffrescamento)"
+            },
+            "energyscalecooli_max": {
+                "name": "Corrente (Raffrescamento) (massimo)"
+            },
+            "energyscalecooli_min": {
+                "name": "Corrente (Raffrescamento) (minimo)"
+            },
+            "energyscalecoolp": {
+                "name": "Potenza (Raffrescamento)"
+            },
+            "energyscalecoolp_max": {
+                "name": "Potenza (Raffrescamento) (massimo)"
+            },
+            "energyscalecoolp_min": {
+                "name": "Potenza (Raffrescamento) (minimo)"
+            },
+            "energyscaledhwi": {
+                "name": "Corrente (Acqua calda)"
+            },
+            "energyscaledhwi_max": {
+                "name": "Corrente (Acqua calda) (massimo)"
+            },
+            "energyscaledhwi_min": {
+                "name": "Corrente (Acqua calda) (minimo)"
+            },
+            "energyscaledhwp": {
+                "name": "Potenza (Acqua calda)"
+            },
+            "energyscaledhwp_max": {
+                "name": "Potenza (Acqua calda) (massimo)"
+            },
+            "energyscaledhwp_min": {
+                "name": "Potenza (Acqua calda) (minimo)"
+            },
+            "energyscaleecsi": {
+                "name": "Corrente (Acqua calda)"
+            },
+            "energyscaleecsi_max": {
+                "name": "Corrente (Acqua calda) (massimo)"
+            },
+            "energyscaleecsi_min": {
+                "name": "Corrente (Acqua calda) (minimo)"
+            },
+            "energyscaleecsp": {
+                "name": "Potenza (Acqua calda)"
+            },
+            "energyscaleecsp_max": {
+                "name": "Potenza (Acqua calda) (massimo)"
+            },
+            "energyscaleecsp_min": {
+                "name": "Potenza (Acqua calda) (minimo)"
+            },
+            "energyscaleheati": {
+                "name": "Corrente (Riscaldamento)"
+            },
+            "energyscaleheati_max": {
+                "name": "Corrente (Riscaldamento) (massimo)"
+            },
+            "energyscaleheati_min": {
+                "name": "Corrente (Riscaldamento) (minimo)"
+            },
+            "energyscaleheatp": {
+                "name": "Potenza (Riscaldamento)"
+            },
+            "energyscaleheatp_max": {
+                "name": "Potenza (Riscaldamento) (massimo)"
+            },
+            "energyscaleheatp_min": {
+                "name": "Potenza (Riscaldamento) (minimo)"
+            },
+            "energyscaleti1i": {
+                "name": "Corrente (TI1)"
+            },
+            "energyscaleti1i_max": {
+                "name": "Corrente (TI1) (massimo)"
+            },
+            "energyscaleti1i_min": {
+                "name": "Corrente (TI1) (minimo)"
+            },
+            "energyscaleti1p": {
+                "name": "Potenza (TI1)"
+            },
+            "energyscaleti1p_max": {
+                "name": "Potenza (TI1) (massimo)"
+            },
+            "energyscaleti1p_min": {
+                "name": "Potenza (TI1) (minimo)"
+            },
+            "energyscaletotelec": {
+                "name": "Corrente (Elettricità)"
+            },
+            "energyscaletotelec_max": {
+                "name": "Corrente (Elettricità) (massimo)"
+            },
+            "energyscaletotelec_min": {
+                "name": "Corrente (Elettricità) (minimo)"
+            },
+            "energyscaletotelec_p": {
+                "name": "Potenza (Elettricità)"
+            },
+            "energyscaletotelec_p_max": {
+                "name": "Potenza (Elettricità) (massimo)"
+            },
+            "energyscaletotelec_p_min": {
+                "name": "Potenza (Elettricità) (minimo)"
+            },
+            "energyscaletoteleci": {
+                "name": "Corrente (Elettricità)"
+            },
+            "energyscaletoteleci_max": {
+                "name": "Corrente (Elettricità) (massimo)"
+            },
+            "energyscaletoteleci_min": {
+                "name": "Corrente (Elettricità) (minimo)"
+            },
+            "energyscaletotelecp": {
+                "name": "Potenza (Elettricità)"
+            },
+            "energyscaletotelecp_max": {
+                "name": "Potenza (Elettricità) (massimo)"
+            },
+            "energyscaletotelecp_min": {
+                "name": "Potenza (Elettricità) (minimo)"
+            },
+            "energytotindexwatt": {
+                "name": "Indice dei consumi (Elettricità)"
+            },
+            "gsmlevel": {
+                "name": "Livello del segnale mobile"
+            },
+            "heatsetpoint": {
+                "name": "Temperatura di riscaldamento"
+            },
+            "histo": {
+                "name": "Cronologia"
+            },
+            "hvacmode": {
+                "name": "Modalità di riscaldamento e raffrescamento"
+            },
+            "hygroin": {
+                "name": "Umidità"
+            },
+            "inactiveproduct": {
+                "name": "Prodotto inattivo"
+            },
+            "index": {
+                "name": "Indice"
+            },
+            "indexstart": {
+                "name": "Indice iniziale"
+            },
+            "indextimeon": {
+                "name": "Indice del tempo di funzionamento"
+            },
+            "intrusion": {
+                "name": "Intrusione"
+            },
+            "intrusiondetect": {
+                "name": "Intrusione"
+            },
+            "irv1state": {
+                "name": "Stato (IRV 1)"
+            },
+            "irv2state": {
+                "name": "Stato (IRV 2)"
+            },
+            "irv3state": {
+                "name": "Stato (IRV 3)"
+            },
+            "irv4state": {
+                "name": "Stato (IRV 4)"
+            },
+            "irv5state": {
+                "name": "Stato (IRV 5)"
+            },
+            "irv6state": {
+                "name": "Stato (IRV 6)"
+            },
+            "irv7state": {
+                "name": "Stato (IRV 7)"
+            },
+            "irv8state": {
+                "name": "Stato (IRV 8)"
+            },
+            "irvcmd": {
+                "name": "Comando IRV"
+            },
+            "irvid": {
+                "name": "Identificativo IRV"
+            },
+            "isreference": {
+                "name": "Dispositivo di riferimento"
+            },
+            "jobs": {
+                "name": "Attività interne"
+            },
+            "jobsmp": {
+                "name": "Attività del modulo principale"
+            },
+            "jobsrm": {
+                "name": "Attività del modulo radio"
+            },
+            "kerneldownloadforced": {
+                "name": "Download forzato del firmware"
+            },
+            "kerneluptodate": {
+                "name": "Firmware aggiornato"
+            },
+            "keyreference": {
+                "name": "Riferimento del modulo radio"
+            },
+            "keyversionhw": {
+                "name": "Versione hardware radio"
+            },
+            "keyversionstack": {
+                "name": "Versione dello stack radio"
+            },
+            "keyversionsw": {
+                "name": "Versione software radio"
+            },
+            "label": {
+                "name": "Etichetta"
+            },
+            "last_usage": {
+                "name": "Uso"
+            },
+            "latitude": {
+                "name": "Latitudine"
+            },
+            "level": {
+                "name": "Livello"
+            },
+            "levelcmd": {
+                "name": "Comando livello"
+            },
+            "lightpower": {
+                "name": "Irradianza solare"
+            },
+            "livecheckrunning": {
+                "name": "Verifica in corso"
+            },
+            "loaddefect": {
+                "name": "Anomalia carica"
+            },
+            "loadsheddingon": {
+                "name": "Distacco dei carichi"
+            },
+            "localisation": {
+                "name": "Posizione"
+            },
+            "localmode": {
+                "name": "Modalità di funzionamento locale"
+            },
+            "localsetpoint": {
+                "name": "Temperatura locale impostata"
+            },
+            "localsetpremainingtimestr": {
+                "name": "Tempo rimanente della temperatura locale"
+            },
+            "longitude": {
+                "name": "Longitudine"
+            },
+            "mac": {
+                "name": "Indirizzo MAC"
+            },
+            "mainid": {
+                "name": "Identificativo del modulo principale"
+            },
+            "mainreference": {
+                "name": "Riferimento del modulo principale"
+            },
+            "maintenance": {
+                "name": "Manutenzione"
+            },
+            "maintenanceneeded": {
+                "name": "Manutenzione necessaria"
+            },
+            "mainversionhw": {
+                "name": "Versione hardware principale"
+            },
+            "mainversionsw": {
+                "name": "Versione software principale"
+            },
+            "manufacturer": {
+                "name": "Produttore"
+            },
+            "maxcoolsetpoint": {
+                "name": "Temperatura massima di raffrescamento"
+            },
+            "maxdailyouttemp": {
+                "name": "Temperatura esterna massima giornaliera"
+            },
+            "maxheatsetpoint": {
+                "name": "Temperatura massima di riscaldamento"
+            },
+            "maxsetpoint": {
+                "name": "Temperatura massima impostata"
+            },
+            "mincoolsetpoint": {
+                "name": "Temperatura minima di raffrescamento"
+            },
+            "minheatsetpoint": {
+                "name": "Temperatura minima di riscaldamento"
+            },
+            "minsetpoint": {
+                "name": "Temperatura minima impostata"
+            },
+            "modeasso": {
+                "name": "Modalità di associazione"
+            },
+            "modelidentifier": {
+                "name": "Identificativo del modello"
+            },
+            "nbelem": {
+                "name": "Numero di elementi"
+            },
+            "nbrfactuators": {
+                "name": "Numero di attuatori radio"
+            },
+            "networkdefect": {
+                "name": "Guasto di rete"
+            },
+            "obstacle_defect": {
+                "name": "Ostacolo rilevato"
+            },
+            "obstacledefect": {
+                "name": "Ostacolo rilevato"
+            },
+            "ondusk": {
+                "name": "Attivazione al crepuscolo"
+            },
+            "onfavpos": {
+                "name": "Attivazione posizione preferita"
+            },
+            "onpresencedetected": {
+                "name": "Attivazione su presenza"
+            },
+            "openingdetected": {
+                "name": "Apertura rilevata"
+            },
+            "openstate": {
+                "name": "Stato di apertura"
+            },
+            "outtemperature": {
+                "name": "Temperatura esterna"
+            },
+            "overrideremainingtime": {
+                "name": "Tempo rimanente della modifica temporanea"
+            },
+            "overridesetpoint": {
+                "name": "Temperatura temporanea impostata"
+            },
+            "part": {
+                "name": "Partizione allarme"
+            },
+            "part1state": {
+                "name": "Stato (PART 1)"
+            },
+            "part2state": {
+                "name": "Stato (PART 2)"
+            },
+            "part3state": {
+                "name": "Stato (PART 3)"
+            },
+            "part4state": {
+                "name": "Stato (PART 4)"
+            },
+            "part5state": {
+                "name": "Stato (PART 5)"
+            },
+            "part6state": {
+                "name": "Stato (PART 6)"
+            },
+            "part7state": {
+                "name": "Stato (PART 7)"
+            },
+            "part8state": {
+                "name": "Stato (PART 8)"
+            },
+            "partcmd": {
+                "name": "Comando partizione allarme"
+            },
+            "password_empty": {
+                "name": "Password vuota"
+            },
+            "pending_alarm_events": {
+                "name": "Eventi di allarme in attesa"
+            },
+            "period": {
+                "name": "Periodo"
+            },
+            "periodoffset": {
+                "name": "Scostamento del periodo"
+            },
+            "permissions": {
+                "name": "Autorizzazioni"
+            },
+            "plt_registered": {
+                "name": "Piattaforma registrata"
+            },
+            "position": {
+                "name": "Posizione"
+            },
+            "positioncmd": {
+                "name": "Comando posizione"
+            },
+            "power": {
+                "name": "Potenza"
+            },
+            "prealarm": {
+                "name": "Preallarme"
+            },
+            "presencedetected": {
+                "name": "Presenza rilevata"
+            },
+            "productconf": {
+                "name": "Configurazione"
+            },
+            "productiondefect": {
+                "name": "Anomalia di produzione"
+            },
+            "productname": {
+                "name": "Nome del prodotto"
+            },
+            "readable": {
+                "name": "Leggibile"
+            },
+            "recfav": {
+                "name": "Memorizza posizione preferita"
+            },
+            "regtemperature": {
+                "name": "Temperatura di regolazione"
+            },
+            "remotesurveydefect": {
+                "name": "Anomalia supervisione"
+            },
+            "reset": {
+                "name": "Ripristina"
+            },
+            "selectedprog": {
+                "name": "Programma selezionato"
+            },
+            "sendasso": {
+                "name": "Invia comando di associazione"
+            },
+            "sendnetremoteassomode": {
+                "name": "Modalità di associazione remota"
+            },
+            "setpoint": {
+                "name": "Temperatura impostata"
+            },
+            "shuttercmd": {
+                "name": "Comando tapparella"
+            },
+            "simdefect": {
+                "name": "Scheda SIM assente"
+            },
+            "slope": {
+                "name": "Pendenza della curva di riscaldamento"
+            },
+            "softplan": {
+                "name": "Pacchetto software"
+            },
+            "softplan0": {
+                "name": "Pacchetto software (0)"
+            },
+            "softplan1": {
+                "name": "Pacchetto software (1)"
+            },
+            "softplan2": {
+                "name": "Pacchetto software (2)"
+            },
+            "softplan3": {
+                "name": "Pacchetto software (3)"
+            },
+            "softversion": {
+                "name": "Versione software"
+            },
+            "softversion0": {
+                "name": "Versione software (0)"
+            },
+            "softversion1": {
+                "name": "Versione software (1)"
+            },
+            "softversion2": {
+                "name": "Versione software (2)"
+            },
+            "softversion3": {
+                "name": "Versione software (3)"
+            },
+            "speed": {
+                "name": "Velocità della ventola"
+            },
+            "speedstring": {
+                "name": "Velocità della ventola"
+            },
+            "state": {
+                "name": "Stato"
+            },
+            "summer_offset": {
+                "name": "Differenza dell’ora legale"
+            },
+            "summeroffset": {
+                "name": "Differenza dell’ora legale"
+            },
+            "supervisionmode": {
+                "name": "Modalità di supervisione"
+            },
+            "synchropps": {
+                "name": "Sincronizzazione oraria"
+            },
+            "synchroradio": {
+                "name": "Sincronizzazione radio"
+            },
+            "systalarmdefect": {
+                "name": "Guasto del sistema di allarme"
+            },
+            "systautoprotect": {
+                "name": "Autoprotezione"
+            },
+            "systbatterydefect": {
+                "name": "Guasto della batteria"
+            },
+            "systopenissue": {
+                "name": "Inserimento allarme bloccato"
+            },
+            "systsectordefect": {
+                "name": "Anomalia alim. rete"
+            },
+            "systsupervisiondefect": {
+                "name": "Anomalia supervisione"
+            },
+            "systtechnicaldefect": {
+                "name": "Anomalia tecnica"
+            },
+            "techsmokedefect": {
+                "name": "Fumo rilevato"
+            },
+            "techwaterdefect": {
+                "name": "Perdita d'acqua rilevata"
+            },
+            "temperature": {
+                "name": "Temperatura"
+            },
+            "tempoon": {
+                "name": "Temporizzazione"
+            },
+            "tempsensordefect": {
+                "name": "Anomalia sonda"
+            },
+            "tempsensoropencirc": {
+                "name": "Sonda interrotta"
+            },
+            "tempsensorshortcut": {
+                "name": "Sonda in cortocircuito"
+            },
+            "thermic_defect": {
+                "name": "Surriscaldamento"
+            },
+            "thermicdefect": {
+                "name": "Surriscaldamento"
+            },
+            "thermiclevel": {
+                "name": "Livello di riscaldamento"
+            },
+            "timedelay": {
+                "name": "Temporizzazione"
+            },
+            "timeoncpt": {
+                "name": "Contatore del tempo di funzionamento"
+            },
+            "timezone": {
+                "name": "Fuso orario"
+            },
+            "total": {
+                "name": "Totale"
+            },
+            "uid": {
+                "name": "Identificativo del dispositivo"
+            },
+            "unackedevent": {
+                "name": "Eventi non confermati"
+            },
+            "unitautoprotect": {
+                "name": "Autoprotezione"
+            },
+            "unitbatterydefect": {
+                "name": "Guasto della batteria"
+            },
+            "unitinternaldefect": {
+                "name": "Guasto interno"
+            },
+            "up_defect": {
+                "name": "Salita non autorizzata"
+            },
+            "update_available": {
+                "name": "Aggiornamento disponibile"
+            },
+            "updefect": {
+                "name": "Salita non autorizzata"
+            },
+            "usage": {
+                "name": "Uso"
+            },
+            "usemode": {
+                "name": "Modalità di funzionamento"
+            },
+            "value": {
+                "name": "Valore"
+            },
+            "videolinkdefect": {
+                "name": "Anomalia link video"
+            },
+            "waterflowreq": {
+                "name": "Portata d’acqua richiesta"
+            },
+            "weather": {
+                "name": "Meteo"
+            },
+            "writable": {
+                "name": "Modificabile"
+            },
+            "zclversion": {
+                "name": "Versione della libreria Zigbee"
+            },
+            "zone1state": {
+                "name": "Stato (ZONE 1)"
+            },
+            "zone2state": {
+                "name": "Stato (ZONE 2)"
+            },
+            "zone3state": {
+                "name": "Stato (ZONE 3)"
+            },
+            "zone4state": {
+                "name": "Stato (ZONE 4)"
+            },
+            "zone5state": {
+                "name": "Stato (ZONE 5)"
+            },
+            "zone6state": {
+                "name": "Stato (ZONE 6)"
+            },
+            "zone7state": {
+                "name": "Stato (ZONE 7)"
+            },
+            "zone8state": {
+                "name": "Stato (ZONE 8)"
+            },
+            "zonecmd": {
+                "name": "Comando zona allarme"
+            },
+            "zones": {
+                "name": "Zone di allarme"
+            }
+        },
+        "binary_sensor": {
+            "absence": {
+                "name": "Modalità assenza"
+            },
+            "absencesetpoint": {
+                "name": "Temperatura in assenza"
+            },
+            "absmaxcoolsetpoint": {
+                "name": "Temperatura massima di raffrescamento"
+            },
+            "absmaxheatsetpoint": {
+                "name": "Temperatura massima di riscaldamento"
+            },
+            "absmincoolsetpoint": {
+                "name": "Temperatura minima di raffrescamento"
+            },
+            "absminheatsetpoint": {
+                "name": "Temperatura minima di riscaldamento"
+            },
+            "ackeventcmd": {
+                "name": "Comando di conferma eventi"
+            },
+            "activationcpt": {
+                "name": "Numero di attivazioni"
+            },
+            "activationindex": {
+                "name": "Indice di attivazione"
+            },
+            "alarmcmd": {
+                "name": "Comando allarme"
+            },
+            "alarmintrusion": {
+                "name": "Intrusione"
+            },
+            "alarmmode": {
+                "name": "Modalità allarme"
+            },
+            "alarmsos": {
+                "name": "Allarme SOS"
+            },
+            "alarmstate": {
+                "name": "Stato dell’allarme"
+            },
+            "alarmtechnical": {
+                "name": "Allarme tecnico"
+            },
+            "ambienttemperature": {
+                "name": "Temperatura ambiente"
+            },
+            "anticipcoeff": {
+                "name": "Coefficiente di anticipo"
+            },
+            "anticpcoeff": {
+                "name": "Coefficiente di anticipo"
+            },
+            "antifroston": {
+                "name": "Protezione antigelo"
+            },
+            "antifrostsetpoint": {
+                "name": "Temperatura antigelo"
+            },
+            "antifrostwhenoff": {
+                "name": "Protezione antigelo"
+            },
+            "antiseizurecmd": {
+                "name": "Comando antibloccaggio"
+            },
+            "antiseizureperiod": {
+                "name": "Intervallo antibloccaggio"
+            },
+            "api_mode": {
+                "name": "Modalità API"
+            },
+            "area_id": {
+                "name": "Identificativo della zona"
+            },
+            "authorization": {
+                "name": "Autorizzazione"
+            },
+            "batt_defect": {
+                "name": "Anomalia pila"
+            },
+            "battdefect": {
+                "name": "Anomalia pila"
+            },
+            "batterycmddefect": {
+                "name": "Guasto del comando della batteria"
+            },
+            "battlevel": {
+                "name": "Livello batteria"
+            },
+            "bdd_empty": {
+                "name": "Database vuoto"
+            },
+            "bdd_status": {
+                "name": "Stato del database"
+            },
+            "boost": {
+                "name": "Boost"
+            },
+            "booston": {
+                "name": "Boost"
+            },
+            "bootreference": {
+                "name": "Riferimento del bootloader"
+            },
+            "bootversion": {
+                "name": "Versione del bootloader"
+            },
+            "brightness": {
+                "name": "Luminosità"
+            },
+            "calibrationdefect": {
+                "name": "Errore taratura"
+            },
+            "clock": {
+                "name": "Ora del gateway"
+            },
+            "clock_source": {
+                "name": "Origine dell’orologio"
+            },
+            "cmddefect": {
+                "name": "Anomalia comando"
+            },
+            "comfortmode": {
+                "name": "Modalità comfort"
+            },
+            "config": {
+                "name": "Configurazione"
+            },
+            "configsensor": {
+                "name": "Configurazione del sensore"
+            },
+            "configtemp": {
+                "name": "Configurazione della temperatura"
+            },
+            "coolsetpoint": {
+                "name": "Temperatura di raffrescamento"
+            },
+            "current": {
+                "name": "Corrente"
+            },
+            "currentpower": {
+                "name": "Potenza"
+            },
+            "currentsetpoint": {
+                "name": "Temperatura impostata"
+            },
+            "dailypower": {
+                "name": "Potenza giornaliera"
+            },
+            "delaysetpoint": {
+                "name": "Ritardo della temperatura impostata"
+            },
+            "delaythermiclevel": {
+                "name": "Ritardo del livello di riscaldamento"
+            },
+            "device_endpoint": {
+                "name": "Endpoint"
+            },
+            "device_id": {
+                "name": "Identificativo endpoint TYDOM"
+            },
+            "device_name": {
+                "name": "Nome del dispositivo"
+            },
+            "device_type": {
+                "name": "Tipo di dispositivo"
+            },
+            "direction": {
+                "name": "Direzione"
+            },
+            "down_defect": {
+                "name": "Discesa non autorizzata"
+            },
+            "downdefect": {
+                "name": "Discesa non autorizzata"
+            },
+            "energy": {
+                "name": "Energia"
+            },
+            "gsmlevel": {
+                "name": "Livello del segnale mobile"
+            },
+            "heatsetpoint": {
+                "name": "Temperatura di riscaldamento"
+            },
+            "histo": {
+                "name": "Cronologia"
+            },
+            "hvacmode": {
+                "name": "Modalità di riscaldamento e raffrescamento"
+            },
+            "hygroin": {
+                "name": "Umidità"
+            },
+            "inactiveproduct": {
+                "name": "Prodotto inattivo"
+            },
+            "index": {
+                "name": "Indice"
+            },
+            "indexstart": {
+                "name": "Indice iniziale"
+            },
+            "indextimeon": {
+                "name": "Indice del tempo di funzionamento"
+            },
+            "intrusion": {
+                "name": "Intrusione"
+            },
+            "intrusiondetect": {
+                "name": "Intrusione"
+            },
+            "irv1state": {
+                "name": "Stato (IRV 1)"
+            },
+            "irv2state": {
+                "name": "Stato (IRV 2)"
+            },
+            "irv3state": {
+                "name": "Stato (IRV 3)"
+            },
+            "irv4state": {
+                "name": "Stato (IRV 4)"
+            },
+            "irv5state": {
+                "name": "Stato (IRV 5)"
+            },
+            "irv6state": {
+                "name": "Stato (IRV 6)"
+            },
+            "irv7state": {
+                "name": "Stato (IRV 7)"
+            },
+            "irv8state": {
+                "name": "Stato (IRV 8)"
+            },
+            "irvcmd": {
+                "name": "Comando IRV"
+            },
+            "irvid": {
+                "name": "Identificativo IRV"
+            },
+            "isreference": {
+                "name": "Dispositivo di riferimento"
+            },
+            "jobs": {
+                "name": "Attività interne"
+            },
+            "jobsmp": {
+                "name": "Attività del modulo principale"
+            },
+            "jobsrm": {
+                "name": "Attività del modulo radio"
+            },
+            "kerneldownloadforced": {
+                "name": "Download forzato del firmware"
+            },
+            "kerneluptodate": {
+                "name": "Firmware aggiornato"
+            },
+            "keyreference": {
+                "name": "Riferimento del modulo radio"
+            },
+            "keyversionhw": {
+                "name": "Versione hardware radio"
+            },
+            "keyversionstack": {
+                "name": "Versione dello stack radio"
+            },
+            "keyversionsw": {
+                "name": "Versione software radio"
+            },
+            "label": {
+                "name": "Etichetta"
+            },
+            "last_usage": {
+                "name": "Uso"
+            },
+            "latitude": {
+                "name": "Latitudine"
+            },
+            "level": {
+                "name": "Livello"
+            },
+            "levelcmd": {
+                "name": "Comando livello"
+            },
+            "lightpower": {
+                "name": "Irradianza solare"
+            },
+            "livecheckrunning": {
+                "name": "Verifica in corso"
+            },
+            "loaddefect": {
+                "name": "Anomalia carica"
+            },
+            "loadsheddingon": {
+                "name": "Distacco dei carichi"
+            },
+            "localisation": {
+                "name": "Posizione"
+            },
+            "localmode": {
+                "name": "Modalità di funzionamento locale"
+            },
+            "localsetpoint": {
+                "name": "Temperatura locale impostata"
+            },
+            "localsetpremainingtimestr": {
+                "name": "Tempo rimanente della temperatura locale"
+            },
+            "longitude": {
+                "name": "Longitudine"
+            },
+            "mac": {
+                "name": "Indirizzo MAC"
+            },
+            "mainid": {
+                "name": "Identificativo del modulo principale"
+            },
+            "mainreference": {
+                "name": "Riferimento del modulo principale"
+            },
+            "maintenance": {
+                "name": "Manutenzione"
+            },
+            "maintenanceneeded": {
+                "name": "Manutenzione necessaria"
+            },
+            "mainversionhw": {
+                "name": "Versione hardware principale"
+            },
+            "mainversionsw": {
+                "name": "Versione software principale"
+            },
+            "manufacturer": {
+                "name": "Produttore"
+            },
+            "maxcoolsetpoint": {
+                "name": "Temperatura massima di raffrescamento"
+            },
+            "maxdailyouttemp": {
+                "name": "Temperatura esterna massima giornaliera"
+            },
+            "maxheatsetpoint": {
+                "name": "Temperatura massima di riscaldamento"
+            },
+            "maxsetpoint": {
+                "name": "Temperatura massima impostata"
+            },
+            "mincoolsetpoint": {
+                "name": "Temperatura minima di raffrescamento"
+            },
+            "minheatsetpoint": {
+                "name": "Temperatura minima di riscaldamento"
+            },
+            "minsetpoint": {
+                "name": "Temperatura minima impostata"
+            },
+            "modeasso": {
+                "name": "Modalità di associazione"
+            },
+            "modelidentifier": {
+                "name": "Identificativo del modello"
+            },
+            "nbelem": {
+                "name": "Numero di elementi"
+            },
+            "nbrfactuators": {
+                "name": "Numero di attuatori radio"
+            },
+            "networkdefect": {
+                "name": "Guasto di rete"
+            },
+            "obstacle_defect": {
+                "name": "Ostacolo rilevato"
+            },
+            "obstacledefect": {
+                "name": "Ostacolo rilevato"
+            },
+            "ondusk": {
+                "name": "Attivazione al crepuscolo"
+            },
+            "onfavpos": {
+                "name": "Attivazione posizione preferita"
+            },
+            "onpresencedetected": {
+                "name": "Attivazione su presenza"
+            },
+            "openingdetected": {
+                "name": "Apertura rilevata"
+            },
+            "openstate": {
+                "name": "Stato di apertura"
+            },
+            "outtemperature": {
+                "name": "Temperatura esterna"
+            },
+            "overrideremainingtime": {
+                "name": "Tempo rimanente della modifica temporanea"
+            },
+            "overridesetpoint": {
+                "name": "Temperatura temporanea impostata"
+            },
+            "part": {
+                "name": "Partizione allarme"
+            },
+            "part1state": {
+                "name": "Stato (PART 1)"
+            },
+            "part2state": {
+                "name": "Stato (PART 2)"
+            },
+            "part3state": {
+                "name": "Stato (PART 3)"
+            },
+            "part4state": {
+                "name": "Stato (PART 4)"
+            },
+            "part5state": {
+                "name": "Stato (PART 5)"
+            },
+            "part6state": {
+                "name": "Stato (PART 6)"
+            },
+            "part7state": {
+                "name": "Stato (PART 7)"
+            },
+            "part8state": {
+                "name": "Stato (PART 8)"
+            },
+            "partcmd": {
+                "name": "Comando partizione allarme"
+            },
+            "password_empty": {
+                "name": "Password vuota"
+            },
+            "period": {
+                "name": "Periodo"
+            },
+            "periodoffset": {
+                "name": "Scostamento del periodo"
+            },
+            "permissions": {
+                "name": "Autorizzazioni"
+            },
+            "plt_registered": {
+                "name": "Piattaforma registrata"
+            },
+            "position": {
+                "name": "Posizione"
+            },
+            "positioncmd": {
+                "name": "Comando posizione"
+            },
+            "power": {
+                "name": "Potenza"
+            },
+            "prealarm": {
+                "name": "Preallarme"
+            },
+            "presencedetected": {
+                "name": "Presenza rilevata"
+            },
+            "productconf": {
+                "name": "Configurazione"
+            },
+            "productiondefect": {
+                "name": "Anomalia di produzione"
+            },
+            "productname": {
+                "name": "Nome del prodotto"
+            },
+            "protocol_available": {
+                "name": "{protocol} — Disponibile"
+            },
+            "protocol_http": {
+                "name": "HTTP Protocollo"
+            },
+            "protocol_installed": {
+                "name": "{protocol} — Installato"
+            },
+            "protocol_pltservice": {
+                "name": "PltService Protocollo"
+            },
+            "protocol_ready": {
+                "name": "{protocol} — Pronto"
+            },
+            "protocol_status": {
+                "name": "{protocol} — In funzione"
+            },
+            "protocol_x3d": {
+                "name": "X3D Protocollo"
+            },
+            "protocol_x3dv": {
+                "name": "X3DV Protocollo"
+            },
+            "protocol_zigbee": {
+                "name": "Zigbee Protocollo"
+            },
+            "readable": {
+                "name": "Leggibile"
+            },
+            "recfav": {
+                "name": "Memorizza posizione preferita"
+            },
+            "regtemperature": {
+                "name": "Temperatura di regolazione"
+            },
+            "remotesurveydefect": {
+                "name": "Anomalia supervisione"
+            },
+            "reset": {
+                "name": "Ripristina"
+            },
+            "selectedprog": {
+                "name": "Programma selezionato"
+            },
+            "sendasso": {
+                "name": "Invia comando di associazione"
+            },
+            "sendnetremoteassomode": {
+                "name": "Modalità di associazione remota"
+            },
+            "setpoint": {
+                "name": "Temperatura impostata"
+            },
+            "shuttercmd": {
+                "name": "Comando tapparella"
+            },
+            "simdefect": {
+                "name": "Scheda SIM assente"
+            },
+            "slope": {
+                "name": "Pendenza della curva di riscaldamento"
+            },
+            "softplan": {
+                "name": "Pacchetto software"
+            },
+            "softplan0": {
+                "name": "Pacchetto software (0)"
+            },
+            "softplan1": {
+                "name": "Pacchetto software (1)"
+            },
+            "softplan2": {
+                "name": "Pacchetto software (2)"
+            },
+            "softplan3": {
+                "name": "Pacchetto software (3)"
+            },
+            "softversion": {
+                "name": "Versione software"
+            },
+            "softversion0": {
+                "name": "Versione software (0)"
+            },
+            "softversion1": {
+                "name": "Versione software (1)"
+            },
+            "softversion2": {
+                "name": "Versione software (2)"
+            },
+            "softversion3": {
+                "name": "Versione software (3)"
+            },
+            "speed": {
+                "name": "Velocità della ventola"
+            },
+            "speedstring": {
+                "name": "Velocità della ventola"
+            },
+            "state": {
+                "name": "Stato"
+            },
+            "summer_offset": {
+                "name": "Differenza dell’ora legale"
+            },
+            "summeroffset": {
+                "name": "Differenza dell’ora legale"
+            },
+            "supervisionmode": {
+                "name": "Modalità di supervisione"
+            },
+            "synchropps": {
+                "name": "Sincronizzazione oraria"
+            },
+            "synchroradio": {
+                "name": "Sincronizzazione radio"
+            },
+            "systalarmdefect": {
+                "name": "Guasto del sistema di allarme"
+            },
+            "systautoprotect": {
+                "name": "Autoprotezione"
+            },
+            "systbatterydefect": {
+                "name": "Guasto della batteria"
+            },
+            "systopenissue": {
+                "name": "Inserimento allarme bloccato"
+            },
+            "systsectordefect": {
+                "name": "Anomalia alim. rete"
+            },
+            "systsupervisiondefect": {
+                "name": "Anomalia supervisione"
+            },
+            "systtechnicaldefect": {
+                "name": "Anomalia tecnica"
+            },
+            "techsmokedefect": {
+                "name": "Fumo rilevato"
+            },
+            "techwaterdefect": {
+                "name": "Perdita d'acqua rilevata"
+            },
+            "temperature": {
+                "name": "Temperatura"
+            },
+            "tempoon": {
+                "name": "Temporizzazione"
+            },
+            "tempsensordefect": {
+                "name": "Anomalia sonda"
+            },
+            "tempsensoropencirc": {
+                "name": "Sonda interrotta"
+            },
+            "tempsensorshortcut": {
+                "name": "Sonda in cortocircuito"
+            },
+            "thermic_defect": {
+                "name": "Surriscaldamento"
+            },
+            "thermicdefect": {
+                "name": "Surriscaldamento"
+            },
+            "thermiclevel": {
+                "name": "Livello di riscaldamento"
+            },
+            "timedelay": {
+                "name": "Temporizzazione"
+            },
+            "timeoncpt": {
+                "name": "Contatore del tempo di funzionamento"
+            },
+            "timezone": {
+                "name": "Fuso orario"
+            },
+            "total": {
+                "name": "Totale"
+            },
+            "uid": {
+                "name": "Identificativo del dispositivo"
+            },
+            "unackedevent": {
+                "name": "Eventi non confermati"
+            },
+            "unitautoprotect": {
+                "name": "Autoprotezione"
+            },
+            "unitbatterydefect": {
+                "name": "Guasto della batteria"
+            },
+            "unitinternaldefect": {
+                "name": "Guasto interno"
+            },
+            "up_defect": {
+                "name": "Salita non autorizzata"
+            },
+            "update_available": {
+                "name": "Aggiornamento disponibile"
+            },
+            "updefect": {
+                "name": "Salita non autorizzata"
+            },
+            "usage": {
+                "name": "Uso"
+            },
+            "usemode": {
+                "name": "Modalità di funzionamento"
+            },
+            "value": {
+                "name": "Valore"
+            },
+            "videolinkdefect": {
+                "name": "Anomalia link video"
+            },
+            "waterflowreq": {
+                "name": "Portata d’acqua richiesta"
+            },
+            "weather": {
+                "name": "Meteo"
+            },
+            "writable": {
+                "name": "Modificabile"
+            },
+            "zclversion": {
+                "name": "Versione della libreria Zigbee"
+            },
+            "zone1state": {
+                "name": "Stato (ZONE 1)"
+            },
+            "zone2state": {
+                "name": "Stato (ZONE 2)"
+            },
+            "zone3state": {
+                "name": "Stato (ZONE 3)"
+            },
+            "zone4state": {
+                "name": "Stato (ZONE 4)"
+            },
+            "zone5state": {
+                "name": "Stato (ZONE 5)"
+            },
+            "zone6state": {
+                "name": "Stato (ZONE 6)"
+            },
+            "zone7state": {
+                "name": "Stato (ZONE 7)"
+            },
+            "zone8state": {
+                "name": "Stato (ZONE 8)"
+            },
+            "zonecmd": {
+                "name": "Comando zona allarme"
+            },
+            "zones": {
+                "name": "Zone di allarme"
+            }
+        },
+        "number": {
+            "absence": {
+                "name": "Modalità assenza"
+            },
+            "absencesetpoint": {
+                "name": "Temperatura in assenza"
+            },
+            "absmaxcoolsetpoint": {
+                "name": "Temperatura massima di raffrescamento"
+            },
+            "absmaxheatsetpoint": {
+                "name": "Temperatura massima di riscaldamento"
+            },
+            "absmincoolsetpoint": {
+                "name": "Temperatura minima di raffrescamento"
+            },
+            "absminheatsetpoint": {
+                "name": "Temperatura minima di riscaldamento"
+            },
+            "ackeventcmd": {
+                "name": "Comando di conferma eventi"
+            },
+            "activationcpt": {
+                "name": "Numero di attivazioni"
+            },
+            "activationindex": {
+                "name": "Indice di attivazione"
+            },
+            "alarmcmd": {
+                "name": "Comando allarme"
+            },
+            "alarmintrusion": {
+                "name": "Intrusione"
+            },
+            "alarmmode": {
+                "name": "Modalità allarme"
+            },
+            "alarmsos": {
+                "name": "Allarme SOS"
+            },
+            "alarmstate": {
+                "name": "Stato dell’allarme"
+            },
+            "alarmtechnical": {
+                "name": "Allarme tecnico"
+            },
+            "ambienttemperature": {
+                "name": "Temperatura ambiente"
+            },
+            "anticipcoeff": {
+                "name": "Coefficiente di anticipo"
+            },
+            "anticpcoeff": {
+                "name": "Coefficiente di anticipo"
+            },
+            "antifroston": {
+                "name": "Protezione antigelo"
+            },
+            "antifrostsetpoint": {
+                "name": "Temperatura antigelo"
+            },
+            "antifrostwhenoff": {
+                "name": "Protezione antigelo"
+            },
+            "antiseizurecmd": {
+                "name": "Comando antibloccaggio"
+            },
+            "antiseizureperiod": {
+                "name": "Intervallo antibloccaggio"
+            },
+            "api_mode": {
+                "name": "Modalità API"
+            },
+            "area_id": {
+                "name": "Identificativo della zona"
+            },
+            "authorization": {
+                "name": "Autorizzazione"
+            },
+            "batt_defect": {
+                "name": "Anomalia pila"
+            },
+            "battdefect": {
+                "name": "Anomalia pila"
+            },
+            "batterycmddefect": {
+                "name": "Guasto del comando della batteria"
+            },
+            "battlevel": {
+                "name": "Livello batteria"
+            },
+            "bdd_empty": {
+                "name": "Database vuoto"
+            },
+            "bdd_status": {
+                "name": "Stato del database"
+            },
+            "boost": {
+                "name": "Boost"
+            },
+            "booston": {
+                "name": "Boost"
+            },
+            "bootreference": {
+                "name": "Riferimento del bootloader"
+            },
+            "bootversion": {
+                "name": "Versione del bootloader"
+            },
+            "brightness": {
+                "name": "Luminosità"
+            },
+            "calibrationdefect": {
+                "name": "Errore taratura"
+            },
+            "clock": {
+                "name": "Ora del gateway"
+            },
+            "clock_source": {
+                "name": "Origine dell’orologio"
+            },
+            "cmddefect": {
+                "name": "Anomalia comando"
+            },
+            "comfortmode": {
+                "name": "Modalità comfort"
+            },
+            "config": {
+                "name": "Configurazione"
+            },
+            "configsensor": {
+                "name": "Configurazione del sensore"
+            },
+            "configtemp": {
+                "name": "Configurazione della temperatura"
+            },
+            "coolsetpoint": {
+                "name": "Temperatura di raffrescamento"
+            },
+            "current": {
+                "name": "Corrente"
+            },
+            "currentpower": {
+                "name": "Potenza"
+            },
+            "currentsetpoint": {
+                "name": "Temperatura impostata"
+            },
+            "dailypower": {
+                "name": "Potenza giornaliera"
+            },
+            "delaysetpoint": {
+                "name": "Ritardo della temperatura impostata"
+            },
+            "delaythermiclevel": {
+                "name": "Ritardo del livello di riscaldamento"
+            },
+            "device_endpoint": {
+                "name": "Endpoint"
+            },
+            "device_id": {
+                "name": "Identificativo endpoint TYDOM"
+            },
+            "device_name": {
+                "name": "Nome del dispositivo"
+            },
+            "device_type": {
+                "name": "Tipo di dispositivo"
+            },
+            "direction": {
+                "name": "Direzione"
+            },
+            "down_defect": {
+                "name": "Discesa non autorizzata"
+            },
+            "downdefect": {
+                "name": "Discesa non autorizzata"
+            },
+            "energy": {
+                "name": "Energia"
+            },
+            "gsmlevel": {
+                "name": "Livello del segnale mobile"
+            },
+            "heatsetpoint": {
+                "name": "Temperatura di riscaldamento"
+            },
+            "histo": {
+                "name": "Cronologia"
+            },
+            "hvacmode": {
+                "name": "Modalità di riscaldamento e raffrescamento"
+            },
+            "hygroin": {
+                "name": "Umidità"
+            },
+            "inactiveproduct": {
+                "name": "Prodotto inattivo"
+            },
+            "index": {
+                "name": "Indice"
+            },
+            "indexstart": {
+                "name": "Indice iniziale"
+            },
+            "indextimeon": {
+                "name": "Indice del tempo di funzionamento"
+            },
+            "intrusion": {
+                "name": "Intrusione"
+            },
+            "intrusiondetect": {
+                "name": "Intrusione"
+            },
+            "irv1state": {
+                "name": "Stato (IRV 1)"
+            },
+            "irv2state": {
+                "name": "Stato (IRV 2)"
+            },
+            "irv3state": {
+                "name": "Stato (IRV 3)"
+            },
+            "irv4state": {
+                "name": "Stato (IRV 4)"
+            },
+            "irv5state": {
+                "name": "Stato (IRV 5)"
+            },
+            "irv6state": {
+                "name": "Stato (IRV 6)"
+            },
+            "irv7state": {
+                "name": "Stato (IRV 7)"
+            },
+            "irv8state": {
+                "name": "Stato (IRV 8)"
+            },
+            "irvcmd": {
+                "name": "Comando IRV"
+            },
+            "irvid": {
+                "name": "Identificativo IRV"
+            },
+            "isreference": {
+                "name": "Dispositivo di riferimento"
+            },
+            "jobs": {
+                "name": "Attività interne"
+            },
+            "jobsmp": {
+                "name": "Attività del modulo principale"
+            },
+            "jobsrm": {
+                "name": "Attività del modulo radio"
+            },
+            "kerneldownloadforced": {
+                "name": "Download forzato del firmware"
+            },
+            "kerneluptodate": {
+                "name": "Firmware aggiornato"
+            },
+            "keyreference": {
+                "name": "Riferimento del modulo radio"
+            },
+            "keyversionhw": {
+                "name": "Versione hardware radio"
+            },
+            "keyversionstack": {
+                "name": "Versione dello stack radio"
+            },
+            "keyversionsw": {
+                "name": "Versione software radio"
+            },
+            "label": {
+                "name": "Etichetta"
+            },
+            "last_usage": {
+                "name": "Uso"
+            },
+            "latitude": {
+                "name": "Latitudine"
+            },
+            "level": {
+                "name": "Livello"
+            },
+            "levelcmd": {
+                "name": "Comando livello"
+            },
+            "lightpower": {
+                "name": "Irradianza solare"
+            },
+            "livecheckrunning": {
+                "name": "Verifica in corso"
+            },
+            "loaddefect": {
+                "name": "Anomalia carica"
+            },
+            "loadsheddingon": {
+                "name": "Distacco dei carichi"
+            },
+            "localisation": {
+                "name": "Posizione"
+            },
+            "localmode": {
+                "name": "Modalità di funzionamento locale"
+            },
+            "localsetpoint": {
+                "name": "Temperatura locale impostata"
+            },
+            "localsetpremainingtimestr": {
+                "name": "Tempo rimanente della temperatura locale"
+            },
+            "longitude": {
+                "name": "Longitudine"
+            },
+            "mac": {
+                "name": "Indirizzo MAC"
+            },
+            "mainid": {
+                "name": "Identificativo del modulo principale"
+            },
+            "mainreference": {
+                "name": "Riferimento del modulo principale"
+            },
+            "maintenance": {
+                "name": "Manutenzione"
+            },
+            "maintenanceneeded": {
+                "name": "Manutenzione necessaria"
+            },
+            "mainversionhw": {
+                "name": "Versione hardware principale"
+            },
+            "mainversionsw": {
+                "name": "Versione software principale"
+            },
+            "manufacturer": {
+                "name": "Produttore"
+            },
+            "maxcoolsetpoint": {
+                "name": "Temperatura massima di raffrescamento"
+            },
+            "maxdailyouttemp": {
+                "name": "Temperatura esterna massima giornaliera"
+            },
+            "maxheatsetpoint": {
+                "name": "Temperatura massima di riscaldamento"
+            },
+            "maxsetpoint": {
+                "name": "Temperatura massima impostata"
+            },
+            "mincoolsetpoint": {
+                "name": "Temperatura minima di raffrescamento"
+            },
+            "minheatsetpoint": {
+                "name": "Temperatura minima di riscaldamento"
+            },
+            "minsetpoint": {
+                "name": "Temperatura minima impostata"
+            },
+            "modeasso": {
+                "name": "Modalità di associazione"
+            },
+            "modelidentifier": {
+                "name": "Identificativo del modello"
+            },
+            "nbelem": {
+                "name": "Numero di elementi"
+            },
+            "nbrfactuators": {
+                "name": "Numero di attuatori radio"
+            },
+            "networkdefect": {
+                "name": "Guasto di rete"
+            },
+            "obstacle_defect": {
+                "name": "Ostacolo rilevato"
+            },
+            "obstacledefect": {
+                "name": "Ostacolo rilevato"
+            },
+            "ondusk": {
+                "name": "Attivazione al crepuscolo"
+            },
+            "onfavpos": {
+                "name": "Attivazione posizione preferita"
+            },
+            "onpresencedetected": {
+                "name": "Attivazione su presenza"
+            },
+            "openingdetected": {
+                "name": "Apertura rilevata"
+            },
+            "openstate": {
+                "name": "Stato di apertura"
+            },
+            "outtemperature": {
+                "name": "Temperatura esterna"
+            },
+            "overrideremainingtime": {
+                "name": "Tempo rimanente della modifica temporanea"
+            },
+            "overridesetpoint": {
+                "name": "Temperatura temporanea impostata"
+            },
+            "part": {
+                "name": "Partizione allarme"
+            },
+            "part1state": {
+                "name": "Stato (PART 1)"
+            },
+            "part2state": {
+                "name": "Stato (PART 2)"
+            },
+            "part3state": {
+                "name": "Stato (PART 3)"
+            },
+            "part4state": {
+                "name": "Stato (PART 4)"
+            },
+            "part5state": {
+                "name": "Stato (PART 5)"
+            },
+            "part6state": {
+                "name": "Stato (PART 6)"
+            },
+            "part7state": {
+                "name": "Stato (PART 7)"
+            },
+            "part8state": {
+                "name": "Stato (PART 8)"
+            },
+            "partcmd": {
+                "name": "Comando partizione allarme"
+            },
+            "password_empty": {
+                "name": "Password vuota"
+            },
+            "period": {
+                "name": "Periodo"
+            },
+            "periodoffset": {
+                "name": "Scostamento del periodo"
+            },
+            "permissions": {
+                "name": "Autorizzazioni"
+            },
+            "plt_registered": {
+                "name": "Piattaforma registrata"
+            },
+            "position": {
+                "name": "Posizione"
+            },
+            "positioncmd": {
+                "name": "Comando posizione"
+            },
+            "power": {
+                "name": "Potenza"
+            },
+            "prealarm": {
+                "name": "Preallarme"
+            },
+            "presencedetected": {
+                "name": "Presenza rilevata"
+            },
+            "productconf": {
+                "name": "Configurazione"
+            },
+            "productiondefect": {
+                "name": "Anomalia di produzione"
+            },
+            "productname": {
+                "name": "Nome del prodotto"
+            },
+            "readable": {
+                "name": "Leggibile"
+            },
+            "recfav": {
+                "name": "Memorizza posizione preferita"
+            },
+            "regtemperature": {
+                "name": "Temperatura di regolazione"
+            },
+            "remotesurveydefect": {
+                "name": "Anomalia supervisione"
+            },
+            "reset": {
+                "name": "Ripristina"
+            },
+            "selectedprog": {
+                "name": "Programma selezionato"
+            },
+            "sendasso": {
+                "name": "Invia comando di associazione"
+            },
+            "sendnetremoteassomode": {
+                "name": "Modalità di associazione remota"
+            },
+            "setpoint": {
+                "name": "Temperatura impostata"
+            },
+            "shuttercmd": {
+                "name": "Comando tapparella"
+            },
+            "simdefect": {
+                "name": "Scheda SIM assente"
+            },
+            "slope": {
+                "name": "Pendenza della curva di riscaldamento"
+            },
+            "softplan": {
+                "name": "Pacchetto software"
+            },
+            "softplan0": {
+                "name": "Pacchetto software (0)"
+            },
+            "softplan1": {
+                "name": "Pacchetto software (1)"
+            },
+            "softplan2": {
+                "name": "Pacchetto software (2)"
+            },
+            "softplan3": {
+                "name": "Pacchetto software (3)"
+            },
+            "softversion": {
+                "name": "Versione software"
+            },
+            "softversion0": {
+                "name": "Versione software (0)"
+            },
+            "softversion1": {
+                "name": "Versione software (1)"
+            },
+            "softversion2": {
+                "name": "Versione software (2)"
+            },
+            "softversion3": {
+                "name": "Versione software (3)"
+            },
+            "speed": {
+                "name": "Velocità della ventola"
+            },
+            "speedstring": {
+                "name": "Velocità della ventola"
+            },
+            "state": {
+                "name": "Stato"
+            },
+            "summer_offset": {
+                "name": "Differenza dell’ora legale"
+            },
+            "summeroffset": {
+                "name": "Differenza dell’ora legale"
+            },
+            "supervisionmode": {
+                "name": "Modalità di supervisione"
+            },
+            "synchropps": {
+                "name": "Sincronizzazione oraria"
+            },
+            "synchroradio": {
+                "name": "Sincronizzazione radio"
+            },
+            "systalarmdefect": {
+                "name": "Guasto del sistema di allarme"
+            },
+            "systautoprotect": {
+                "name": "Autoprotezione"
+            },
+            "systbatterydefect": {
+                "name": "Guasto della batteria"
+            },
+            "systopenissue": {
+                "name": "Inserimento allarme bloccato"
+            },
+            "systsectordefect": {
+                "name": "Anomalia alim. rete"
+            },
+            "systsupervisiondefect": {
+                "name": "Anomalia supervisione"
+            },
+            "systtechnicaldefect": {
+                "name": "Anomalia tecnica"
+            },
+            "techsmokedefect": {
+                "name": "Fumo rilevato"
+            },
+            "techwaterdefect": {
+                "name": "Perdita d'acqua rilevata"
+            },
+            "temperature": {
+                "name": "Temperatura"
+            },
+            "tempoon": {
+                "name": "Temporizzazione"
+            },
+            "tempsensordefect": {
+                "name": "Anomalia sonda"
+            },
+            "tempsensoropencirc": {
+                "name": "Sonda interrotta"
+            },
+            "tempsensorshortcut": {
+                "name": "Sonda in cortocircuito"
+            },
+            "thermic_defect": {
+                "name": "Surriscaldamento"
+            },
+            "thermicdefect": {
+                "name": "Surriscaldamento"
+            },
+            "thermiclevel": {
+                "name": "Livello di riscaldamento"
+            },
+            "timedelay": {
+                "name": "Temporizzazione"
+            },
+            "timeoncpt": {
+                "name": "Contatore del tempo di funzionamento"
+            },
+            "timezone": {
+                "name": "Fuso orario"
+            },
+            "total": {
+                "name": "Totale"
+            },
+            "uid": {
+                "name": "Identificativo del dispositivo"
+            },
+            "unackedevent": {
+                "name": "Eventi non confermati"
+            },
+            "unitautoprotect": {
+                "name": "Autoprotezione"
+            },
+            "unitbatterydefect": {
+                "name": "Guasto della batteria"
+            },
+            "unitinternaldefect": {
+                "name": "Guasto interno"
+            },
+            "up_defect": {
+                "name": "Salita non autorizzata"
+            },
+            "update_available": {
+                "name": "Aggiornamento disponibile"
+            },
+            "updefect": {
+                "name": "Salita non autorizzata"
+            },
+            "usage": {
+                "name": "Uso"
+            },
+            "usemode": {
+                "name": "Modalità di funzionamento"
+            },
+            "value": {
+                "name": "Valore"
+            },
+            "videolinkdefect": {
+                "name": "Anomalia link video"
+            },
+            "waterflowreq": {
+                "name": "Portata d’acqua richiesta"
+            },
+            "weather": {
+                "name": "Meteo"
+            },
+            "writable": {
+                "name": "Modificabile"
+            },
+            "zclversion": {
+                "name": "Versione della libreria Zigbee"
+            },
+            "zone1state": {
+                "name": "Stato (ZONE 1)"
+            },
+            "zone2state": {
+                "name": "Stato (ZONE 2)"
+            },
+            "zone3state": {
+                "name": "Stato (ZONE 3)"
+            },
+            "zone4state": {
+                "name": "Stato (ZONE 4)"
+            },
+            "zone5state": {
+                "name": "Stato (ZONE 5)"
+            },
+            "zone6state": {
+                "name": "Stato (ZONE 6)"
+            },
+            "zone7state": {
+                "name": "Stato (ZONE 7)"
+            },
+            "zone8state": {
+                "name": "Stato (ZONE 8)"
+            },
+            "zonecmd": {
+                "name": "Comando zona allarme"
+            },
+            "zones": {
+                "name": "Zone di allarme"
+            }
+        },
+        "select": {
+            "absence": {
+                "name": "Modalità assenza"
+            },
+            "absencesetpoint": {
+                "name": "Temperatura in assenza"
+            },
+            "absmaxcoolsetpoint": {
+                "name": "Temperatura massima di raffrescamento"
+            },
+            "absmaxheatsetpoint": {
+                "name": "Temperatura massima di riscaldamento"
+            },
+            "absmincoolsetpoint": {
+                "name": "Temperatura minima di raffrescamento"
+            },
+            "absminheatsetpoint": {
+                "name": "Temperatura minima di riscaldamento"
+            },
+            "ackeventcmd": {
+                "name": "Comando di conferma eventi"
+            },
+            "activationcpt": {
+                "name": "Numero di attivazioni"
+            },
+            "activationindex": {
+                "name": "Indice di attivazione"
+            },
+            "alarmcmd": {
+                "name": "Comando allarme"
+            },
+            "alarmintrusion": {
+                "name": "Intrusione"
+            },
+            "alarmmode": {
+                "name": "Modalità allarme"
+            },
+            "alarmsos": {
+                "name": "Allarme SOS"
+            },
+            "alarmstate": {
+                "name": "Stato dell’allarme"
+            },
+            "alarmtechnical": {
+                "name": "Allarme tecnico"
+            },
+            "ambienttemperature": {
+                "name": "Temperatura ambiente"
+            },
+            "anticipcoeff": {
+                "name": "Coefficiente di anticipo"
+            },
+            "anticpcoeff": {
+                "name": "Coefficiente di anticipo"
+            },
+            "antifroston": {
+                "name": "Protezione antigelo"
+            },
+            "antifrostsetpoint": {
+                "name": "Temperatura antigelo"
+            },
+            "antifrostwhenoff": {
+                "name": "Protezione antigelo"
+            },
+            "antiseizurecmd": {
+                "name": "Comando antibloccaggio"
+            },
+            "antiseizureperiod": {
+                "name": "Intervallo antibloccaggio"
+            },
+            "api_mode": {
+                "name": "Modalità API"
+            },
+            "area_id": {
+                "name": "Identificativo della zona"
+            },
+            "association_category": {
+                "name": "1. Categoria da associare"
+            },
+            "association_channel": {
+                "name": "3. Canale da associare"
+            },
+            "association_product": {
+                "name": "2. Prodotto da associare"
+            },
+            "association_usage": {
+                "name": "4. Uso / tipo di associazione"
+            },
+            "authorization": {
+                "name": "Autorizzazione"
+            },
+            "batt_defect": {
+                "name": "Anomalia pila"
+            },
+            "battdefect": {
+                "name": "Anomalia pila"
+            },
+            "batterycmddefect": {
+                "name": "Guasto del comando della batteria"
+            },
+            "battlevel": {
+                "name": "Livello batteria"
+            },
+            "bdd_empty": {
+                "name": "Database vuoto"
+            },
+            "bdd_status": {
+                "name": "Stato del database"
+            },
+            "boost": {
+                "name": "Boost"
+            },
+            "booston": {
+                "name": "Boost"
+            },
+            "bootreference": {
+                "name": "Riferimento del bootloader"
+            },
+            "bootversion": {
+                "name": "Versione del bootloader"
+            },
+            "brightness": {
+                "name": "Luminosità"
+            },
+            "calibrationdefect": {
+                "name": "Errore taratura"
+            },
+            "clock": {
+                "name": "Ora del gateway"
+            },
+            "clock_source": {
+                "name": "Origine dell’orologio"
+            },
+            "cmddefect": {
+                "name": "Anomalia comando"
+            },
+            "comfortmode": {
+                "name": "Modalità comfort"
+            },
+            "config": {
+                "name": "Configurazione"
+            },
+            "configsensor": {
+                "name": "Configurazione del sensore"
+            },
+            "configtemp": {
+                "name": "Configurazione della temperatura"
+            },
+            "coolsetpoint": {
+                "name": "Temperatura di raffrescamento"
+            },
+            "current": {
+                "name": "Corrente"
+            },
+            "currentpower": {
+                "name": "Potenza"
+            },
+            "currentsetpoint": {
+                "name": "Temperatura impostata"
+            },
+            "dailypower": {
+                "name": "Potenza giornaliera"
+            },
+            "delaysetpoint": {
+                "name": "Ritardo della temperatura impostata"
+            },
+            "delaythermiclevel": {
+                "name": "Ritardo del livello di riscaldamento"
+            },
+            "device_endpoint": {
+                "name": "Endpoint"
+            },
+            "device_id": {
+                "name": "Identificativo endpoint TYDOM"
+            },
+            "device_name": {
+                "name": "Nome del dispositivo"
+            },
+            "device_type": {
+                "name": "Tipo di dispositivo"
+            },
+            "direction": {
+                "name": "Direzione"
+            },
+            "down_defect": {
+                "name": "Discesa non autorizzata"
+            },
+            "downdefect": {
+                "name": "Discesa non autorizzata"
+            },
+            "energy": {
+                "name": "Energia"
+            },
+            "gsmlevel": {
+                "name": "Livello del segnale mobile"
+            },
+            "heatsetpoint": {
+                "name": "Temperatura di riscaldamento"
+            },
+            "histo": {
+                "name": "Cronologia"
+            },
+            "hvacmode": {
+                "name": "Modalità di riscaldamento e raffrescamento"
+            },
+            "hygroin": {
+                "name": "Umidità"
+            },
+            "inactiveproduct": {
+                "name": "Prodotto inattivo"
+            },
+            "index": {
+                "name": "Indice"
+            },
+            "indexstart": {
+                "name": "Indice iniziale"
+            },
+            "indextimeon": {
+                "name": "Indice del tempo di funzionamento"
+            },
+            "intrusion": {
+                "name": "Intrusione"
+            },
+            "intrusiondetect": {
+                "name": "Intrusione"
+            },
+            "irv1state": {
+                "name": "Stato (IRV 1)"
+            },
+            "irv2state": {
+                "name": "Stato (IRV 2)"
+            },
+            "irv3state": {
+                "name": "Stato (IRV 3)"
+            },
+            "irv4state": {
+                "name": "Stato (IRV 4)"
+            },
+            "irv5state": {
+                "name": "Stato (IRV 5)"
+            },
+            "irv6state": {
+                "name": "Stato (IRV 6)"
+            },
+            "irv7state": {
+                "name": "Stato (IRV 7)"
+            },
+            "irv8state": {
+                "name": "Stato (IRV 8)"
+            },
+            "irvcmd": {
+                "name": "Comando IRV"
+            },
+            "irvid": {
+                "name": "Identificativo IRV"
+            },
+            "isreference": {
+                "name": "Dispositivo di riferimento"
+            },
+            "jobs": {
+                "name": "Attività interne"
+            },
+            "jobsmp": {
+                "name": "Attività del modulo principale"
+            },
+            "jobsrm": {
+                "name": "Attività del modulo radio"
+            },
+            "kerneldownloadforced": {
+                "name": "Download forzato del firmware"
+            },
+            "kerneluptodate": {
+                "name": "Firmware aggiornato"
+            },
+            "keyreference": {
+                "name": "Riferimento del modulo radio"
+            },
+            "keyversionhw": {
+                "name": "Versione hardware radio"
+            },
+            "keyversionstack": {
+                "name": "Versione dello stack radio"
+            },
+            "keyversionsw": {
+                "name": "Versione software radio"
+            },
+            "label": {
+                "name": "Etichetta"
+            },
+            "last_usage": {
+                "name": "Uso"
+            },
+            "latitude": {
+                "name": "Latitudine"
+            },
+            "level": {
+                "name": "Livello"
+            },
+            "levelcmd": {
+                "name": "Comando livello"
+            },
+            "lightpower": {
+                "name": "Irradianza solare"
+            },
+            "livecheckrunning": {
+                "name": "Verifica in corso"
+            },
+            "loaddefect": {
+                "name": "Anomalia carica"
+            },
+            "loadsheddingon": {
+                "name": "Distacco dei carichi"
+            },
+            "localisation": {
+                "name": "Posizione"
+            },
+            "localmode": {
+                "name": "Modalità di funzionamento locale"
+            },
+            "localsetpoint": {
+                "name": "Temperatura locale impostata"
+            },
+            "localsetpremainingtimestr": {
+                "name": "Tempo rimanente della temperatura locale"
+            },
+            "longitude": {
+                "name": "Longitudine"
+            },
+            "mac": {
+                "name": "Indirizzo MAC"
+            },
+            "mainid": {
+                "name": "Identificativo del modulo principale"
+            },
+            "mainreference": {
+                "name": "Riferimento del modulo principale"
+            },
+            "maintenance": {
+                "name": "Manutenzione"
+            },
+            "maintenanceneeded": {
+                "name": "Manutenzione necessaria"
+            },
+            "mainversionhw": {
+                "name": "Versione hardware principale"
+            },
+            "mainversionsw": {
+                "name": "Versione software principale"
+            },
+            "manufacturer": {
+                "name": "Produttore"
+            },
+            "maxcoolsetpoint": {
+                "name": "Temperatura massima di raffrescamento"
+            },
+            "maxdailyouttemp": {
+                "name": "Temperatura esterna massima giornaliera"
+            },
+            "maxheatsetpoint": {
+                "name": "Temperatura massima di riscaldamento"
+            },
+            "maxsetpoint": {
+                "name": "Temperatura massima impostata"
+            },
+            "mincoolsetpoint": {
+                "name": "Temperatura minima di raffrescamento"
+            },
+            "minheatsetpoint": {
+                "name": "Temperatura minima di riscaldamento"
+            },
+            "minsetpoint": {
+                "name": "Temperatura minima impostata"
+            },
+            "modeasso": {
+                "name": "Modalità di associazione"
+            },
+            "modelidentifier": {
+                "name": "Identificativo del modello"
+            },
+            "nbelem": {
+                "name": "Numero di elementi"
+            },
+            "nbrfactuators": {
+                "name": "Numero di attuatori radio"
+            },
+            "networkdefect": {
+                "name": "Guasto di rete"
+            },
+            "obstacle_defect": {
+                "name": "Ostacolo rilevato"
+            },
+            "obstacledefect": {
+                "name": "Ostacolo rilevato"
+            },
+            "ondusk": {
+                "name": "Attivazione al crepuscolo"
+            },
+            "onfavpos": {
+                "name": "Attivazione posizione preferita"
+            },
+            "onpresencedetected": {
+                "name": "Attivazione su presenza"
+            },
+            "openingdetected": {
+                "name": "Apertura rilevata"
+            },
+            "openstate": {
+                "name": "Stato di apertura"
+            },
+            "outtemperature": {
+                "name": "Temperatura esterna"
+            },
+            "overrideremainingtime": {
+                "name": "Tempo rimanente della modifica temporanea"
+            },
+            "overridesetpoint": {
+                "name": "Temperatura temporanea impostata"
+            },
+            "part": {
+                "name": "Partizione allarme"
+            },
+            "part1state": {
+                "name": "Stato (PART 1)"
+            },
+            "part2state": {
+                "name": "Stato (PART 2)"
+            },
+            "part3state": {
+                "name": "Stato (PART 3)"
+            },
+            "part4state": {
+                "name": "Stato (PART 4)"
+            },
+            "part5state": {
+                "name": "Stato (PART 5)"
+            },
+            "part6state": {
+                "name": "Stato (PART 6)"
+            },
+            "part7state": {
+                "name": "Stato (PART 7)"
+            },
+            "part8state": {
+                "name": "Stato (PART 8)"
+            },
+            "partcmd": {
+                "name": "Comando partizione allarme"
+            },
+            "password_empty": {
+                "name": "Password vuota"
+            },
+            "period": {
+                "name": "Periodo"
+            },
+            "periodoffset": {
+                "name": "Scostamento del periodo"
+            },
+            "permissions": {
+                "name": "Autorizzazioni"
+            },
+            "plt_registered": {
+                "name": "Piattaforma registrata"
+            },
+            "position": {
+                "name": "Posizione"
+            },
+            "positioncmd": {
+                "name": "Comando posizione"
+            },
+            "power": {
+                "name": "Potenza"
+            },
+            "prealarm": {
+                "name": "Preallarme"
+            },
+            "presencedetected": {
+                "name": "Presenza rilevata"
+            },
+            "productconf": {
+                "name": "Configurazione"
+            },
+            "productiondefect": {
+                "name": "Anomalia di produzione"
+            },
+            "productname": {
+                "name": "Nome del prodotto"
+            },
+            "readable": {
+                "name": "Leggibile"
+            },
+            "recfav": {
+                "name": "Memorizza posizione preferita"
+            },
+            "regtemperature": {
+                "name": "Temperatura di regolazione"
+            },
+            "remotesurveydefect": {
+                "name": "Anomalia supervisione"
+            },
+            "reset": {
+                "name": "Ripristina"
+            },
+            "selectedprog": {
+                "name": "Programma selezionato"
+            },
+            "sendasso": {
+                "name": "Invia comando di associazione"
+            },
+            "sendnetremoteassomode": {
+                "name": "Modalità di associazione remota"
+            },
+            "setpoint": {
+                "name": "Temperatura impostata"
+            },
+            "shuttercmd": {
+                "name": "Comando tapparella"
+            },
+            "simdefect": {
+                "name": "Scheda SIM assente"
+            },
+            "slope": {
+                "name": "Pendenza della curva di riscaldamento"
+            },
+            "softplan": {
+                "name": "Pacchetto software"
+            },
+            "softplan0": {
+                "name": "Pacchetto software (0)"
+            },
+            "softplan1": {
+                "name": "Pacchetto software (1)"
+            },
+            "softplan2": {
+                "name": "Pacchetto software (2)"
+            },
+            "softplan3": {
+                "name": "Pacchetto software (3)"
+            },
+            "softversion": {
+                "name": "Versione software"
+            },
+            "softversion0": {
+                "name": "Versione software (0)"
+            },
+            "softversion1": {
+                "name": "Versione software (1)"
+            },
+            "softversion2": {
+                "name": "Versione software (2)"
+            },
+            "softversion3": {
+                "name": "Versione software (3)"
+            },
+            "speed": {
+                "name": "Velocità della ventola"
+            },
+            "speedstring": {
+                "name": "Velocità della ventola"
+            },
+            "state": {
+                "name": "Stato"
+            },
+            "summer_offset": {
+                "name": "Differenza dell’ora legale"
+            },
+            "summeroffset": {
+                "name": "Differenza dell’ora legale"
+            },
+            "supervisionmode": {
+                "name": "Modalità di supervisione"
+            },
+            "synchropps": {
+                "name": "Sincronizzazione oraria"
+            },
+            "synchroradio": {
+                "name": "Sincronizzazione radio"
+            },
+            "systalarmdefect": {
+                "name": "Guasto del sistema di allarme"
+            },
+            "systautoprotect": {
+                "name": "Autoprotezione"
+            },
+            "systbatterydefect": {
+                "name": "Guasto della batteria"
+            },
+            "systopenissue": {
+                "name": "Inserimento allarme bloccato"
+            },
+            "systsectordefect": {
+                "name": "Anomalia alim. rete"
+            },
+            "systsupervisiondefect": {
+                "name": "Anomalia supervisione"
+            },
+            "systtechnicaldefect": {
+                "name": "Anomalia tecnica"
+            },
+            "techsmokedefect": {
+                "name": "Fumo rilevato"
+            },
+            "techwaterdefect": {
+                "name": "Perdita d'acqua rilevata"
+            },
+            "temperature": {
+                "name": "Temperatura"
+            },
+            "tempoon": {
+                "name": "Temporizzazione"
+            },
+            "tempsensordefect": {
+                "name": "Anomalia sonda"
+            },
+            "tempsensoropencirc": {
+                "name": "Sonda interrotta"
+            },
+            "tempsensorshortcut": {
+                "name": "Sonda in cortocircuito"
+            },
+            "thermic_defect": {
+                "name": "Surriscaldamento"
+            },
+            "thermicdefect": {
+                "name": "Surriscaldamento"
+            },
+            "thermiclevel": {
+                "name": "Livello di riscaldamento"
+            },
+            "timedelay": {
+                "name": "Temporizzazione"
+            },
+            "timeoncpt": {
+                "name": "Contatore del tempo di funzionamento"
+            },
+            "timezone": {
+                "name": "Fuso orario"
+            },
+            "total": {
+                "name": "Totale"
+            },
+            "uid": {
+                "name": "Identificativo del dispositivo"
+            },
+            "unackedevent": {
+                "name": "Eventi non confermati"
+            },
+            "unitautoprotect": {
+                "name": "Autoprotezione"
+            },
+            "unitbatterydefect": {
+                "name": "Guasto della batteria"
+            },
+            "unitinternaldefect": {
+                "name": "Guasto interno"
+            },
+            "up_defect": {
+                "name": "Salita non autorizzata"
+            },
+            "update_available": {
+                "name": "Aggiornamento disponibile"
+            },
+            "updefect": {
+                "name": "Salita non autorizzata"
+            },
+            "usage": {
+                "name": "Uso"
+            },
+            "usemode": {
+                "name": "Modalità di funzionamento"
+            },
+            "value": {
+                "name": "Valore"
+            },
+            "videolinkdefect": {
+                "name": "Anomalia link video"
+            },
+            "waterflowreq": {
+                "name": "Portata d’acqua richiesta"
+            },
+            "weather": {
+                "name": "Meteo"
+            },
+            "writable": {
+                "name": "Modificabile"
+            },
+            "zclversion": {
+                "name": "Versione della libreria Zigbee"
+            },
+            "zone1state": {
+                "name": "Stato (ZONE 1)"
+            },
+            "zone2state": {
+                "name": "Stato (ZONE 2)"
+            },
+            "zone3state": {
+                "name": "Stato (ZONE 3)"
+            },
+            "zone4state": {
+                "name": "Stato (ZONE 4)"
+            },
+            "zone5state": {
+                "name": "Stato (ZONE 5)"
+            },
+            "zone6state": {
+                "name": "Stato (ZONE 6)"
+            },
+            "zone7state": {
+                "name": "Stato (ZONE 7)"
+            },
+            "zone8state": {
+                "name": "Stato (ZONE 8)"
+            },
+            "zonecmd": {
+                "name": "Comando zona allarme"
+            },
+            "zones": {
+                "name": "Zone di allarme"
+            }
+        },
+        "event": {
+            "alarmcmd": {
+                "name": "Comando allarme"
+            },
+            "alarmintrusion": {
+                "name": "Intrusione"
+            },
+            "alarmmode": {
+                "name": "Modalità allarme"
+            },
+            "alarmsos": {
+                "name": "Allarme SOS"
+            },
+            "alarmstate": {
+                "name": "Stato dell’allarme"
+            },
+            "alarmtechnical": {
+                "name": "Allarme tecnico"
+            },
+            "interrupter_button": {
+                "name": "Pulsante {button_number}"
+            },
+            "intrusion": {
+                "name": "Intrusione"
+            },
+            "intrusiondetect": {
+                "name": "Intrusione"
+            },
+            "remote_button": {
+                "name": "Pulsante {button_number}"
+            }
+        },
+        "button": {
+            "acknowledge_events": {
+                "name": "Conferma eventi"
+            },
+            "association_guide": {
+                "name": "5. Mostra guida di associazione"
+            },
+            "association_mode": {
+                "name": "Avvia modalità di associazione"
+            },
+            "cancel_boost": {
+                "name": "Annulla Boost"
+            },
+            "finalize_association": {
+                "name": "Configura {channel} come {usage}"
+            },
+            "finalize_keypad": {
+                "name": "Configura {channel} come tastiera"
+            },
+            "finalize_remote": {
+                "name": "Configura {channel} come telecomando"
+            },
+            "finalize_switch": {
+                "name": "Configura {channel} come interruttore"
+            },
+            "group_alarm": {
+                "name": "Gruppo allarmi"
+            },
+            "group_awning": {
+                "name": "Gruppo tende"
+            },
+            "group_heating": {
+                "name": "Gruppo riscaldamento"
+            },
+            "group_light": {
+                "name": "Gruppo luci"
+            },
+            "group_plug": {
+                "name": "Gruppo prese"
+            },
+            "group_shutter": {
+                "name": "Gruppo tapparelle"
+            },
+            "identify_device": {
+                "name": "Identifica dispositivo"
+            },
+            "refresh_energy": {
+                "name": "Aggiorna dati energetici"
+            },
+            "reload_devices": {
+                "name": "Ricarica dispositivi"
+            },
+            "remove_button": {
+                "name": "Dissocia questo pulsante"
+            },
+            "remove_device": {
+                "name": "Dissocia definitivamente il dispositivo"
+            },
+            "remove_numbered_button": {
+                "name": "Dissocia pulsante {button_number}"
+            },
+            "start_product_association": {
+                "name": "6. Avvia ascolto del gateway"
+            },
+            "toggle": {
+                "name": "Commuta"
+            }
+        },
+        "text": {
+            "association_name": {
+                "name": "Nome del dispositivo (facoltativo)"
+            }
+        },
+        "climate": {
+            "thermostat": {
+                "name": "Termostato"
+            }
+        },
+        "cover": {
+            "tywell_shutters": {
+                "name": "Tapparelle"
+            },
+            "tywell_shutters_day": {
+                "name": "Tapparelle giorno"
+            },
+            "tywell_shutters_night": {
+                "name": "Tapparelle notte"
+            }
+        }
+    }
+}

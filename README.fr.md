@@ -200,6 +200,19 @@ de passe, ne supprime aucun produit et n'altère aucune association. Elle
 n'utilise pas le cloud Delta Dore. Une entrée distincte configurée en
 cloud/médiation continue à utiliser sa propre connexion configurée.
 
+### Noms des entités
+
+Les mesures, réglages, diagnostics et commandes de la passerelle portent des
+noms explicites pour toutes les familles d’appareils prises en charge. Les noms
+sont disponibles en français, anglais britannique, allemand, espagnol, italien,
+portugais, néerlandais et polonais, selon la langue de Home Assistant.
+
+Les noms des appareils et scènes choisis dans TYDOM, ainsi que les noms
+personnalisés dans Home Assistant, sont conservés. Les identifiants existants et
+les références des automatisations restent valides. Les attributs inconnus
+annoncés par un nouveau micrologiciel conservent un nom technique lisible
+jusqu’à l’ajout d’un libellé adapté.
+
 ## Dépannage
 
 ### Activer la journalisation de débogage
