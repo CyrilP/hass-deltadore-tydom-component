@@ -165,7 +165,9 @@ async def async_get_device_diagnostics(
             "name": device_entry.name,
             "model": device_entry.model,
             "sw_version": device_entry.sw_version,
-            "identifiers": [list(identifier) for identifier in device_entry.identifiers],
+            "identifiers": [
+                list(identifier) for identifier in device_entry.identifiers
+            ],
         },
         "tydom_devices": snapshots,
     }
