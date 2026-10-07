@@ -2779,130 +2779,130 @@
                 "name": "Puissance (Électricité) (minimum)"
             },
             "energyscalecooli": {
-                "name": "Courant (Refroidissement)"
+                "name": "Échelle — Courant (Refroidissement)"
             },
             "energyscalecooli_max": {
-                "name": "Courant (Refroidissement) (maximum)"
+                "name": "Échelle — Courant (Refroidissement) (maximum)"
             },
             "energyscalecooli_min": {
-                "name": "Courant (Refroidissement) (minimum)"
+                "name": "Échelle — Courant (Refroidissement) (minimum)"
             },
             "energyscalecoolp": {
-                "name": "Puissance (Refroidissement)"
+                "name": "Échelle — Puissance (Refroidissement)"
             },
             "energyscalecoolp_max": {
-                "name": "Puissance (Refroidissement) (maximum)"
+                "name": "Échelle — Puissance (Refroidissement) (maximum)"
             },
             "energyscalecoolp_min": {
-                "name": "Puissance (Refroidissement) (minimum)"
+                "name": "Échelle — Puissance (Refroidissement) (minimum)"
             },
             "energyscaledhwi": {
-                "name": "Courant (Eau chaude)"
+                "name": "Échelle — Courant (Eau chaude)"
             },
             "energyscaledhwi_max": {
-                "name": "Courant (Eau chaude) (maximum)"
+                "name": "Échelle — Courant (Eau chaude) (maximum)"
             },
             "energyscaledhwi_min": {
-                "name": "Courant (Eau chaude) (minimum)"
+                "name": "Échelle — Courant (Eau chaude) (minimum)"
             },
             "energyscaledhwp": {
-                "name": "Puissance (Eau chaude)"
+                "name": "Échelle — Puissance (Eau chaude)"
             },
             "energyscaledhwp_max": {
-                "name": "Puissance (Eau chaude) (maximum)"
+                "name": "Échelle — Puissance (Eau chaude) (maximum)"
             },
             "energyscaledhwp_min": {
-                "name": "Puissance (Eau chaude) (minimum)"
+                "name": "Échelle — Puissance (Eau chaude) (minimum)"
             },
             "energyscaleecsi": {
-                "name": "Courant (Eau chaude)"
+                "name": "Échelle — Courant (Eau chaude)"
             },
             "energyscaleecsi_max": {
-                "name": "Courant (Eau chaude) (maximum)"
+                "name": "Échelle — Courant (Eau chaude) (maximum)"
             },
             "energyscaleecsi_min": {
-                "name": "Courant (Eau chaude) (minimum)"
+                "name": "Échelle — Courant (Eau chaude) (minimum)"
             },
             "energyscaleecsp": {
-                "name": "Puissance (Eau chaude)"
+                "name": "Échelle — Puissance (Eau chaude)"
             },
             "energyscaleecsp_max": {
-                "name": "Puissance (Eau chaude) (maximum)"
+                "name": "Échelle — Puissance (Eau chaude) (maximum)"
             },
             "energyscaleecsp_min": {
-                "name": "Puissance (Eau chaude) (minimum)"
+                "name": "Échelle — Puissance (Eau chaude) (minimum)"
             },
             "energyscaleheati": {
-                "name": "Courant (Chauffage)"
+                "name": "Échelle — Courant (Chauffage)"
             },
             "energyscaleheati_max": {
-                "name": "Courant (Chauffage) (maximum)"
+                "name": "Échelle — Courant (Chauffage) (maximum)"
             },
             "energyscaleheati_min": {
-                "name": "Courant (Chauffage) (minimum)"
+                "name": "Échelle — Courant (Chauffage) (minimum)"
             },
             "energyscaleheatp": {
-                "name": "Puissance (Chauffage)"
+                "name": "Échelle — Puissance (Chauffage)"
             },
             "energyscaleheatp_max": {
-                "name": "Puissance (Chauffage) (maximum)"
+                "name": "Échelle — Puissance (Chauffage) (maximum)"
             },
             "energyscaleheatp_min": {
-                "name": "Puissance (Chauffage) (minimum)"
+                "name": "Échelle — Puissance (Chauffage) (minimum)"
             },
             "energyscaleti1i": {
-                "name": "Courant (TI1)"
+                "name": "Échelle — Courant (TI1)"
             },
             "energyscaleti1i_max": {
-                "name": "Courant (TI1) (maximum)"
+                "name": "Échelle — Courant (TI1) (maximum)"
             },
             "energyscaleti1i_min": {
-                "name": "Courant (TI1) (minimum)"
+                "name": "Échelle — Courant (TI1) (minimum)"
             },
             "energyscaleti1p": {
-                "name": "Puissance (TI1)"
+                "name": "Échelle — Puissance (TI1)"
             },
             "energyscaleti1p_max": {
-                "name": "Puissance (TI1) (maximum)"
+                "name": "Échelle — Puissance (TI1) (maximum)"
             },
             "energyscaleti1p_min": {
-                "name": "Puissance (TI1) (minimum)"
+                "name": "Échelle — Puissance (TI1) (minimum)"
             },
             "energyscaletotelec": {
-                "name": "Courant (Électricité)"
+                "name": "Échelle — Courant (Électricité)"
             },
             "energyscaletotelec_max": {
-                "name": "Courant (Électricité) (maximum)"
+                "name": "Échelle — Courant (Électricité) (maximum)"
             },
             "energyscaletotelec_min": {
-                "name": "Courant (Électricité) (minimum)"
+                "name": "Échelle — Courant (Électricité) (minimum)"
             },
             "energyscaletotelec_p": {
-                "name": "Puissance (Électricité)"
+                "name": "Échelle — Puissance (Électricité)"
             },
             "energyscaletotelec_p_max": {
-                "name": "Puissance (Électricité) (maximum)"
+                "name": "Échelle — Puissance (Électricité) (maximum)"
             },
             "energyscaletotelec_p_min": {
-                "name": "Puissance (Électricité) (minimum)"
+                "name": "Échelle — Puissance (Électricité) (minimum)"
             },
             "energyscaletoteleci": {
-                "name": "Courant (Électricité)"
+                "name": "Échelle — Courant (Électricité)"
             },
             "energyscaletoteleci_max": {
-                "name": "Courant (Électricité) (maximum)"
+                "name": "Échelle — Courant (Électricité) (maximum)"
             },
             "energyscaletoteleci_min": {
-                "name": "Courant (Électricité) (minimum)"
+                "name": "Échelle — Courant (Électricité) (minimum)"
             },
             "energyscaletotelecp": {
-                "name": "Puissance (Électricité)"
+                "name": "Échelle — Puissance (Électricité)"
             },
             "energyscaletotelecp_max": {
-                "name": "Puissance (Électricité) (maximum)"
+                "name": "Échelle — Puissance (Électricité) (maximum)"
             },
             "energyscaletotelecp_min": {
-                "name": "Puissance (Électricité) (minimum)"
+                "name": "Échelle — Puissance (Électricité) (minimum)"
             },
             "energytotindexwatt": {
                 "name": "Index de consommation (Électricité)"

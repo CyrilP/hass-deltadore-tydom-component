@@ -2778,130 +2778,130 @@
                 "name": "Power (Electricity) (minimum)"
             },
             "energyscalecooli": {
-                "name": "Current (Cooling)"
+                "name": "Scale — Current (Cooling)"
             },
             "energyscalecooli_max": {
-                "name": "Current (Cooling) (maximum)"
+                "name": "Scale — Current (Cooling) (maximum)"
             },
             "energyscalecooli_min": {
-                "name": "Current (Cooling) (minimum)"
+                "name": "Scale — Current (Cooling) (minimum)"
             },
             "energyscalecoolp": {
-                "name": "Power (Cooling)"
+                "name": "Scale — Power (Cooling)"
             },
             "energyscalecoolp_max": {
-                "name": "Power (Cooling) (maximum)"
+                "name": "Scale — Power (Cooling) (maximum)"
             },
             "energyscalecoolp_min": {
-                "name": "Power (Cooling) (minimum)"
+                "name": "Scale — Power (Cooling) (minimum)"
             },
             "energyscaledhwi": {
-                "name": "Current (Hot water)"
+                "name": "Scale — Current (Hot water)"
             },
             "energyscaledhwi_max": {
-                "name": "Current (Hot water) (maximum)"
+                "name": "Scale — Current (Hot water) (maximum)"
             },
             "energyscaledhwi_min": {
-                "name": "Current (Hot water) (minimum)"
+                "name": "Scale — Current (Hot water) (minimum)"
             },
             "energyscaledhwp": {
-                "name": "Power (Hot water)"
+                "name": "Scale — Power (Hot water)"
             },
             "energyscaledhwp_max": {
-                "name": "Power (Hot water) (maximum)"
+                "name": "Scale — Power (Hot water) (maximum)"
             },
             "energyscaledhwp_min": {
-                "name": "Power (Hot water) (minimum)"
+                "name": "Scale — Power (Hot water) (minimum)"
             },
             "energyscaleecsi": {
-                "name": "Current (Hot water)"
+                "name": "Scale — Current (Hot water)"
             },
             "energyscaleecsi_max": {
-                "name": "Current (Hot water) (maximum)"
+                "name": "Scale — Current (Hot water) (maximum)"
             },
             "energyscaleecsi_min": {
-                "name": "Current (Hot water) (minimum)"
+                "name": "Scale — Current (Hot water) (minimum)"
             },
             "energyscaleecsp": {
-                "name": "Power (Hot water)"
+                "name": "Scale — Power (Hot water)"
             },
             "energyscaleecsp_max": {
-                "name": "Power (Hot water) (maximum)"
+                "name": "Scale — Power (Hot water) (maximum)"
             },
             "energyscaleecsp_min": {
-                "name": "Power (Hot water) (minimum)"
+                "name": "Scale — Power (Hot water) (minimum)"
             },
             "energyscaleheati": {
-                "name": "Current (Heating)"
+                "name": "Scale — Current (Heating)"
             },
             "energyscaleheati_max": {
-                "name": "Current (Heating) (maximum)"
+                "name": "Scale — Current (Heating) (maximum)"
             },
             "energyscaleheati_min": {
-                "name": "Current (Heating) (minimum)"
+                "name": "Scale — Current (Heating) (minimum)"
             },
             "energyscaleheatp": {
-                "name": "Power (Heating)"
+                "name": "Scale — Power (Heating)"
             },
             "energyscaleheatp_max": {
-                "name": "Power (Heating) (maximum)"
+                "name": "Scale — Power (Heating) (maximum)"
             },
             "energyscaleheatp_min": {
-                "name": "Power (Heating) (minimum)"
+                "name": "Scale — Power (Heating) (minimum)"
             },
             "energyscaleti1i": {
-                "name": "Current (TI1)"
+                "name": "Scale — Current (TI1)"
             },
             "energyscaleti1i_max": {
-                "name": "Current (TI1) (maximum)"
+                "name": "Scale — Current (TI1) (maximum)"
             },
             "energyscaleti1i_min": {
-                "name": "Current (TI1) (minimum)"
+                "name": "Scale — Current (TI1) (minimum)"
             },
             "energyscaleti1p": {
-                "name": "Power (TI1)"
+                "name": "Scale — Power (TI1)"
             },
             "energyscaleti1p_max": {
-                "name": "Power (TI1) (maximum)"
+                "name": "Scale — Power (TI1) (maximum)"
             },
             "energyscaleti1p_min": {
-                "name": "Power (TI1) (minimum)"
+                "name": "Scale — Power (TI1) (minimum)"
             },
             "energyscaletotelec": {
-                "name": "Current (Electricity)"
+                "name": "Scale — Current (Electricity)"
             },
             "energyscaletotelec_max": {
-                "name": "Current (Electricity) (maximum)"
+                "name": "Scale — Current (Electricity) (maximum)"
             },
             "energyscaletotelec_min": {
-                "name": "Current (Electricity) (minimum)"
+                "name": "Scale — Current (Electricity) (minimum)"
             },
             "energyscaletotelec_p": {
-                "name": "Power (Electricity)"
+                "name": "Scale — Power (Electricity)"
             },
             "energyscaletotelec_p_max": {
-                "name": "Power (Electricity) (maximum)"
+                "name": "Scale — Power (Electricity) (maximum)"
             },
             "energyscaletotelec_p_min": {
-                "name": "Power (Electricity) (minimum)"
+                "name": "Scale — Power (Electricity) (minimum)"
             },
             "energyscaletoteleci": {
-                "name": "Current (Electricity)"
+                "name": "Scale — Current (Electricity)"
             },
             "energyscaletoteleci_max": {
-                "name": "Current (Electricity) (maximum)"
+                "name": "Scale — Current (Electricity) (maximum)"
             },
             "energyscaletoteleci_min": {
-                "name": "Current (Electricity) (minimum)"
+                "name": "Scale — Current (Electricity) (minimum)"
             },
             "energyscaletotelecp": {
-                "name": "Power (Electricity)"
+                "name": "Scale — Power (Electricity)"
             },
             "energyscaletotelecp_max": {
-                "name": "Power (Electricity) (maximum)"
+                "name": "Scale — Power (Electricity) (maximum)"
             },
             "energyscaletotelecp_min": {
-                "name": "Power (Electricity) (minimum)"
+                "name": "Scale — Power (Electricity) (minimum)"
             },
             "energytotindexwatt": {
                 "name": "Consumption index (Electricity)"

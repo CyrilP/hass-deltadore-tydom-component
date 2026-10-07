@@ -250,6 +250,8 @@ class EntityNameTests(TestCase):
             "energyIndex_ELEC_HEATING",
             "energyInstantTi1P_Max",
             "energyInstantTi1P_Min",
+            "energyScaleTi1P_Max",
+            "energyScaleTi1P_Min",
         )
         for language in LANGUAGES:
             with self.subTest(language=language):

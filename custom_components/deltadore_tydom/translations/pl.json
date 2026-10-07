@@ -926,130 +926,130 @@
                 "name": "Moc (Elektryczność) (minimum)"
             },
             "energyscalecooli": {
-                "name": "Natężenie prądu (Chłodzenie)"
+                "name": "Skala — Natężenie prądu (Chłodzenie)"
             },
             "energyscalecooli_max": {
-                "name": "Natężenie prądu (Chłodzenie) (maksimum)"
+                "name": "Skala — Natężenie prądu (Chłodzenie) (maksimum)"
             },
             "energyscalecooli_min": {
-                "name": "Natężenie prądu (Chłodzenie) (minimum)"
+                "name": "Skala — Natężenie prądu (Chłodzenie) (minimum)"
             },
             "energyscalecoolp": {
-                "name": "Moc (Chłodzenie)"
+                "name": "Skala — Moc (Chłodzenie)"
             },
             "energyscalecoolp_max": {
-                "name": "Moc (Chłodzenie) (maksimum)"
+                "name": "Skala — Moc (Chłodzenie) (maksimum)"
             },
             "energyscalecoolp_min": {
-                "name": "Moc (Chłodzenie) (minimum)"
+                "name": "Skala — Moc (Chłodzenie) (minimum)"
             },
             "energyscaledhwi": {
-                "name": "Natężenie prądu (Gorąca woda)"
+                "name": "Skala — Natężenie prądu (Gorąca woda)"
             },
             "energyscaledhwi_max": {
-                "name": "Natężenie prądu (Gorąca woda) (maksimum)"
+                "name": "Skala — Natężenie prądu (Gorąca woda) (maksimum)"
             },
             "energyscaledhwi_min": {
-                "name": "Natężenie prądu (Gorąca woda) (minimum)"
+                "name": "Skala — Natężenie prądu (Gorąca woda) (minimum)"
             },
             "energyscaledhwp": {
-                "name": "Moc (Gorąca woda)"
+                "name": "Skala — Moc (Gorąca woda)"
             },
             "energyscaledhwp_max": {
-                "name": "Moc (Gorąca woda) (maksimum)"
+                "name": "Skala — Moc (Gorąca woda) (maksimum)"
             },
             "energyscaledhwp_min": {
-                "name": "Moc (Gorąca woda) (minimum)"
+                "name": "Skala — Moc (Gorąca woda) (minimum)"
             },
             "energyscaleecsi": {
-                "name": "Natężenie prądu (Gorąca woda)"
+                "name": "Skala — Natężenie prądu (Gorąca woda)"
             },
             "energyscaleecsi_max": {
-                "name": "Natężenie prądu (Gorąca woda) (maksimum)"
+                "name": "Skala — Natężenie prądu (Gorąca woda) (maksimum)"
             },
             "energyscaleecsi_min": {
-                "name": "Natężenie prądu (Gorąca woda) (minimum)"
+                "name": "Skala — Natężenie prądu (Gorąca woda) (minimum)"
             },
             "energyscaleecsp": {
-                "name": "Moc (Gorąca woda)"
+                "name": "Skala — Moc (Gorąca woda)"
             },
             "energyscaleecsp_max": {
-                "name": "Moc (Gorąca woda) (maksimum)"
+                "name": "Skala — Moc (Gorąca woda) (maksimum)"
             },
             "energyscaleecsp_min": {
-                "name": "Moc (Gorąca woda) (minimum)"
+                "name": "Skala — Moc (Gorąca woda) (minimum)"
             },
             "energyscaleheati": {
-                "name": "Natężenie prądu (Ogrzewanie)"
+                "name": "Skala — Natężenie prądu (Ogrzewanie)"
             },
             "energyscaleheati_max": {
-                "name": "Natężenie prądu (Ogrzewanie) (maksimum)"
+                "name": "Skala — Natężenie prądu (Ogrzewanie) (maksimum)"
             },
             "energyscaleheati_min": {
-                "name": "Natężenie prądu (Ogrzewanie) (minimum)"
+                "name": "Skala — Natężenie prądu (Ogrzewanie) (minimum)"
             },
             "energyscaleheatp": {
-                "name": "Moc (Ogrzewanie)"
+                "name": "Skala — Moc (Ogrzewanie)"
             },
             "energyscaleheatp_max": {
-                "name": "Moc (Ogrzewanie) (maksimum)"
+                "name": "Skala — Moc (Ogrzewanie) (maksimum)"
             },
             "energyscaleheatp_min": {
-                "name": "Moc (Ogrzewanie) (minimum)"
+                "name": "Skala — Moc (Ogrzewanie) (minimum)"
             },
             "energyscaleti1i": {
-                "name": "Natężenie prądu (TI1)"
+                "name": "Skala — Natężenie prądu (TI1)"
             },
             "energyscaleti1i_max": {
-                "name": "Natężenie prądu (TI1) (maksimum)"
+                "name": "Skala — Natężenie prądu (TI1) (maksimum)"
             },
             "energyscaleti1i_min": {
-                "name": "Natężenie prądu (TI1) (minimum)"
+                "name": "Skala — Natężenie prądu (TI1) (minimum)"
             },
             "energyscaleti1p": {
-                "name": "Moc (TI1)"
+                "name": "Skala — Moc (TI1)"
             },
             "energyscaleti1p_max": {
-                "name": "Moc (TI1) (maksimum)"
+                "name": "Skala — Moc (TI1) (maksimum)"
             },
             "energyscaleti1p_min": {
-                "name": "Moc (TI1) (minimum)"
+                "name": "Skala — Moc (TI1) (minimum)"
             },
             "energyscaletotelec": {
-                "name": "Natężenie prądu (Elektryczność)"
+                "name": "Skala — Natężenie prądu (Elektryczność)"
             },
             "energyscaletotelec_max": {
-                "name": "Natężenie prądu (Elektryczność) (maksimum)"
+                "name": "Skala — Natężenie prądu (Elektryczność) (maksimum)"
             },
             "energyscaletotelec_min": {
-                "name": "Natężenie prądu (Elektryczność) (minimum)"
+                "name": "Skala — Natężenie prądu (Elektryczność) (minimum)"
             },
             "energyscaletotelec_p": {
-                "name": "Moc (Elektryczność)"
+                "name": "Skala — Moc (Elektryczność)"
             },
             "energyscaletotelec_p_max": {
-                "name": "Moc (Elektryczność) (maksimum)"
+                "name": "Skala — Moc (Elektryczność) (maksimum)"
             },
             "energyscaletotelec_p_min": {
-                "name": "Moc (Elektryczność) (minimum)"
+                "name": "Skala — Moc (Elektryczność) (minimum)"
             },
             "energyscaletoteleci": {
-                "name": "Natężenie prądu (Elektryczność)"
+                "name": "Skala — Natężenie prądu (Elektryczność)"
             },
             "energyscaletoteleci_max": {
-                "name": "Natężenie prądu (Elektryczność) (maksimum)"
+                "name": "Skala — Natężenie prądu (Elektryczność) (maksimum)"
             },
             "energyscaletoteleci_min": {
-                "name": "Natężenie prądu (Elektryczność) (minimum)"
+                "name": "Skala — Natężenie prądu (Elektryczność) (minimum)"
             },
             "energyscaletotelecp": {
-                "name": "Moc (Elektryczność)"
+                "name": "Skala — Moc (Elektryczność)"
             },
             "energyscaletotelecp_max": {
-                "name": "Moc (Elektryczność) (maksimum)"
+                "name": "Skala — Moc (Elektryczność) (maksimum)"
             },
             "energyscaletotelecp_min": {
-                "name": "Moc (Elektryczność) (minimum)"
+                "name": "Skala — Moc (Elektryczność) (minimum)"
             },
             "energytotindexwatt": {
                 "name": "Wskazanie licznika zużycia (Elektryczność)"

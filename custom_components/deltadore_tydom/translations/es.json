@@ -926,130 +926,130 @@
                 "name": "Potencia (Electricidad) (mínimo)"
             },
             "energyscalecooli": {
-                "name": "Corriente (Refrigeración)"
+                "name": "Escala — Corriente (Refrigeración)"
             },
             "energyscalecooli_max": {
-                "name": "Corriente (Refrigeración) (máximo)"
+                "name": "Escala — Corriente (Refrigeración) (máximo)"
             },
             "energyscalecooli_min": {
-                "name": "Corriente (Refrigeración) (mínimo)"
+                "name": "Escala — Corriente (Refrigeración) (mínimo)"
             },
             "energyscalecoolp": {
-                "name": "Potencia (Refrigeración)"
+                "name": "Escala — Potencia (Refrigeración)"
             },
             "energyscalecoolp_max": {
-                "name": "Potencia (Refrigeración) (máximo)"
+                "name": "Escala — Potencia (Refrigeración) (máximo)"
             },
             "energyscalecoolp_min": {
-                "name": "Potencia (Refrigeración) (mínimo)"
+                "name": "Escala — Potencia (Refrigeración) (mínimo)"
             },
             "energyscaledhwi": {
-                "name": "Corriente (Agua caliente)"
+                "name": "Escala — Corriente (Agua caliente)"
             },
             "energyscaledhwi_max": {
-                "name": "Corriente (Agua caliente) (máximo)"
+                "name": "Escala — Corriente (Agua caliente) (máximo)"
             },
             "energyscaledhwi_min": {
-                "name": "Corriente (Agua caliente) (mínimo)"
+                "name": "Escala — Corriente (Agua caliente) (mínimo)"
             },
             "energyscaledhwp": {
-                "name": "Potencia (Agua caliente)"
+                "name": "Escala — Potencia (Agua caliente)"
             },
             "energyscaledhwp_max": {
-                "name": "Potencia (Agua caliente) (máximo)"
+                "name": "Escala — Potencia (Agua caliente) (máximo)"
             },
             "energyscaledhwp_min": {
-                "name": "Potencia (Agua caliente) (mínimo)"
+                "name": "Escala — Potencia (Agua caliente) (mínimo)"
             },
             "energyscaleecsi": {
-                "name": "Corriente (Agua caliente)"
+                "name": "Escala — Corriente (Agua caliente)"
             },
             "energyscaleecsi_max": {
-                "name": "Corriente (Agua caliente) (máximo)"
+                "name": "Escala — Corriente (Agua caliente) (máximo)"
             },
             "energyscaleecsi_min": {
-                "name": "Corriente (Agua caliente) (mínimo)"
+                "name": "Escala — Corriente (Agua caliente) (mínimo)"
             },
             "energyscaleecsp": {
-                "name": "Potencia (Agua caliente)"
+                "name": "Escala — Potencia (Agua caliente)"
             },
             "energyscaleecsp_max": {
-                "name": "Potencia (Agua caliente) (máximo)"
+                "name": "Escala — Potencia (Agua caliente) (máximo)"
             },
             "energyscaleecsp_min": {
-                "name": "Potencia (Agua caliente) (mínimo)"
+                "name": "Escala — Potencia (Agua caliente) (mínimo)"
             },
             "energyscaleheati": {
-                "name": "Corriente (Calefacción)"
+                "name": "Escala — Corriente (Calefacción)"
             },
             "energyscaleheati_max": {
-                "name": "Corriente (Calefacción) (máximo)"
+                "name": "Escala — Corriente (Calefacción) (máximo)"
             },
             "energyscaleheati_min": {
-                "name": "Corriente (Calefacción) (mínimo)"
+                "name": "Escala — Corriente (Calefacción) (mínimo)"
             },
             "energyscaleheatp": {
-                "name": "Potencia (Calefacción)"
+                "name": "Escala — Potencia (Calefacción)"
             },
             "energyscaleheatp_max": {
-                "name": "Potencia (Calefacción) (máximo)"
+                "name": "Escala — Potencia (Calefacción) (máximo)"
             },
             "energyscaleheatp_min": {
-                "name": "Potencia (Calefacción) (mínimo)"
+                "name": "Escala — Potencia (Calefacción) (mínimo)"
             },
             "energyscaleti1i": {
-                "name": "Corriente (TI1)"
+                "name": "Escala — Corriente (TI1)"
             },
             "energyscaleti1i_max": {
-                "name": "Corriente (TI1) (máximo)"
+                "name": "Escala — Corriente (TI1) (máximo)"
             },
             "energyscaleti1i_min": {
-                "name": "Corriente (TI1) (mínimo)"
+                "name": "Escala — Corriente (TI1) (mínimo)"
             },
             "energyscaleti1p": {
-                "name": "Potencia (TI1)"
+                "name": "Escala — Potencia (TI1)"
             },
             "energyscaleti1p_max": {
-                "name": "Potencia (TI1) (máximo)"
+                "name": "Escala — Potencia (TI1) (máximo)"
             },
             "energyscaleti1p_min": {
-                "name": "Potencia (TI1) (mínimo)"
+                "name": "Escala — Potencia (TI1) (mínimo)"
             },
             "energyscaletotelec": {
-                "name": "Corriente (Electricidad)"
+                "name": "Escala — Corriente (Electricidad)"
             },
             "energyscaletotelec_max": {
-                "name": "Corriente (Electricidad) (máximo)"
+                "name": "Escala — Corriente (Electricidad) (máximo)"
             },
             "energyscaletotelec_min": {
-                "name": "Corriente (Electricidad) (mínimo)"
+                "name": "Escala — Corriente (Electricidad) (mínimo)"
             },
             "energyscaletotelec_p": {
-                "name": "Potencia (Electricidad)"
+                "name": "Escala — Potencia (Electricidad)"
             },
             "energyscaletotelec_p_max": {
-                "name": "Potencia (Electricidad) (máximo)"
+                "name": "Escala — Potencia (Electricidad) (máximo)"
             },
             "energyscaletotelec_p_min": {
-                "name": "Potencia (Electricidad) (mínimo)"
+                "name": "Escala — Potencia (Electricidad) (mínimo)"
             },
             "energyscaletoteleci": {
-                "name": "Corriente (Electricidad)"
+                "name": "Escala — Corriente (Electricidad)"
             },
             "energyscaletoteleci_max": {
-                "name": "Corriente (Electricidad) (máximo)"
+                "name": "Escala — Corriente (Electricidad) (máximo)"
             },
             "energyscaletoteleci_min": {
-                "name": "Corriente (Electricidad) (mínimo)"
+                "name": "Escala — Corriente (Electricidad) (mínimo)"
             },
             "energyscaletotelecp": {
-                "name": "Potencia (Electricidad)"
+                "name": "Escala — Potencia (Electricidad)"
             },
             "energyscaletotelecp_max": {
-                "name": "Potencia (Electricidad) (máximo)"
+                "name": "Escala — Potencia (Electricidad) (máximo)"
             },
             "energyscaletotelecp_min": {
-                "name": "Potencia (Electricidad) (mínimo)"
+                "name": "Escala — Potencia (Electricidad) (mínimo)"
             },
             "energytotindexwatt": {
                 "name": "Índice de consumo (Electricidad)"

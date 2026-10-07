@@ -926,130 +926,130 @@
                 "name": "Vermogen (Elektriciteit) (minimum)"
             },
             "energyscalecooli": {
-                "name": "Stroomsterkte (Koeling)"
+                "name": "Schaal — Stroomsterkte (Koeling)"
             },
             "energyscalecooli_max": {
-                "name": "Stroomsterkte (Koeling) (maximum)"
+                "name": "Schaal — Stroomsterkte (Koeling) (maximum)"
             },
             "energyscalecooli_min": {
-                "name": "Stroomsterkte (Koeling) (minimum)"
+                "name": "Schaal — Stroomsterkte (Koeling) (minimum)"
             },
             "energyscalecoolp": {
-                "name": "Vermogen (Koeling)"
+                "name": "Schaal — Vermogen (Koeling)"
             },
             "energyscalecoolp_max": {
-                "name": "Vermogen (Koeling) (maximum)"
+                "name": "Schaal — Vermogen (Koeling) (maximum)"
             },
             "energyscalecoolp_min": {
-                "name": "Vermogen (Koeling) (minimum)"
+                "name": "Schaal — Vermogen (Koeling) (minimum)"
             },
             "energyscaledhwi": {
-                "name": "Stroomsterkte (Warm water)"
+                "name": "Schaal — Stroomsterkte (Warm water)"
             },
             "energyscaledhwi_max": {
-                "name": "Stroomsterkte (Warm water) (maximum)"
+                "name": "Schaal — Stroomsterkte (Warm water) (maximum)"
             },
             "energyscaledhwi_min": {
-                "name": "Stroomsterkte (Warm water) (minimum)"
+                "name": "Schaal — Stroomsterkte (Warm water) (minimum)"
             },
             "energyscaledhwp": {
-                "name": "Vermogen (Warm water)"
+                "name": "Schaal — Vermogen (Warm water)"
             },
             "energyscaledhwp_max": {
-                "name": "Vermogen (Warm water) (maximum)"
+                "name": "Schaal — Vermogen (Warm water) (maximum)"
             },
             "energyscaledhwp_min": {
-                "name": "Vermogen (Warm water) (minimum)"
+                "name": "Schaal — Vermogen (Warm water) (minimum)"
             },
             "energyscaleecsi": {
-                "name": "Stroomsterkte (Warm water)"
+                "name": "Schaal — Stroomsterkte (Warm water)"
             },
             "energyscaleecsi_max": {
-                "name": "Stroomsterkte (Warm water) (maximum)"
+                "name": "Schaal — Stroomsterkte (Warm water) (maximum)"
             },
             "energyscaleecsi_min": {
-                "name": "Stroomsterkte (Warm water) (minimum)"
+                "name": "Schaal — Stroomsterkte (Warm water) (minimum)"
             },
             "energyscaleecsp": {
-                "name": "Vermogen (Warm water)"
+                "name": "Schaal — Vermogen (Warm water)"
             },
             "energyscaleecsp_max": {
-                "name": "Vermogen (Warm water) (maximum)"
+                "name": "Schaal — Vermogen (Warm water) (maximum)"
             },
             "energyscaleecsp_min": {
-                "name": "Vermogen (Warm water) (minimum)"
+                "name": "Schaal — Vermogen (Warm water) (minimum)"
             },
             "energyscaleheati": {
-                "name": "Stroomsterkte (Verwarming)"
+                "name": "Schaal — Stroomsterkte (Verwarming)"
             },
             "energyscaleheati_max": {
-                "name": "Stroomsterkte (Verwarming) (maximum)"
+                "name": "Schaal — Stroomsterkte (Verwarming) (maximum)"
             },
             "energyscaleheati_min": {
-                "name": "Stroomsterkte (Verwarming) (minimum)"
+                "name": "Schaal — Stroomsterkte (Verwarming) (minimum)"
             },
             "energyscaleheatp": {
-                "name": "Vermogen (Verwarming)"
+                "name": "Schaal — Vermogen (Verwarming)"
             },
             "energyscaleheatp_max": {
-                "name": "Vermogen (Verwarming) (maximum)"
+                "name": "Schaal — Vermogen (Verwarming) (maximum)"
             },
             "energyscaleheatp_min": {
-                "name": "Vermogen (Verwarming) (minimum)"
+                "name": "Schaal — Vermogen (Verwarming) (minimum)"
             },
             "energyscaleti1i": {
-                "name": "Stroomsterkte (TI1)"
+                "name": "Schaal — Stroomsterkte (TI1)"
             },
             "energyscaleti1i_max": {
-                "name": "Stroomsterkte (TI1) (maximum)"
+                "name": "Schaal — Stroomsterkte (TI1) (maximum)"
             },
             "energyscaleti1i_min": {
-                "name": "Stroomsterkte (TI1) (minimum)"
+                "name": "Schaal — Stroomsterkte (TI1) (minimum)"
             },
             "energyscaleti1p": {
-                "name": "Vermogen (TI1)"
+                "name": "Schaal — Vermogen (TI1)"
             },
             "energyscaleti1p_max": {
-                "name": "Vermogen (TI1) (maximum)"
+                "name": "Schaal — Vermogen (TI1) (maximum)"
             },
             "energyscaleti1p_min": {
-                "name": "Vermogen (TI1) (minimum)"
+                "name": "Schaal — Vermogen (TI1) (minimum)"
             },
             "energyscaletotelec": {
-                "name": "Stroomsterkte (Elektriciteit)"
+                "name": "Schaal — Stroomsterkte (Elektriciteit)"
             },
             "energyscaletotelec_max": {
-                "name": "Stroomsterkte (Elektriciteit) (maximum)"
+                "name": "Schaal — Stroomsterkte (Elektriciteit) (maximum)"
             },
             "energyscaletotelec_min": {
-                "name": "Stroomsterkte (Elektriciteit) (minimum)"
+                "name": "Schaal — Stroomsterkte (Elektriciteit) (minimum)"
             },
             "energyscaletotelec_p": {
-                "name": "Vermogen (Elektriciteit)"
+                "name": "Schaal — Vermogen (Elektriciteit)"
             },
             "energyscaletotelec_p_max": {
-                "name": "Vermogen (Elektriciteit) (maximum)"
+                "name": "Schaal — Vermogen (Elektriciteit) (maximum)"
             },
             "energyscaletotelec_p_min": {
-                "name": "Vermogen (Elektriciteit) (minimum)"
+                "name": "Schaal — Vermogen (Elektriciteit) (minimum)"
             },
             "energyscaletoteleci": {
-                "name": "Stroomsterkte (Elektriciteit)"
+                "name": "Schaal — Stroomsterkte (Elektriciteit)"
             },
             "energyscaletoteleci_max": {
-                "name": "Stroomsterkte (Elektriciteit) (maximum)"
+                "name": "Schaal — Stroomsterkte (Elektriciteit) (maximum)"
             },
             "energyscaletoteleci_min": {
-                "name": "Stroomsterkte (Elektriciteit) (minimum)"
+                "name": "Schaal — Stroomsterkte (Elektriciteit) (minimum)"
             },
             "energyscaletotelecp": {
-                "name": "Vermogen (Elektriciteit)"
+                "name": "Schaal — Vermogen (Elektriciteit)"
             },
             "energyscaletotelecp_max": {
-                "name": "Vermogen (Elektriciteit) (maximum)"
+                "name": "Schaal — Vermogen (Elektriciteit) (maximum)"
             },
             "energyscaletotelecp_min": {
-                "name": "Vermogen (Elektriciteit) (minimum)"
+                "name": "Schaal — Vermogen (Elektriciteit) (minimum)"
             },
             "energytotindexwatt": {
                 "name": "Verbruikstellerstand (Elektriciteit)"

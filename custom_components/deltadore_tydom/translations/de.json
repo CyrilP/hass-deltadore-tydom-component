@@ -926,130 +926,130 @@
                 "name": "Leistung (Strom) (Minimum)"
             },
             "energyscalecooli": {
-                "name": "Stromstärke (Kühlung)"
+                "name": "Skala — Stromstärke (Kühlung)"
             },
             "energyscalecooli_max": {
-                "name": "Stromstärke (Kühlung) (Maximum)"
+                "name": "Skala — Stromstärke (Kühlung) (Maximum)"
             },
             "energyscalecooli_min": {
-                "name": "Stromstärke (Kühlung) (Minimum)"
+                "name": "Skala — Stromstärke (Kühlung) (Minimum)"
             },
             "energyscalecoolp": {
-                "name": "Leistung (Kühlung)"
+                "name": "Skala — Leistung (Kühlung)"
             },
             "energyscalecoolp_max": {
-                "name": "Leistung (Kühlung) (Maximum)"
+                "name": "Skala — Leistung (Kühlung) (Maximum)"
             },
             "energyscalecoolp_min": {
-                "name": "Leistung (Kühlung) (Minimum)"
+                "name": "Skala — Leistung (Kühlung) (Minimum)"
             },
             "energyscaledhwi": {
-                "name": "Stromstärke (Warmwasser)"
+                "name": "Skala — Stromstärke (Warmwasser)"
             },
             "energyscaledhwi_max": {
-                "name": "Stromstärke (Warmwasser) (Maximum)"
+                "name": "Skala — Stromstärke (Warmwasser) (Maximum)"
             },
             "energyscaledhwi_min": {
-                "name": "Stromstärke (Warmwasser) (Minimum)"
+                "name": "Skala — Stromstärke (Warmwasser) (Minimum)"
             },
             "energyscaledhwp": {
-                "name": "Leistung (Warmwasser)"
+                "name": "Skala — Leistung (Warmwasser)"
             },
             "energyscaledhwp_max": {
-                "name": "Leistung (Warmwasser) (Maximum)"
+                "name": "Skala — Leistung (Warmwasser) (Maximum)"
             },
             "energyscaledhwp_min": {
-                "name": "Leistung (Warmwasser) (Minimum)"
+                "name": "Skala — Leistung (Warmwasser) (Minimum)"
             },
             "energyscaleecsi": {
-                "name": "Stromstärke (Warmwasser)"
+                "name": "Skala — Stromstärke (Warmwasser)"
             },
             "energyscaleecsi_max": {
-                "name": "Stromstärke (Warmwasser) (Maximum)"
+                "name": "Skala — Stromstärke (Warmwasser) (Maximum)"
             },
             "energyscaleecsi_min": {
-                "name": "Stromstärke (Warmwasser) (Minimum)"
+                "name": "Skala — Stromstärke (Warmwasser) (Minimum)"
             },
             "energyscaleecsp": {
-                "name": "Leistung (Warmwasser)"
+                "name": "Skala — Leistung (Warmwasser)"
             },
             "energyscaleecsp_max": {
-                "name": "Leistung (Warmwasser) (Maximum)"
+                "name": "Skala — Leistung (Warmwasser) (Maximum)"
             },
             "energyscaleecsp_min": {
-                "name": "Leistung (Warmwasser) (Minimum)"
+                "name": "Skala — Leistung (Warmwasser) (Minimum)"
             },
             "energyscaleheati": {
-                "name": "Stromstärke (Heizung)"
+                "name": "Skala — Stromstärke (Heizung)"
             },
             "energyscaleheati_max": {
-                "name": "Stromstärke (Heizung) (Maximum)"
+                "name": "Skala — Stromstärke (Heizung) (Maximum)"
             },
             "energyscaleheati_min": {
-                "name": "Stromstärke (Heizung) (Minimum)"
+                "name": "Skala — Stromstärke (Heizung) (Minimum)"
             },
             "energyscaleheatp": {
-                "name": "Leistung (Heizung)"
+                "name": "Skala — Leistung (Heizung)"
             },
             "energyscaleheatp_max": {
-                "name": "Leistung (Heizung) (Maximum)"
+                "name": "Skala — Leistung (Heizung) (Maximum)"
             },
             "energyscaleheatp_min": {
-                "name": "Leistung (Heizung) (Minimum)"
+                "name": "Skala — Leistung (Heizung) (Minimum)"
             },
             "energyscaleti1i": {
-                "name": "Stromstärke (TI1)"
+                "name": "Skala — Stromstärke (TI1)"
             },
             "energyscaleti1i_max": {
-                "name": "Stromstärke (TI1) (Maximum)"
+                "name": "Skala — Stromstärke (TI1) (Maximum)"
             },
             "energyscaleti1i_min": {
-                "name": "Stromstärke (TI1) (Minimum)"
+                "name": "Skala — Stromstärke (TI1) (Minimum)"
             },
             "energyscaleti1p": {
-                "name": "Leistung (TI1)"
+                "name": "Skala — Leistung (TI1)"
             },
             "energyscaleti1p_max": {
-                "name": "Leistung (TI1) (Maximum)"
+                "name": "Skala — Leistung (TI1) (Maximum)"
             },
             "energyscaleti1p_min": {
-                "name": "Leistung (TI1) (Minimum)"
+                "name": "Skala — Leistung (TI1) (Minimum)"
             },
             "energyscaletotelec": {
-                "name": "Stromstärke (Strom)"
+                "name": "Skala — Stromstärke (Strom)"
             },
             "energyscaletotelec_max": {
-                "name": "Stromstärke (Strom) (Maximum)"
+                "name": "Skala — Stromstärke (Strom) (Maximum)"
             },
             "energyscaletotelec_min": {
-                "name": "Stromstärke (Strom) (Minimum)"
+                "name": "Skala — Stromstärke (Strom) (Minimum)"
             },
             "energyscaletotelec_p": {
-                "name": "Leistung (Strom)"
+                "name": "Skala — Leistung (Strom)"
             },
             "energyscaletotelec_p_max": {
-                "name": "Leistung (Strom) (Maximum)"
+                "name": "Skala — Leistung (Strom) (Maximum)"
             },
             "energyscaletotelec_p_min": {
-                "name": "Leistung (Strom) (Minimum)"
+                "name": "Skala — Leistung (Strom) (Minimum)"
             },
             "energyscaletoteleci": {
-                "name": "Stromstärke (Strom)"
+                "name": "Skala — Stromstärke (Strom)"
             },
             "energyscaletoteleci_max": {
-                "name": "Stromstärke (Strom) (Maximum)"
+                "name": "Skala — Stromstärke (Strom) (Maximum)"
             },
             "energyscaletoteleci_min": {
-                "name": "Stromstärke (Strom) (Minimum)"
+                "name": "Skala — Stromstärke (Strom) (Minimum)"
             },
             "energyscaletotelecp": {
-                "name": "Leistung (Strom)"
+                "name": "Skala — Leistung (Strom)"
             },
             "energyscaletotelecp_max": {
-                "name": "Leistung (Strom) (Maximum)"
+                "name": "Skala — Leistung (Strom) (Maximum)"
             },
             "energyscaletotelecp_min": {
-                "name": "Leistung (Strom) (Minimum)"
+                "name": "Skala — Leistung (Strom) (Minimum)"
             },
             "energytotindexwatt": {
                 "name": "Verbrauchszählerstand (Strom)"
