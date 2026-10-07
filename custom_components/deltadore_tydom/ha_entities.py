@@ -1593,18 +1593,21 @@ class HATydom(UpdateEntity, HAEntity):
     @property
     def latest_version(self) -> str | None:
         """Latest version available for install."""
-        if self._device is not None and hasattr(self._device, "mainVersionSW"):
-            version = getattr(self._device, "mainVersionSW", None)
-            if version is None:
-                return None
-            if hasattr(self._device, "updateAvailable") and getattr(
-                self._device, "updateAvailable", False
-            ):
-                # If update is available, return current version as latest
-                # (actual update version is not provided by the API)
-                return str(version)
-            return str(version)
-        return None
+        version = self.installed_version
+        if version is None:
+            return None
+
+        if (
+            normalize_binary_state(getattr(self._device, "updateAvailable", None))
+            is True
+        ):
+            # TYDOM reports availability but does not provide the target
+            # version. Home Assistant treats the special "latest" version as
+            # newer than the installed version, so its update entity becomes
+            # actionable without inventing a firmware number.
+            return "latest"
+
+        return version
 
     async def async_install(
         self, version: str | None, backup: bool, **kwargs: Any

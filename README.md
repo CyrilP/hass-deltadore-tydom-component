@@ -37,7 +37,7 @@ The Delta Dore gateway can be detected using DHCP discovery.
 Platform | Description
 -- | --
 `alarm_control_panel` | Controls a TYXAL alarm.
-`binary_sensor` | Reports binary states and diagnostics.
+`binary_sensor` | Reports binary states, diagnostics and the gateway firmware update flag.
 `button` | Exposes stateless controls such as gate, garage door and alarm actions.
 `climate` | Controls heating, cooling and ventilation.
 `cover` | Controls shutters, blinds and awnings.
@@ -49,7 +49,7 @@ Platform | Description
 `select` | Controls writable enumerated settings exposed by a device.
 `sensor` | Reports measurements and device information.
 `switch` | Controls binary outputs, plugs and TYDOM moments.
-`update` | Installs supported TYDOM firmware updates.
+`update` | Reports and installs supported TYDOM gateway firmware updates; the gateway does not report the target version.
 `weather` | Reports weather information.
 
 ### Feature highlights
