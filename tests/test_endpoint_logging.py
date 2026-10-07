@@ -113,24 +113,28 @@ class EndpointLoggingTests(IsolatedAsyncioTestCase):
         self.assertEqual(len(devices), 1)
         self.assertEqual(devices[0].device_name, "Consumption")
 
-    async def test_thermostat_cmeta_conso_endpoint_is_skipped(self) -> None:
-        """Do not expose a conso endpoint advertised with thermostat cmeta."""
+    async def test_thermostat_metadata_conso_endpoint_is_skipped(self) -> None:
+        """Filter thermostat endpoint metadata even when cmeta is empty."""
         uid = "10_20"
         handler_module.device_name[uid] = "Consumption 1"
         handler_module.device_type[uid] = "conso"
 
         await self.handler.parse_cmeta_data(
+            [{"id": 20, "endpoints": [{"id": 10, "cmetadata": []}]}],
+            None,
+        )
+        await self.handler.parse_devices_metadata(
             [
                 {
                     "id": 20,
                     "endpoints": [
                         {
                             "id": 10,
-                            "cmetadata": [
-                                {"name": "heatSetpoint"},
-                                {"name": "coolSetpoint"},
-                                {"name": "thermicLevel"},
-                                {"name": "anticipCoeff"},
+                            "metadata": [
+                                {"name": "heatSetpoint", "permission": "rw"},
+                                {"name": "coolSetpoint", "permission": "rw"},
+                                {"name": "thermicLevel", "permission": "r"},
+                                {"name": "anticipCoeff", "permission": "r"},
                             ],
                         }
                     ],
@@ -138,6 +142,8 @@ class EndpointLoggingTests(IsolatedAsyncioTestCase):
             ],
             None,
         )
+        self.assertEqual(handler_module.device_command_metadata[uid], {})
+        self.assertIn("heatSetpoint", handler_module.device_metadata[uid])
 
         for response in (
             self._response(

@@ -65,7 +65,7 @@ _ENDPOINT_WARNING_MILESTONES = {1, 10, 100, 1000}
 """Per-session endpoint issue counts which remain visible as warnings."""
 
 _CLIMATE_META_KEYS = frozenset({"heatSetpoint", "coolSetpoint", "thermicLevel"})
-"""Thermostat-only command metadata keys that cannot describe a conso endpoint."""
+"""Thermostat-only endpoint metadata keys that cannot describe a conso endpoint."""
 
 _OPTIONAL_PATHS = frozenset({"/moments/file", "/scenarios/file"})
 """Feature endpoints absent from some older TYDOM gateway firmware."""
@@ -1806,16 +1806,13 @@ class MessageHandler:
                     has_valid_data = bool(valid_data)
 
                     # Some TYWATT/Calybox gateways advertise phantom consumption
-                    # endpoints with thermostat command metadata. The real meter
-                    # has no such cmeta and provides its readings through /cdata.
-                    # Use command metadata here (from /devices/cmeta), rather
-                    # than /devices/meta, so the check follows the gateway signal
-                    # that identifies these mis-advertised endpoints.
-                    endpoint_command_metadata = (
-                        device_command_metadata.get(unique_id) or {}
-                    )
+                    # endpoints with a thermostat profile in /devices/meta.
+                    # The real meter has no such profile and provides its
+                    # readings through /cdata. Command metadata in
+                    # /devices/cmeta may be empty for the phantom endpoints.
+                    endpoint_metadata = device_metadata.get(unique_id) or {}
                     if type_of_id == "conso" and _CLIMATE_META_KEYS.intersection(
-                        endpoint_command_metadata
+                        endpoint_metadata
                     ):
                         self._record_endpoint_issue(
                             device_id,
