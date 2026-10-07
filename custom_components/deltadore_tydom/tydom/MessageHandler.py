@@ -64,6 +64,12 @@ _MAX_REPLIES_SIZE = 5
 _ENDPOINT_WARNING_MILESTONES = {1, 10, 100, 1000}
 """Per-session endpoint issue counts which remain visible as warnings."""
 
+_CLIMATE_META_KEYS = frozenset({"heatSetpoint", "coolSetpoint", "thermicLevel"})
+"""Thermostat-only cmeta keys. A ``conso`` endpoint that advertises any of
+these is a mis-advertised consumption sub-endpoint (TYWATT/Calybox) that only
+ever carries template climate values, never real consumption, and must not be
+turned into an entity."""
+
 _OPTIONAL_PATHS = frozenset({"/moments/file", "/scenarios/file"})
 """Feature endpoints absent from some older TYDOM gateway firmware."""
 
@@ -566,6 +572,7 @@ class MessageHandler:
         issue: str,
         detail: Any,
         name: str,
+        resolution: str = "retaining the previous state",
     ) -> None:
         """Rate-limit a repeated endpoint problem while retaining diagnostics."""
         key = (device_id, endpoint_id, issue, detail)
@@ -579,13 +586,14 @@ class MessageHandler:
         )
         log(
             "TYDOM endpoint %s: device_id=%s, endpoint_id=%s, name=%s, "
-            "detail=%s, occurrences=%s; retaining the previous state",
+            "detail=%s, occurrences=%s; %s",
             issue,
             device_id,
             endpoint_id,
             name,
             detail,
             occurrences,
+            resolution,
         )
 
     def get_reply(self, transaction_id: str) -> Reply | None:
@@ -1799,6 +1807,34 @@ class MessageHandler:
                         if elem.get("validity") == "upToDate"
                     ]
                     has_valid_data = bool(valid_data)
+
+                    # Some TYWATT/Calybox gateways explode the physical
+                    # consumption meter into many sub-endpoints that are
+                    # advertised with a *thermostat* metadata profile
+                    # (heatSetpoint/coolSetpoint/thermicLevel...) and only ever
+                    # carry template climate values (or a transient error),
+                    # never real consumption. The genuine meter endpoint has
+                    # empty cmeta and delivers its energyIndex_* registers via
+                    # /devices/cdata. A conso endpoint whose cmeta exposes
+                    # climate setpoints is therefore spurious: modelling it only
+                    # yields permanently "unavailable" phantom entities, so skip
+                    # it. The test is on cmeta, so it is stable regardless of
+                    # whether this particular poll returned an error or
+                    # template data.
+                    endpoint_metadata = device_metadata.get(unique_id) or {}
+                    if type_of_id == "conso" and _CLIMATE_META_KEYS.intersection(
+                        endpoint_metadata
+                    ):
+                        self._record_endpoint_issue(
+                            device_id,
+                            endpoint_id,
+                            "is a mis-advertised consumption endpoint "
+                            "(thermostat metadata)",
+                            None,
+                            name_of_id,
+                            resolution="skipping entity creation",
+                        )
+                        continue
 
                     # Some Zigbee gateways advertise a second, non-functional
                     # endpoint for each physical cover.  A successful endpoint
