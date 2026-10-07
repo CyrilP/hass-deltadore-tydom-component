@@ -155,6 +155,7 @@ class TydomClient:
         # Some devices (like Tywatt) need polling
         self.poll_device_urls_1s = []
         self.poll_device_urls_5m = []
+        self._poll_device_urls_5m_event = asyncio.Event()
         self.current_poll_index = 0
         self.pending_pings = 0
 
@@ -562,6 +563,7 @@ class TydomClient:
         """Signal that the client must stop reconnecting and using the socket."""
         self._shutting_down = True
         self._shutdown_event.set()
+        self._poll_device_urls_5m_event.set()
 
     async def _wait_or_shutdown(self, delay: float) -> bool:
         """Wait for a delay and return whether shutdown interrupted the wait."""
@@ -1468,6 +1470,7 @@ class TydomClient:
         """Add a device for polling."""
         if url not in self.poll_device_urls_5m:
             self.poll_device_urls_5m.append(url)
+            self._poll_device_urls_5m_event.set()
 
     async def get_moments(self):
         """Get the moments (programs)."""
