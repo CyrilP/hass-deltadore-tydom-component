@@ -174,9 +174,38 @@ Mot de passe TYDOM | Mode manuel | Mot de passe de la passerelle, différent du 
 Intervalle de rafraîchissement | Oui | Intervalle de rafraîchissement périodique compris entre 1 et 1 440 minutes ; la valeur par défaut est de 30 minutes. Les événements transmis en temps réel restent actifs entre les rafraîchissements.
 Zones Présent, Absent et Nuit | Non | Identifiants de zones TYXAL compris entre 0 et 8, séparés par des virgules, par exemple `1,2,4`. Chaque champ définit les zones armées par le mode d'alarme Home Assistant correspondant.
 Code PIN de l'alarme | Non | Nécessaire pour modifier le mode de l'alarme depuis Home Assistant ; inutile pour consulter uniquement son état.
+Mode des entités | Oui | **Complet (toutes les entités)** par défaut, ou **Simplifié (entités essentielles)** pour désactiver les entités techniques.
 
 Après la configuration, ouvrez le menu **Configurer** de l'intégration pour
-modifier l'intervalle de rafraîchissement, les zones d'alarme ou le code PIN.
+modifier l'intervalle de rafraîchissement, les zones d'alarme, le code PIN ou le mode des entités.
+
+### Mode complet ou simplifié
+
+Choisissez ce mode pendant la configuration initiale ou ensuite dans
+**Configurer → Configurer**. Il s'applique à tous les appareils de cette entrée
+d'intégration.
+
+- **Complet** conserve les réglages habituels des entités ; une mise à jour ne
+  modifie pas les installations existantes.
+- **Simplifié** conserve les commandes quotidiennes et les mesures utiles :
+  éclairages, volets, réglages du chauffage, événements des boutons de
+  télécommande, détection d'ouverture, de fumée et de fuite, températures et
+  mesures d'énergie. L'état de l'alarme, les événements en attente, les défauts
+  de pile et de transmission restent disponibles, ainsi que les alertes de pile
+  des détecteurs de fumée. Les registres techniques, informations de firmware et
+  commandes de maintenance/configuration sont désactivés.
+
+Les entités désactivées restent dans le registre Home Assistant avec les mêmes
+identifiants. Réactivez celles dont vous avez besoin dans **Paramètres → Appareils
+et services → Entités**, avec le filtre des entités désactivées. Les changements
+individuels sont conservés lors d'un rechargement des appareils ou d'un
+redémarrage de Home Assistant.
+
+Passer une installation existante en mode simplifié désactive aussi ses entités
+techniques : vérifiez auparavant les automatisations et tableaux de bord qui
+les utilisent. Revenir au mode complet réactive uniquement les entités
+désactivées par ce mode, pas celles désactivées manuellement ni les commandes
+désactivées par défaut.
 
 ### Appairer en local avec le bouton de la passerelle
 

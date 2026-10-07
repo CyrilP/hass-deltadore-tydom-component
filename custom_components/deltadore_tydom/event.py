@@ -16,4 +16,4 @@ async def async_setup_entry(
 ) -> None:
     """Add events for passed config_entry in HA."""
     hub = hass.data[DOMAIN][config_entry.entry_id]
-    hub.add_event_callback = async_add_entities
+    hub.add_event_callback = hub.entity_profile.wrap_adder("event", async_add_entities)

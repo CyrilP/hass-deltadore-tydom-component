@@ -6907,6 +6907,7 @@ class HADeviceAssociationButton(ButtonEntity, HAEntity):
 
     _attr_should_poll = False
     _attr_has_entity_name = True
+    entity_profile_essential = False
 
     def __init__(self, device: TydomDevice, hass, command: str) -> None:
         """Initialise an association or physical-identification button."""
@@ -7420,6 +7421,7 @@ class HAAlarmPendingEventsSensor(SensorEntity, HAEntity):
     _attr_translation_key = "pending_alarm_events"
     _attr_icon = "mdi:shield-alert-outline"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    entity_profile_essential = True
 
     def __init__(self, device: TydomAlarm, hass) -> None:
         """Initialise the pending-events sensor."""

@@ -11,6 +11,9 @@
             "user_manual": {
                 "title": "Configuration Delta Dore Tydom",
                 "description": "Configurez votre passerelle Tydom en utilisant des identifiants manuels.",
+                "data_description": {
+                    "entity_mode": "Le mode complet conserve les réglages habituels. Le mode simplifié désactive les entités techniques ; vous pouvez les réactiver individuellement."
+                },
                 "data": {
                     "host": "IP/hostname du Tydom ou de la médiation",
                     "mac": "Adresse MAC (12 caractères, sans séparateurs)",
@@ -20,12 +23,16 @@
                     "zones_away": "Zones actives en mode alarme absent (séparées par des virgules, ex. : 1,2,4)",
                     "zones_home": "Zones actives en mode alarme présent (séparées par des virgules, ex. : 1,2,4)",
                     "zones_night": "Zones actives en mode alarme nuit (séparées par des virgules, ex. : 1,2,4)",
-                    "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)"
+                    "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)",
+                    "entity_mode": "Mode des entités"
                 }
             },
             "user_local_pair": {
                 "title": "Appairer Delta Dore Tydom en local",
                 "description": "Utilisez cette option uniquement pour une passerelle locale dont le mot de passe est inconnu. Remplissez tous les champs avant d'appuyer sur la passerelle. En toute dernière étape, appuyez sur son bouton physique puis soumettez immédiatement le formulaire, sans modifier de champ entre l'appui et la validation. La fenêtre d'appairage temporaire est utilisée une seule fois pour récupérer le mot de passe local ; ce mot de passe n'est jamais affiché ni journalisé.",
+                "data_description": {
+                    "entity_mode": "Le mode complet conserve les réglages habituels. Le mode simplifié désactive les entités techniques ; vous pouvez les réactiver individuellement."
+                },
                 "data": {
                     "host": "IP/hostname local de la passerelle Tydom",
                     "mac": "Adresse MAC (12 caractères, sans séparateurs)",
@@ -33,12 +40,16 @@
                     "zones_away": "Zones actives en mode alarme absent (séparées par des virgules, ex. : 1,2,4)",
                     "zones_home": "Zones actives en mode alarme présent (séparées par des virgules, ex. : 1,2,4)",
                     "zones_night": "Zones actives en mode alarme nuit (séparées par des virgules, ex. : 1,2,4)",
-                    "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)"
+                    "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)",
+                    "entity_mode": "Mode des entités"
                 }
             },
             "user_cloud": {
                 "title": "Configuration Delta Dore Tydom",
                 "description": "Configurez votre passerelle Tydom en utilisant votre compte cloud Delta Dore. Le mot de passe Tydom sera récupéré automatiquement.",
+                "data_description": {
+                    "entity_mode": "Le mode complet conserve les réglages habituels. Le mode simplifié désactive les entités techniques ; vous pouvez les réactiver individuellement."
+                },
                 "data": {
                     "host": "IP/hostname du Tydom ou de la médiation (utilisez 'mediation.tydom.com' pour le mode cloud)",
                     "mac": "Adresse MAC (12 caractères, sans séparateurs)",
@@ -49,7 +60,8 @@
                     "zones_away": "Zones actives en mode alarme absent (séparées par des virgules, ex. : 1,2,4)",
                     "zones_home": "Zones actives en mode alarme présent (séparées par des virgules, ex. : 1,2,4)",
                     "zones_night": "Zones actives en mode alarme nuit (séparées par des virgules, ex. : 1,2,4)",
-                    "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)"
+                    "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)",
+                    "entity_mode": "Mode des entités"
                 }
             },
             "discovery_confirm": {
@@ -62,6 +74,9 @@
             "discovery_confirm_manual": {
                 "title": "Configuration Delta Dore Tydom",
                 "description": "Une passerelle Tydom a été découverte ({name}). Configurez-la en utilisant des identifiants manuels.",
+                "data_description": {
+                    "entity_mode": "Le mode complet conserve les réglages habituels. Le mode simplifié désactive les entités techniques ; vous pouvez les réactiver individuellement."
+                },
                 "data": {
                     "host": "IP/hostname du Tydom ou de la médiation",
                     "mac": "Adresse MAC (12 caractères, sans séparateurs)",
@@ -70,12 +85,16 @@
                     "zones_away": "Zones actives en mode alarme absent (séparées par des virgules, ex. : 1,2,4)",
                     "zones_home": "Zones actives en mode alarme présent (séparées par des virgules, ex. : 1,2,4)",
                     "zones_night": "Zones actives en mode alarme nuit (séparées par des virgules, ex. : 1,2,4)",
-                    "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)"
+                    "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)",
+                    "entity_mode": "Mode des entités"
                 }
             },
             "discovery_confirm_local_pair": {
                 "title": "Appairer localement le Delta Dore Tydom découvert",
                 "description": "Une passerelle Tydom a été découverte ({name}). Utilisez cette option uniquement lorsque son mot de passe local est inconnu. Remplissez tous les champs avant d'appuyer sur la passerelle. En toute dernière étape, appuyez sur son bouton physique puis soumettez immédiatement le formulaire, sans modifier de champ entre l'appui et la validation. La fenêtre d'appairage temporaire est utilisée une seule fois pour récupérer le mot de passe local ; ce mot de passe n'est jamais affiché ni journalisé.",
+                "data_description": {
+                    "entity_mode": "Le mode complet conserve les réglages habituels. Le mode simplifié désactive les entités techniques ; vous pouvez les réactiver individuellement."
+                },
                 "data": {
                     "host": "IP/hostname local de la passerelle Tydom",
                     "mac": "Adresse MAC (12 caractères, sans séparateurs)",
@@ -83,12 +102,16 @@
                     "zones_away": "Zones actives en mode alarme absent (séparées par des virgules, ex. : 1,2,4)",
                     "zones_home": "Zones actives en mode alarme présent (séparées par des virgules, ex. : 1,2,4)",
                     "zones_night": "Zones actives en mode alarme nuit (séparées par des virgules, ex. : 1,2,4)",
-                    "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)"
+                    "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)",
+                    "entity_mode": "Mode des entités"
                 }
             },
             "discovery_confirm_cloud": {
                 "title": "Configuration Delta Dore Tydom",
                 "description": "Une passerelle Tydom a été découverte ({name}). Configurez-la en utilisant votre compte cloud Delta Dore. Le mot de passe Tydom sera récupéré automatiquement.",
+                "data_description": {
+                    "entity_mode": "Le mode complet conserve les réglages habituels. Le mode simplifié désactive les entités techniques ; vous pouvez les réactiver individuellement."
+                },
                 "data": {
                     "host": "IP/hostname du Tydom ou de la médiation (utilisez 'mediation.tydom.com' pour le mode cloud)",
                     "mac": "Adresse MAC (12 caractères, sans séparateurs)",
@@ -98,7 +121,8 @@
                     "zones_away": "Zones actives en mode alarme absent (séparées par des virgules, ex. : 1,2,4)",
                     "zones_home": "Zones actives en mode alarme présent (séparées par des virgules, ex. : 1,2,4)",
                     "zones_night": "Zones actives en mode alarme nuit (séparées par des virgules, ex. : 1,2,4)",
-                    "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)"
+                    "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)",
+                    "entity_mode": "Mode des entités"
                 }
             },
             "reauth_confirm": {
@@ -141,15 +165,19 @@
                 "title": "Options Delta Dore Tydom",
                 "description": "Choisissez une option",
                 "menu_options": {
-                    "configure": "Configurer (zones, intervalle de rafraîchissement, code PIN alarme)",
+                    "configure": "Configurer (mode des entités, zones, rafraîchissement, code PIN alarme)",
                     "actions": "Actions (recharger les appareils)"
                 }
             },
             "configure": {
                 "title": "Configuration Delta Dore Tydom",
                 "description": "Mettez à jour les paramètres de votre intégration Tydom.",
+                "data_description": {
+                    "entity_mode": "Le mode simplifié désactive les entités techniques, y compris celles déjà présentes. Les automatisations qui les utilisent ne recevront plus de mises à jour. Revenir au mode complet réactive uniquement les entités désactivées par ce mode. Les choix individuels sont conservés au rechargement."
+                },
                 "data": {
                     "pin": "Code PIN de l'alarme (optionnel, requis pour le contrôle de l'alarme)",
+                    "entity_mode": "Mode des entités",
                     "refresh_interval": "Intervalle de rafraîchissement en minutes (par défaut : 30)",
                     "zones_away": "Zones actives en mode alarme absent (séparées par des virgules, ex. : 1,2,4)",
                     "zones_home": "Zones actives en mode alarme présent (séparées par des virgules, ex. : 1,2,4)",
@@ -173,6 +201,12 @@
         }
     },
     "selector": {
+        "entity_mode": {
+            "options": {
+                "all": "Complet (toutes les entités)",
+                "simplified": "Simplifié (entités essentielles)"
+            }
+        },
         "config_mode": {
             "options": {
                 "tydom_cloud_account": "Récupérer les identifiants Tydom en utilisant le compte cloud Delta Dore",
