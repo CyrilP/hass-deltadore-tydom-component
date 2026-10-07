@@ -203,6 +203,11 @@ for package_name in (
     package.__path__ = []
 
 _module(
+    "custom_components.deltadore_tydom.entity_names",
+    set_entity_name=MagicMock(),
+)
+
+_module(
     "custom_components.deltadore_tydom.const",
     DOMAIN="deltadore_tydom",
     LOGGER=MagicMock(),
