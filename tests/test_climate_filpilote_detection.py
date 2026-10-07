@@ -186,6 +186,11 @@ _module("homeassistant.components.button", ButtonEntity=_StubEntity)
 _module("homeassistant.components.number", NumberEntity=_StubEntity)
 _module("homeassistant.components.select", SelectEntity=_StubEntity)
 _module(
+    "homeassistant.components.text",
+    TextEntity=_StubEntity,
+    TextMode=MagicMock(),
+)
+_module(
     "homeassistant.components.event",
     EventDeviceClass=MagicMock(),
     EventEntity=_StubEntity,
@@ -216,6 +221,10 @@ _module(
     "custom_components.deltadore_tydom.tydom.MessageHandler",
     device_name={},
     groups_data={},
+)
+_module(
+    "custom_components.deltadore_tydom.official_association_tutorials",
+    get_association_illustration_data_url=MagicMock(return_value=None),
 )
 
 
@@ -508,6 +517,73 @@ class ReversibleZoneAntiFrostPresetTests(IsolatedAsyncioTestCase):
         client.put_devices_data.assert_awaited_once_with(
             "20", "10", "thermicLevel", "ANTI_FROST"
         )
+
+
+class AbsencePresetTests(IsolatedAsyncioTestCase):
+    """Expose TYDOM's ABSENCE local mode as Home Assistant's Away preset."""
+
+    async def test_absence_local_mode_is_reflected_as_away(self) -> None:
+        """An active TYDOM absence mode takes precedence over comfort mode."""
+        entity, _client = _thermostat(
+            metadata={
+                "comfortMode": {
+                    "permission": "rw",
+                    "enum_values": ["NORMAL", "ECO", "COMFORT"],
+                },
+            },
+            data={"comfortMode": "NORMAL", "localMode": "ABSENCE"},
+        )
+
+        self.assertIn(entities_module.PRESET_AWAY, entity.preset_modes)
+        self.assertEqual(entity.preset_mode, entities_module.PRESET_AWAY)
+
+    async def test_selecting_away_writes_area_absence_mode(self) -> None:
+        """Use the linked thermal area register for an advertised absence mode."""
+        entity, client = _thermostat(
+            metadata={
+                "comfortMode": {
+                    "permission": "rw",
+                    "enum_values": ["NORMAL", "ECO", "COMFORT"],
+                },
+                "localMode": {
+                    "permission": "rw",
+                    "enum_values": ["SCHED", "MANUAL", "ABSENCE"],
+                },
+            },
+            data={"area_id": "1791094613", "localMode": "SCHED"},
+        )
+        client.put_area_data = AsyncMock()
+
+        self.assertIn(entities_module.PRESET_AWAY, entity.preset_modes)
+        await entity.async_set_preset_mode(entities_module.PRESET_AWAY)
+
+        client.put_area_data.assert_awaited_once_with(
+            "1791094613", "localMode", "ABSENCE"
+        )
+
+    async def test_absence_preset_does_not_fall_back_to_anti_frost(self) -> None:
+        """Do not write another register when localMode is read-only."""
+        entity, client = _thermostat(
+            metadata={
+                "comfortMode": {
+                    "permission": "rw",
+                    "enum_values": ["NORMAL", "ECO", "COMFORT"],
+                },
+                "localMode": {
+                    "permission": "r",
+                    "enum_values": ["SCHED", "MANUAL", "ABSENCE"],
+                },
+                "thermicLevel": {
+                    "permission": "rw",
+                    "enum_values": ["ANTI_FROST"],
+                },
+            },
+            data={"localMode": "ABSENCE"},
+        )
+
+        await entity.async_set_preset_mode(entities_module.PRESET_AWAY)
+
+        client.put_devices_data.assert_not_awaited()
 
 
 class PresetNoneSendsAutoTests(IsolatedAsyncioTestCase):
