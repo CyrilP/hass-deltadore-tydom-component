@@ -9,6 +9,18 @@ The dump is rebuilt from the already-populated in-memory ``hub.devices`` state
 the gateway is slow. Every device exposes its ``cmetadata`` (the parsed
 ``/devices/cmeta`` payload) and its raw ``/devices/data`` values -- including
 the ``energyIndex``/``energyDistrib`` registers of a TYWATT.
+
+Because users attach these reports to public GitHub issues, the dump is
+anonymised before it leaves the instance:
+
+* gateway/device identifiers that look like a MAC address (or the ``Tydom-XXXX``
+  gateway id) are masked;
+* the config-entry title and every device name are redacted -- a name may be a
+  room or an occupant;
+* ``cmetadata`` and the raw ``/devices/data`` payloads are passed through a
+  recursive redactor that masks any key which is explicitly listed *or* whose
+  name merely looks sensitive (e.g. an unexpected ``gatewaySerialNumber``), so a
+  new or renamed field cannot slip an identifier or secret through.
 """
 
 from __future__ import annotations
@@ -16,7 +28,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from homeassistant.helpers.redact import REDACTED, async_redact_data
+from homeassistant.helpers.redact import REDACTED
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_EMAIL,
@@ -30,55 +42,115 @@ from homeassistant.helpers.device_registry import DeviceEntry
 
 from .const import CONF_TYDOM_PASSWORD, DOMAIN
 
-# Config-entry fields that identify the user or the gateway.
-TO_REDACT_CONFIG: set[str] = {
-    CONF_HOST,
-    CONF_MAC,
-    CONF_EMAIL,
-    CONF_PASSWORD,
-    CONF_TYDOM_PASSWORD,
-    CONF_PIN,
-    "mac",
-    "host",
-    "email",
-    "password",
-    "unique_id",
-}
+# Exact key names (compared case-insensitively) whose value is a credential or a
+# network/hardware identifier and must never appear in a shared report. Covers
+# both config-entry fields and raw ``/devices/data`` / ``/devices/cmeta`` keys.
+_SENSITIVE_KEYS: frozenset[str] = frozenset(
+    key.lower()
+    for key in {
+        CONF_EMAIL,
+        CONF_HOST,
+        CONF_MAC,
+        CONF_PASSWORD,
+        CONF_PIN,
+        CONF_TYDOM_PASSWORD,
+        "mac",
+        "macAddress",
+        "ip",
+        "ipAddress",
+        "ipv6",
+        "ssid",
+        "bssid",
+        "password",
+        "pwd",
+        "key",
+        "token",
+        "secret",
+        "serial",
+        "serialNumber",
+        "collectId",
+        # Per-product radio hardware UID (hexstring, serial-number equivalent).
+        "uid",
+        "latitude",
+        "longitude",
+        "geoloc",
+        "gps",
+        "phone",
+        "unique_id",
+    }
+)
 
-# Keys that may appear in a device's raw ``/devices/data`` payload and that
-# could carry network-identifying or secret values.
-TO_REDACT_DEVICE: set[str] = {
-    "mac",
-    "macAddress",
-    "ip",
-    "ipAddress",
-    "ipv6",
-    "ssid",
+# Substrings that make a key sensitive even when its exact name is not listed
+# above (e.g. ``wifiMac``, ``gatewaySerialNumber``, ``tydom_password``). Only
+# substrings that cannot reasonably appear in a benign TYDOM field are used, to
+# avoid over-redacting ordinary telemetry.
+_SENSITIVE_KEY_SUBSTRINGS: tuple[str, ...] = (
     "password",
-    "pwd",
-    "key",
+    "passwd",
+    "secret",
     "token",
     "serial",
-    "serialNumber",
-    "collectId",
+    "geoloc",
     "latitude",
     "longitude",
-    "geoloc",
-    # Per-product radio hardware UID (hexstring, serial-number equivalent).
-    "uid",
-}
+    "ssid",
+    "mac",
+    "collectid",
+)
 
 # A gateway's own device identifier is its MAC address (12 hex chars, no
-# separators). Radio endpoint ids are decimal integers, so this pattern masks
-# the gateway while keeping the endpoint ids needed to cross-reference devices.
+# separators) or its ``Tydom-XXXX`` short id. Radio endpoint ids are decimal
+# integers (optionally ``<endpoint>_<device>``), so these patterns mask the
+# gateway while keeping the endpoint ids needed to cross-reference devices.
 _MAC_LIKE = re.compile(r"[0-9A-Fa-f]{12}")
+_GATEWAY_ID_LIKE = re.compile(r"Tydom-[0-9A-Za-z]+", re.IGNORECASE)
+
+
+def _is_sensitive_key(key: Any) -> bool:
+    """Return True if a payload key must have its value redacted."""
+    if not isinstance(key, str):
+        return False
+    lowered = key.lower()
+    if lowered in _SENSITIVE_KEYS:
+        return True
+    return any(token in lowered for token in _SENSITIVE_KEY_SUBSTRINGS)
+
+
+def _redact(value: Any) -> Any:
+    """Recursively redact sensitive keys in dicts/lists of the payload.
+
+    A key is redacted when :func:`_is_sensitive_key` matches it and its value is
+    not empty (an empty value carries nothing to leak and masking it would only
+    add noise). Non-container values are returned unchanged.
+    """
+    if isinstance(value, dict):
+        redacted: dict[Any, Any] = {}
+        for key, item in value.items():
+            if _is_sensitive_key(key) and item not in (None, ""):
+                redacted[key] = REDACTED
+            else:
+                redacted[key] = _redact(item)
+        return redacted
+    if isinstance(value, list):
+        return [_redact(item) for item in value]
+    return value
 
 
 def _mask_identifier(value: Any) -> Any:
-    """Redact an identifier that looks like a gateway MAC address."""
-    if value is not None and _MAC_LIKE.fullmatch(str(value)):
+    """Redact an identifier that looks like a gateway MAC or ``Tydom-XXXX`` id."""
+    if value is None:
+        return value
+    text = str(value)
+    if _MAC_LIKE.fullmatch(text) or _GATEWAY_ID_LIKE.fullmatch(text):
         return REDACTED
     return value
+
+
+def _redact_name(value: Any) -> Any:
+    """Redact a user-facing name (may be a room or occupant) while keeping None."""
+    if value in (None, ""):
+        return value
+    return REDACTED
 
 
 def _device_snapshot(device: Any) -> dict[str, Any]:
@@ -86,8 +158,8 @@ def _device_snapshot(device: Any) -> dict[str, Any]:
 
     Public (non ``_``) attributes carry the raw ``/devices/data`` values; the
     private ``_metadata`` dict is the parsed ``/devices/cmeta`` payload. The
-    device name is kept (it may be a room name) because redacting it would make
-    the dump unusable, and it carries no network-identifying value.
+    device name is redacted (it may be a room or occupant name); its type,
+    class and (masked) ids remain so the report stays usable for debugging.
     """
     data = {
         key: value
@@ -98,12 +170,12 @@ def _device_snapshot(device: Any) -> dict[str, Any]:
         "device_id": _mask_identifier(device.device_id),
         "id": _mask_identifier(getattr(device, "_id", None)),
         "registry_device_id": _mask_identifier(device.registry_device_id),
-        "name": device.device_name,
+        "name": _redact_name(device.device_name),
         "type": device.device_type,
         "endpoint": _mask_identifier(device.device_endpoint),
         "class": type(device).__name__,
-        "cmetadata": getattr(device, "_metadata", None),
-        "data": async_redact_data(data, TO_REDACT_DEVICE),
+        "cmetadata": _redact(getattr(device, "_metadata", None)),
+        "data": _redact(data),
     }
 
 
@@ -120,10 +192,10 @@ async def async_get_config_entry_diagnostics(
 
     return {
         "entry": {
-            "title": entry.title,
+            "title": _redact_name(entry.title),
             "version": entry.version,
-            "data": async_redact_data(dict(entry.data), TO_REDACT_CONFIG),
-            "options": async_redact_data(dict(entry.options), TO_REDACT_CONFIG),
+            "data": _redact(dict(entry.data)),
+            "options": _redact(dict(entry.options)),
         },
         "hub": None
         if hub is None
@@ -162,11 +234,12 @@ async def async_get_device_diagnostics(
 
     return {
         "device": {
-            "name": device_entry.name,
+            "name": _redact_name(device_entry.name),
             "model": device_entry.model,
             "sw_version": device_entry.sw_version,
             "identifiers": [
-                list(identifier) for identifier in device_entry.identifiers
+                [_mask_identifier(part) for part in identifier]
+                for identifier in device_entry.identifiers
             ],
         },
         "tydom_devices": snapshots,

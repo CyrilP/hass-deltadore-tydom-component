@@ -232,6 +232,10 @@ class MaskIdentifierTests(TestCase):
         """A missing identifier stays None."""
         self.assertIsNone(diagnostics._mask_identifier(None))
 
+    def test_masks_tydom_gateway_short_id(self) -> None:
+        """The ``Tydom-XXXX`` gateway id (a partial MAC) is redacted."""
+        self.assertEqual(diagnostics._mask_identifier("Tydom-0A299C"), REDACTED)
+
 
 class DeviceSnapshotTests(TestCase):
     """A device snapshot exposes cmeta/data but hides serial-like values."""
@@ -287,6 +291,8 @@ class ConfigEntryDiagnosticsTests(TestCase):
         for key in ("host", "mac", "email", "password", "tydom_password", "pin"):
             self.assertEqual(result["entry"]["data"][key], REDACTED)
         self.assertEqual(result["entry"]["data"]["refresh_interval"], "30")
+        # The entry title can carry the gateway id, so it is redacted too.
+        self.assertEqual(result["entry"]["title"], REDACTED)
         self.assertEqual(result["hub"]["device_count"], 2)
         self.assertTrue(result["hub"]["remote_mode"])
         self.assertEqual(len(result["devices"]), 2)
@@ -317,7 +323,10 @@ class DeviceDiagnosticsTests(TestCase):
             diagnostics.async_get_device_diagnostics(_hass(hub), entry, device_entry)
         )
         self.assertEqual(len(result["tydom_devices"]), 1)
-        self.assertEqual(result["tydom_devices"][0]["name"], "PAC")
+        # The device name may be a room/occupant name, so it is redacted; the
+        # non-sensitive model is kept for debugging.
+        self.assertEqual(result["tydom_devices"][0]["name"], REDACTED)
+        self.assertEqual(result["device"]["name"], REDACTED)
         self.assertEqual(result["device"]["model"], "Tybox Home RF 210")
 
     def test_ignores_foreign_identifiers(self) -> None:
@@ -329,3 +338,89 @@ class DeviceDiagnosticsTests(TestCase):
             diagnostics.async_get_device_diagnostics(_hass(hub), entry, device_entry)
         )
         self.assertEqual(result["tydom_devices"], [])
+
+    def test_masks_mac_in_device_registry_identifiers(self) -> None:
+        """A gateway MAC carried by the registry identifiers is masked."""
+        hub = FakeHub([_boiler()])
+        entry = FakeEntry({})
+        device_entry = FakeDeviceEntry({("deltadore_tydom", "001A25ABCDEF")})
+        result = asyncio.run(
+            diagnostics.async_get_device_diagnostics(_hass(hub), entry, device_entry)
+        )
+        self.assertIn(["deltadore_tydom", REDACTED], result["device"]["identifiers"])
+
+    def test_keeps_non_mac_device_registry_identifiers(self) -> None:
+        """A decimal endpoint identifier is kept to cross-reference devices."""
+        hub = FakeHub([_boiler()])
+        entry = FakeEntry({})
+        device_entry = FakeDeviceEntry(
+            {("deltadore_tydom", "1791093691_1791093691")}
+        )
+        result = asyncio.run(
+            diagnostics.async_get_device_diagnostics(_hass(hub), entry, device_entry)
+        )
+        self.assertIn(
+            ["deltadore_tydom", "1791093691_1791093691"],
+            result["device"]["identifiers"],
+        )
+
+
+class AnonymisationHardeningTests(TestCase):
+    """The recursive redactor catches unexpected and nested sensitive keys."""
+
+    def test_redacts_unexpected_sensitive_data_keys(self) -> None:
+        """A key not in the explicit set but matching a substring is masked."""
+        device = FakeDevice(
+            uid="55_55",
+            device_id=55,
+            name="Garage",
+            device_type="conso",
+            endpoint=55,
+            metadata=None,
+            data={
+                "wifiMac": "AA:BB:CC:DD:EE:FF",
+                "gatewaySerialNumber": "SN-123456",
+                "energyIndex": 5,
+            },
+        )
+        snapshot = diagnostics._device_snapshot(device)
+        self.assertEqual(snapshot["data"]["wifiMac"], REDACTED)
+        self.assertEqual(snapshot["data"]["gatewaySerialNumber"], REDACTED)
+        # Ordinary telemetry is preserved.
+        self.assertEqual(snapshot["data"]["energyIndex"], 5)
+
+    def test_redacts_nested_metadata(self) -> None:
+        """Sensitive keys nested inside cmetadata are masked recursively."""
+        device = FakeDevice(
+            uid="55_55",
+            device_id=55,
+            name="Garage",
+            device_type="conso",
+            endpoint=55,
+            metadata={"network": {"ssid": "home-wifi", "channel": 6}},
+            data={"energyIndex": 5},
+        )
+        snapshot = diagnostics._device_snapshot(device)
+        self.assertEqual(snapshot["cmetadata"]["network"]["ssid"], REDACTED)
+        self.assertEqual(snapshot["cmetadata"]["network"]["channel"], 6)
+
+    def test_redacts_custom_device_name(self) -> None:
+        """A custom device name (possibly a room/occupant) is redacted."""
+        device = FakeDevice(
+            uid="55_55",
+            device_id=55,
+            name="Chambre Enfant",
+            device_type="light",
+            endpoint=55,
+            metadata=None,
+            data={},
+        )
+        snapshot = diagnostics._device_snapshot(device)
+        self.assertEqual(snapshot["name"], REDACTED)
+
+    def test_keeps_empty_sensitive_value(self) -> None:
+        """An empty sensitive value carries nothing and is left untouched."""
+        self.assertEqual(diagnostics._redact({"password": "", "uid": None}), {
+            "password": "",
+            "uid": None,
+        })
