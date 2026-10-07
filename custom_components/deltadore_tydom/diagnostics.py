@@ -13,9 +13,10 @@ the ``energyIndex``/``energyDistrib`` registers of a TYWATT.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
-from homeassistant.components.diagnostics import async_redact_data
+from homeassistant.helpers.redact import REDACTED, async_redact_data
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_EMAIL,
@@ -63,7 +64,21 @@ TO_REDACT_DEVICE: set[str] = {
     "latitude",
     "longitude",
     "geoloc",
+    # Per-product radio hardware UID (hexstring, serial-number equivalent).
+    "uid",
 }
+
+# A gateway's own device identifier is its MAC address (12 hex chars, no
+# separators). Radio endpoint ids are decimal integers, so this pattern masks
+# the gateway while keeping the endpoint ids needed to cross-reference devices.
+_MAC_LIKE = re.compile(r"[0-9A-Fa-f]{12}")
+
+
+def _mask_identifier(value: Any) -> Any:
+    """Redact an identifier that looks like a gateway MAC address."""
+    if value is not None and _MAC_LIKE.fullmatch(str(value)):
+        return REDACTED
+    return value
 
 
 def _device_snapshot(device: Any) -> dict[str, Any]:
@@ -80,12 +95,12 @@ def _device_snapshot(device: Any) -> dict[str, Any]:
         if not key.startswith("_") and not callable(value)
     }
     return {
-        "device_id": device.device_id,
-        "id": getattr(device, "_id", None),
-        "registry_device_id": device.registry_device_id,
+        "device_id": _mask_identifier(device.device_id),
+        "id": _mask_identifier(getattr(device, "_id", None)),
+        "registry_device_id": _mask_identifier(device.registry_device_id),
         "name": device.device_name,
         "type": device.device_type,
-        "endpoint": device.device_endpoint,
+        "endpoint": _mask_identifier(device.device_endpoint),
         "class": type(device).__name__,
         "cmetadata": getattr(device, "_metadata", None),
         "data": async_redact_data(data, TO_REDACT_DEVICE),
