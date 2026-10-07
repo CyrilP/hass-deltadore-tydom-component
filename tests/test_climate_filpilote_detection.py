@@ -126,7 +126,9 @@ _module(
 # --- homeassistant.components.sensor ---
 _module(
     "homeassistant.components.sensor",
-    SensorDeviceClass=MagicMock(TEMPERATURE="temperature", BATTERY="battery"),
+    SensorDeviceClass=MagicMock(
+        TEMPERATURE="temperature", BATTERY="battery", HUMIDITY="humidity"
+    ),
     SensorStateClass=MagicMock(MEASUREMENT="measurement"),
     SensorEntity=_StubEntity,
     SensorEntityDescription=MagicMock(),
@@ -186,6 +188,11 @@ _module("homeassistant.components.button", ButtonEntity=_StubEntity)
 _module("homeassistant.components.number", NumberEntity=_StubEntity)
 _module("homeassistant.components.select", SelectEntity=_StubEntity)
 _module(
+    "homeassistant.components.text",
+    TextEntity=_StubEntity,
+    TextMode=MagicMock(),
+)
+_module(
     "homeassistant.components.event",
     EventDeviceClass=MagicMock(),
     EventEntity=_StubEntity,
@@ -216,6 +223,10 @@ _module(
     "custom_components.deltadore_tydom.tydom.MessageHandler",
     device_name={},
     groups_data={},
+)
+_module(
+    "custom_components.deltadore_tydom.official_association_tutorials",
+    get_association_illustration_data_url=MagicMock(return_value=None),
 )
 
 
@@ -447,6 +458,22 @@ class FilPiloteDetectionTests(TestCase):
             },
         )
         self.assertFalse(entity._is_filpilote)
+
+
+class ClimateSensorMetadataTests(TestCase):
+    """Ensure ancillary climate sensors expose correct Home Assistant metadata."""
+
+    def test_hygro_in_is_a_humidity_measurement(self) -> None:
+        """Indoor relative humidity uses HA's humidity class and percentage unit."""
+        self.assertEqual(
+            HaClimate.sensor_classes["hygroIn"],
+            entities_module.SensorDeviceClass.HUMIDITY,
+        )
+        self.assertEqual(
+            HaClimate.state_classes["hygroIn"],
+            entities_module.SensorStateClass.MEASUREMENT,
+        )
+        self.assertEqual(HaClimate.units["hygroIn"], "%")
 
 
 class AreaTrvClimateTests(IsolatedAsyncioTestCase):

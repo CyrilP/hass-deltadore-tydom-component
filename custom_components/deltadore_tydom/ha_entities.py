@@ -2325,6 +2325,7 @@ class HaClimate(ClimateEntity, HAEntity):
         "temperature": SensorDeviceClass.TEMPERATURE,
         "outTemperature": SensorDeviceClass.TEMPERATURE,
         "battLevel": SensorDeviceClass.BATTERY,
+        "hygroIn": SensorDeviceClass.HUMIDITY,
     }
 
     state_classes = {
@@ -2332,6 +2333,7 @@ class HaClimate(ClimateEntity, HAEntity):
         "outTemperature": SensorStateClass.MEASUREMENT,
         "ambientTemperature": SensorStateClass.MEASUREMENT,
         "battLevel": SensorStateClass.MEASUREMENT,
+        "hygroIn": SensorStateClass.MEASUREMENT,
     }
 
     units = {
