@@ -1,0 +1,30 @@
+{
+    "entity": {
+        "sensor": {
+            "tywatt_energy_distrib_elec_heating": {
+                "name": "Consumo de eletricidade - Aquecimento"
+            },
+            "tywatt_energy_distrib_elec_hotwater": {
+                "name": "Consumo de eletricidade - Água quente"
+            },
+            "tywatt_energy_distrib_elec_other": {
+                "name": "Consumo de eletricidade - Outros"
+            },
+            "tywatt_energy_distrib_elec_outlet": {
+                "name": "Consumo de eletricidade - Tomadas"
+            },
+            "tywatt_energy_index_elec_heating": {
+                "name": "Índice de eletricidade - Aquecimento"
+            },
+            "tywatt_energy_index_elec_hotwater": {
+                "name": "Índice de eletricidade - Água quente"
+            },
+            "tywatt_energy_index_elec_other": {
+                "name": "Índice de eletricidade - Outros"
+            },
+            "tywatt_energy_index_elec_total": {
+                "name": "Índice de eletricidade - Total"
+            }
+        }
+    }
+}

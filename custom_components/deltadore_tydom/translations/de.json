@@ -1,0 +1,30 @@
+{
+    "entity": {
+        "sensor": {
+            "tywatt_energy_distrib_elec_heating": {
+                "name": "Stromverbrauch - Heizung"
+            },
+            "tywatt_energy_distrib_elec_hotwater": {
+                "name": "Stromverbrauch - Warmwasser"
+            },
+            "tywatt_energy_distrib_elec_other": {
+                "name": "Stromverbrauch - Sonstige"
+            },
+            "tywatt_energy_distrib_elec_outlet": {
+                "name": "Stromverbrauch - Steckdosen"
+            },
+            "tywatt_energy_index_elec_heating": {
+                "name": "Stromzählerstand - Heizung"
+            },
+            "tywatt_energy_index_elec_hotwater": {
+                "name": "Stromzählerstand - Warmwasser"
+            },
+            "tywatt_energy_index_elec_other": {
+                "name": "Stromzählerstand - Sonstige"
+            },
+            "tywatt_energy_index_elec_total": {
+                "name": "Stromzählerstand - Gesamt"
+            }
+        }
+    }
+}
