@@ -502,6 +502,32 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
         client.get_reply_to_request.assert_not_awaited()
         client.send_request.assert_awaited_once_with("POST", "/devices", body=payload)
 
+    async def test_incoming_websocket_frames_are_logged_at_debug(self) -> None:
+        """Raw gateway frames stay available for debugging without INFO noise."""
+        client = self._client()
+        response = (
+            b"HTTP/1.1 404 Not Found\r\n"
+            b"Uri-Origin: /moments/file\r\n"
+            b"Content-Type: text/html\r\n\r\n"
+            b"<html>optional endpoint unavailable</html>"
+        )
+        connection = _websocket()
+        connection.receive = AsyncMock(
+            return_value=MagicMock(type=2, data=response)
+        )
+        client._connection = connection
+        client._connection_ready = True
+        client._message_handler.route_response = AsyncMock(return_value=None)
+        logger.reset_mock()
+
+        await client.consume_messages()
+
+        logger.debug.assert_any_call(
+            "Incoming message - type : %s - message : %s", 2, response.decode()
+        )
+        logger.info.assert_not_called()
+        client._message_handler.route_response.assert_awaited_once_with(response)
+
     async def test_missing_optional_endpoints_are_not_retried(self) -> None:
         """A legacy gateway's 404 capabilities are remembered per session."""
         client = self._client()

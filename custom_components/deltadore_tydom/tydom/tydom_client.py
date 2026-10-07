@@ -788,7 +788,7 @@ class TydomClient:
                 sanitized_msg = sanitize_log_message(
                     incoming_bytes_str.decode("utf-8", errors="replace"), self._password
                 )
-                LOGGER.info("Incomming message - message : %s", sanitized_msg)
+                LOGGER.debug("Incomming message - message : %s", sanitized_msg)
             else:
                 await asyncio.sleep(10)
                 return None
@@ -823,7 +823,7 @@ class TydomClient:
                 else str(msg.data)
             )
             sanitized_msg = sanitize_log_message(msg_data_str, self._password)
-            LOGGER.info(
+            LOGGER.debug(
                 "Incoming message - type : %s - message : %s", msg.type, sanitized_msg
             )
 
