@@ -82,6 +82,7 @@ class EndpointLoggingTests(IsolatedAsyncioTestCase):
         handler_module.device_name.clear()
         handler_module.device_type.clear()
         handler_module.device_metadata.clear()
+        handler_module.device_command_metadata.clear()
         self.handler = MessageHandler(MagicMock(), b"")
 
     @staticmethod
@@ -112,19 +113,67 @@ class EndpointLoggingTests(IsolatedAsyncioTestCase):
         self.assertEqual(len(devices), 1)
         self.assertEqual(devices[0].device_name, "Consumption")
 
+    async def test_thermostat_metadata_conso_endpoint_is_skipped(self) -> None:
+        """Filter thermostat endpoint metadata even when cmeta is empty."""
+        uid = "10_20"
+        handler_module.device_name[uid] = "Consumption 1"
+        handler_module.device_type[uid] = "conso"
+
+        await self.handler.parse_cmeta_data(
+            [{"id": 20, "endpoints": [{"id": 10, "cmetadata": []}]}],
+            None,
+        )
+        await self.handler.parse_devices_metadata(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [
+                        {
+                            "id": 10,
+                            "metadata": [
+                                {"name": "heatSetpoint", "permission": "rw"},
+                                {"name": "coolSetpoint", "permission": "rw"},
+                                {"name": "thermicLevel", "permission": "r"},
+                                {"name": "anticipCoeff", "permission": "r"},
+                            ],
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+        self.assertEqual(handler_module.device_command_metadata[uid], {})
+        self.assertIn("heatSetpoint", handler_module.device_metadata[uid])
+
+        for response in (
+            self._response(
+                data=[
+                    {
+                        "name": "heatSetpoint",
+                        "value": None,
+                        "validity": "upToDate",
+                    }
+                ]
+            ),
+            self._response(error=15),
+        ):
+            with self.subTest(error=response[0]["endpoints"][0]["error"]):
+                devices = await self.handler.parse_devices_data(response, None)
+                self.assertEqual(devices, [])
+
+        self.assertEqual(logger.warning.call_args.args[-1], "skipping entity creation")
+
     async def test_repeated_empty_heating_endpoint_is_rate_limited(self) -> None:
         """A temporarily silent heating zone must not flood HA warnings."""
         uid = "10_20"
         handler_module.device_name[uid] = "Bedrooms"
         handler_module.device_type[uid] = "boiler"
-        handler_module.device_metadata[uid] = {
-            "thermicLevel": {"permission": "rw"}
-        }
+        handler_module.device_metadata[uid] = {"thermicLevel": {"permission": "rw"}}
 
         for _ in range(12):
             await self.handler.parse_devices_data(self._response(), None)
 
-        warning_counts = [call.args[-1] for call in logger.warning.call_args_list]
+        warning_counts = [call.args[-2] for call in logger.warning.call_args_list]
         self.assertEqual(warning_counts, [1, 10])
 
     async def test_error_does_not_emit_a_second_missing_data_warning(self) -> None:
@@ -132,24 +181,20 @@ class EndpointLoggingTests(IsolatedAsyncioTestCase):
         uid = "10_20"
         handler_module.device_name[uid] = "Bedrooms"
         handler_module.device_type[uid] = "boiler"
-        handler_module.device_metadata[uid] = {
-            "thermicLevel": {"permission": "rw"}
-        }
+        handler_module.device_metadata[uid] = {"thermicLevel": {"permission": "rw"}}
 
         await self.handler.parse_devices_data(self._response(error=5), None)
 
         logger.warning.assert_called_once()
         self.assertEqual(logger.warning.call_args.args[1], "reported an error")
-        self.assertEqual(logger.warning.call_args.args[-2], 5)
+        self.assertEqual(logger.warning.call_args.args[-3], 5)
 
     async def test_different_error_codes_remain_visible(self) -> None:
         """A new gateway error code starts its own diagnostic series."""
         uid = "10_20"
         handler_module.device_name[uid] = "Bedrooms"
         handler_module.device_type[uid] = "boiler"
-        handler_module.device_metadata[uid] = {
-            "thermicLevel": {"permission": "rw"}
-        }
+        handler_module.device_metadata[uid] = {"thermicLevel": {"permission": "rw"}}
 
         await self.handler.parse_devices_data(self._response(error=1), None)
         await self.handler.parse_devices_data(self._response(error=5), None)

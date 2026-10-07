@@ -7,6 +7,7 @@ import copy
 import secrets
 import time
 from collections.abc import Callable
+from contextlib import suppress
 from dataclasses import dataclass
 
 from aiohttp import ClientWebSocketResponse, ClientSession
@@ -3820,11 +3821,28 @@ class Hub:
         for an immediate reading between scheduled polls.
         """
         while not self._shutting_down:
+            poll_event = self._tydom_client._poll_device_urls_5m_event
+            if not self._tydom_client.poll_device_urls_5m:
+                await poll_event.wait()
+                if self._shutting_down:
+                    return
+
+            # Metadata discovery can register cdata URLs after this background
+            # task starts. Wake up immediately for that first registration,
+            # then use the configured interval for subsequent regular polls.
+            poll_event.clear()
+            LOGGER.debug(
+                "Polling %s registered cdata requests",
+                len(self._tydom_client.poll_device_urls_5m),
+            )
             try:
                 await self._tydom_client.poll_devices_data_5m()
             except Exception:
                 LOGGER.exception("Error polling registered cdata endpoints")
-            await self._interruptible_sleep(self._refresh_interval)
+
+            interval = self._refresh_interval if self._refresh_interval > 0 else 60
+            with suppress(TimeoutError):
+                await asyncio.wait_for(poll_event.wait(), timeout=interval)
 
     async def reload_devices(self) -> None:
         """Recharger tous les appareils et entités comme au démarrage initial.
