@@ -7,6 +7,7 @@ import copy
 import secrets
 import time
 from collections.abc import Callable
+from contextlib import suppress
 from dataclasses import dataclass
 
 from aiohttp import ClientWebSocketResponse, ClientSession
@@ -3840,10 +3841,8 @@ class Hub:
                 LOGGER.exception("Error polling registered cdata endpoints")
 
             interval = self._refresh_interval if self._refresh_interval > 0 else 60
-            try:
+            with suppress(TimeoutError):
                 await asyncio.wait_for(poll_event.wait(), timeout=interval)
-            except TimeoutError:
-                pass
 
     async def reload_devices(self) -> None:
         """Recharger tous les appareils et entités comme au démarrage initial.
