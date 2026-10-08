@@ -2501,14 +2501,12 @@ class HaClimate(ClimateEntity, HAEntity):
         if HVACMode.AUTO in self._attr_hvac_modes and self._device._metadata:
             comfort_mode = self._device._metadata.get("comfortMode")
             hvac_mode_meta = self._device._metadata.get("hvacMode")
-            comfort_is_writable = (
-                isinstance(comfort_mode, dict)
-                and "w" in comfort_mode.get("permission", "")
-            )
-            hvac_mode_has_auto = (
-                isinstance(hvac_mode_meta, dict)
-                and "AUTO" in hvac_mode_meta.get("enum_values", [])
-            )
+            comfort_is_writable = isinstance(
+                comfort_mode, dict
+            ) and "w" in comfort_mode.get("permission", "")
+            hvac_mode_has_auto = isinstance(
+                hvac_mode_meta, dict
+            ) and "AUTO" in hvac_mode_meta.get("enum_values", [])
             if comfort_is_writable and not hvac_mode_has_auto:
                 self._attr_hvac_modes.remove(HVACMode.AUTO)
 
