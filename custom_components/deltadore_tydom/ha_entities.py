@@ -357,13 +357,30 @@ class HAEntity:
         if registered_sensors is None:
             return sensors
 
+        registry_targets = self.__dict__.get("_sensor_registry_targets") or ()
+        registrations_by_target = self.__dict__.setdefault(
+            "_registered_sensors_by_target", {}
+        )
+        if registry_targets:
+            target_registrations = [
+                (
+                    device_id,
+                    device_name,
+                    unique_id_suffix,
+                    registered_sensors
+                    if index == 0
+                    else registrations_by_target.setdefault(device_id, []),
+                )
+                for index, (device_id, device_name, unique_id_suffix) in enumerate(
+                    registry_targets
+                )
+            ]
+        else:
+            target_registrations = [(None, None, "", registered_sensors)]
+
         consumed_attrs = self._get_consumed_attrs()
         for attribute, value in self._device.__dict__.items():
-            if (
-                attribute[:1] != "_"
-                and value is not None
-                and attribute not in registered_sensors
-            ):
+            if attribute[:1] != "_" and value is not None:
                 alt_name = attribute.split("_")[0]
                 if attribute in self.filtered_attrs or alt_name in self.filtered_attrs:
                     continue
@@ -390,39 +407,59 @@ class HAEntity:
                 is_binary_sensor = is_binary_attribute(
                     self._device, attribute, value, sensor_class
                 )
-                if is_binary_sensor:
-                    binary_sensor_class = (
-                        BinarySensorDeviceClass.PROBLEM
-                        if is_problem_attribute(attribute)
-                        else sensor_class
-                    )
-                    sensors.append(
-                        GenericBinarySensor(
-                            self._device,
-                            binary_sensor_class,
-                            attribute,
-                            attribute,
+                created_sensor = False
+                for (
+                    registry_device_id,
+                    registry_device_name,
+                    unique_id_suffix,
+                    target_registered_sensors,
+                ) in target_registrations:
+                    if attribute in target_registered_sensors:
+                        continue
+                    device_kwargs = {}
+                    if registry_device_id is not None:
+                        device_kwargs = {
+                            "registry_device_id": registry_device_id,
+                            "registry_device_name": registry_device_name,
+                            "unique_id_suffix": unique_id_suffix,
+                        }
+                    if is_binary_sensor:
+                        binary_sensor_class = (
+                            BinarySensorDeviceClass.PROBLEM
+                            if is_problem_attribute(attribute)
+                            else sensor_class
                         )
-                    )
-                else:
-                    sensors.append(
-                        GenericSensor(
-                            self._device,
-                            sensor_class,
-                            state_class,
-                            attribute,
-                            attribute,
-                            unit,
+                        sensors.append(
+                            GenericBinarySensor(
+                                self._device,
+                                binary_sensor_class,
+                                attribute,
+                                attribute,
+                                **device_kwargs,
+                            )
                         )
+                    else:
+                        sensors.append(
+                            GenericSensor(
+                                self._device,
+                                sensor_class,
+                                state_class,
+                                attribute,
+                                attribute,
+                                unit,
+                                **device_kwargs,
+                            )
+                        )
+                    target_registered_sensors.append(attribute)
+                    created_sensor = True
+                if created_sensor:
+                    LOGGER.debug(
+                        "Nouveau capteur créé: %s.%s (type: %s, valeur: %s)",
+                        self._device.device_id,
+                        attribute,
+                        "binary" if is_binary_sensor else "sensor",
+                        value,
                     )
-                registered_sensors.append(attribute)
-                LOGGER.debug(
-                    "Nouveau capteur créé: %s.%s (type: %s, valeur: %s)",
-                    self._device.device_id,
-                    attribute,
-                    "binary" if is_binary_sensor else "sensor",
-                    value,
-                )
 
         return sensors
 
@@ -570,6 +607,10 @@ class GenericSensor(SensorEntity):
         name: str,
         attribute: str,
         unit_of_measurement: str | None,
+        *,
+        registry_device_id: str | None = None,
+        registry_device_name: str | None = None,
+        unique_id_suffix: str = "",
     ):
         """Initialize the sensor.
 
@@ -589,10 +630,13 @@ class GenericSensor(SensorEntity):
         self._device = device
         # unique_id format: {device_id}_{entity_name}
         # device_id is stable and unique (endpoint_id + "_" + device_id from Tydom API)
-        self._attr_unique_id = f"{self._device.device_id}_{name}"
+        self._attr_unique_id = f"{self._device.device_id}_{name}{unique_id_suffix}"
         translation_key = self.TRANSLATION_KEYS.get(attribute)
         self._attr_name = None if translation_key else name
         self._attribute = attribute
+        if registry_device_id is not None:
+            self._registry_device_id_override = str(registry_device_id)
+            self._registry_device_name_override = str(registry_device_name)
         # Create entity description with translation key
         entity_description = SensorEntityDescription(
             key=attribute,
@@ -719,7 +763,16 @@ class GenericSensor(SensorEntity):
     def device_info(self):
         """Return information to link this entity with the correct device."""
         device_info_dict = self._get_device_info_dict()
-        registry_device_id = self._device.registry_device_id
+        registry_device_id = getattr(
+            self,
+            "_registry_device_id_override",
+            self._device.registry_device_id,
+        )
+        registry_device_name = getattr(
+            self,
+            "_registry_device_name_override",
+            self._device.registry_device_name,
+        )
         grouped_with_parent = registry_device_id != self._device.device_id
         info: DeviceInfo = {
             "identifiers": {(DOMAIN, registry_device_id)},
@@ -737,7 +790,7 @@ class GenericSensor(SensorEntity):
         ]
 
         if grouped_with_parent:
-            info["name"] = self._device.registry_device_name
+            info["name"] = registry_device_name
         elif hasattr(self._device, "device_name") and self._device.device_name:
             info["name"] = self._device.device_name
         elif "model" in device_info_dict:
@@ -862,7 +915,16 @@ class BinarySensorBase(BinarySensorEntity):
     @property
     def device_info(self):
         """Return information to link this entity with the correct device."""
-        registry_device_id = self._device.registry_device_id
+        registry_device_id = getattr(
+            self,
+            "_registry_device_id_override",
+            self._device.registry_device_id,
+        )
+        registry_device_name = getattr(
+            self,
+            "_registry_device_name_override",
+            self._device.registry_device_name,
+        )
         grouped_with_parent = registry_device_id != self._device.device_id
         info: DeviceInfo = {
             "identifiers": {(DOMAIN, registry_device_id)},
@@ -879,7 +941,7 @@ class BinarySensorBase(BinarySensorEntity):
         ]
 
         if grouped_with_parent:
-            info["name"] = self._device.registry_device_name
+            info["name"] = registry_device_name
         elif hasattr(self._device, "device_name") and self._device.device_name:
             info["name"] = self._device.device_name
         elif hasattr(self._device, "productName"):
@@ -953,12 +1015,19 @@ class GenericBinarySensor(BinarySensorBase):
         device_class: BinarySensorDeviceClass | None,
         name: str,
         attribute: str,
+        *,
+        registry_device_id: str | None = None,
+        registry_device_name: str | None = None,
+        unique_id_suffix: str = "",
     ):
         """Initialize the sensor."""
         super().__init__(device)
-        self._attr_unique_id = f"{self._device.device_id}_{name}"
+        self._attr_unique_id = f"{self._device.device_id}_{name}{unique_id_suffix}"
         self._attr_name = name
         self._attribute = attribute
+        if registry_device_id is not None:
+            self._registry_device_id_override = str(registry_device_id)
+            self._registry_device_name_override = str(registry_device_name)
         # Create entity description with translation key
         entity_description = BinarySensorEntityDescription(
             key=attribute,
@@ -4029,14 +4098,25 @@ class HaWeather(WeatherEntity, HAEntity):
         "maxDailyOutTemp": UnitOfTemperature.CELSIUS,
     }
 
-    def __init__(self, device: TydomWeather, hass) -> None:
+    def __init__(
+        self,
+        device: TydomWeather,
+        hass,
+        *,
+        registry_device_id: str | None = None,
+        registry_device_name: str | None = None,
+        unique_id_suffix: str = "",
+    ) -> None:
         """Initialize the sensor."""
         self.hass = hass
         self._device = device
         self._device._ha_device = self
-        self._attr_unique_id = f"{self._device.device_id}_weather"
+        self._attr_unique_id = f"{self._device.device_id}_weather{unique_id_suffix}"
         self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
+        if registry_device_id is not None:
+            self._registry_device_id_override = str(registry_device_id)
+            self._registry_device_name_override = str(registry_device_name)
         if (
             self._device._metadata is not None
             and "dailyPower" in self._device._metadata
@@ -4085,11 +4165,20 @@ class HaWeather(WeatherEntity, HAEntity):
     def device_info(self):
         """Return information to link this entity with the correct device."""
         device_info = self._get_device_info()
-        registry_device_id = self._device.registry_device_id
+        registry_device_id = getattr(
+            self,
+            "_registry_device_id_override",
+            self._device.registry_device_id,
+        )
+        registry_device_name = getattr(
+            self,
+            "_registry_device_name_override",
+            self._device.registry_device_name,
+        )
         grouped_with_parent = registry_device_id != self._device.device_id
         info: DeviceInfo = {
             "identifiers": {(DOMAIN, registry_device_id)},
-            "name": self._device.registry_device_name,
+            "name": registry_device_name,
             "manufacturer": device_info["manufacturer"],
         }
         if "model" in device_info and not grouped_with_parent:

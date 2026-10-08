@@ -41,12 +41,12 @@ def _load_ha_entity_class():
     ast.fix_missing_locations(isolated_module)
 
     class GenericBinarySensor:
-        def __init__(self, *_args) -> None:
-            pass
+        def __init__(self, *_args, **kwargs) -> None:
+            self.registry_kwargs = kwargs
 
     class GenericSensor:
-        def __init__(self, *_args) -> None:
-            pass
+        def __init__(self, *_args, **kwargs) -> None:
+            self.registry_kwargs = kwargs
 
     class BinarySensorDeviceClass:
         PROBLEM = "problem"
@@ -171,8 +171,7 @@ def _load_opening_consumed_attrs():
         if (
             isinstance(node, ast.Assign)
             and any(
-                isinstance(target, ast.Name)
-                and target.id == "_BINARY_OPEN_STATES"
+                isinstance(target, ast.Name) and target.id == "_BINARY_OPEN_STATES"
                 for target in node.targets
             )
         )
@@ -253,6 +252,36 @@ class EntitySensorRegistrationTests(TestCase):
         entity = self._entity("gate_1")
 
         self.assertEqual(len(entity.get_sensors()), 1)
+        self.assertEqual(entity.get_sensors(), [])
+
+    def test_shared_weather_sensor_is_registered_for_each_parent_device(self) -> None:
+        """A shared source gets one uniquely targeted sensor per controller."""
+        entity = self._entity("weather_1")
+        del entity._device.thermicDefect
+        entity._device.outTemperature = 18.5
+        entity._sensor_registry_targets = (
+            ("ctrl_rdc", "Tywell Ctrl RdC", ""),
+            ("ctrl_etg", "Tywell Ctrl Etg", "_shared_ctrl_etg"),
+        )
+
+        sensors = entity.get_sensors()
+
+        self.assertEqual(len(sensors), 2)
+        self.assertEqual(
+            [sensor.registry_kwargs for sensor in sensors],
+            [
+                {
+                    "registry_device_id": "ctrl_rdc",
+                    "registry_device_name": "Tywell Ctrl RdC",
+                    "unique_id_suffix": "",
+                },
+                {
+                    "registry_device_id": "ctrl_etg",
+                    "registry_device_name": "Tywell Ctrl Etg",
+                    "unique_id_suffix": "_shared_ctrl_etg",
+                },
+            ],
+        )
         self.assertEqual(entity.get_sensors(), [])
 
     def test_registration_lists_are_not_shared(self) -> None:
@@ -383,9 +412,7 @@ class EntitySensorRegistrationTests(TestCase):
     def test_binary_open_state_is_consumed(self) -> None:
         """A two-state openState adds nothing beyond the primary entity."""
         device = MagicMock()
-        device._metadata = {
-            "openState": {"enum_values": ["LOCKED", "UNLOCKED"]}
-        }
+        device._metadata = {"openState": {"enum_values": ["LOCKED", "UNLOCKED"]}}
 
         self.assertEqual(
             get_consumed_opening_attrs(device),
@@ -396,9 +423,7 @@ class EntitySensorRegistrationTests(TestCase):
         """French-window opening modes must remain separately observable."""
         device = MagicMock()
         device._metadata = {
-            "openState": {
-                "enum_values": ["LOCKED", "OPEN_FRENCH", "OPEN_HOPPER"]
-            }
+            "openState": {"enum_values": ["LOCKED", "OPEN_FRENCH", "OPEN_HOPPER"]}
         }
 
         self.assertEqual(

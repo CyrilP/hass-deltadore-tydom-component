@@ -3094,11 +3094,37 @@ class Hub:
     async def _create_weather_device(self, device: TydomWeather) -> None:
         """Create weather device."""
         LOGGER.debug("Create weather %s", device.device_id)
-        ha_device = HaWeather(device, self._hass)
-        self.ha_devices[device.device_id] = ha_device
+        registry_targets = device.registry_device_targets
+        weather_entities = []
+        sensor_registry_targets = []
+        for index, (registry_device_id, registry_device_name) in enumerate(
+            registry_targets
+        ):
+            unique_id_suffix = f"_shared_{registry_device_id}" if index > 0 else ""
+            sensor_registry_targets.append(
+                (registry_device_id, registry_device_name, unique_id_suffix)
+            )
+            weather_entities.append(
+                HaWeather(
+                    device,
+                    self._hass,
+                    registry_device_id=registry_device_id,
+                    registry_device_name=registry_device_name,
+                    unique_id_suffix=unique_id_suffix,
+                )
+            )
+
+        if not weather_entities:
+            weather_entities.append(HaWeather(device, self._hass))
+        elif len(weather_entities) > 1:
+            weather_entities[0]._sensor_registry_targets = tuple(
+                sensor_registry_targets
+            )
+
+        self.ha_devices[device.device_id] = weather_entities[0]
         if self.add_weather_callback is not None:
-            self.add_weather_callback([ha_device])
-        self._add_discovered_entities(ha_device.get_sensors())
+            self.add_weather_callback(weather_entities)
+        self._add_discovered_entities(weather_entities[0].get_sensors())
 
     async def _create_water_device(self, device: TydomWater) -> None:
         """Create water/moisture device."""
