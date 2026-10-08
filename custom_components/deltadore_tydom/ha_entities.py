@@ -381,7 +381,6 @@ class HAEntity:
                 ):
                     continue
 
-
                 if attribute in self.filtered_attrs or alt_name in self.filtered_attrs:
                     continue
                 if attribute in consumed_attrs or alt_name in consumed_attrs:
