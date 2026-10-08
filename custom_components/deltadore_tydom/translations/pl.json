@@ -2339,6 +2339,9 @@
             },
             "zones": {
                 "name": "Strefy alarmu"
+            },
+            "climate_command_pending": {
+                "name": "Polecenie w toku"
             }
         },
         "number": {
@@ -3887,6 +3890,14 @@
             "tywell_shutters_night": {
                 "name": "Rolety nocne"
             }
+        }
+    },
+    "exceptions": {
+        "invalid_target_temperature": {
+            "message": "Temperatura zadana musi być liczbą skończoną."
+        },
+        "target_temperature_out_of_range": {
+            "message": "Żądana temperatura {temperature} jest poza limitami urządzenia (od {minimum} do {maximum})."
         }
     }
 }

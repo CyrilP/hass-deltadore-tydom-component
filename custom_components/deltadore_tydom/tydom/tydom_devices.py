@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 
 from ..const import LOGGER, validate_value_with_metadata
@@ -663,10 +664,13 @@ class TydomBoiler(TydomDevice):
         )
 
     def area_temperature_limits(self) -> tuple[float | None, float | None]:
-        """Return live area limits, falling back to controller metadata."""
+        """Keep the area-only helper available for existing callers."""
         if not hasattr(self, "area_id"):
             return (None, None)
+        return self.temperature_limits()
 
+    def temperature_limits(self) -> tuple[float | None, float | None]:
+        """Return current setpoint limits for endpoint and area thermostats."""
         if self.is_area_trv:
             local_setpoint = (self._metadata or {}).get("localSetpoint", {})
             return (
@@ -678,14 +682,16 @@ class TydomBoiler(TydomDevice):
                 else None,
             )
 
-        authorization = getattr(self, "authorization", None)
+        authorization = getattr(self, "authorization", None) or getattr(
+            self, "hvacMode", None
+        )
         if authorization == "COOLING":
             live_names = (
                 ("minCoolSetpoint", "minSetpoint"),
                 ("maxCoolSetpoint", "maxSetpoint"),
             )
             metadata_names = ("coolSetpoint", "setpoint")
-        elif authorization == "HEATING":
+        elif authorization in ("HEATING", "NORMAL"):
             live_names = (
                 ("minHeatSetpoint", "minSetpoint"),
                 ("maxHeatSetpoint", "maxSetpoint"),
@@ -947,18 +953,62 @@ class TydomBoiler(TydomDevice):
         else:
             LOGGER.error("Unknown hvac mode: %s", mode)
 
+    def validate_temperature(self, temperature) -> None:
+        """Reject invalid or out-of-range requests before recording or sending them."""
+        try:
+            numeric_temperature = float(temperature)
+        except (TypeError, ValueError):
+            from homeassistant.exceptions import HomeAssistantError
+
+            raise HomeAssistantError(
+                translation_domain="deltadore_tydom",
+                translation_key="invalid_target_temperature",
+            ) from None
+        if not math.isfinite(numeric_temperature):
+            from homeassistant.exceptions import HomeAssistantError
+
+            raise HomeAssistantError(
+                translation_domain="deltadore_tydom",
+                translation_key="invalid_target_temperature",
+            )
+        minimum, maximum = self.temperature_limits()
+        if (minimum is not None and numeric_temperature < minimum) or (
+            maximum is not None and numeric_temperature > maximum
+        ):
+            from homeassistant.exceptions import HomeAssistantError
+
+            raise HomeAssistantError(
+                translation_domain="deltadore_tydom",
+                translation_key="target_temperature_out_of_range",
+                translation_placeholders={
+                    "temperature": str(numeric_temperature),
+                    "minimum": str(minimum) if minimum is not None else "-",
+                    "maximum": str(maximum) if maximum is not None else "-",
+                },
+            )
+
+        setpoint_attribute = (
+            "localSetpoint"
+            if self.is_area_trv
+            else self.area_setpoint_attribute()
+            if hasattr(self, "area_id")
+            else self._temperature_command_name()
+        )
+        # Validate value with metadata
+        is_valid, error_msg = validate_value_with_metadata(
+            self, setpoint_attribute, temperature
+        )
+        if not is_valid:
+            from homeassistant.exceptions import HomeAssistantError
+
+            raise HomeAssistantError(
+                error_msg or f"Température invalide: {temperature}"
+            )
+
     async def set_temperature(self, temperature):
         """Set target temperature."""
+        self.validate_temperature(temperature)
         if self.is_area_trv:
-            is_valid, error_msg = validate_value_with_metadata(
-                self, "localSetpoint", temperature
-            )
-            if not is_valid:
-                from homeassistant.exceptions import HomeAssistantError
-
-                raise HomeAssistantError(
-                    error_msg or f"Température invalide: {temperature}"
-                )
             await self._tydom_client.put_area_data_attributes(
                 self.area_id,
                 {
@@ -974,17 +1024,6 @@ class TydomBoiler(TydomDevice):
             if hasattr(self, "area_id")
             else self._temperature_command_name()
         )
-        # Validate value with metadata
-        is_valid, error_msg = validate_value_with_metadata(
-            self, setpoint_attribute, temperature
-        )
-        if not is_valid:
-            from homeassistant.exceptions import HomeAssistantError
-
-            raise HomeAssistantError(
-                error_msg or f"Température invalide: {temperature}"
-            )
-
         if hasattr(self, "area_id"):
             await self._tydom_client.put_area_data(
                 self.area_id, setpoint_attribute, temperature

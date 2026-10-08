@@ -2339,6 +2339,9 @@
             },
             "zones": {
                 "name": "Zonas de alarma"
+            },
+            "climate_command_pending": {
+                "name": "Orden pendiente"
             }
         },
         "number": {
@@ -3887,6 +3890,14 @@
             "tywell_shutters_night": {
                 "name": "Persianas de noche"
             }
+        }
+    },
+    "exceptions": {
+        "invalid_target_temperature": {
+            "message": "La temperatura de consigna debe ser un número finito."
+        },
+        "target_temperature_out_of_range": {
+            "message": "La temperatura solicitada {temperature} está fuera de los límites del dispositivo ({minimum} a {maximum})."
         }
     }
 }

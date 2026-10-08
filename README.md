@@ -199,6 +199,14 @@ Assistant, are preserved. Existing entity identifiers and automation references
 remain valid. Unknown attributes advertised by newer gateway firmware retain a
 readable technical name until a matching label is added.
 
+### Thermostat commands and temperature limits
+
+The climate entity uses the device's current heating or cooling setpoint limits, including installer limits reported by TYDOM. Out-of-range temperatures are rejected before sending a command.
+
+The diagnostic **Command pending** binary sensor switches on when Home Assistant sends a mode, temperature or preset request. The climate entity keeps showing the values reported by the thermostat; completing the network send does not confirm the physical change. The indicator switches off when a subsequent TYDOM update reports the requested value, or if sending fails. Multiple outstanding requests are confirmed separately.
+
+After two minutes without matching feedback, the status becomes `unconfirmed` and the indicator stays on. This does not prove the command failed. There is no automatic resend. The requested values and `command_status` are also available as climate attributes. Pending requests are cleared when the integration is unloaded.
+
 ## Troubleshooting
 
 ### Enable debug logging

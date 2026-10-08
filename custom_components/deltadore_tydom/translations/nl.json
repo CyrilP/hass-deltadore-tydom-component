@@ -2339,6 +2339,9 @@
             },
             "zones": {
                 "name": "Alarmzones"
+            },
+            "climate_command_pending": {
+                "name": "Opdracht in behandeling"
             }
         },
         "number": {
@@ -3887,6 +3890,14 @@
             "tywell_shutters_night": {
                 "name": "Rolluiken nacht"
             }
+        }
+    },
+    "exceptions": {
+        "invalid_target_temperature": {
+            "message": "De gewenste temperatuur moet een eindig getal zijn."
+        },
+        "target_temperature_out_of_range": {
+            "message": "De gevraagde temperatuur {temperature} valt buiten de apparaatgrenzen ({minimum} tot {maximum})."
         }
     }
 }

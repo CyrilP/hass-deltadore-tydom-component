@@ -14,6 +14,7 @@ from typing import Any
 from homeassistant.helpers.entity import EntityDescription
 
 ENTITY_NAMES: dict[str, str] = {
+    "climate_command_pending": "Command pending",
     "absence": "Away mode",
     "absencesetpoint": "Away temperature",
     "absmaxcoolsetpoint": "Maximum cooling setpoint",
