@@ -1,7 +1,7 @@
 {
     "device": {
         "tywell_weather": {
-            "name": "Weather"
+            "name": "Weer"
         }
     },
     "config": {

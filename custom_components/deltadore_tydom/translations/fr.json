@@ -1,4 +1,9 @@
 {
+    "device": {
+        "tywell_weather": {
+            "name": "Météo"
+        }
+    },
     "config": {
         "step": {
             "user": {

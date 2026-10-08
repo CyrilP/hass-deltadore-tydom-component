@@ -4163,6 +4163,7 @@ class HaWeather(WeatherEntity, HAEntity):
         *,
         registry_device_id: str | None = None,
         registry_device_name: str | None = None,
+        registry_translation_key: str | None = None,
         registry_parent_device_id: str | None = None,
         unique_id_suffix: str = "",
     ) -> None:
@@ -4176,6 +4177,8 @@ class HaWeather(WeatherEntity, HAEntity):
         if registry_device_id is not None:
             self._registry_device_id_override = str(registry_device_id)
             self._registry_device_name_override = str(registry_device_name)
+        if registry_translation_key is not None:
+            self._registry_translation_key_override = registry_translation_key
         if registry_parent_device_id is not None:
             self._registry_parent_device_id_override = str(registry_parent_device_id)
         if (
@@ -4242,6 +4245,8 @@ class HaWeather(WeatherEntity, HAEntity):
             "name": registry_device_name,
             "manufacturer": device_info["manufacturer"],
         }
+        if translation_key := getattr(self, "_registry_translation_key_override", None):
+            info["translation_key"] = translation_key
         if "model" in device_info and not grouped_with_parent:
             info["model"] = device_info["model"]
         if parent_device_id := getattr(

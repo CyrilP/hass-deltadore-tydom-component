@@ -1,4 +1,9 @@
 {
+    "device": {
+        "tywell_weather": {
+            "name": "Tempo"
+        }
+    },
     "entity": {
         "sensor": {
             "tywatt_energy_distrib_elec_heating": {

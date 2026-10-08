@@ -3113,6 +3113,7 @@ class Hub:
                     self._hass,
                     registry_device_id=weather_device_id,
                     registry_device_name=weather_device_name,
+                    registry_translation_key="tywell_weather",
                 )
             )
         else:
