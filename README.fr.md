@@ -26,7 +26,7 @@ passerelle Delta Dore peut être détectée par découverte DHCP.
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Dépannage](#dépannage)
-- [Association, identification et dissociation radio — nouveauté en cours de validation](#association-identification-et-dissociation-radio--nouveauté-en-cours-de-validation)
+- [Association, identification et dissociation radio](#association-identification-et-dissociation-radio)
 - [Guides d'association illustrés](#guides-dassociation-illustrés)
 - [Capturer les données d'un appareil non pris en charge](#capturer-les-données-dun-appareil-non-pris-en-charge)
 - [Gestion à distance TYXAL+](#gestion-à-distance-tyxal)
@@ -51,7 +51,7 @@ Plateforme | Description
 `select` | Modifie les paramètres à choix multiple exposés par un appareil.
 `sensor` | Indique les mesures et informations des appareils.
 `switch` | Pilote les sorties binaires, prises et moments TYDOM.
-`update` | Signale et installe les mises à jour du micrologiciel TYDOM prises en charge ; la passerelle ne fournit pas la version cible.
+`update` | Signale les mises à jour du micrologiciel annoncées par TYDOM et permet de lancer l’installation ; la version cible n’étant pas fournie, Home Assistant affiche `latest`.
 `weather` | Indique les informations météorologiques.
 
 ### Fonctionnalités principales
@@ -77,6 +77,32 @@ Plateforme | Description
 - Ajoute, identifie et dissocie proprement les produits radio compatibles
   depuis la page de la passerelle, avec des guides propres à chaque modèle et
   une actualisation automatique de l'inventaire après succès.
+
+- Expose l'humidité actuelle sur les entités de climat lorsque TYDOM annonce
+  `hygroIn`, ainsi qu'un capteur d'humidité natif lorsque cette mesure est
+  fournie. Le mode Absence de TYDOM correspond à la présélection Away de Home
+  Assistant lorsqu'il est annoncé ou reçu ; les commandes ne sont permises que
+  si les métadonnées l'indiquent comme modifiable. `ANTI_FROST` correspond
+  à Frost sur les thermostats de zone réversibles.
+- Préserve les consignes de climat modifiables des zones Tywell Control et
+  Typass ATL lorsque les données arrivent avant les métadonnées facultatives.
+  Regroupe les scénarios de volets par contrôleur et cibles exactes, afin qu'un
+  Tywell Control ne remplace pas les commandes d'un autre.
+- Partage un seul appareil météo lorsque plusieurs Tywell Control utilisent le
+  même point de terminaison, avec l'entité météo et ses capteurs associés.
+  Les relevés comprennent la température extérieure, les conditions météo,
+  les puissances actuelle et quotidienne et la température extérieure maximale
+  du jour.
+- Expose une entité de mise à jour Home Assistant lorsque la passerelle signale
+  une mise à jour du micrologiciel. L'installation utilise la commande de mise
+  à jour TYDOM ; la version cible n'étant pas fournie, Home Assistant affiche
+  `latest`.
+- Télécharge les diagnostics de l'intégration et de chaque appareil. Ils
+  utilisent les données déjà détenues par l'intégration ; Home Assistant masque
+  les champs sensibles connus.
+- Utilise `deltadore_tydom.set_mode_using_stored_pin` dans les automatisations
+  pour armer ou désarmer TYXAL+ avec le PIN enregistré pour cette entrée. Le
+  panneau d'alarme manuel continue de demander le PIN.
 
 ### Matériel testé
 
@@ -204,8 +230,19 @@ cloud/médiation continue à utiliser sa propre connexion configurée.
 
 Les mesures, réglages, diagnostics et commandes de la passerelle portent des
 noms explicites pour toutes les familles d’appareils prises en charge. Les noms
-sont disponibles en français, anglais britannique, allemand, espagnol, italien,
-portugais, néerlandais et polonais, selon la langue de Home Assistant.
+sont traduits pour toutes les familles en français, anglais britannique,
+allemand, espagnol, italien, portugais, néerlandais et polonais, selon la langue
+de Home Assistant. Les ressources en tchèque et en norvégien bokmål ajoutent
+aussi l'appareil météo partagé de Tywell et ses relevés, ainsi que certains noms
+de capteurs et d'entités de diagnostic courants. La couverture varie selon
+l'entité parmi les dix locales ; les libellés sans traduction restent en
+anglais.
+
+Les huit capteurs de distribution et d'index du TYWATT 1000 RT 2012
+utilisent la terminologie Delta Dore en français, anglais, allemand, espagnol,
+italien et portugais ; le néerlandais et le polonais utilisent les libellés
+anglais. Ces noms ne modifient ni les attributs du protocole ni les identifiants
+des entités.
 
 Les noms des appareils et scènes choisis dans TYDOM, ainsi que les noms
 personnalisés dans Home Assistant, sont conservés. Les identifiants existants et
@@ -227,6 +264,18 @@ automatisations existantes. Ce classement ne les désactive pas et ne modifie
 pas vos choix d'activation ou de désactivation. Température, humidité, consignes
 et réglages de fonctionnement restent dans la vue principale.
 
+Les mesures de l'API, du protocole, des versions logicielles et de l'état des
+mises à jour de la passerelle sont également diagnostiques lorsqu'elles sont
+disponibles.
+
+### Télécharger les diagnostics
+
+Téléchargez les diagnostics depuis la page de configuration de l'intégration ou
+depuis la page d'un appareil. Le fichier est constitué de données déjà détenues
+en mémoire par l'intégration et ne déclenche aucune requête supplémentaire vers
+la passerelle. Home Assistant masque les champs sensibles connus ; vérifiez
+néanmoins le fichier avant de le partager publiquement.
+
 ## Dépannage
 
 ### Activer la journalisation de débogage
@@ -246,6 +295,11 @@ logger:
   logs:
     custom_components.deltadore_tydom: debug
 ```
+
+Toutes les passerelles et tous les produits ne prennent pas en charge les
+points de terminaison TYDOM facultatifs. Leur absence est journalisée au niveau
+DEBUG ; les erreurs HTTP des requêtes réellement exécutées restent des
+avertissements.
 
 ### Erreurs d'authentification et de communication
 
@@ -300,7 +354,7 @@ apparaître comme **Indisponible** ou **Plus fournie**. Vérifiez que l'appareil
 de remplacement est présent et fonctionne avant d'utiliser **Supprimer
 l'appareil**.
 
-## Association, identification et dissociation radio — nouveauté en cours de validation
+## Association, identification et dissociation radio
 
 La carte **Configuration** de l'appareil passerelle TYDOM/Tywell fournit les
 commandes de gestion radio. Elles agissent sur la passerelle physique : ce ne
@@ -353,12 +407,14 @@ gestion ; elles ne modifient pas les automatisations existantes.
 
 ## Guides d'association illustrés
 
-L'association et la dissociation guidées seront incluses dans la prochaine
-version. Cette fonctionnalité reste en cours de validation : les guides
-ci-dessous sont confirmés sur le type de passerelle indiqué, tandis que la
-prise en charge des autres produits compatibles est ajoutée et doit encore
-être confirmée sur le matériel. Sélectionnez le produit et la voie concernés
-dans Home Assistant, puis suivez les étapes illustrées dans l'ordre.
+L'association guidée est disponible dans Home Assistant. Les fiches ci-dessous
+adaptent les procédures officielles des appareils au parcours Home Assistant.
+La validation matérielle concerne uniquement les produits et types de
+passerelle explicitement indiqués comme confirmés ; d'autres produits
+compatibles peuvent proposer un guide officiel sans avoir encore été testés
+sur matériel. Sélectionnez le produit et la voie dans Home Assistant, puis
+suivez les étapes dans l'ordre. Cliquez sur **Lancer l'écoute de la passerelle**
+uniquement lorsque le guide arrive à cette étape.
 
 <details>
 <summary><strong>Interrupteur mural TYXIA 2600 — Bouton A ou B — Passerelle confirmée : Tywell Pro</strong></summary>
@@ -524,6 +580,31 @@ Le produit est ajouté automatiquement une fois l'association terminée.
 
 Utilisez **Dissocier définitivement l'appareil** pour le retirer de la
 passerelle.
+
+</details>
+
+<details>
+<summary><strong>Tywell Control — Passerelle confirmée : Tywell Pro</strong></summary>
+
+1. Dans Home Assistant, ouvrez la page de la passerelle TYDOM/Tywell,
+   sélectionnez la recette d'association **Tywell Control**, puis affichez le
+   **Guide d'association**.
+2. Sur le Tywell Control, mettez la box Tywell en mode association comme
+   indiqué. Le guide officiel montre l'écran de la commande ci-dessous.
+
+   <img src="docs/images/association/catalog_tywell_control_step1.svg" width="48%" alt="Écran du Tywell Control illustré à l'étape officielle d'association">
+
+3. Une fois la box Tywell en mode association, cliquez sur **Lancer l'écoute
+   de la passerelle** dans Home Assistant. Ne démarrez pas l'écoute avant
+   cette étape.
+4. Une barre de progression s'affiche directement sur le Tywell Control
+   pendant l'association. Attendez le message confirmant sa réussite.
+
+   <img src="docs/images/association/catalog_tywell_control_step2.svg" width="48%" alt="Barre de progression affichée sur le Tywell Control pendant l'association">
+
+5. Home Assistant découvre le nouveau contrôleur et actualise automatiquement
+   l'inventaire de la passerelle. Ce parcours a été validé pour un second
+   Tywell Control sur une passerelle Tywell Pro.
 
 </details>
 
@@ -716,9 +797,11 @@ attributs décrivent la dernière transition d'armement ou de désarmement reçu
   cadence. L'actualisation ou l'interrogation de la passerelle ne peut pas
   forcer un appareil endormi à transmettre une valeur plus récente.
 - Un nom de modèle exact n'est affiché que lorsque TYDOM fournit des métadonnées
-  produit ou tutoriel fiables. Les autres appareils compatibles conservent un
-  nom de modèle Delta Dore générique plutôt que d'être identifiés à partir de
-  capacités trop générales.
+  produit ou tutoriel fiables. Par exemple, les métadonnées de tutoriel peuvent
+  identifier un Tybox Home RF 210, sans confirmer la prise en charge de tous ses
+  registres, présélections ou commandes. Les autres appareils compatibles
+  conservent un nom de modèle Delta Dore générique plutôt que d'être identifiés
+  à partir de capacités trop générales.
 - L'outil de capture enregistre les messages renvoyés ou publiés par la
   passerelle. Il ne permet pas toujours d'identifier la requête sortante exacte
   envoyée par l'application mobile officielle.

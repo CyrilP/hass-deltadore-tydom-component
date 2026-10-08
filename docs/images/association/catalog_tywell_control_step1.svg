@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="375" height="216" viewBox="0 0 375 216">
+<rect width="375" height="216" fill="#354254"/>
+<path d="M162 111.03c0-2.2 1.8-4 4-4h43c2.2 0 4 1.8 4 4V120h-51v-8.97Z" fill="#354254"/>
+<path d="M113.58 43.08c0-4.97 4.03-9 9-9h129.85c4.97 0 9 4.03 9 9v129.85c0 4.97-4.03 9-9 9h-129.85c-4.97 0-9-4.03-9-9z" fill="none" stroke="#ffffff" stroke-width="2"/>
+<path d="M120.8 45.33c0-2.21 1.79-4 4-4h125.4c2.21 0 4 1.79 4 4v125.37c0 2.21-1.79 4-4 4h-125.4c-2.21 0-4-1.79-4-4z" fill="none" stroke="#ffffff" stroke-width="2"/>
+<path d="M136.36 58.55c0-1.1 0.9-2 2-2h98.28c1.1 0 2 0.9 2 2v59.6c0 1.1-0.9 2-2 2h-98.28c-1.1 0-2-0.9-2-2z" fill="none" stroke="#ffffff" stroke-width="2"/>
+<path d="M143.6 135.04a8.02 8.02 0 1 0 0 16.04 8.02 8.02 0 1 0 0-16.04z" fill="none" stroke="#ffffff" stroke-width="2"/>
+<path d="M172.87 135.04a8.02 8.02 0 1 0 0 16.04 8.02 8.02 0 1 0 0-16.04z" fill="none" stroke="#ffffff" stroke-width="2"/>
+<path d="M202.13 135.04a8.02 8.02 0 1 0 0 16.04 8.02 8.02 0 1 0 0-16.04z" fill="none" stroke="#ffffff" stroke-width="2"/>
+<path d="M231.4 135.04a8.02 8.02 0 1 0 0 16.04 8.02 8.02 0 1 0 0-16.04z" fill="none" stroke="#ffffff" stroke-width="2"/>
+<path d="M169 65h37v5h-37z" fill="#ffffff"/>
+<path d="M145 81h84.35v3H145z" fill="#ffffff"/>
+<path d="M158.78 89.95h54.61v3h-54.61z" fill="#ffffff"/>
+</svg>
