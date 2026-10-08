@@ -64,6 +64,7 @@ def _boiler(*, metadata, data):
     """Create a thermostat and its mocked client."""
     client = MagicMock()
     client.put_devices_data = AsyncMock()
+    client.put_area_data = AsyncMock()
     client.put_home_hvac_mode = AsyncMock()
     device = TydomBoiler(
         client,
