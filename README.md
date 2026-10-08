@@ -611,6 +611,41 @@ configuration are not exposed.
 only after checking the reported defects and deciding that forced arming is
 appropriate.
 
+### Automations using the stored alarm PIN
+
+The optional `deltadore_tydom.set_mode_using_stored_pin` action lets an
+automation arm or disarm using the **Alarm PIN** saved in the selected alarm's
+integration settings, without copying it into each automation. Choose `away`,
+`home`, `night` or `disarm`; arming uses the zones configured for that mode.
+If no PIN is saved, the action fails without sending an alarm command.
+
+```yaml
+action: deltadore_tydom.set_mode_using_stored_pin
+target:
+  entity_id: alarm_control_panel.tyxal_alarm
+data:
+  mode: night
+```
+
+Use `mode: disarm` to disarm with the same stored PIN. For multiple TYDOM
+integration entries, each targeted alarm uses its own entry's PIN.
+
+The alarm entity, entity ID and standard `alarm_control_panel` actions remain
+unchanged. The standard Home Assistant alarm panel still requests a code with
+its existing configuration. Existing automations supplying a code continue to
+work; switching to this new action is optional.
+
+**Security:** a caller authorised to run this action can arm or disarm without
+entering the PIN again. Restrict access to Home Assistant and review automation
+triggers accordingly. This is normal arming, not forced arming: reported
+defects and gateway refusals are still handled by the existing command flow.
+The action does not expose the stored PIN in its response or state attributes.
+
+This feature is for Home Assistant actions and automations. It does not add or
+configure HomeKit support, change the HomeKit bridge's calls, or guarantee
+operation through Apple Home. It does not establish complete support for a
+new alarm hub merely because one command succeeds.
+
 ### Alarm blockers and refused arming
 
 `deltadore_tydom.get_open_issues` asks the alarm central for the products which
