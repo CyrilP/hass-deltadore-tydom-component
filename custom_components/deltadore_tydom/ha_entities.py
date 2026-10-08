@@ -572,6 +572,18 @@ class GenericSensor(SensorEntity):
         "timeOnCpt",
         "loadSheddingOn",
         "maintenanceNeeded",
+        # TYDOM gateway firmware, protocol and registration telemetry.
+        "apiMode",
+        "bddStatus",
+        "grp_proto.json",
+        "javaVersion",
+        "mainVersionSW",
+        "oryxVersion",
+        "pltRegistered",
+        "updateAvailable",
+        "urlMediation",
+        "zigbeeReference",
+        "zigbeeVersionSW",
     ]
 
     def __init__(
