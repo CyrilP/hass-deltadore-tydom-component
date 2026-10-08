@@ -328,6 +328,11 @@
         "weather": {},
         "update": {},
         "sensor": {
+            "tywell_weather_condition": {"name": "Počasí"},
+            "tywell_weather_outdoor_temperature": {"name": "Venkovní teplota"},
+            "tywell_weather_daily_power": {"name": "Denní výkon"},
+            "tywell_weather_power": {"name": "Výkon"},
+            "tywell_weather_max_daily_outdoor_temperature": {"name": "Maximální denní venkovní teplota"},
             "pending_alarm_events": {
                 "name": "Pending alarm events"
             },

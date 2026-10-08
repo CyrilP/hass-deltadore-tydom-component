@@ -328,6 +328,11 @@
         "weather": {},
         "update": {},
         "sensor": {
+            "tywell_weather_condition": {"name": "Weer"},
+            "tywell_weather_outdoor_temperature": {"name": "Buitentemperatuur"},
+            "tywell_weather_daily_power": {"name": "Dagelijks vermogen"},
+            "tywell_weather_power": {"name": "Vermogen"},
+            "tywell_weather_max_daily_outdoor_temperature": {"name": "Dagelijkse maximale buitentemperatuur"},
             "pending_alarm_events": {
                 "name": "Pending alarm events"
             },

@@ -159,11 +159,11 @@ class WeatherDeviceTranslationTests(TestCase):
     def test_weather_sensor_translation_keys_exist_in_all_languages(self) -> None:
         """Weather attributes resolve to translated entity names in every locale."""
         expected_keys = {
-            "outTemperature": "outtemperature",
-            "dailyPower": "dailypower",
-            "currentPower": "power",
-            "maxDailyOutTemp": "maxdailyouttemp",
-            "weather": "weather",
+            "outTemperature": "tywell_weather_outdoor_temperature",
+            "dailyPower": "tywell_weather_daily_power",
+            "currentPower": "tywell_weather_power",
+            "maxDailyOutTemp": "tywell_weather_max_daily_outdoor_temperature",
+            "weather": "tywell_weather_condition",
         }
         sensor_keys = _load_generic_sensor_translation_keys()
         self.assertEqual(
@@ -188,10 +188,13 @@ class WeatherDeviceTranslationTests(TestCase):
         french = json.loads((translations_dir / "fr.json").read_text(encoding="utf-8"))[
             "entity"
         ]["sensor"]
-        self.assertEqual(french["weather"]["name"], "Météo")
-        self.assertEqual(french["dailypower"]["name"], "Puissance journalière")
+        self.assertEqual(french["tywell_weather_condition"]["name"], "Météo")
         self.assertEqual(
-            french["maxdailyouttemp"]["name"],
+            french["tywell_weather_daily_power"]["name"],
+            "Puissance journalière",
+        )
+        self.assertEqual(
+            french["tywell_weather_max_daily_outdoor_temperature"]["name"],
             "Température extérieure maximale du jour",
         )
 

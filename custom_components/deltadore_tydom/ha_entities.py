@@ -617,11 +617,11 @@ class GenericSensor(SensorEntity):
         "energyIndex_ELEC_HOTWATER": "tywatt_energy_index_elec_hotwater",
         "energyIndex_ELEC_OTHER": "tywatt_energy_index_elec_other",
         "energyIndex_ELEC_TOTAL": "tywatt_energy_index_elec_total",
-        "outTemperature": "outtemperature",
-        "dailyPower": "dailypower",
-        "currentPower": "power",
-        "maxDailyOutTemp": "maxdailyouttemp",
-        "weather": "weather",
+        "outTemperature": "tywell_weather_outdoor_temperature",
+        "dailyPower": "tywell_weather_daily_power",
+        "currentPower": "tywell_weather_power",
+        "maxDailyOutTemp": "tywell_weather_max_daily_outdoor_temperature",
+        "weather": "tywell_weather_condition",
     }
     diagnostic_attrs = [
         "config",

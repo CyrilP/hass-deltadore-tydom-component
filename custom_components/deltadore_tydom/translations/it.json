@@ -6,6 +6,11 @@
     },
     "entity": {
         "sensor": {
+            "tywell_weather_condition": {"name": "Meteo"},
+            "tywell_weather_outdoor_temperature": {"name": "Temperatura esterna"},
+            "tywell_weather_daily_power": {"name": "Potenza giornaliera"},
+            "tywell_weather_power": {"name": "Potenza"},
+            "tywell_weather_max_daily_outdoor_temperature": {"name": "Temperatura esterna massima giornaliera"},
             "tywatt_energy_distrib_elec_heating": {
                 "name": "Consumo elettrico - Riscaldamento"
             },
