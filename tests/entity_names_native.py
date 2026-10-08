@@ -9,6 +9,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase, TestCase
+from unittest.mock import AsyncMock, Mock, patch
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
@@ -23,11 +24,14 @@ from custom_components.deltadore_tydom.ha_entities import (
     HAButton,
     HADeviceAssociationButton,
     HAGatewayAssociationCategorySelect,
+    HAGatewayAssociationNameText,
     HAGroupableProductFinalizeAssociationButton,
     HANumber,
     HASelect,
     ProtocolBinarySensor,
 )
+
+from custom_components.deltadore_tydom.hub import Hub
 
 ROOT = Path(__file__).parents[1]
 TRANSLATIONS = ROOT / "custom_components/deltadore_tydom/translations"
@@ -60,6 +64,23 @@ class EntityNameTests(TestCase):
     def device(self):
         """Return one device identifier shared by wrappers from all families."""
         return SimpleNamespace(device_id="43_42", _metadata={}, hygroIn=56.0)
+
+    def test_association_text_keeps_native_capabilities(self):
+        """Translated text controls must remain valid for the HA text platform."""
+        hub = SimpleNamespace(
+            hub_id="gateway",
+            _name="TYDOM",
+            manufacturer="Delta Dore",
+            association_name="Test device",
+        )
+        text = attach_platform(HAGatewayAssociationNameText(hub), "fr", "text")
+
+        self.assertEqual(text.capability_attributes["min"], 0)
+        self.assertEqual(text.capability_attributes["max"], 64)
+        self.assertEqual(text.capability_attributes["mode"], "text")
+        self.assertEqual(text.unique_id, "gateway_association_name")
+        self.assertEqual(text.native_value, "Test device")
+        self.assertEqual(text.name, "Nom de l’appareil (facultatif)")
 
     def test_humidity_uses_all_eight_languages(self):
         """Translate the raw hygroIn name without shadowing HA's translation."""
@@ -319,6 +340,31 @@ class EntityNameTests(TestCase):
                 for key in node.value.keys:
                     if isinstance(key, ast.Constant) and isinstance(key.value, str):
                         self.assertIn(key.value.lower(), ENTITY_NAMES, key.value)
+
+
+class EntityDiscoveryNameTests(IsolatedAsyncioTestCase):
+    """Exercise discovery with native translated HA sensor objects."""
+
+    async def test_late_translated_sensor_is_added_to_home_assistant(self):
+        """Discovery logging must not prevent a new sensor reaching its platform."""
+        device = SimpleNamespace(device_id="43_42", _metadata={}, hygroIn=56.0)
+        sensor = GenericSensor(device, None, None, "hygroIn", "hygroIn", "%")
+        stored = SimpleNamespace(update_device=AsyncMock())
+        hub = SimpleNamespace(
+            ha_devices={"43_42": SimpleNamespace(get_sensors=lambda: [sensor])},
+            _add_discovered_entities=Mock(),
+            _maybe_create_device_association_buttons=Mock(),
+        )
+
+        with patch("custom_components.deltadore_tydom.hub.LOGGER") as logger:
+            await Hub.update_ha_device(hub, stored, device)
+
+        hub._add_discovered_entities.assert_called_once_with([sensor])
+        logger.exception.assert_not_called()
+        stored.update_device.assert_awaited_once_with(device)
+        self.assertEqual(attach_platform(sensor, "fr", "sensor").name, "Humidité")
+        self.assertEqual(sensor.unique_id, "43_42_hygroIn")
+        self.assertEqual(sensor.native_value, 56.0)
 
 
 class EntityRegistryNameTests(IsolatedAsyncioTestCase):

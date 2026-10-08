@@ -86,7 +86,7 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.components.button import ButtonEntity
 from homeassistant.components.number import NumberEntity
 from homeassistant.components.select import SelectEntity
-from homeassistant.components.text import TextEntity, TextMode
+from homeassistant.components.text import TextEntity, TextEntityDescription, TextMode
 from homeassistant.components.event import EventDeviceClass, EventEntity
 from .entity_names import set_entity_name
 from .tydom.tydom_devices import (
@@ -7291,6 +7291,7 @@ class HAGatewayAssociationNameText(_GatewayAssociationEntity, TextEntity):
         self._attr_unique_id = f"{tydom_hub.hub_id}_association_name"
         self._attr_name = "Nom de l'appareil (facultatif)"
 
+        self.entity_description = TextEntityDescription(key="association_name")
         set_entity_name(self, "association_name")
 
     @property
