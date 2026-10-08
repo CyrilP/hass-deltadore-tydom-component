@@ -213,6 +213,20 @@ les références des automatisations restent valides. Les attributs inconnus
 annoncés par un nouveau micrologiciel conservent un nom technique lisible
 jusqu’à l’ajout d’un libellé adapté.
 
+### Entités de diagnostic
+
+Les compteurs internes (`activationCpt`, `activationIndex`, `indexTimeOn`,
+`timeOnCpt`), identifiants d'appareil et de zone (`uid`, `area_id`), registres de
+tâches (`jobs`, `jobsMP`, `jobsRM`), états de délestage (`loadSheddingOn`) et de
+maintenance (`maintenanceNeeded`) apparaissent dans la section **Diagnostic**
+de Home Assistant lorsqu'ils sont fournis par l'appareil. Ce classement
+s'applique aux capteurs et capteurs binaires de toutes les familles d'appareils.
+
+Ces entités conservent leurs identifiants et leurs valeurs pour les
+automatisations existantes. Ce classement ne les désactive pas et ne modifie
+pas vos choix d'activation ou de désactivation. Température, humidité, consignes
+et réglages de fonctionnement restent dans la vue principale.
+
 ## Dépannage
 
 ### Activer la journalisation de débogage

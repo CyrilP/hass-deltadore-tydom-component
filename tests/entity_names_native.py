@@ -11,7 +11,9 @@ from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase, TestCase
 from unittest.mock import AsyncMock, Mock, patch
 
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from custom_components.deltadore_tydom.entity_names import ENTITY_NAMES
@@ -21,6 +23,7 @@ from custom_components.deltadore_tydom.ha_entities import (
     ClockSensor,
     GenericBinarySensor,
     GenericSensor,
+    HAEntity,
     HAButton,
     HADeviceAssociationButton,
     HAGatewayAssociationCategorySelect,
@@ -421,6 +424,135 @@ class EntityNameTests(TestCase):
                         self.assertIn(key.value.lower(), ENTITY_NAMES, key.value)
 
 
+class DiagnosticSensorTests(TestCase):
+    """Keep secondary API readings available in HA's diagnostic section."""
+
+    technical_values = {
+        "activationCpt": 42,
+        "activationIndex": 3,
+        "area_id": "7",
+        "uid": "device-identifier",
+        "jobs": [1, 2],
+        "jobsMP": [1],
+        "jobsRM": [2],
+        "indexTimeOn": 5,
+        "timeOnCpt": 12,
+        "loadSheddingOn": False,
+        "maintenanceNeeded": True,
+    }
+
+    def test_technical_sensors_keep_identity_values_and_enabled_default(self):
+        """Categorisation must not remove or disable existing readings."""
+        device = SimpleNamespace(
+            device_id="43_42", _metadata={}, **self.technical_values
+        )
+        for attribute, value in self.technical_values.items():
+            with self.subTest(attribute=attribute):
+                sensor = GenericSensor(device, None, None, attribute, attribute, None)
+                self.assertEqual(sensor.entity_category, EntityCategory.DIAGNOSTIC)
+                self.assertEqual(sensor.unique_id, f"43_42_{attribute}")
+                self.assertEqual(sensor.native_value, value)
+                self.assertTrue(sensor.entity_registry_enabled_default)
+
+    def test_binary_technical_sensors_are_also_diagnostic(self):
+        """Boolean metadata must not leave the same reading in the main section."""
+        device = SimpleNamespace(device_id="43_42", _metadata={})
+        for attribute in self.technical_values:
+            with self.subTest(attribute=attribute):
+                setattr(device, attribute, True)
+                sensor = GenericBinarySensor(device, None, attribute, attribute)
+                self.assertEqual(sensor.entity_category, EntityCategory.DIAGNOSTIC)
+                self.assertEqual(sensor.unique_id, f"43_42_{attribute}")
+                self.assertTrue(sensor.is_on)
+                self.assertTrue(sensor.entity_registry_enabled_default)
+
+    def test_category_uses_api_attribute_instead_of_display_name(self):
+        """A custom presentation label must not determine the API classification."""
+        device = SimpleNamespace(
+            device_id="43_42", _metadata={}, activationCpt=42, maintenanceNeeded=True
+        )
+        scalar = GenericSensor(
+            device, None, None, "Friendly counter", "activationCpt", None
+        )
+        binary = GenericBinarySensor(
+            device, None, "Friendly maintenance label", "maintenanceNeeded"
+        )
+        self.assertEqual(scalar.entity_category, EntityCategory.DIAGNOSTIC)
+        self.assertEqual(binary.entity_category, EntityCategory.DIAGNOSTIC)
+        self.assertEqual(scalar.unique_id, "43_42_Friendly counter")
+        self.assertEqual(binary.unique_id, "43_42_Friendly maintenance label")
+
+    def test_functional_readings_remain_primary(self):
+        """Keep measurements, setpoints and operating settings in the main view."""
+        device = SimpleNamespace(device_id="43_42", _metadata={})
+        for attribute in (
+            "temperature",
+            "hygroIn",
+            "setpoint",
+            "localMode",
+            "useMode",
+            "authorization",
+            "minHeatSetpoint",
+            "maxHeatSetpoint",
+            "anticpCoeff",
+            "antiSeizurePeriod",
+            "newReading",
+        ):
+            with self.subTest(attribute=attribute):
+                sensor = GenericSensor(device, None, None, attribute, attribute, None)
+                self.assertIsNone(sensor.entity_category)
+                self.assertTrue(sensor.entity_registry_enabled_default)
+        for attribute in ("openingDetected", "techSmokeDefect", "techWaterDefect"):
+            with self.subTest(attribute=attribute):
+                sensor = GenericBinarySensor(device, None, attribute, attribute)
+                self.assertIsNone(sensor.entity_category)
+
+    def test_existing_firmware_and_problem_diagnostics_are_preserved(self):
+        """Retain the existing gateway and fault categorisation."""
+        device = SimpleNamespace(device_id="43_42", _metadata={})
+        for attribute in ("config", "jobsMP", "mainVersionHW", "softVersion"):
+            sensor = GenericSensor(device, None, None, attribute, attribute, None)
+            self.assertEqual(sensor.entity_category, EntityCategory.DIAGNOSTIC)
+        for device_class in (
+            BinarySensorDeviceClass.PROBLEM,
+            BinarySensorDeviceClass.UPDATE,
+        ):
+            sensor = GenericBinarySensor(device, device_class, "newFault", "newFault")
+            self.assertEqual(sensor.entity_category, EntityCategory.DIAGNOSTIC)
+
+    def test_discovery_keeps_every_technical_entity_and_late_updates(self):
+        """Classify both discovered platforms without filtering API attributes."""
+        device = SimpleNamespace(
+            device_id="43_42",
+            _metadata={},
+            temperature=21.5,
+            hygroIn=56.5,
+            **self.technical_values,
+        )
+        wrapper = HAEntity()
+        wrapper._device = device
+        wrapper._registered_sensors = []
+        wrapper.filtered_attrs = ["device_id"]
+        sensors = wrapper.get_sensors()
+        by_attribute = {sensor._attribute: sensor for sensor in sensors}
+        self.assertEqual(
+            set(by_attribute), {*self.technical_values, "temperature", "hygroIn"}
+        )
+        for attribute in self.technical_values:
+            self.assertEqual(
+                by_attribute[attribute].entity_category, EntityCategory.DIAGNOSTIC
+            )
+        self.assertIsInstance(by_attribute["activationCpt"], GenericSensor)
+        self.assertIsInstance(by_attribute["loadSheddingOn"], GenericBinarySensor)
+        self.assertIsNone(by_attribute["temperature"].entity_category)
+        self.assertIsNone(by_attribute["hygroIn"].entity_category)
+        self.assertEqual(wrapper.get_sensors(), [])
+        device.activationCpt = 43
+        device.loadSheddingOn = True
+        self.assertEqual(by_attribute["activationCpt"].native_value, 43)
+        self.assertTrue(by_attribute["loadSheddingOn"].is_on)
+
+
 class EntityDiscoveryNameTests(IsolatedAsyncioTestCase):
     """Exercise discovery with native translated HA sensor objects."""
 
@@ -448,6 +580,46 @@ class EntityDiscoveryNameTests(IsolatedAsyncioTestCase):
 
 class EntityRegistryNameTests(IsolatedAsyncioTestCase):
     """Confirm language changes do not rename IDs or erase user customisations."""
+
+    async def test_diagnostic_category_preserves_registry_choices(self):
+        """Moving technical entities keeps IDs, custom names and disabled choices."""
+        with TemporaryDirectory() as config_dir:
+            hass = HomeAssistant(config_dir)
+            dr.async_setup(hass)
+            await dr.async_load(hass)
+            registry = er.async_get(hass)
+            await registry.async_load()
+            for domain, attribute in (
+                ("sensor", "activationCpt"),
+                ("binary_sensor", "maintenanceNeeded"),
+            ):
+                for disabled_by in (None, er.RegistryEntryDisabler.USER):
+                    with self.subTest(domain=domain, disabled_by=disabled_by):
+                        unique_id = f"43_42_{attribute}_{disabled_by}"
+                        original = registry.async_get_or_create(
+                            domain,
+                            "deltadore_tydom",
+                            unique_id,
+                            suggested_object_id=f"tybox_{attribute}_{disabled_by}",
+                            entity_category=None,
+                            disabled_by=disabled_by,
+                        )
+                        registry.async_update_entity(
+                            original.entity_id, name="My technical reading"
+                        )
+                        updated = registry.async_get_or_create(
+                            domain,
+                            "deltadore_tydom",
+                            unique_id,
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                        )
+                        self.assertEqual(updated.entity_id, original.entity_id)
+                        self.assertEqual(updated.name, "My technical reading")
+                        self.assertEqual(updated.disabled_by, disabled_by)
+                        self.assertEqual(
+                            updated.entity_category, EntityCategory.DIAGNOSTIC
+                        )
+            await hass.async_stop()
 
     async def test_existing_registry_entry_and_custom_name_survive(self):
         """Reuse the existing registry ID after translating its original name."""
