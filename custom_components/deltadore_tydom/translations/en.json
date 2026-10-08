@@ -180,7 +180,22 @@
             }
         }
     },
+    "exceptions": {
+        "stored_alarm_pin_missing": {
+            "message": "Save an alarm PIN in this TYDOM integration's settings before using this action."
+        },
+        "unsupported_stored_pin_alarm_mode": {
+            "message": "Choose Away, Home, Night or Disarm for the stored-PIN action."
+        }
+    },
     "services": {
+        "set_mode_using_stored_pin": {
+            "name": "Set alarm mode using the stored PIN",
+            "description": "Arm or disarm using the PIN saved in this alarm's TYDOM integration settings. Authorised callers do not need to enter it again. The alarm panel's code request and normal arming checks remain unchanged.",
+            "fields": {
+                "mode": {"name": "Alarm mode", "description": "Use the configured Away, Home or Night zones, or disarm the alarm."}
+            }
+        },
         "acknowledge_events": {
             "name": "Acknowledge defect events",
             "description": "Acknowledge all defect alarm events."
