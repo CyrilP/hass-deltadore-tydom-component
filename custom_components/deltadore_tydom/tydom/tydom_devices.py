@@ -24,6 +24,7 @@ _CONFIRMED_TUTORIAL_MODELS = {
     "split_takao_type_1": "Atlantic Naviclim 875311",
     "split_takao_type_2": "Atlantic Naviclim 875311",
     "tysense_sun": "Tysense Sun",
+    "tybox_210_rf": "Tybox Home RF 210",
     "tywatt_serie1000": "TYWATT 1000",
     "tywell_control": "Tywell Control",
     "tywell_control_2050": "Tywell 2050",
