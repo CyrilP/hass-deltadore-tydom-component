@@ -1556,7 +1556,12 @@
                 "name": "Verwendung"
             },
             "usemode": {
-                "name": "Betriebsmodus"
+                "name": "Betriebsmodus",
+                "state": {
+                    "SCHED": "Zeitprogramm",
+                    "OVERRIDE": "Übersteuerung",
+                    "MANUAL": "Manuell"
+                }
             },
             "value": {
                 "name": "Wert"

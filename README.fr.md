@@ -227,6 +227,12 @@ automatisations existantes. Ce classement ne les désactive pas et ne modifie
 pas vos choix d'activation ou de désactivation. Température, humidité, consignes
 et réglages de fonctionnement restent dans la vue principale.
 
+### Mode de fonctionnement du thermostat
+
+Lorsque TYDOM remonte `useMode`, le capteur existant **Mode de fonctionnement** devient un capteur Enum affichant **Programmation**, **Dérogation** ou **Manuel**. Il suit le retour réel de l’appareil et reste disponible dans la section principale Capteurs. Les libellés sont traduits dans les dix langues prises en charge ; les états bruts `SCHED`, `OVERRIDE` et `MANUAL` et les identifiants d’entités existants sont conservés pour les automatisations.
+
+Ce capteur observe le mode de fonctionnement actuel. Il n’envoie aucune commande et ne modifie pas la programmation du thermostat. Une valeur ajoutée par un futur firmware reste visible avec son libellé brut.
+
 ## Dépannage
 
 ### Activer la journalisation de débogage

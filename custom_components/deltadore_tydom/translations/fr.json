@@ -3409,7 +3409,12 @@
                 "name": "Usage"
             },
             "usemode": {
-                "name": "Mode de fonctionnement"
+                "name": "Mode de fonctionnement",
+                "state": {
+                    "SCHED": "Programmation",
+                    "OVERRIDE": "Dérogation",
+                    "MANUAL": "Manuel"
+                }
             },
             "value": {
                 "name": "Valeur"

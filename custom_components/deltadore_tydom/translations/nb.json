@@ -446,6 +446,14 @@
             },
             "writable": {
                 "name": "Writable"
+            },
+            "usemode": {
+                "name": "Driftsmodus",
+                "state": {
+                    "SCHED": "Tidsprogram",
+                    "OVERRIDE": "Overstyring",
+                    "MANUAL": "Manuell"
+                }
             }
         },
         "binary_sensor": {

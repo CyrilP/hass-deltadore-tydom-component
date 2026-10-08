@@ -1556,7 +1556,12 @@
                 "name": "Gebruik"
             },
             "usemode": {
-                "name": "Bedrijfsmodus"
+                "name": "Bedrijfsmodus",
+                "state": {
+                    "SCHED": "Programma",
+                    "OVERRIDE": "Tijdelijke aanpassing",
+                    "MANUAL": "Handmatig"
+                }
             },
             "value": {
                 "name": "Waarde"

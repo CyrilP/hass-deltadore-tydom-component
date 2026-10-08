@@ -14,6 +14,7 @@ from unittest.mock import AsyncMock, Mock, patch
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
+from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from custom_components.deltadore_tydom.entity_names import ENTITY_NAMES
@@ -23,6 +24,7 @@ from custom_components.deltadore_tydom.ha_entities import (
     ClockSensor,
     GenericBinarySensor,
     GenericSensor,
+    HaClimate,
     HAEntity,
     HAButton,
     HADeviceAssociationButton,
@@ -55,10 +57,227 @@ def attach_platform(entity, language, domain):
         domain=domain,
         platform_translations=names,
         object_id_platform_translations=names,
+        default_language_platform_translations=names,
+        default_language_component_translations={},
         component_translations={},
         object_id_component_translations={},
     )
     return entity
+
+
+class ThermostatUseModeTests(IsolatedAsyncioTestCase):
+    """Exercise the actual HA Enum sensor while preserving existing identity."""
+
+    def device(self, *, value="SCHED", metadata=None):
+        """Build a real thermostat whose transport must never be invoked."""
+        from custom_components.deltadore_tydom.tydom.tydom_devices import TydomBoiler
+
+        client = Mock()
+        client.put_devices_data = AsyncMock()
+        device = TydomBoiler(
+            client,
+            "43_42",
+            "42",
+            "Thermostat",
+            "boiler",
+            "43",
+            metadata
+            if metadata is not None
+            else {
+                "useMode": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["SCHED", "OVERRIDE", "MANUAL"],
+                }
+            },
+            {"useMode": value},
+        )
+        return device, client
+
+    def sensor(self, device, **kwargs):
+        """Wrap the existing register with its original identifier."""
+        return attach_platform(
+            GenericSensor(device, None, None, "useMode", "useMode", None, **kwargs),
+            "en",
+            "sensor",
+        )
+
+    async def test_use_mode_is_native_enum_with_original_raw_state_and_identity(self):
+        """Add presentation capabilities without renaming automation references."""
+        device, client = self.device()
+        sensor = self.sensor(device)
+        self.assertEqual(sensor.unique_id, "43_42_useMode")
+        self.assertEqual(sensor.device_class, SensorDeviceClass.ENUM)
+        self.assertEqual(sensor.options, ["SCHED", "OVERRIDE", "MANUAL"])
+        self.assertEqual(sensor.capability_attributes["options"], sensor.options)
+        self.assertEqual(sensor.native_value, "SCHED")
+        self.assertEqual(sensor.state, "SCHED")
+        self.assertIsNone(sensor.native_unit_of_measurement)
+        self.assertIsNone(sensor.state_class)
+        self.assertIsNone(sensor.entity_category)
+        client.put_devices_data.assert_not_called()
+
+    async def test_climate_discovery_promotes_existing_sensor_without_duplicates(self):
+        """Inventory discovery still produces only one sensor for useMode."""
+        device, client = self.device()
+        climate = HaClimate(device, None)
+        sensors = [
+            s
+            for s in climate.get_sensors()
+            if getattr(s, "_attribute", None) == "useMode"
+        ]
+        self.assertEqual(len(sensors), 1)
+        self.assertEqual(sensors[0].device_class, SensorDeviceClass.ENUM)
+        self.assertEqual(sensors[0].unique_id, "43_42_useMode")
+        self.assertFalse(
+            any(
+                getattr(s, "_attribute", None) == "useMode"
+                for s in climate.get_sensors()
+            )
+        )
+        client.put_devices_data.assert_not_called()
+
+    async def test_all_three_reported_values_remain_raw_for_automations(self):
+        """A translated UI must not translate the underlying sensor state."""
+        device, _ = self.device()
+        sensor = self.sensor(device)
+        for value in ("SCHED", "OVERRIDE", "MANUAL"):
+            device.useMode = value
+            self.assertEqual(sensor.native_value, value)
+            self.assertEqual(sensor.state, value)
+
+    async def test_metadata_options_are_not_replaced_by_generic_defaults(self):
+        """Respect a register that advertises a different subset or order."""
+        device, _ = self.device(
+            metadata={"useMode": {"enum_values": ["MANUAL", "SCHED", "SCHED"]}}
+        )
+        sensor = self.sensor(device)
+        self.assertEqual(sensor.options, ["MANUAL", "SCHED"])
+        device._metadata["useMode"]["enum_values"] = ["SCHED", "MANUAL", "OVERRIDE"]
+        self.assertEqual(sensor.options, ["SCHED", "MANUAL", "OVERRIDE"])
+
+    async def test_missing_or_malformed_metadata_uses_safe_defaults(self):
+        """A late or sparse metadata response must not hide a reported state."""
+        for metadata in (
+            {},
+            {"useMode": None},
+            {"useMode": {"enum_values": "SCHED"}},
+            {"useMode": {"enum_values": [None, 1, ""]}},
+        ):
+            device, _ = self.device(metadata=metadata)
+            sensor = self.sensor(device)
+            self.assertEqual(sensor.options, ["SCHED", "OVERRIDE", "MANUAL"])
+            self.assertEqual(sensor.state, "SCHED")
+
+    async def test_future_reported_value_remains_visible_without_validation_error(self):
+        """Tolerate new firmware values without relabelling them as another mode."""
+        device, _ = self.device(value="NEW_FIRMWARE_MODE")
+        sensor = self.sensor(device)
+        self.assertIn("NEW_FIRMWARE_MODE", sensor.options)
+        self.assertEqual(sensor.state, "NEW_FIRMWARE_MODE")
+        device.useMode = "MANUAL"
+        self.assertNotIn("NEW_FIRMWARE_MODE", sensor.options)
+        self.assertEqual(sensor.state, "MANUAL")
+
+    async def test_unavailable_or_malformed_value_does_not_invent_a_mode(self):
+        """Missing or non-string feedback is unknown, not schedule or manual."""
+        device, _ = self.device()
+        sensor = self.sensor(device)
+        for value in (None, "", False, 1, [], {}):
+            device.useMode = value
+            self.assertIsNone(sensor.native_value)
+            self.assertIsNone(sensor.state)
+
+    async def test_enum_register_never_exposes_numeric_unit(self):
+        """Ignore a generic NA unit for this non-numeric register."""
+        device, _ = self.device(
+            metadata={"useMode": {"enum_values": ["SCHED"], "unit": "NA"}}
+        )
+        sensor = attach_platform(
+            GenericSensor(
+                device, SensorDeviceClass.POWER, None, "useMode", "useMode", "W"
+            ),
+            "en",
+            "sensor",
+        )
+        self.assertEqual(sensor.device_class, SensorDeviceClass.ENUM)
+        self.assertIsNone(sensor.native_unit_of_measurement)
+        self.assertIsNone(sensor.unit_of_measurement)
+        self.assertEqual(sensor.state, "SCHED")
+
+    async def test_labels_exist_for_all_ten_languages(self):
+        """Native HA naming and all three state labels use the existing key."""
+        device, _ = self.device()
+        for language in (*LANGUAGES, "cs", "nb"):
+            data = json.loads(
+                (TRANSLATIONS / f"{language}.json").read_text(encoding="utf-8")
+            )
+            entry = data["entity"]["sensor"]["usemode"]
+            sensor = attach_platform(self.sensor(device), language, "sensor")
+            self.assertEqual(sensor.name, entry["name"])
+            self.assertEqual(sensor.translation_key, "usemode")
+            self.assertEqual(set(entry["state"]), {"SCHED", "OVERRIDE", "MANUAL"})
+            self.assertTrue(all(label.strip() for label in entry["state"].values()))
+            self.assertEqual(sensor.state, "SCHED")
+        french = json.loads((TRANSLATIONS / "fr.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            french["entity"]["sensor"]["usemode"]["state"],
+            {"SCHED": "Programmation", "OVERRIDE": "Dérogation", "MANUAL": "Manuel"},
+        )
+
+    async def test_other_generic_attributes_keep_their_capabilities(self):
+        """A string register unrelated to useMode must not become an Enum."""
+        device, _ = self.device()
+        device.hvacMode = "NORMAL"
+        sensor = attach_platform(
+            GenericSensor(device, None, None, "hvacMode", "hvacMode", None),
+            "en",
+            "sensor",
+        )
+        self.assertNotEqual(sensor.device_class, SensorDeviceClass.ENUM)
+        self.assertIsNone(sensor.options)
+        self.assertEqual(sensor.state, "NORMAL")
+
+    async def test_source_controller_sensor_keeps_its_registration_target(self):
+        """Area-proxy grouping must retain the existing sensor's physical owner."""
+        device, _ = self.device()
+        sensor = self.sensor(
+            device,
+            registry_device_id="controller",
+            registry_device_name="Controller",
+            unique_id_suffix="_area",
+        )
+        self.assertEqual(sensor.unique_id, "43_42_useMode_area")
+        self.assertEqual(
+            sensor.device_info["identifiers"], {("deltadore_tydom", "controller")}
+        )
+        self.assertEqual(sensor.state, "SCHED")
+
+    async def test_push_updates_refresh_enum_without_writing_to_thermostat(self):
+        """Each real device push refreshes state and unloading removes the callback."""
+        device, client = self.device()
+        sensor = self.sensor(device)
+        sensor.async_write_ha_state = Mock()
+        await sensor.async_added_to_hass()
+        device.useMode = "OVERRIDE"
+        await device.publish_updates()
+        sensor.async_write_ha_state.assert_called_once()
+        self.assertEqual(sensor.state, "OVERRIDE")
+        client.put_devices_data.assert_not_called()
+        await sensor.async_will_remove_from_hass()
+        self.assertNotIn(sensor.async_write_ha_state, device._callbacks)
+
+    async def test_metadata_without_reported_value_does_not_create_fake_sensor(self):
+        """Advertised capabilities alone must not create a fabricated state."""
+        device, client = self.device(value=None)
+        climate = HaClimate(device, None)
+        self.assertFalse(
+            any(
+                getattr(s, "_attribute", None) == "useMode"
+                for s in climate.get_sensors()
+            )
+        )
+        client.put_devices_data.assert_not_called()
 
 
 class EntityNameTests(TestCase):

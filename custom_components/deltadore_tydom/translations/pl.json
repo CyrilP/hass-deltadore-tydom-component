@@ -1556,7 +1556,12 @@
                 "name": "Zastosowanie"
             },
             "usemode": {
-                "name": "Tryb pracy"
+                "name": "Tryb pracy",
+                "state": {
+                    "SCHED": "Harmonogram",
+                    "OVERRIDE": "Nadpisanie",
+                    "MANUAL": "Ręcznie"
+                }
             },
             "value": {
                 "name": "Wartość"

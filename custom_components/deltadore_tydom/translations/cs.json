@@ -446,6 +446,14 @@
             },
             "writable": {
                 "name": "Writable"
+            },
+            "usemode": {
+                "name": "Provozní režim",
+                "state": {
+                    "SCHED": "Program",
+                    "OVERRIDE": "Dočasná změna",
+                    "MANUAL": "Ručně"
+                }
             }
         },
         "binary_sensor": {

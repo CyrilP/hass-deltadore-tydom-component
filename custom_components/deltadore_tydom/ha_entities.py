@@ -690,6 +690,12 @@ class GenericSensor(SensorEntity):
         - Uses stable identifiers from the device API
         - Combines base unique_id with entity-specific identifier for multi-entity devices
         """
+        if attribute == "useMode":
+            # Preserve this existing sensor's identity and raw TYDOM state.
+            device_class = SensorDeviceClass.ENUM
+            state_class = None
+            unit_of_measurement = None
+
         if device_class == SensorDeviceClass.BATTERY:
             # Home Assistant battery sensors always represent a percentage.
             # Some TYDOM devices report ``unit: NA`` for their discrete battery
@@ -761,10 +767,32 @@ class GenericSensor(SensorEntity):
         return None
 
     @property
+    def options(self) -> list[str] | None:
+        """Use live enum metadata and tolerate newly reported firmware values."""
+        if self._attribute != "useMode":
+            return super().options
+        metadata = (self._device._metadata or {}).get(self._attribute, {})
+        advertised = metadata.get("enum_values") if isinstance(metadata, dict) else None
+        options = (
+            [value for value in advertised if isinstance(value, str) and value]
+            if isinstance(advertised, (list, tuple))
+            else []
+        )
+        if not options:
+            options = ["SCHED", "OVERRIDE", "MANUAL"]
+        # A new real value must remain visible rather than break HA validation.
+        reported = getattr(self._device, self._attribute, None)
+        if isinstance(reported, str) and reported and reported not in options:
+            options.append(reported)
+        return list(dict.fromkeys(options))
+
+    @property
     def native_value(self):
         """Return the native value of the sensor."""
         # Utiliser getattr avec une valeur par défaut pour éviter AttributeError
         value = getattr(self._device, self._attribute, None)
+        if self._attribute == "useMode" and (not isinstance(value, str) or not value):
+            return None
         if value is not None and self._attribute == "position":
             position_from_tydom = getattr(self._device, "position_from_tydom", None)
             if callable(position_from_tydom):
@@ -804,6 +832,8 @@ class GenericSensor(SensorEntity):
         Uses unit from metadata if available, otherwise falls back to
         the unit set during initialization.
         """
+        if self._attribute == "useMode":
+            return None
         if self._attr_device_class == SensorDeviceClass.BATTERY:
             return PERCENTAGE
 

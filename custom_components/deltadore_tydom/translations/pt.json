@@ -1556,7 +1556,12 @@
                 "name": "Utilização"
             },
             "usemode": {
-                "name": "Modo de funcionamento"
+                "name": "Modo de funcionamento",
+                "state": {
+                    "SCHED": "Programação",
+                    "OVERRIDE": "Substituição",
+                    "MANUAL": "Manual"
+                }
             },
             "value": {
                 "name": "Valor"

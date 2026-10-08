@@ -3408,7 +3408,12 @@
                 "name": "Usage"
             },
             "usemode": {
-                "name": "Operating mode"
+                "name": "Operating mode",
+                "state": {
+                    "SCHED": "Schedule",
+                    "OVERRIDE": "Override",
+                    "MANUAL": "Manual"
+                }
             },
             "value": {
                 "name": "Value"
