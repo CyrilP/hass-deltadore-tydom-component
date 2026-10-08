@@ -1605,6 +1605,21 @@
             },
             "zones": {
                 "name": "Alarmzonen"
+            },
+            "tywell_weather_power": {
+                "name": "Leistung"
+            },
+            "tywell_weather_condition": {
+                "name": "Wetter"
+            },
+            "tywell_weather_outdoor_temperature": {
+                "name": "Außentemperatur"
+            },
+            "tywell_weather_daily_power": {
+                "name": "Tägliche Leistung"
+            },
+            "tywell_weather_max_daily_outdoor_temperature": {
+                "name": "Tägliche maximale Außentemperatur"
             }
         },
         "binary_sensor": {
@@ -3887,6 +3902,11 @@
             "tywell_shutters_night": {
                 "name": "Rollläden Nacht"
             }
+        }
+    },
+    "device": {
+        "tywell_weather": {
+            "name": "Wetter"
         }
     }
 }

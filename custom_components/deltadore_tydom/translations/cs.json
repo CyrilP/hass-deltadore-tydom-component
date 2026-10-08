@@ -1,0 +1,525 @@
+{
+    "device": {
+        "tywell_weather": {
+            "name": "Počasí"
+        }
+    },
+    "config": {
+        "step": {
+            "user": {
+                "title": "Delta Dore Tydom Configuration",
+                "description": "Choose the configuration mode. Cloud mode automatically retrieves Tydom credentials from your Delta Dore account. Manual mode requires you to enter the Tydom password directly. Local button pairing retrieves the local password only after an explicit press on the gateway.",
+                "data": {
+                    "config_mode": "Configuration mode"
+                }
+            },
+            "user_manual": {
+                "title": "Delta Dore Tydom Configuration",
+                "description": "Configure your Tydom gateway using manual credentials.",
+                "data": {
+                    "host": "Tydom or mediation IP/hostname",
+                    "mac": "MAC address (12 characters, no separators)",
+                    "password": "Tydom password",
+                    "tydom_password": "Tydom password",
+                    "refresh_interval": "Refresh interval in minutes (default: 30)",
+                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
+                    "pin": "Alarm PIN (optional, required for alarm control)"
+                }
+            },
+            "user_local_pair": {
+                "title": "Pair Delta Dore Tydom locally",
+                "description": "Use this only for a local gateway when its password is unknown. Complete all fields first. As the final step, press the gateway's physical button and immediately select Submit; do not edit the form between the button press and submission. The temporary pairing window is used once to retrieve the local password; the password itself is never shown or logged.",
+                "data": {
+                    "host": "Local Tydom gateway IP/hostname",
+                    "mac": "MAC address (12 characters, no separators)",
+                    "refresh_interval": "Refresh interval in minutes (default: 30)",
+                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
+                    "pin": "Alarm PIN (optional, required for alarm control)"
+                }
+            },
+            "user_cloud": {
+                "title": "Delta Dore Tydom Configuration",
+                "description": "Configure your Tydom gateway using your Delta Dore cloud account. The Tydom password will be retrieved automatically.",
+                "data": {
+                    "host": "Tydom or mediation IP/hostname (use 'mediation.tydom.com' for cloud mode)",
+                    "mac": "MAC address (12 characters, no separators)",
+                    "email": "Delta Dore cloud account email",
+                    "password": "Delta Dore cloud account password",
+                    "tydom_password": "Tydom password (retrieved automatically)",
+                    "refresh_interval": "Refresh interval in minutes (default: 30)",
+                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
+                    "pin": "Alarm PIN (optional, required for alarm control)"
+                }
+            },
+            "discovery_confirm": {
+                "title": "Delta Dore Tydom Configuration",
+                "description": "A Tydom gateway was discovered ({name}). Choose the configuration mode. Local button pairing retrieves the local password only after an explicit press on the gateway.",
+                "data": {
+                    "config_mode": "Configuration mode"
+                }
+            },
+            "discovery_confirm_manual": {
+                "title": "Delta Dore Tydom Configuration",
+                "description": "A Tydom gateway was discovered ({name}). Configure it using manual credentials.",
+                "data": {
+                    "host": "Tydom or mediation IP/hostname",
+                    "mac": "MAC address (12 characters, no separators)",
+                    "tydom_password": "Tydom password",
+                    "refresh_interval": "Refresh interval in minutes (default: 30)",
+                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
+                    "pin": "Alarm PIN (optional, required for alarm control)"
+                }
+            },
+            "discovery_confirm_local_pair": {
+                "title": "Pair discovered Delta Dore Tydom locally",
+                "description": "A Tydom gateway was discovered ({name}). Use this only when its local password is unknown. Complete all fields first. As the final step, press the gateway's physical button and immediately select Submit; do not edit the form between the button press and submission. The temporary pairing window is used once to retrieve the local password; the password itself is never shown or logged.",
+                "data": {
+                    "host": "Local Tydom gateway IP/hostname",
+                    "mac": "MAC address (12 characters, no separators)",
+                    "refresh_interval": "Refresh interval in minutes (default: 30)",
+                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
+                    "pin": "Alarm PIN (optional, required for alarm control)"
+                }
+            },
+            "discovery_confirm_cloud": {
+                "title": "Delta Dore Tydom Configuration",
+                "description": "A Tydom gateway was discovered ({name}). Configure it using your Delta Dore cloud account. The Tydom password will be retrieved automatically.",
+                "data": {
+                    "host": "Tydom or mediation IP/hostname (use 'mediation.tydom.com' for cloud mode)",
+                    "mac": "MAC address (12 characters, no separators)",
+                    "email": "Delta Dore cloud account email",
+                    "password": "Delta Dore cloud account password",
+                    "refresh_interval": "Refresh interval in minutes (default: 30)",
+                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
+                    "pin": "Alarm PIN (optional, required for alarm control)"
+                }
+            },
+            "reauth_confirm": {
+                "title": "Re-authenticate Delta Dore Tydom",
+                "description": "The credentials for {name} have expired or are invalid. Please update them."
+            }
+        },
+        "error": {
+            "already_configured": "Device is already configured",
+            "invalid_host": "Hostname or IP is invalid",
+            "invalid_macaddress": "MAC address is invalid",
+            "invalid_email": "Email is invalid",
+            "invalid_password": "Password is invalid",
+            "invalid_refresh_interval": "Refresh interval is not valid",
+            "communication_error": "Couldn't connect to Tydom Gateway",
+            "authentication_error": "Authentication error",
+            "local_pairing_failed": "The local pairing window was unavailable or the gateway did not return a password. Press the gateway button and submit the form again.",
+            "invalid_zone_config": "Zone configuration is invalid. syntax is : zone_id_1,zone_id_2... Example: 1,2,4",
+            "validation_error": "Validation error",
+            "value_out_of_range": "Value is out of allowed range",
+            "value_invalid_step": "Value is not a multiple of the allowed step",
+            "value_invalid_enum": "Value is not in allowed values",
+            "attribute_not_writable": "Attribute is not writable"
+        },
+        "abort": {
+            "discover_timeout": "Unable to discover devices",
+            "no_bridges": "No device discovered",
+            "all_configured": "All device are already configured",
+            "unknown": "Unknown error occurred",
+            "cannot_connect": "Unable to connect to the device",
+            "already_configured": "Device is already configured",
+            "reauth_entry_not_found": "Re-authentication entry not found",
+            "reauth_successful": "Re-authentication successful"
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Delta Dore Tydom Options",
+                "description": "Choose an option",
+                "menu_options": {
+                    "configure": "Configure (zones, refresh interval, alarm PIN)",
+                    "actions": "Actions (reload devices)"
+                }
+            },
+            "configure": {
+                "title": "Delta Dore Tydom Configuration",
+                "description": "Update your Tydom integration settings.",
+                "data": {
+                    "pin": "Alarm PIN (optional, required for alarm control)",
+                    "refresh_interval": "Refresh interval in minutes (default: 30)",
+                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
+                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)"
+                }
+            },
+            "actions": {
+                "title": "Delta Dore Tydom Actions",
+                "description": "Available actions for Tydom integration{status}\n\nHub status: {hub_status}",
+                "data": {
+                    "reload_devices": "Reload devices",
+                    "reload_devices_button": "Reload all devices"
+                }
+            }
+        },
+        "error": {
+            "invalid_refresh_interval": "Refresh interval is not valid",
+            "invalid_zone_config": "Zone configuration is invalid. syntax is : zone_id_1,zone_id_2... Example: 1,2,4",
+            "reload_error": "Error reloading devices",
+            "hub_not_found": "Tydom hub not found"
+        }
+    },
+    "selector": {
+        "config_mode": {
+            "options": {
+                "tydom_cloud_account": "Retrieve Tydom credentials using Delta Dore cloud account",
+                "tydom_credentials": "Enter Tydom credentials manually",
+                "tydom_local_button_pairing": "Pair locally using the gateway button"
+            }
+        }
+    },
+    "services": {
+        "acknowledge_events": {
+            "name": "Acknowledge defect events",
+            "description": "Acknowledge all defect alarm events."
+        },
+        "force_arm": {
+            "name": "Force arm alarm",
+            "description": "Explicitly force an alarm mode despite defects that caused normal arming to be refused.",
+            "fields": {
+                "code": {"name": "TYXAL user code", "description": "User code authorised to arm the alarm."},
+                "mode": {"name": "Arming mode", "description": "Configured Home Assistant alarm mode to force."}
+            }
+        },
+        "get_events": {
+            "name": "Get alarm events",
+            "description": "Get alarm events",
+            "fields": {
+                "event_type": {
+                    "name": "Event type",
+                    "description": "Alarm event type"
+                }
+            }
+        },
+        "get_alarm_products": {
+            "name": "Get alarm products and zones",
+            "description": "Retrieve the products and zones configured on a TYXAL alarm."
+        },
+        "get_alarm_product_configuration": {
+            "name": "Get alarm product configuration",
+            "description": "Retrieve the active state and zone assignment of a TYXAL alarm product while the CS8000 is in maintenance mode.",
+            "fields": {
+                "code": {"name": "TYXAL installer code", "description": "Installer code used while the CS8000 is in maintenance mode."},
+                "product_id": {"name": "Product ID", "description": "Identifier returned by Get alarm products and zones."}
+            }
+        },
+        "enter_alarm_maintenance": {
+            "name": "Enter alarm maintenance mode",
+            "description": "Put a disarmed TYXAL CS8000 into maintenance mode before reading or changing its configuration.",
+            "fields": {
+                "code": {"name": "TYXAL installer code", "description": "Installer code for the CS8000. Do not use an ordinary user alarm code."}
+            }
+        },
+        "exit_alarm_maintenance": {
+            "name": "Exit alarm maintenance mode",
+            "description": "Return a TYXAL CS8000 from maintenance mode to its normal disarmed state.",
+            "fields": {
+                "code": {"name": "TYXAL installer code", "description": "Installer code for the CS8000."}
+            }
+        },
+        "configure_alarm_product": {
+            "name": "Configure alarm product",
+            "description": "Enable or disable a TYXAL product and change its zone assignment.",
+            "fields": {
+                "code": {"name": "TYXAL installer code", "description": "Installer code used while the CS8000 is in maintenance mode."},
+                "product_id": {"name": "Product ID", "description": "Identifier returned by Get alarm products and zones."},
+                "active": {"name": "Active", "description": "Whether the product should participate in the alarm system."},
+                "zone": {"name": "Zone", "description": "Zone to which the product should be assigned."}
+            }
+        },
+        "rename_alarm_zone": {
+            "name": "Rename alarm zone",
+            "description": "Change the custom name of one TYXAL alarm zone, or clear it by supplying an empty name.",
+            "fields": {
+                "code": {"name": "TYXAL installer code", "description": "Installer code used while the CS8000 is in maintenance mode."},
+                "zone_id": {"name": "Zone ID", "description": "Identifier returned by Get alarm products and zones."},
+                "name": {"name": "Zone name", "description": "New custom name for the zone. Supply an empty string to clear its custom or standard label."}
+            }
+        },
+        "reload_devices": {
+            "name": "Reload devices",
+            "description": "Reload all devices and entities as at initial startup. This action removes all existing entities and recreates them from scratch."
+        },
+        "activate_group_scenario": {
+            "name": "Activate scenario on group",
+            "description": "Activate a scenario on a Tydom group",
+            "fields": {
+                "scenario_id": {
+                    "name": "Scenario ID",
+                    "description": "The ID of the scenario to activate"
+                }
+            }
+        }
+    },
+    "entity": {
+        "scene": {},
+        "switch": {},
+        "button": {
+            "acknowledge_events": {
+                "name": "Acknowledge events"
+            },
+            "cancel_boost": {
+                "name": "Cancel Boost"
+            },
+            "group_light": {
+                "name": "Light Group"
+            },
+            "group_shutter": {
+                "name": "Shutter Group"
+            },
+            "group_awning": {
+                "name": "Awning Group"
+            },
+            "group_plug": {
+                "name": "Plug Group"
+            },
+            "group_heating": {
+                "name": "Heating Group"
+            },
+            "group_alarm": {
+                "name": "Alarm Group"
+            },
+            "refresh_energy": {
+                "name": "Refresh energy data"
+            }
+        },
+        "number": {},
+        "select": {},
+        "event": {
+            "remote_button": {
+                "name": "Button {button_number}"
+            },
+            "interrupter_button": {
+                "name": "Button {button_number}"
+            }
+        },
+        "cover": {
+            "tywell_shutters": {
+                "name": "Shutters"
+            },
+            "tywell_shutters_day": {
+                "name": "Day shutters"
+            },
+            "tywell_shutters_night": {
+                "name": "Night shutters"
+            }
+        },
+        "light": {},
+        "climate": {},
+        "alarm_control_panel": {},
+        "lock": {},
+        "weather": {},
+        "update": {},
+        "sensor": {
+            "tywell_weather_condition": {"name": "Počasí"},
+            "tywell_weather_outdoor_temperature": {"name": "Venkovní teplota"},
+            "tywell_weather_daily_power": {"name": "Denní výkon"},
+            "tywell_weather_power": {"name": "Výkon"},
+            "tywell_weather_max_daily_outdoor_temperature": {"name": "Maximální denní venkovní teplota"},
+            "pending_alarm_events": {
+                "name": "Pending alarm events"
+            },
+            "tywatt_energy_distrib_elec_heating": {
+                "name": "Electricity consumption - Heating"
+            },
+            "tywatt_energy_distrib_elec_hotwater": {
+                "name": "Electricity consumption - Hot water"
+            },
+            "tywatt_energy_distrib_elec_other": {
+                "name": "Electricity consumption - Other"
+            },
+            "tywatt_energy_distrib_elec_outlet": {
+                "name": "Electricity consumption - Outlets"
+            },
+            "tywatt_energy_index_elec_heating": {
+                "name": "Electricity index - Heating"
+            },
+            "tywatt_energy_index_elec_hotwater": {
+                "name": "Electricity index - Hot water"
+            },
+            "tywatt_energy_index_elec_other": {
+                "name": "Electricity index - Other"
+            },
+            "tywatt_energy_index_elec_total": {
+                "name": "Electricity index - Total"
+            },
+            "temperature": {
+                "name": "Temperature"
+            },
+            "outtemperature": {
+                "name": "Outdoor temperature"
+            },
+            "ambienttemperature": {
+                "name": "Ambient temperature"
+            },
+            "battlevel": {
+                "name": "Battery level"
+            },
+            "level": {
+                "name": "Level"
+            },
+            "position": {
+                "name": "Position"
+            },
+            "hygroin": {
+                "name": "Humidity"
+            },
+            "energy": {
+                "name": "Energy"
+            },
+            "power": {
+                "name": "Power"
+            },
+            "current": {
+                "name": "Current"
+            },
+            "value": {
+                "name": "Value"
+            },
+            "state": {
+                "name": "State"
+            },
+            "config": {
+                "name": "Configuration"
+            },
+            "supervisionmode": {
+                "name": "Supervision mode"
+            },
+            "productname": {
+                "name": "Product name"
+            },
+            "mac": {
+                "name": "MAC address"
+            },
+            "softversion": {
+                "name": "Software version"
+            },
+            "mainversionhw": {
+                "name": "Main hardware version"
+            },
+            "keyversionhw": {
+                "name": "Key hardware version"
+            },
+            "longitude": {
+                "name": "Longitude"
+            },
+            "latitude": {
+                "name": "Latitude"
+            },
+            "clock": {
+                "name": "Clock"
+            },
+            "timezone": {
+                "name": "Timezone"
+            },
+            "clock_source": {
+                "name": "Clock source"
+            },
+            "summer_offset": {
+                "name": "Summer offset"
+            },
+            "bdd_status": {
+                "name": "Database status"
+            },
+            "permissions": {
+                "name": "Permissions"
+            },
+            "readable": {
+                "name": "Readable"
+            },
+            "writable": {
+                "name": "Writable"
+            }
+        },
+        "binary_sensor": {
+            "tempsensordefect": {
+                "name": "Temperature sensor defect"
+            },
+            "tempsensoropencirc": {
+                "name": "Temperature sensor open circuit"
+            },
+            "tempsensorshortcut": {
+                "name": "Temperature sensor short circuit"
+            },
+            "productiondefect": {
+                "name": "Production defect"
+            },
+            "batterycmddefect": {
+                "name": "Battery command defect"
+            },
+            "thermic_defect": {
+                "name": "Thermic defect"
+            },
+            "update_available": {
+                "name": "Update available"
+            },
+            "batt_defect": {
+                "name": "Battery defect"
+            },
+            "up_defect": {
+                "name": "Up defect"
+            },
+            "down_defect": {
+                "name": "Down defect"
+            },
+            "obstacle_defect": {
+                "name": "Obstacle defect"
+            },
+            "intrusion": {
+                "name": "Intrusion"
+            },
+            "techsmokedefect": {
+                "name": "Smoke detector defect"
+            },
+            "protocol_x3d": {
+                "name": "X3D Protocol"
+            },
+            "protocol_zigbee": {
+                "name": "Zigbee Protocol"
+            },
+            "protocol_x3dv": {
+                "name": "X3DV Protocol"
+            },
+            "protocol_pltservice": {
+                "name": "PltService Protocol"
+            },
+            "protocol_http": {
+                "name": "HTTP Protocol"
+            },
+            "bdd_empty": {
+                "name": "Database empty"
+            },
+            "api_mode": {
+                "name": "API Mode"
+            },
+            "plt_registered": {
+                "name": "Platform registered"
+            },
+            "password_empty": {
+                "name": "Password empty"
+            },
+            "maintenance": {
+                "name": "Maintenance"
+            }
+        },
+        "group": {},
+        "moment": {}
+    }
+}

@@ -289,6 +289,85 @@ class EntityNameTests(TestCase):
                     self.assertEqual(sensor.unique_id, f"43_42_{attribute}")
                 self.assertEqual(len(names), len(set(names)))
 
+    def test_weather_sensor_names_use_native_keys_in_all_ten_languages(self):
+        """Preserve translated weather labels after merging capability names."""
+        languages = (*LANGUAGES, "cs", "nb")
+        for language in languages:
+            document = json.loads(
+                (TRANSLATIONS / f"{language}.json").read_text(encoding="utf-8")
+            )
+            for attribute in (
+                "outTemperature",
+                "dailyPower",
+                "currentPower",
+                "maxDailyOutTemp",
+                "weather",
+            ):
+                with self.subTest(language=language, attribute=attribute):
+                    device = self.device()
+                    setattr(device, attribute, 12)
+                    sensor = attach_platform(
+                        GenericSensor(
+                            device,
+                            None,
+                            None,
+                            attribute,
+                            attribute,
+                            None,
+                            registry_translation_key="tywell_weather",
+                        ),
+                        language,
+                        "sensor",
+                    )
+                    key = GenericSensor.TRANSLATION_KEYS[attribute]
+                    self.assertEqual(sensor.translation_key, key)
+                    self.assertEqual(
+                        sensor.name, document["entity"]["sensor"][key]["name"]
+                    )
+                    self.assertEqual(sensor.unique_id, f"43_42_{attribute}")
+                    self.assertEqual(sensor._attribute, attribute)
+                    self.assertEqual(sensor.native_value, 12)
+                    self.assertNotIn("_attr_name", sensor.__dict__)
+
+    def test_other_families_keep_normal_outdoor_temperature_name(self):
+        """A thermostat's outdoor value must not acquire a weather-only key."""
+        device = self.device()
+        device.outTemperature = 12
+        sensor = attach_platform(
+            GenericSensor(device, None, None, "outTemperature", "outTemperature", None),
+            "fr",
+            "sensor",
+        )
+        self.assertEqual(sensor.translation_key, "outtemperature")
+        self.assertEqual(sensor.unique_id, "43_42_outTemperature")
+        self.assertEqual(sensor.native_value, 12)
+
+    def test_single_controller_weather_keeps_its_translated_name(self):
+        """Weather also uses its dedicated labels without a shared-device override."""
+        from custom_components.deltadore_tydom.tydom.tydom_devices import TydomWeather
+
+        device = TydomWeather(
+            None,
+            "43_42",
+            "42",
+            "Weather",
+            "weather",
+            "43",
+            {},
+            {"dailyPower": 12},
+        )
+        sensor = attach_platform(
+            GenericSensor(device, None, None, "dailyPower", "dailyPower", None),
+            "cs",
+            "sensor",
+        )
+        expected = json.loads((TRANSLATIONS / "cs.json").read_text(encoding="utf-8"))[
+            "entity"
+        ]["sensor"]["tywell_weather_daily_power"]["name"]
+        self.assertEqual(sensor.translation_key, "tywell_weather_daily_power")
+        self.assertEqual(sensor.name, expected)
+        self.assertEqual(sensor.unique_id, "43_42_dailyPower")
+
     def test_catalogue_and_placeholder_coverage_is_consistent(self):
         """Every catalogue label and placeholder must exist in all eight languages."""
         english = json.loads((TRANSLATIONS / "en.json").read_text(encoding="utf-8"))[

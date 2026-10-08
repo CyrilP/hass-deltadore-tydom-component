@@ -14,6 +14,11 @@ from typing import Any
 from homeassistant.helpers.entity import EntityDescription
 
 ENTITY_NAMES: dict[str, str] = {
+    "tywell_weather_condition": "Weather",
+    "tywell_weather_daily_power": "Daily power",
+    "tywell_weather_max_daily_outdoor_temperature": "Daily maximum outdoor temperature",
+    "tywell_weather_outdoor_temperature": "Outdoor temperature",
+    "tywell_weather_power": "Power",
     "absence": "Away mode",
     "absencesetpoint": "Away temperature",
     "absmaxcoolsetpoint": "Maximum cooling setpoint",

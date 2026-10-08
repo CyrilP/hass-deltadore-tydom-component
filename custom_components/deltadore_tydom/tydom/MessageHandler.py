@@ -1241,11 +1241,15 @@ class MessageHandler:
                         device_metadata.get(controller_uid),
                     )
                 ]
-                if len(physical_controllers) == 1:
-                    controller_uid = physical_controllers[0]
-                    weather_device.group_with_registry_device(
-                        controller_uid,
-                        device_name.get(controller_uid, "Tywell Control"),
+                if physical_controllers:
+                    weather_device.group_with_registry_devices(
+                        [
+                            (
+                                controller_uid,
+                                device_name.get(controller_uid, "Tywell Control"),
+                            )
+                            for controller_uid in physical_controllers
+                        ]
                     )
                 return weather_device
             case "sensorDF":

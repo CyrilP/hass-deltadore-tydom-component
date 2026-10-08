@@ -1605,6 +1605,21 @@
             },
             "zones": {
                 "name": "Zone di allarme"
+            },
+            "tywell_weather_power": {
+                "name": "Potenza"
+            },
+            "tywell_weather_condition": {
+                "name": "Meteo"
+            },
+            "tywell_weather_outdoor_temperature": {
+                "name": "Temperatura esterna"
+            },
+            "tywell_weather_daily_power": {
+                "name": "Potenza giornaliera"
+            },
+            "tywell_weather_max_daily_outdoor_temperature": {
+                "name": "Temperatura esterna massima giornaliera"
             }
         },
         "binary_sensor": {
@@ -3887,6 +3902,11 @@
             "tywell_shutters_night": {
                 "name": "Tapparelle notte"
             }
+        }
+    },
+    "device": {
+        "tywell_weather": {
+            "name": "Meteo"
         }
     }
 }
