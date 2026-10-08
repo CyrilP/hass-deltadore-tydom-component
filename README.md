@@ -187,6 +187,18 @@ This feature does not reset the gateway, change its password, remove products
 or alter associations. It does not use the Delta Dore cloud. A separate entry
 configured for cloud/mediation continues to use its own configured connection.
 
+### Entity names
+
+Measurements, settings, diagnostics and gateway controls use descriptive names
+across all supported device families. Names are available in British English,
+French, German, Spanish, Italian, Portuguese, Dutch and Polish, according to
+Home Assistant's language.
+
+Device and scene names chosen in TYDOM, and entity names customised in Home
+Assistant, are preserved. Existing entity identifiers and automation references
+remain valid. Unknown attributes advertised by newer gateway firmware retain a
+readable technical name until a matching label is added.
+
 ## Troubleshooting
 
 ### Enable debug logging

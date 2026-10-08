@@ -190,8 +190,14 @@
             "name": "Forcer la mise en marche de l'alarme",
             "description": "Forcer explicitement un mode d'alarme malgré les défauts ayant entraîné le refus de la mise en marche normale.",
             "fields": {
-                "code": {"name": "Code utilisateur TYXAL", "description": "Code utilisateur autorisé à mettre l'alarme en marche."},
-                "mode": {"name": "Mode de mise en marche", "description": "Mode d'alarme Home Assistant configuré à forcer."}
+                "code": {
+                    "name": "Code utilisateur TYXAL",
+                    "description": "Code utilisateur autorisé à mettre l'alarme en marche."
+                },
+                "mode": {
+                    "name": "Mode de mise en marche",
+                    "description": "Mode d'alarme Home Assistant configuré à forcer."
+                }
             }
         },
         "get_events": {
@@ -212,41 +218,74 @@
             "name": "Obtenir la configuration d'un produit d'alarme",
             "description": "Récupérer l'état actif et la zone d'un produit TYXAL lorsque la CS8000 est en mode maintenance.",
             "fields": {
-                "code": {"name": "Code installateur TYXAL", "description": "Code installateur utilisé lorsque la CS8000 est en mode maintenance."},
-                "product_id": {"name": "ID du produit", "description": "Identifiant renvoyé par le service d'obtention des produits et zones."}
+                "code": {
+                    "name": "Code installateur TYXAL",
+                    "description": "Code installateur utilisé lorsque la CS8000 est en mode maintenance."
+                },
+                "product_id": {
+                    "name": "ID du produit",
+                    "description": "Identifiant renvoyé par le service d'obtention des produits et zones."
+                }
             }
         },
         "enter_alarm_maintenance": {
             "name": "Passer l'alarme en mode maintenance",
             "description": "Passer une CS8000 désarmée en mode maintenance avant de lire ou modifier sa configuration.",
             "fields": {
-                "code": {"name": "Code installateur TYXAL", "description": "Code installateur de la CS8000. Ne pas utiliser un code utilisateur ordinaire."}
+                "code": {
+                    "name": "Code installateur TYXAL",
+                    "description": "Code installateur de la CS8000. Ne pas utiliser un code utilisateur ordinaire."
+                }
             }
         },
         "exit_alarm_maintenance": {
             "name": "Quitter le mode maintenance de l'alarme",
             "description": "Faire revenir une CS8000 du mode maintenance à son état normal désarmé.",
             "fields": {
-                "code": {"name": "Code installateur TYXAL", "description": "Code installateur de la CS8000."}
+                "code": {
+                    "name": "Code installateur TYXAL",
+                    "description": "Code installateur de la CS8000."
+                }
             }
         },
         "configure_alarm_product": {
             "name": "Configurer un produit d'alarme",
             "description": "Activer ou désactiver un produit TYXAL et modifier sa zone.",
             "fields": {
-                "code": {"name": "Code installateur TYXAL", "description": "Code installateur utilisé lorsque la CS8000 est en mode maintenance."},
-                "product_id": {"name": "ID du produit", "description": "Identifiant renvoyé par le service d'obtention des produits et zones."},
-                "active": {"name": "Actif", "description": "Indique si le produit doit participer au système d'alarme."},
-                "zone": {"name": "Zone", "description": "Zone à laquelle le produit doit être affecté."}
+                "code": {
+                    "name": "Code installateur TYXAL",
+                    "description": "Code installateur utilisé lorsque la CS8000 est en mode maintenance."
+                },
+                "product_id": {
+                    "name": "ID du produit",
+                    "description": "Identifiant renvoyé par le service d'obtention des produits et zones."
+                },
+                "active": {
+                    "name": "Actif",
+                    "description": "Indique si le produit doit participer au système d'alarme."
+                },
+                "zone": {
+                    "name": "Zone",
+                    "description": "Zone à laquelle le produit doit être affecté."
+                }
             }
         },
         "rename_alarm_zone": {
             "name": "Renommer une zone d'alarme",
             "description": "Modifier le nom personnalisé d'une zone d'alarme TYXAL, ou l'effacer en fournissant un nom vide.",
             "fields": {
-                "code": {"name": "Code installateur TYXAL", "description": "Code installateur utilisé lorsque la CS8000 est en mode maintenance."},
-                "zone_id": {"name": "ID de la zone", "description": "Identifiant renvoyé par le service d'obtention des produits et zones."},
-                "name": {"name": "Nom de la zone", "description": "Nouveau nom personnalisé de la zone. Fournir une chaîne vide pour effacer son libellé personnalisé ou standard."}
+                "code": {
+                    "name": "Code installateur TYXAL",
+                    "description": "Code installateur utilisé lorsque la CS8000 est en mode maintenance."
+                },
+                "zone_id": {
+                    "name": "ID de la zone",
+                    "description": "Identifiant renvoyé par le service d'obtention des produits et zones."
+                },
+                "name": {
+                    "name": "Nom de la zone",
+                    "description": "Nouveau nom personnalisé de la zone. Fournir une chaîne vide pour effacer son libellé personnalisé ou standard."
+                }
             }
         },
         "reload_devices": {
@@ -269,40 +308,1527 @@
         "switch": {},
         "button": {
             "acknowledge_events": {
-                "name": "Acquitter les évènements"
+                "name": "Acquitter les événements"
+            },
+            "association_guide": {
+                "name": "5. Afficher le guide d’association"
+            },
+            "association_mode": {
+                "name": "Démarrer le mode association"
             },
             "cancel_boost": {
                 "name": "Annuler le Boost"
             },
-            "group_light": {
-                "name": "Groupe Lumières"
+            "finalize_association": {
+                "name": "Configurer {channel} comme {usage}"
             },
-            "group_shutter": {
-                "name": "Groupe Volets"
+            "finalize_keypad": {
+                "name": "Configurer {channel} comme clavier"
             },
-            "group_awning": {
-                "name": "Groupe Stores"
+            "finalize_remote": {
+                "name": "Configurer {channel} comme télécommande"
             },
-            "group_plug": {
-                "name": "Groupe Prises"
-            },
-            "group_heating": {
-                "name": "Groupe Chauffage"
+            "finalize_switch": {
+                "name": "Configurer {channel} comme interrupteur"
             },
             "group_alarm": {
                 "name": "Groupe Alarme"
             },
+            "group_awning": {
+                "name": "Groupe Stores"
+            },
+            "group_heating": {
+                "name": "Groupe Chauffage"
+            },
+            "group_light": {
+                "name": "Groupe Lumières"
+            },
+            "group_plug": {
+                "name": "Groupe Prises"
+            },
+            "group_shutter": {
+                "name": "Groupe Volets"
+            },
+            "identify_device": {
+                "name": "Identifier l’appareil"
+            },
             "refresh_energy": {
-                "name": "Actualiser les données énergétiques"
+                "name": "Actualiser les données d’énergie"
+            },
+            "reload_devices": {
+                "name": "Recharger les appareils"
+            },
+            "remove_button": {
+                "name": "Dissocier ce bouton"
+            },
+            "remove_device": {
+                "name": "Dissocier définitivement l’appareil"
+            },
+            "remove_numbered_button": {
+                "name": "Dissocier le bouton {button_number}"
+            },
+            "start_product_association": {
+                "name": "6. Lancer l’écoute de la passerelle"
+            },
+            "toggle": {
+                "name": "Basculer"
             }
         },
-        "number": {},
-        "select": {},
+        "number": {
+            "absence": {
+                "name": "Mode absence"
+            },
+            "absencesetpoint": {
+                "name": "Température d’absence"
+            },
+            "absmaxcoolsetpoint": {
+                "name": "Consigne maximale de refroidissement"
+            },
+            "absmaxheatsetpoint": {
+                "name": "Consigne maximale de chauffage"
+            },
+            "absmincoolsetpoint": {
+                "name": "Consigne minimale de refroidissement"
+            },
+            "absminheatsetpoint": {
+                "name": "Consigne minimale de chauffage"
+            },
+            "ackeventcmd": {
+                "name": "Commande d’acquittement des événements"
+            },
+            "activationcpt": {
+                "name": "Nombre d’activations"
+            },
+            "activationindex": {
+                "name": "Index d’activation"
+            },
+            "alarmcmd": {
+                "name": "Commande d’alarme"
+            },
+            "alarmintrusion": {
+                "name": "Intrusion"
+            },
+            "alarmmode": {
+                "name": "Mode de l’alarme"
+            },
+            "alarmsos": {
+                "name": "Alarme SOS"
+            },
+            "alarmstate": {
+                "name": "État de l’alarme"
+            },
+            "alarmtechnical": {
+                "name": "Alarme technique"
+            },
+            "ambienttemperature": {
+                "name": "Température ambiante"
+            },
+            "anticipcoeff": {
+                "name": "Coefficient d’anticipation"
+            },
+            "anticpcoeff": {
+                "name": "Coefficient d’anticipation"
+            },
+            "antifroston": {
+                "name": "Protection hors gel"
+            },
+            "antifrostsetpoint": {
+                "name": "Température hors gel"
+            },
+            "antifrostwhenoff": {
+                "name": "Protection hors gel"
+            },
+            "antiseizurecmd": {
+                "name": "Commande d’antigrippage"
+            },
+            "antiseizureperiod": {
+                "name": "Intervalle d’antigrippage"
+            },
+            "api_mode": {
+                "name": "Mode API"
+            },
+            "area_id": {
+                "name": "Identifiant de la zone"
+            },
+            "authorization": {
+                "name": "Autorisation"
+            },
+            "batt_defect": {
+                "name": "Défaut pile"
+            },
+            "battdefect": {
+                "name": "Défaut pile"
+            },
+            "batterycmddefect": {
+                "name": "Défaut de commande de pile"
+            },
+            "battlevel": {
+                "name": "Charge de la batterie"
+            },
+            "bdd_empty": {
+                "name": "Base de données vide"
+            },
+            "bdd_status": {
+                "name": "État de la base de données"
+            },
+            "boost": {
+                "name": "Boost"
+            },
+            "booston": {
+                "name": "Boost"
+            },
+            "bootreference": {
+                "name": "Référence du chargeur de démarrage"
+            },
+            "bootversion": {
+                "name": "Version du chargeur de démarrage"
+            },
+            "brightness": {
+                "name": "Luminosité"
+            },
+            "calibrationdefect": {
+                "name": "Défaut étalonnage"
+            },
+            "clock": {
+                "name": "Heure de la passerelle"
+            },
+            "clock_source": {
+                "name": "Source de l’horloge"
+            },
+            "cmddefect": {
+                "name": "Défaut commande"
+            },
+            "comfortmode": {
+                "name": "Mode confort"
+            },
+            "config": {
+                "name": "Configuration"
+            },
+            "configsensor": {
+                "name": "Configuration du capteur"
+            },
+            "configtemp": {
+                "name": "Configuration de température"
+            },
+            "coolsetpoint": {
+                "name": "Consigne de refroidissement"
+            },
+            "current": {
+                "name": "Courant"
+            },
+            "currentpower": {
+                "name": "Puissance"
+            },
+            "currentsetpoint": {
+                "name": "Consigne de température"
+            },
+            "dailypower": {
+                "name": "Puissance journalière"
+            },
+            "delaysetpoint": {
+                "name": "Temporisation de consigne"
+            },
+            "delaythermiclevel": {
+                "name": "Temporisation de l’allure de chauffage"
+            },
+            "device_endpoint": {
+                "name": "Point de terminaison"
+            },
+            "device_id": {
+                "name": "Identifiant du point de terminaison TYDOM"
+            },
+            "device_name": {
+                "name": "Nom de l’appareil"
+            },
+            "device_type": {
+                "name": "Type d’appareil"
+            },
+            "direction": {
+                "name": "Direction"
+            },
+            "down_defect": {
+                "name": "Descente non autorisée"
+            },
+            "downdefect": {
+                "name": "Descente non autorisée"
+            },
+            "energy": {
+                "name": "Énergie"
+            },
+            "gsmlevel": {
+                "name": "Niveau du signal mobile"
+            },
+            "heatsetpoint": {
+                "name": "Consigne de chauffage"
+            },
+            "histo": {
+                "name": "Historique"
+            },
+            "hvacmode": {
+                "name": "Mode de chauffage et refroidissement"
+            },
+            "hygroin": {
+                "name": "Humidité"
+            },
+            "inactiveproduct": {
+                "name": "Produit inactif"
+            },
+            "index": {
+                "name": "Index"
+            },
+            "indexstart": {
+                "name": "Index de départ"
+            },
+            "indextimeon": {
+                "name": "Index de durée de fonctionnement"
+            },
+            "intrusion": {
+                "name": "Intrusion"
+            },
+            "intrusiondetect": {
+                "name": "Intrusion"
+            },
+            "irv1state": {
+                "name": "État (IRV 1)"
+            },
+            "irv2state": {
+                "name": "État (IRV 2)"
+            },
+            "irv3state": {
+                "name": "État (IRV 3)"
+            },
+            "irv4state": {
+                "name": "État (IRV 4)"
+            },
+            "irv5state": {
+                "name": "État (IRV 5)"
+            },
+            "irv6state": {
+                "name": "État (IRV 6)"
+            },
+            "irv7state": {
+                "name": "État (IRV 7)"
+            },
+            "irv8state": {
+                "name": "État (IRV 8)"
+            },
+            "irvcmd": {
+                "name": "Commande IRV"
+            },
+            "irvid": {
+                "name": "Identifiant IRV"
+            },
+            "isreference": {
+                "name": "Appareil de référence"
+            },
+            "jobs": {
+                "name": "Tâches internes"
+            },
+            "jobsmp": {
+                "name": "Tâches du module principal"
+            },
+            "jobsrm": {
+                "name": "Tâches du module radio"
+            },
+            "kerneldownloadforced": {
+                "name": "Téléchargement forcé du micrologiciel"
+            },
+            "kerneluptodate": {
+                "name": "Micrologiciel à jour"
+            },
+            "keyreference": {
+                "name": "Référence du module radio"
+            },
+            "keyversionhw": {
+                "name": "Version matérielle radio"
+            },
+            "keyversionstack": {
+                "name": "Version de la pile radio"
+            },
+            "keyversionsw": {
+                "name": "Version logicielle radio"
+            },
+            "label": {
+                "name": "Libellé"
+            },
+            "last_usage": {
+                "name": "Usage"
+            },
+            "latitude": {
+                "name": "Latitude"
+            },
+            "level": {
+                "name": "Niveau"
+            },
+            "levelcmd": {
+                "name": "Commande de niveau"
+            },
+            "lightpower": {
+                "name": "Irradiance solaire"
+            },
+            "livecheckrunning": {
+                "name": "Vérification en cours"
+            },
+            "loaddefect": {
+                "name": "Défaut charge"
+            },
+            "loadsheddingon": {
+                "name": "Délestage"
+            },
+            "localisation": {
+                "name": "Localisation"
+            },
+            "localmode": {
+                "name": "Mode de fonctionnement local"
+            },
+            "localsetpoint": {
+                "name": "Consigne locale"
+            },
+            "localsetpremainingtimestr": {
+                "name": "Durée restante de la consigne locale"
+            },
+            "longitude": {
+                "name": "Longitude"
+            },
+            "mac": {
+                "name": "Adresse MAC"
+            },
+            "mainid": {
+                "name": "Identifiant du module principal"
+            },
+            "mainreference": {
+                "name": "Référence du module principal"
+            },
+            "maintenance": {
+                "name": "Maintenance"
+            },
+            "maintenanceneeded": {
+                "name": "Maintenance nécessaire"
+            },
+            "mainversionhw": {
+                "name": "Version matérielle principale"
+            },
+            "mainversionsw": {
+                "name": "Version logicielle principale"
+            },
+            "manufacturer": {
+                "name": "Fabricant"
+            },
+            "maxcoolsetpoint": {
+                "name": "Consigne maximale de refroidissement"
+            },
+            "maxdailyouttemp": {
+                "name": "Température extérieure maximale du jour"
+            },
+            "maxheatsetpoint": {
+                "name": "Consigne maximale de chauffage"
+            },
+            "maxsetpoint": {
+                "name": "Consigne maximale de température"
+            },
+            "mincoolsetpoint": {
+                "name": "Consigne minimale de refroidissement"
+            },
+            "minheatsetpoint": {
+                "name": "Consigne minimale de chauffage"
+            },
+            "minsetpoint": {
+                "name": "Consigne minimale de température"
+            },
+            "modeasso": {
+                "name": "Mode association"
+            },
+            "modelidentifier": {
+                "name": "Identifiant du modèle"
+            },
+            "nbelem": {
+                "name": "Nombre d’éléments"
+            },
+            "nbrfactuators": {
+                "name": "Nombre d’actionneurs radio"
+            },
+            "networkdefect": {
+                "name": "Défaut réseau"
+            },
+            "obstacle_defect": {
+                "name": "Obstacle détecté"
+            },
+            "obstacledefect": {
+                "name": "Obstacle détecté"
+            },
+            "ondusk": {
+                "name": "Activation au crépuscule"
+            },
+            "onfavpos": {
+                "name": "Activation de la position favorite"
+            },
+            "onpresencedetected": {
+                "name": "Activation sur présence"
+            },
+            "openingdetected": {
+                "name": "Ouverture détectée"
+            },
+            "openstate": {
+                "name": "État de l’ouverture"
+            },
+            "outtemperature": {
+                "name": "Température extérieure"
+            },
+            "overrideremainingtime": {
+                "name": "Durée restante de la dérogation"
+            },
+            "overridesetpoint": {
+                "name": "Consigne de dérogation"
+            },
+            "part": {
+                "name": "Partition d’alarme"
+            },
+            "part1state": {
+                "name": "État (PART 1)"
+            },
+            "part2state": {
+                "name": "État (PART 2)"
+            },
+            "part3state": {
+                "name": "État (PART 3)"
+            },
+            "part4state": {
+                "name": "État (PART 4)"
+            },
+            "part5state": {
+                "name": "État (PART 5)"
+            },
+            "part6state": {
+                "name": "État (PART 6)"
+            },
+            "part7state": {
+                "name": "État (PART 7)"
+            },
+            "part8state": {
+                "name": "État (PART 8)"
+            },
+            "partcmd": {
+                "name": "Commande de partition d’alarme"
+            },
+            "password_empty": {
+                "name": "Mot de passe vide"
+            },
+            "period": {
+                "name": "Période"
+            },
+            "periodoffset": {
+                "name": "Décalage de période"
+            },
+            "permissions": {
+                "name": "Autorisations"
+            },
+            "plt_registered": {
+                "name": "Plateforme enregistrée"
+            },
+            "position": {
+                "name": "Position"
+            },
+            "positioncmd": {
+                "name": "Commande de position"
+            },
+            "power": {
+                "name": "Puissance"
+            },
+            "prealarm": {
+                "name": "Préalarme"
+            },
+            "presencedetected": {
+                "name": "Présence détectée"
+            },
+            "productconf": {
+                "name": "Configuration"
+            },
+            "productiondefect": {
+                "name": "Défaut de production"
+            },
+            "productname": {
+                "name": "Nom du produit"
+            },
+            "readable": {
+                "name": "Lisible"
+            },
+            "recfav": {
+                "name": "Mémoriser la position favorite"
+            },
+            "regtemperature": {
+                "name": "Température de régulation"
+            },
+            "remotesurveydefect": {
+                "name": "Défaut supervision"
+            },
+            "reset": {
+                "name": "Réinitialiser"
+            },
+            "selectedprog": {
+                "name": "Programme sélectionné"
+            },
+            "sendasso": {
+                "name": "Envoyer la commande d’association"
+            },
+            "sendnetremoteassomode": {
+                "name": "Mode association distant"
+            },
+            "setpoint": {
+                "name": "Consigne de température"
+            },
+            "shuttercmd": {
+                "name": "Commande de volet"
+            },
+            "simdefect": {
+                "name": "Carte SIM absente"
+            },
+            "slope": {
+                "name": "Pente de chauffe"
+            },
+            "softplan": {
+                "name": "Paquet logiciel"
+            },
+            "softplan0": {
+                "name": "Paquet logiciel (0)"
+            },
+            "softplan1": {
+                "name": "Paquet logiciel (1)"
+            },
+            "softplan2": {
+                "name": "Paquet logiciel (2)"
+            },
+            "softplan3": {
+                "name": "Paquet logiciel (3)"
+            },
+            "softversion": {
+                "name": "Version logicielle"
+            },
+            "softversion0": {
+                "name": "Version logicielle (0)"
+            },
+            "softversion1": {
+                "name": "Version logicielle (1)"
+            },
+            "softversion2": {
+                "name": "Version logicielle (2)"
+            },
+            "softversion3": {
+                "name": "Version logicielle (3)"
+            },
+            "speed": {
+                "name": "Vitesse de ventilation"
+            },
+            "speedstring": {
+                "name": "Vitesse de ventilation"
+            },
+            "state": {
+                "name": "État"
+            },
+            "summer_offset": {
+                "name": "Décalage d’heure d’été"
+            },
+            "summeroffset": {
+                "name": "Décalage d’heure d’été"
+            },
+            "supervisionmode": {
+                "name": "Mode de supervision"
+            },
+            "synchropps": {
+                "name": "Synchronisation temporelle"
+            },
+            "synchroradio": {
+                "name": "Synchronisation radio"
+            },
+            "systalarmdefect": {
+                "name": "Défaut du système d’alarme"
+            },
+            "systautoprotect": {
+                "name": "Autoprotection"
+            },
+            "systbatterydefect": {
+                "name": "Défaut de pile"
+            },
+            "systopenissue": {
+                "name": "Armement de l’alarme bloqué"
+            },
+            "systsectordefect": {
+                "name": "Défaut secteur"
+            },
+            "systsupervisiondefect": {
+                "name": "Défaut supervision"
+            },
+            "systtechnicaldefect": {
+                "name": "Défaut technique"
+            },
+            "techsmokedefect": {
+                "name": "Fumée détectée"
+            },
+            "techwaterdefect": {
+                "name": "Fuite détectée"
+            },
+            "temperature": {
+                "name": "Température"
+            },
+            "tempoon": {
+                "name": "Temporisation"
+            },
+            "tempsensordefect": {
+                "name": "Défaut sonde"
+            },
+            "tempsensoropencirc": {
+                "name": "Sonde coupée"
+            },
+            "tempsensorshortcut": {
+                "name": "Sonde en court-circuit"
+            },
+            "thermic_defect": {
+                "name": "Surchauffe"
+            },
+            "thermicdefect": {
+                "name": "Surchauffe"
+            },
+            "thermiclevel": {
+                "name": "Allure de chauffage"
+            },
+            "timedelay": {
+                "name": "Temporisation"
+            },
+            "timeoncpt": {
+                "name": "Compteur de durée de fonctionnement"
+            },
+            "timezone": {
+                "name": "Fuseau horaire"
+            },
+            "total": {
+                "name": "Total"
+            },
+            "uid": {
+                "name": "Identifiant de l’appareil"
+            },
+            "unackedevent": {
+                "name": "Événements non acquittés"
+            },
+            "unitautoprotect": {
+                "name": "Autoprotection"
+            },
+            "unitbatterydefect": {
+                "name": "Défaut de pile"
+            },
+            "unitinternaldefect": {
+                "name": "Défaut interne"
+            },
+            "up_defect": {
+                "name": "Montée non autorisée"
+            },
+            "update_available": {
+                "name": "Mise à jour disponible"
+            },
+            "updefect": {
+                "name": "Montée non autorisée"
+            },
+            "usage": {
+                "name": "Usage"
+            },
+            "usemode": {
+                "name": "Mode de fonctionnement"
+            },
+            "value": {
+                "name": "Valeur"
+            },
+            "videolinkdefect": {
+                "name": "Défaut lien vidéo"
+            },
+            "waterflowreq": {
+                "name": "Débit d’eau demandé"
+            },
+            "weather": {
+                "name": "Météo"
+            },
+            "writable": {
+                "name": "Modifiable"
+            },
+            "zclversion": {
+                "name": "Version de la bibliothèque Zigbee"
+            },
+            "zone1state": {
+                "name": "État (ZONE 1)"
+            },
+            "zone2state": {
+                "name": "État (ZONE 2)"
+            },
+            "zone3state": {
+                "name": "État (ZONE 3)"
+            },
+            "zone4state": {
+                "name": "État (ZONE 4)"
+            },
+            "zone5state": {
+                "name": "État (ZONE 5)"
+            },
+            "zone6state": {
+                "name": "État (ZONE 6)"
+            },
+            "zone7state": {
+                "name": "État (ZONE 7)"
+            },
+            "zone8state": {
+                "name": "État (ZONE 8)"
+            },
+            "zonecmd": {
+                "name": "Commande de zone d’alarme"
+            },
+            "zones": {
+                "name": "Zones d’alarme"
+            }
+        },
+        "select": {
+            "absence": {
+                "name": "Mode absence"
+            },
+            "absencesetpoint": {
+                "name": "Température d’absence"
+            },
+            "absmaxcoolsetpoint": {
+                "name": "Consigne maximale de refroidissement"
+            },
+            "absmaxheatsetpoint": {
+                "name": "Consigne maximale de chauffage"
+            },
+            "absmincoolsetpoint": {
+                "name": "Consigne minimale de refroidissement"
+            },
+            "absminheatsetpoint": {
+                "name": "Consigne minimale de chauffage"
+            },
+            "ackeventcmd": {
+                "name": "Commande d’acquittement des événements"
+            },
+            "activationcpt": {
+                "name": "Nombre d’activations"
+            },
+            "activationindex": {
+                "name": "Index d’activation"
+            },
+            "alarmcmd": {
+                "name": "Commande d’alarme"
+            },
+            "alarmintrusion": {
+                "name": "Intrusion"
+            },
+            "alarmmode": {
+                "name": "Mode de l’alarme"
+            },
+            "alarmsos": {
+                "name": "Alarme SOS"
+            },
+            "alarmstate": {
+                "name": "État de l’alarme"
+            },
+            "alarmtechnical": {
+                "name": "Alarme technique"
+            },
+            "ambienttemperature": {
+                "name": "Température ambiante"
+            },
+            "anticipcoeff": {
+                "name": "Coefficient d’anticipation"
+            },
+            "anticpcoeff": {
+                "name": "Coefficient d’anticipation"
+            },
+            "antifroston": {
+                "name": "Protection hors gel"
+            },
+            "antifrostsetpoint": {
+                "name": "Température hors gel"
+            },
+            "antifrostwhenoff": {
+                "name": "Protection hors gel"
+            },
+            "antiseizurecmd": {
+                "name": "Commande d’antigrippage"
+            },
+            "antiseizureperiod": {
+                "name": "Intervalle d’antigrippage"
+            },
+            "api_mode": {
+                "name": "Mode API"
+            },
+            "area_id": {
+                "name": "Identifiant de la zone"
+            },
+            "association_category": {
+                "name": "1. Catégorie à associer"
+            },
+            "association_channel": {
+                "name": "3. Voie à associer"
+            },
+            "association_product": {
+                "name": "2. Produit à associer"
+            },
+            "association_usage": {
+                "name": "4. Usage / type d’association"
+            },
+            "authorization": {
+                "name": "Autorisation"
+            },
+            "batt_defect": {
+                "name": "Défaut pile"
+            },
+            "battdefect": {
+                "name": "Défaut pile"
+            },
+            "batterycmddefect": {
+                "name": "Défaut de commande de pile"
+            },
+            "battlevel": {
+                "name": "Charge de la batterie"
+            },
+            "bdd_empty": {
+                "name": "Base de données vide"
+            },
+            "bdd_status": {
+                "name": "État de la base de données"
+            },
+            "boost": {
+                "name": "Boost"
+            },
+            "booston": {
+                "name": "Boost"
+            },
+            "bootreference": {
+                "name": "Référence du chargeur de démarrage"
+            },
+            "bootversion": {
+                "name": "Version du chargeur de démarrage"
+            },
+            "brightness": {
+                "name": "Luminosité"
+            },
+            "calibrationdefect": {
+                "name": "Défaut étalonnage"
+            },
+            "clock": {
+                "name": "Heure de la passerelle"
+            },
+            "clock_source": {
+                "name": "Source de l’horloge"
+            },
+            "cmddefect": {
+                "name": "Défaut commande"
+            },
+            "comfortmode": {
+                "name": "Mode confort"
+            },
+            "config": {
+                "name": "Configuration"
+            },
+            "configsensor": {
+                "name": "Configuration du capteur"
+            },
+            "configtemp": {
+                "name": "Configuration de température"
+            },
+            "coolsetpoint": {
+                "name": "Consigne de refroidissement"
+            },
+            "current": {
+                "name": "Courant"
+            },
+            "currentpower": {
+                "name": "Puissance"
+            },
+            "currentsetpoint": {
+                "name": "Consigne de température"
+            },
+            "dailypower": {
+                "name": "Puissance journalière"
+            },
+            "delaysetpoint": {
+                "name": "Temporisation de consigne"
+            },
+            "delaythermiclevel": {
+                "name": "Temporisation de l’allure de chauffage"
+            },
+            "device_endpoint": {
+                "name": "Point de terminaison"
+            },
+            "device_id": {
+                "name": "Identifiant du point de terminaison TYDOM"
+            },
+            "device_name": {
+                "name": "Nom de l’appareil"
+            },
+            "device_type": {
+                "name": "Type d’appareil"
+            },
+            "direction": {
+                "name": "Direction"
+            },
+            "down_defect": {
+                "name": "Descente non autorisée"
+            },
+            "downdefect": {
+                "name": "Descente non autorisée"
+            },
+            "energy": {
+                "name": "Énergie"
+            },
+            "gsmlevel": {
+                "name": "Niveau du signal mobile"
+            },
+            "heatsetpoint": {
+                "name": "Consigne de chauffage"
+            },
+            "histo": {
+                "name": "Historique"
+            },
+            "hvacmode": {
+                "name": "Mode de chauffage et refroidissement"
+            },
+            "hygroin": {
+                "name": "Humidité"
+            },
+            "inactiveproduct": {
+                "name": "Produit inactif"
+            },
+            "index": {
+                "name": "Index"
+            },
+            "indexstart": {
+                "name": "Index de départ"
+            },
+            "indextimeon": {
+                "name": "Index de durée de fonctionnement"
+            },
+            "intrusion": {
+                "name": "Intrusion"
+            },
+            "intrusiondetect": {
+                "name": "Intrusion"
+            },
+            "irv1state": {
+                "name": "État (IRV 1)"
+            },
+            "irv2state": {
+                "name": "État (IRV 2)"
+            },
+            "irv3state": {
+                "name": "État (IRV 3)"
+            },
+            "irv4state": {
+                "name": "État (IRV 4)"
+            },
+            "irv5state": {
+                "name": "État (IRV 5)"
+            },
+            "irv6state": {
+                "name": "État (IRV 6)"
+            },
+            "irv7state": {
+                "name": "État (IRV 7)"
+            },
+            "irv8state": {
+                "name": "État (IRV 8)"
+            },
+            "irvcmd": {
+                "name": "Commande IRV"
+            },
+            "irvid": {
+                "name": "Identifiant IRV"
+            },
+            "isreference": {
+                "name": "Appareil de référence"
+            },
+            "jobs": {
+                "name": "Tâches internes"
+            },
+            "jobsmp": {
+                "name": "Tâches du module principal"
+            },
+            "jobsrm": {
+                "name": "Tâches du module radio"
+            },
+            "kerneldownloadforced": {
+                "name": "Téléchargement forcé du micrologiciel"
+            },
+            "kerneluptodate": {
+                "name": "Micrologiciel à jour"
+            },
+            "keyreference": {
+                "name": "Référence du module radio"
+            },
+            "keyversionhw": {
+                "name": "Version matérielle radio"
+            },
+            "keyversionstack": {
+                "name": "Version de la pile radio"
+            },
+            "keyversionsw": {
+                "name": "Version logicielle radio"
+            },
+            "label": {
+                "name": "Libellé"
+            },
+            "last_usage": {
+                "name": "Usage"
+            },
+            "latitude": {
+                "name": "Latitude"
+            },
+            "level": {
+                "name": "Niveau"
+            },
+            "levelcmd": {
+                "name": "Commande de niveau"
+            },
+            "lightpower": {
+                "name": "Irradiance solaire"
+            },
+            "livecheckrunning": {
+                "name": "Vérification en cours"
+            },
+            "loaddefect": {
+                "name": "Défaut charge"
+            },
+            "loadsheddingon": {
+                "name": "Délestage"
+            },
+            "localisation": {
+                "name": "Localisation"
+            },
+            "localmode": {
+                "name": "Mode de fonctionnement local"
+            },
+            "localsetpoint": {
+                "name": "Consigne locale"
+            },
+            "localsetpremainingtimestr": {
+                "name": "Durée restante de la consigne locale"
+            },
+            "longitude": {
+                "name": "Longitude"
+            },
+            "mac": {
+                "name": "Adresse MAC"
+            },
+            "mainid": {
+                "name": "Identifiant du module principal"
+            },
+            "mainreference": {
+                "name": "Référence du module principal"
+            },
+            "maintenance": {
+                "name": "Maintenance"
+            },
+            "maintenanceneeded": {
+                "name": "Maintenance nécessaire"
+            },
+            "mainversionhw": {
+                "name": "Version matérielle principale"
+            },
+            "mainversionsw": {
+                "name": "Version logicielle principale"
+            },
+            "manufacturer": {
+                "name": "Fabricant"
+            },
+            "maxcoolsetpoint": {
+                "name": "Consigne maximale de refroidissement"
+            },
+            "maxdailyouttemp": {
+                "name": "Température extérieure maximale du jour"
+            },
+            "maxheatsetpoint": {
+                "name": "Consigne maximale de chauffage"
+            },
+            "maxsetpoint": {
+                "name": "Consigne maximale de température"
+            },
+            "mincoolsetpoint": {
+                "name": "Consigne minimale de refroidissement"
+            },
+            "minheatsetpoint": {
+                "name": "Consigne minimale de chauffage"
+            },
+            "minsetpoint": {
+                "name": "Consigne minimale de température"
+            },
+            "modeasso": {
+                "name": "Mode association"
+            },
+            "modelidentifier": {
+                "name": "Identifiant du modèle"
+            },
+            "nbelem": {
+                "name": "Nombre d’éléments"
+            },
+            "nbrfactuators": {
+                "name": "Nombre d’actionneurs radio"
+            },
+            "networkdefect": {
+                "name": "Défaut réseau"
+            },
+            "obstacle_defect": {
+                "name": "Obstacle détecté"
+            },
+            "obstacledefect": {
+                "name": "Obstacle détecté"
+            },
+            "ondusk": {
+                "name": "Activation au crépuscule"
+            },
+            "onfavpos": {
+                "name": "Activation de la position favorite"
+            },
+            "onpresencedetected": {
+                "name": "Activation sur présence"
+            },
+            "openingdetected": {
+                "name": "Ouverture détectée"
+            },
+            "openstate": {
+                "name": "État de l’ouverture"
+            },
+            "outtemperature": {
+                "name": "Température extérieure"
+            },
+            "overrideremainingtime": {
+                "name": "Durée restante de la dérogation"
+            },
+            "overridesetpoint": {
+                "name": "Consigne de dérogation"
+            },
+            "part": {
+                "name": "Partition d’alarme"
+            },
+            "part1state": {
+                "name": "État (PART 1)"
+            },
+            "part2state": {
+                "name": "État (PART 2)"
+            },
+            "part3state": {
+                "name": "État (PART 3)"
+            },
+            "part4state": {
+                "name": "État (PART 4)"
+            },
+            "part5state": {
+                "name": "État (PART 5)"
+            },
+            "part6state": {
+                "name": "État (PART 6)"
+            },
+            "part7state": {
+                "name": "État (PART 7)"
+            },
+            "part8state": {
+                "name": "État (PART 8)"
+            },
+            "partcmd": {
+                "name": "Commande de partition d’alarme"
+            },
+            "password_empty": {
+                "name": "Mot de passe vide"
+            },
+            "period": {
+                "name": "Période"
+            },
+            "periodoffset": {
+                "name": "Décalage de période"
+            },
+            "permissions": {
+                "name": "Autorisations"
+            },
+            "plt_registered": {
+                "name": "Plateforme enregistrée"
+            },
+            "position": {
+                "name": "Position"
+            },
+            "positioncmd": {
+                "name": "Commande de position"
+            },
+            "power": {
+                "name": "Puissance"
+            },
+            "prealarm": {
+                "name": "Préalarme"
+            },
+            "presencedetected": {
+                "name": "Présence détectée"
+            },
+            "productconf": {
+                "name": "Configuration"
+            },
+            "productiondefect": {
+                "name": "Défaut de production"
+            },
+            "productname": {
+                "name": "Nom du produit"
+            },
+            "readable": {
+                "name": "Lisible"
+            },
+            "recfav": {
+                "name": "Mémoriser la position favorite"
+            },
+            "regtemperature": {
+                "name": "Température de régulation"
+            },
+            "remotesurveydefect": {
+                "name": "Défaut supervision"
+            },
+            "reset": {
+                "name": "Réinitialiser"
+            },
+            "selectedprog": {
+                "name": "Programme sélectionné"
+            },
+            "sendasso": {
+                "name": "Envoyer la commande d’association"
+            },
+            "sendnetremoteassomode": {
+                "name": "Mode association distant"
+            },
+            "setpoint": {
+                "name": "Consigne de température"
+            },
+            "shuttercmd": {
+                "name": "Commande de volet"
+            },
+            "simdefect": {
+                "name": "Carte SIM absente"
+            },
+            "slope": {
+                "name": "Pente de chauffe"
+            },
+            "softplan": {
+                "name": "Paquet logiciel"
+            },
+            "softplan0": {
+                "name": "Paquet logiciel (0)"
+            },
+            "softplan1": {
+                "name": "Paquet logiciel (1)"
+            },
+            "softplan2": {
+                "name": "Paquet logiciel (2)"
+            },
+            "softplan3": {
+                "name": "Paquet logiciel (3)"
+            },
+            "softversion": {
+                "name": "Version logicielle"
+            },
+            "softversion0": {
+                "name": "Version logicielle (0)"
+            },
+            "softversion1": {
+                "name": "Version logicielle (1)"
+            },
+            "softversion2": {
+                "name": "Version logicielle (2)"
+            },
+            "softversion3": {
+                "name": "Version logicielle (3)"
+            },
+            "speed": {
+                "name": "Vitesse de ventilation"
+            },
+            "speedstring": {
+                "name": "Vitesse de ventilation"
+            },
+            "state": {
+                "name": "État"
+            },
+            "summer_offset": {
+                "name": "Décalage d’heure d’été"
+            },
+            "summeroffset": {
+                "name": "Décalage d’heure d’été"
+            },
+            "supervisionmode": {
+                "name": "Mode de supervision"
+            },
+            "synchropps": {
+                "name": "Synchronisation temporelle"
+            },
+            "synchroradio": {
+                "name": "Synchronisation radio"
+            },
+            "systalarmdefect": {
+                "name": "Défaut du système d’alarme"
+            },
+            "systautoprotect": {
+                "name": "Autoprotection"
+            },
+            "systbatterydefect": {
+                "name": "Défaut de pile"
+            },
+            "systopenissue": {
+                "name": "Armement de l’alarme bloqué"
+            },
+            "systsectordefect": {
+                "name": "Défaut secteur"
+            },
+            "systsupervisiondefect": {
+                "name": "Défaut supervision"
+            },
+            "systtechnicaldefect": {
+                "name": "Défaut technique"
+            },
+            "techsmokedefect": {
+                "name": "Fumée détectée"
+            },
+            "techwaterdefect": {
+                "name": "Fuite détectée"
+            },
+            "temperature": {
+                "name": "Température"
+            },
+            "tempoon": {
+                "name": "Temporisation"
+            },
+            "tempsensordefect": {
+                "name": "Défaut sonde"
+            },
+            "tempsensoropencirc": {
+                "name": "Sonde coupée"
+            },
+            "tempsensorshortcut": {
+                "name": "Sonde en court-circuit"
+            },
+            "thermic_defect": {
+                "name": "Surchauffe"
+            },
+            "thermicdefect": {
+                "name": "Surchauffe"
+            },
+            "thermiclevel": {
+                "name": "Allure de chauffage"
+            },
+            "timedelay": {
+                "name": "Temporisation"
+            },
+            "timeoncpt": {
+                "name": "Compteur de durée de fonctionnement"
+            },
+            "timezone": {
+                "name": "Fuseau horaire"
+            },
+            "total": {
+                "name": "Total"
+            },
+            "uid": {
+                "name": "Identifiant de l’appareil"
+            },
+            "unackedevent": {
+                "name": "Événements non acquittés"
+            },
+            "unitautoprotect": {
+                "name": "Autoprotection"
+            },
+            "unitbatterydefect": {
+                "name": "Défaut de pile"
+            },
+            "unitinternaldefect": {
+                "name": "Défaut interne"
+            },
+            "up_defect": {
+                "name": "Montée non autorisée"
+            },
+            "update_available": {
+                "name": "Mise à jour disponible"
+            },
+            "updefect": {
+                "name": "Montée non autorisée"
+            },
+            "usage": {
+                "name": "Usage"
+            },
+            "usemode": {
+                "name": "Mode de fonctionnement"
+            },
+            "value": {
+                "name": "Valeur"
+            },
+            "videolinkdefect": {
+                "name": "Défaut lien vidéo"
+            },
+            "waterflowreq": {
+                "name": "Débit d’eau demandé"
+            },
+            "weather": {
+                "name": "Météo"
+            },
+            "writable": {
+                "name": "Modifiable"
+            },
+            "zclversion": {
+                "name": "Version de la bibliothèque Zigbee"
+            },
+            "zone1state": {
+                "name": "État (ZONE 1)"
+            },
+            "zone2state": {
+                "name": "État (ZONE 2)"
+            },
+            "zone3state": {
+                "name": "État (ZONE 3)"
+            },
+            "zone4state": {
+                "name": "État (ZONE 4)"
+            },
+            "zone5state": {
+                "name": "État (ZONE 5)"
+            },
+            "zone6state": {
+                "name": "État (ZONE 6)"
+            },
+            "zone7state": {
+                "name": "État (ZONE 7)"
+            },
+            "zone8state": {
+                "name": "État (ZONE 8)"
+            },
+            "zonecmd": {
+                "name": "Commande de zone d’alarme"
+            },
+            "zones": {
+                "name": "Zones d’alarme"
+            }
+        },
         "event": {
-            "remote_button": {
-                "name": "Bouton {button_number}"
+            "alarmcmd": {
+                "name": "Commande d’alarme"
+            },
+            "alarmintrusion": {
+                "name": "Intrusion"
+            },
+            "alarmmode": {
+                "name": "Mode de l’alarme"
+            },
+            "alarmsos": {
+                "name": "Alarme SOS"
+            },
+            "alarmstate": {
+                "name": "État de l’alarme"
+            },
+            "alarmtechnical": {
+                "name": "Alarme technique"
             },
             "interrupter_button": {
+                "name": "Bouton {button_number}"
+            },
+            "intrusion": {
+                "name": "Intrusion"
+            },
+            "intrusiondetect": {
+                "name": "Intrusion"
+            },
+            "remote_button": {
                 "name": "Bouton {button_number}"
             }
         },
@@ -318,14 +1844,1482 @@
             }
         },
         "light": {},
-        "climate": {},
+        "climate": {
+            "thermostat": {
+                "name": "Thermostat"
+            }
+        },
         "alarm_control_panel": {},
         "lock": {},
         "weather": {},
         "update": {},
         "sensor": {
+            "absence": {
+                "name": "Mode absence"
+            },
+            "absencesetpoint": {
+                "name": "Température d’absence"
+            },
+            "absmaxcoolsetpoint": {
+                "name": "Consigne maximale de refroidissement"
+            },
+            "absmaxheatsetpoint": {
+                "name": "Consigne maximale de chauffage"
+            },
+            "absmincoolsetpoint": {
+                "name": "Consigne minimale de refroidissement"
+            },
+            "absminheatsetpoint": {
+                "name": "Consigne minimale de chauffage"
+            },
+            "ackeventcmd": {
+                "name": "Commande d’acquittement des événements"
+            },
+            "activationcpt": {
+                "name": "Nombre d’activations"
+            },
+            "activationindex": {
+                "name": "Index d’activation"
+            },
+            "alarmcmd": {
+                "name": "Commande d’alarme"
+            },
+            "alarmintrusion": {
+                "name": "Intrusion"
+            },
+            "alarmmode": {
+                "name": "Mode de l’alarme"
+            },
+            "alarmsos": {
+                "name": "Alarme SOS"
+            },
+            "alarmstate": {
+                "name": "État de l’alarme"
+            },
+            "alarmtechnical": {
+                "name": "Alarme technique"
+            },
+            "ambienttemperature": {
+                "name": "Température ambiante"
+            },
+            "anticipcoeff": {
+                "name": "Coefficient d’anticipation"
+            },
+            "anticpcoeff": {
+                "name": "Coefficient d’anticipation"
+            },
+            "antifroston": {
+                "name": "Protection hors gel"
+            },
+            "antifrostsetpoint": {
+                "name": "Température hors gel"
+            },
+            "antifrostwhenoff": {
+                "name": "Protection hors gel"
+            },
+            "antiseizurecmd": {
+                "name": "Commande d’antigrippage"
+            },
+            "antiseizureperiod": {
+                "name": "Intervalle d’antigrippage"
+            },
+            "api_mode": {
+                "name": "Mode API"
+            },
+            "area_id": {
+                "name": "Identifiant de la zone"
+            },
+            "authorization": {
+                "name": "Autorisation"
+            },
+            "batt_defect": {
+                "name": "Défaut pile"
+            },
+            "battdefect": {
+                "name": "Défaut pile"
+            },
+            "batterycmddefect": {
+                "name": "Défaut de commande de pile"
+            },
+            "battlevel": {
+                "name": "Charge de la batterie"
+            },
+            "bdd_empty": {
+                "name": "Base de données vide"
+            },
+            "bdd_status": {
+                "name": "État de la base de données"
+            },
+            "boost": {
+                "name": "Boost"
+            },
+            "booston": {
+                "name": "Boost"
+            },
+            "bootreference": {
+                "name": "Référence du chargeur de démarrage"
+            },
+            "bootversion": {
+                "name": "Version du chargeur de démarrage"
+            },
+            "brightness": {
+                "name": "Luminosité"
+            },
+            "calibrationdefect": {
+                "name": "Défaut étalonnage"
+            },
+            "clock": {
+                "name": "Heure de la passerelle"
+            },
+            "clock_source": {
+                "name": "Source de l’horloge"
+            },
+            "cmddefect": {
+                "name": "Défaut commande"
+            },
+            "comfortmode": {
+                "name": "Mode confort"
+            },
+            "config": {
+                "name": "Configuration"
+            },
+            "configsensor": {
+                "name": "Configuration du capteur"
+            },
+            "configtemp": {
+                "name": "Configuration de température"
+            },
+            "coolsetpoint": {
+                "name": "Consigne de refroidissement"
+            },
+            "current": {
+                "name": "Courant"
+            },
+            "currentpower": {
+                "name": "Puissance"
+            },
+            "currentsetpoint": {
+                "name": "Consigne de température"
+            },
+            "dailypower": {
+                "name": "Puissance journalière"
+            },
+            "delaysetpoint": {
+                "name": "Temporisation de consigne"
+            },
+            "delaythermiclevel": {
+                "name": "Temporisation de l’allure de chauffage"
+            },
+            "device_endpoint": {
+                "name": "Point de terminaison"
+            },
+            "device_id": {
+                "name": "Identifiant du point de terminaison TYDOM"
+            },
+            "device_name": {
+                "name": "Nom de l’appareil"
+            },
+            "device_type": {
+                "name": "Type d’appareil"
+            },
+            "direction": {
+                "name": "Direction"
+            },
+            "down_defect": {
+                "name": "Descente non autorisée"
+            },
+            "downdefect": {
+                "name": "Descente non autorisée"
+            },
+            "energy": {
+                "name": "Énergie"
+            },
+            "energydistrib": {
+                "name": "Répartition de consommation"
+            },
+            "energydistrib_elec_a": {
+                "name": "Courant (Électricité)"
+            },
+            "energydistrib_elec_cooling": {
+                "name": "Répartition de consommation (Électricité, Refroidissement)"
+            },
+            "energydistrib_elec_heating": {
+                "name": "Répartition de consommation (Électricité, Chauffage)"
+            },
+            "energydistrib_elec_hotwater": {
+                "name": "Répartition de consommation (Électricité, Eau chaude)"
+            },
+            "energydistrib_elec_other": {
+                "name": "Répartition de consommation (Électricité, Autres)"
+            },
+            "energydistrib_elec_outlet": {
+                "name": "Répartition de consommation (Électricité, Prises)"
+            },
+            "energydistrib_elec_total": {
+                "name": "Répartition de consommation (Électricité, Total)"
+            },
+            "energydistrib_elec_w": {
+                "name": "Puissance (Électricité)"
+            },
+            "energydistrib_gas_a": {
+                "name": "Courant (Gaz)"
+            },
+            "energydistrib_gas_cooling": {
+                "name": "Répartition de consommation (Gaz, Refroidissement)"
+            },
+            "energydistrib_gas_heating": {
+                "name": "Répartition de consommation (Gaz, Chauffage)"
+            },
+            "energydistrib_gas_hotwater": {
+                "name": "Répartition de consommation (Gaz, Eau chaude)"
+            },
+            "energydistrib_gas_other": {
+                "name": "Répartition de consommation (Gaz, Autres)"
+            },
+            "energydistrib_gas_outlet": {
+                "name": "Répartition de consommation (Gaz, Prises)"
+            },
+            "energydistrib_gas_total": {
+                "name": "Répartition de consommation (Gaz, Total)"
+            },
+            "energydistrib_gas_w": {
+                "name": "Puissance (Gaz)"
+            },
+            "energydistrib_gaz_a": {
+                "name": "Courant (Gaz)"
+            },
+            "energydistrib_gaz_cooling": {
+                "name": "Répartition de consommation (Gaz, Refroidissement)"
+            },
+            "energydistrib_gaz_heating": {
+                "name": "Répartition de consommation (Gaz, Chauffage)"
+            },
+            "energydistrib_gaz_hotwater": {
+                "name": "Répartition de consommation (Gaz, Eau chaude)"
+            },
+            "energydistrib_gaz_other": {
+                "name": "Répartition de consommation (Gaz, Autres)"
+            },
+            "energydistrib_gaz_outlet": {
+                "name": "Répartition de consommation (Gaz, Prises)"
+            },
+            "energydistrib_gaz_total": {
+                "name": "Répartition de consommation (Gaz, Total)"
+            },
+            "energydistrib_gaz_w": {
+                "name": "Puissance (Gaz)"
+            },
+            "energydistrib_water_a": {
+                "name": "Courant (Eau)"
+            },
+            "energydistrib_water_cooling": {
+                "name": "Répartition de consommation (Eau, Refroidissement)"
+            },
+            "energydistrib_water_heating": {
+                "name": "Répartition de consommation (Eau, Chauffage)"
+            },
+            "energydistrib_water_hotwater": {
+                "name": "Répartition de consommation (Eau, Eau chaude)"
+            },
+            "energydistrib_water_other": {
+                "name": "Répartition de consommation (Eau, Autres)"
+            },
+            "energydistrib_water_outlet": {
+                "name": "Répartition de consommation (Eau, Prises)"
+            },
+            "energydistrib_water_total": {
+                "name": "Répartition de consommation (Eau, Total)"
+            },
+            "energydistrib_water_w": {
+                "name": "Puissance (Eau)"
+            },
+            "energyhisto": {
+                "name": "Historique de consommation"
+            },
+            "energyhisto_elec_a": {
+                "name": "Courant (Électricité)"
+            },
+            "energyhisto_elec_cooling": {
+                "name": "Historique de consommation (Électricité, Refroidissement)"
+            },
+            "energyhisto_elec_heating": {
+                "name": "Historique de consommation (Électricité, Chauffage)"
+            },
+            "energyhisto_elec_hotwater": {
+                "name": "Historique de consommation (Électricité, Eau chaude)"
+            },
+            "energyhisto_elec_other": {
+                "name": "Historique de consommation (Électricité, Autres)"
+            },
+            "energyhisto_elec_outlet": {
+                "name": "Historique de consommation (Électricité, Prises)"
+            },
+            "energyhisto_elec_total": {
+                "name": "Historique de consommation (Électricité, Total)"
+            },
+            "energyhisto_elec_w": {
+                "name": "Puissance (Électricité)"
+            },
+            "energyhisto_gas_a": {
+                "name": "Courant (Gaz)"
+            },
+            "energyhisto_gas_cooling": {
+                "name": "Historique de consommation (Gaz, Refroidissement)"
+            },
+            "energyhisto_gas_heating": {
+                "name": "Historique de consommation (Gaz, Chauffage)"
+            },
+            "energyhisto_gas_hotwater": {
+                "name": "Historique de consommation (Gaz, Eau chaude)"
+            },
+            "energyhisto_gas_other": {
+                "name": "Historique de consommation (Gaz, Autres)"
+            },
+            "energyhisto_gas_outlet": {
+                "name": "Historique de consommation (Gaz, Prises)"
+            },
+            "energyhisto_gas_total": {
+                "name": "Historique de consommation (Gaz, Total)"
+            },
+            "energyhisto_gas_w": {
+                "name": "Puissance (Gaz)"
+            },
+            "energyhisto_gaz_a": {
+                "name": "Courant (Gaz)"
+            },
+            "energyhisto_gaz_cooling": {
+                "name": "Historique de consommation (Gaz, Refroidissement)"
+            },
+            "energyhisto_gaz_heating": {
+                "name": "Historique de consommation (Gaz, Chauffage)"
+            },
+            "energyhisto_gaz_hotwater": {
+                "name": "Historique de consommation (Gaz, Eau chaude)"
+            },
+            "energyhisto_gaz_other": {
+                "name": "Historique de consommation (Gaz, Autres)"
+            },
+            "energyhisto_gaz_outlet": {
+                "name": "Historique de consommation (Gaz, Prises)"
+            },
+            "energyhisto_gaz_total": {
+                "name": "Historique de consommation (Gaz, Total)"
+            },
+            "energyhisto_gaz_w": {
+                "name": "Puissance (Gaz)"
+            },
+            "energyhisto_water_a": {
+                "name": "Courant (Eau)"
+            },
+            "energyhisto_water_cooling": {
+                "name": "Historique de consommation (Eau, Refroidissement)"
+            },
+            "energyhisto_water_heating": {
+                "name": "Historique de consommation (Eau, Chauffage)"
+            },
+            "energyhisto_water_hotwater": {
+                "name": "Historique de consommation (Eau, Eau chaude)"
+            },
+            "energyhisto_water_other": {
+                "name": "Historique de consommation (Eau, Autres)"
+            },
+            "energyhisto_water_outlet": {
+                "name": "Historique de consommation (Eau, Prises)"
+            },
+            "energyhisto_water_total": {
+                "name": "Historique de consommation (Eau, Total)"
+            },
+            "energyhisto_water_w": {
+                "name": "Puissance (Eau)"
+            },
+            "energyindex": {
+                "name": "Index de consommation"
+            },
+            "energyindex_elec_a": {
+                "name": "Courant (Électricité)"
+            },
+            "energyindex_elec_cooling": {
+                "name": "Index de consommation (Électricité, Refroidissement)"
+            },
+            "energyindex_elec_heating": {
+                "name": "Index de consommation (Électricité, Chauffage)"
+            },
+            "energyindex_elec_hotwater": {
+                "name": "Index de consommation (Électricité, Eau chaude)"
+            },
+            "energyindex_elec_other": {
+                "name": "Index de consommation (Électricité, Autres)"
+            },
+            "energyindex_elec_outlet": {
+                "name": "Index de consommation (Électricité, Prises)"
+            },
+            "energyindex_elec_total": {
+                "name": "Index de consommation (Électricité, Total)"
+            },
+            "energyindex_elec_w": {
+                "name": "Puissance (Électricité)"
+            },
+            "energyindex_gas_a": {
+                "name": "Courant (Gaz)"
+            },
+            "energyindex_gas_cooling": {
+                "name": "Index de consommation (Gaz, Refroidissement)"
+            },
+            "energyindex_gas_heating": {
+                "name": "Index de consommation (Gaz, Chauffage)"
+            },
+            "energyindex_gas_hotwater": {
+                "name": "Index de consommation (Gaz, Eau chaude)"
+            },
+            "energyindex_gas_other": {
+                "name": "Index de consommation (Gaz, Autres)"
+            },
+            "energyindex_gas_outlet": {
+                "name": "Index de consommation (Gaz, Prises)"
+            },
+            "energyindex_gas_total": {
+                "name": "Index de consommation (Gaz, Total)"
+            },
+            "energyindex_gas_w": {
+                "name": "Puissance (Gaz)"
+            },
+            "energyindex_gaz_a": {
+                "name": "Courant (Gaz)"
+            },
+            "energyindex_gaz_cooling": {
+                "name": "Index de consommation (Gaz, Refroidissement)"
+            },
+            "energyindex_gaz_heating": {
+                "name": "Index de consommation (Gaz, Chauffage)"
+            },
+            "energyindex_gaz_hotwater": {
+                "name": "Index de consommation (Gaz, Eau chaude)"
+            },
+            "energyindex_gaz_other": {
+                "name": "Index de consommation (Gaz, Autres)"
+            },
+            "energyindex_gaz_outlet": {
+                "name": "Index de consommation (Gaz, Prises)"
+            },
+            "energyindex_gaz_total": {
+                "name": "Index de consommation (Gaz, Total)"
+            },
+            "energyindex_gaz_w": {
+                "name": "Puissance (Gaz)"
+            },
+            "energyindex_water_a": {
+                "name": "Courant (Eau)"
+            },
+            "energyindex_water_cooling": {
+                "name": "Index de consommation (Eau, Refroidissement)"
+            },
+            "energyindex_water_heating": {
+                "name": "Index de consommation (Eau, Chauffage)"
+            },
+            "energyindex_water_hotwater": {
+                "name": "Index de consommation (Eau, Eau chaude)"
+            },
+            "energyindex_water_other": {
+                "name": "Index de consommation (Eau, Autres)"
+            },
+            "energyindex_water_outlet": {
+                "name": "Index de consommation (Eau, Prises)"
+            },
+            "energyindex_water_total": {
+                "name": "Index de consommation (Eau, Total)"
+            },
+            "energyindex_water_w": {
+                "name": "Puissance (Eau)"
+            },
+            "energyindexcoolwatt": {
+                "name": "Énergie (Refroidissement)"
+            },
+            "energyindexdhwwatt": {
+                "name": "Énergie (Eau chaude)"
+            },
+            "energyindexecswatt": {
+                "name": "Énergie (Eau chaude)"
+            },
+            "energyindexheatgas": {
+                "name": "Index de consommation (Gaz, Chauffage)"
+            },
+            "energyindexheatwatt": {
+                "name": "Énergie (Chauffage)"
+            },
+            "energyindexti1": {
+                "name": "Index de consommation (TI1)"
+            },
+            "energyindexti1watt": {
+                "name": "Énergie (TI1)"
+            },
+            "energyindextotelecwatt": {
+                "name": "Énergie (Électricité)"
+            },
+            "energyinstant": {
+                "name": "Consommation instantanée"
+            },
+            "energyinstant_elec_a": {
+                "name": "Courant (Électricité)"
+            },
+            "energyinstant_elec_a_max": {
+                "name": "Courant (Électricité) (maximum)"
+            },
+            "energyinstant_elec_a_min": {
+                "name": "Courant (Électricité) (minimum)"
+            },
+            "energyinstant_elec_cooling": {
+                "name": "Consommation instantanée (Électricité, Refroidissement)"
+            },
+            "energyinstant_elec_cooling_max": {
+                "name": "Consommation instantanée (Électricité, Refroidissement) (maximum)"
+            },
+            "energyinstant_elec_cooling_min": {
+                "name": "Consommation instantanée (Électricité, Refroidissement) (minimum)"
+            },
+            "energyinstant_elec_heating": {
+                "name": "Consommation instantanée (Électricité, Chauffage)"
+            },
+            "energyinstant_elec_heating_max": {
+                "name": "Consommation instantanée (Électricité, Chauffage) (maximum)"
+            },
+            "energyinstant_elec_heating_min": {
+                "name": "Consommation instantanée (Électricité, Chauffage) (minimum)"
+            },
+            "energyinstant_elec_hotwater": {
+                "name": "Consommation instantanée (Électricité, Eau chaude)"
+            },
+            "energyinstant_elec_hotwater_max": {
+                "name": "Consommation instantanée (Électricité, Eau chaude) (maximum)"
+            },
+            "energyinstant_elec_hotwater_min": {
+                "name": "Consommation instantanée (Électricité, Eau chaude) (minimum)"
+            },
+            "energyinstant_elec_other": {
+                "name": "Consommation instantanée (Électricité, Autres)"
+            },
+            "energyinstant_elec_other_max": {
+                "name": "Consommation instantanée (Électricité, Autres) (maximum)"
+            },
+            "energyinstant_elec_other_min": {
+                "name": "Consommation instantanée (Électricité, Autres) (minimum)"
+            },
+            "energyinstant_elec_outlet": {
+                "name": "Consommation instantanée (Électricité, Prises)"
+            },
+            "energyinstant_elec_outlet_max": {
+                "name": "Consommation instantanée (Électricité, Prises) (maximum)"
+            },
+            "energyinstant_elec_outlet_min": {
+                "name": "Consommation instantanée (Électricité, Prises) (minimum)"
+            },
+            "energyinstant_elec_total": {
+                "name": "Consommation instantanée (Électricité, Total)"
+            },
+            "energyinstant_elec_total_max": {
+                "name": "Consommation instantanée (Électricité, Total) (maximum)"
+            },
+            "energyinstant_elec_total_min": {
+                "name": "Consommation instantanée (Électricité, Total) (minimum)"
+            },
+            "energyinstant_elec_w": {
+                "name": "Puissance (Électricité)"
+            },
+            "energyinstant_elec_w_max": {
+                "name": "Puissance (Électricité) (maximum)"
+            },
+            "energyinstant_elec_w_min": {
+                "name": "Puissance (Électricité) (minimum)"
+            },
+            "energyinstant_gas_a": {
+                "name": "Courant (Gaz)"
+            },
+            "energyinstant_gas_a_max": {
+                "name": "Courant (Gaz) (maximum)"
+            },
+            "energyinstant_gas_a_min": {
+                "name": "Courant (Gaz) (minimum)"
+            },
+            "energyinstant_gas_cooling": {
+                "name": "Consommation instantanée (Gaz, Refroidissement)"
+            },
+            "energyinstant_gas_cooling_max": {
+                "name": "Consommation instantanée (Gaz, Refroidissement) (maximum)"
+            },
+            "energyinstant_gas_cooling_min": {
+                "name": "Consommation instantanée (Gaz, Refroidissement) (minimum)"
+            },
+            "energyinstant_gas_heating": {
+                "name": "Consommation instantanée (Gaz, Chauffage)"
+            },
+            "energyinstant_gas_heating_max": {
+                "name": "Consommation instantanée (Gaz, Chauffage) (maximum)"
+            },
+            "energyinstant_gas_heating_min": {
+                "name": "Consommation instantanée (Gaz, Chauffage) (minimum)"
+            },
+            "energyinstant_gas_hotwater": {
+                "name": "Consommation instantanée (Gaz, Eau chaude)"
+            },
+            "energyinstant_gas_hotwater_max": {
+                "name": "Consommation instantanée (Gaz, Eau chaude) (maximum)"
+            },
+            "energyinstant_gas_hotwater_min": {
+                "name": "Consommation instantanée (Gaz, Eau chaude) (minimum)"
+            },
+            "energyinstant_gas_other": {
+                "name": "Consommation instantanée (Gaz, Autres)"
+            },
+            "energyinstant_gas_other_max": {
+                "name": "Consommation instantanée (Gaz, Autres) (maximum)"
+            },
+            "energyinstant_gas_other_min": {
+                "name": "Consommation instantanée (Gaz, Autres) (minimum)"
+            },
+            "energyinstant_gas_outlet": {
+                "name": "Consommation instantanée (Gaz, Prises)"
+            },
+            "energyinstant_gas_outlet_max": {
+                "name": "Consommation instantanée (Gaz, Prises) (maximum)"
+            },
+            "energyinstant_gas_outlet_min": {
+                "name": "Consommation instantanée (Gaz, Prises) (minimum)"
+            },
+            "energyinstant_gas_total": {
+                "name": "Consommation instantanée (Gaz, Total)"
+            },
+            "energyinstant_gas_total_max": {
+                "name": "Consommation instantanée (Gaz, Total) (maximum)"
+            },
+            "energyinstant_gas_total_min": {
+                "name": "Consommation instantanée (Gaz, Total) (minimum)"
+            },
+            "energyinstant_gas_w": {
+                "name": "Puissance (Gaz)"
+            },
+            "energyinstant_gas_w_max": {
+                "name": "Puissance (Gaz) (maximum)"
+            },
+            "energyinstant_gas_w_min": {
+                "name": "Puissance (Gaz) (minimum)"
+            },
+            "energyinstant_gaz_a": {
+                "name": "Courant (Gaz)"
+            },
+            "energyinstant_gaz_a_max": {
+                "name": "Courant (Gaz) (maximum)"
+            },
+            "energyinstant_gaz_a_min": {
+                "name": "Courant (Gaz) (minimum)"
+            },
+            "energyinstant_gaz_cooling": {
+                "name": "Consommation instantanée (Gaz, Refroidissement)"
+            },
+            "energyinstant_gaz_cooling_max": {
+                "name": "Consommation instantanée (Gaz, Refroidissement) (maximum)"
+            },
+            "energyinstant_gaz_cooling_min": {
+                "name": "Consommation instantanée (Gaz, Refroidissement) (minimum)"
+            },
+            "energyinstant_gaz_heating": {
+                "name": "Consommation instantanée (Gaz, Chauffage)"
+            },
+            "energyinstant_gaz_heating_max": {
+                "name": "Consommation instantanée (Gaz, Chauffage) (maximum)"
+            },
+            "energyinstant_gaz_heating_min": {
+                "name": "Consommation instantanée (Gaz, Chauffage) (minimum)"
+            },
+            "energyinstant_gaz_hotwater": {
+                "name": "Consommation instantanée (Gaz, Eau chaude)"
+            },
+            "energyinstant_gaz_hotwater_max": {
+                "name": "Consommation instantanée (Gaz, Eau chaude) (maximum)"
+            },
+            "energyinstant_gaz_hotwater_min": {
+                "name": "Consommation instantanée (Gaz, Eau chaude) (minimum)"
+            },
+            "energyinstant_gaz_other": {
+                "name": "Consommation instantanée (Gaz, Autres)"
+            },
+            "energyinstant_gaz_other_max": {
+                "name": "Consommation instantanée (Gaz, Autres) (maximum)"
+            },
+            "energyinstant_gaz_other_min": {
+                "name": "Consommation instantanée (Gaz, Autres) (minimum)"
+            },
+            "energyinstant_gaz_outlet": {
+                "name": "Consommation instantanée (Gaz, Prises)"
+            },
+            "energyinstant_gaz_outlet_max": {
+                "name": "Consommation instantanée (Gaz, Prises) (maximum)"
+            },
+            "energyinstant_gaz_outlet_min": {
+                "name": "Consommation instantanée (Gaz, Prises) (minimum)"
+            },
+            "energyinstant_gaz_total": {
+                "name": "Consommation instantanée (Gaz, Total)"
+            },
+            "energyinstant_gaz_total_max": {
+                "name": "Consommation instantanée (Gaz, Total) (maximum)"
+            },
+            "energyinstant_gaz_total_min": {
+                "name": "Consommation instantanée (Gaz, Total) (minimum)"
+            },
+            "energyinstant_gaz_w": {
+                "name": "Puissance (Gaz)"
+            },
+            "energyinstant_gaz_w_max": {
+                "name": "Puissance (Gaz) (maximum)"
+            },
+            "energyinstant_gaz_w_min": {
+                "name": "Puissance (Gaz) (minimum)"
+            },
+            "energyinstant_max": {
+                "name": "Consommation instantanée (maximum)"
+            },
+            "energyinstant_min": {
+                "name": "Consommation instantanée (minimum)"
+            },
+            "energyinstant_water_a": {
+                "name": "Courant (Eau)"
+            },
+            "energyinstant_water_a_max": {
+                "name": "Courant (Eau) (maximum)"
+            },
+            "energyinstant_water_a_min": {
+                "name": "Courant (Eau) (minimum)"
+            },
+            "energyinstant_water_cooling": {
+                "name": "Consommation instantanée (Eau, Refroidissement)"
+            },
+            "energyinstant_water_cooling_max": {
+                "name": "Consommation instantanée (Eau, Refroidissement) (maximum)"
+            },
+            "energyinstant_water_cooling_min": {
+                "name": "Consommation instantanée (Eau, Refroidissement) (minimum)"
+            },
+            "energyinstant_water_heating": {
+                "name": "Consommation instantanée (Eau, Chauffage)"
+            },
+            "energyinstant_water_heating_max": {
+                "name": "Consommation instantanée (Eau, Chauffage) (maximum)"
+            },
+            "energyinstant_water_heating_min": {
+                "name": "Consommation instantanée (Eau, Chauffage) (minimum)"
+            },
+            "energyinstant_water_hotwater": {
+                "name": "Consommation instantanée (Eau, Eau chaude)"
+            },
+            "energyinstant_water_hotwater_max": {
+                "name": "Consommation instantanée (Eau, Eau chaude) (maximum)"
+            },
+            "energyinstant_water_hotwater_min": {
+                "name": "Consommation instantanée (Eau, Eau chaude) (minimum)"
+            },
+            "energyinstant_water_other": {
+                "name": "Consommation instantanée (Eau, Autres)"
+            },
+            "energyinstant_water_other_max": {
+                "name": "Consommation instantanée (Eau, Autres) (maximum)"
+            },
+            "energyinstant_water_other_min": {
+                "name": "Consommation instantanée (Eau, Autres) (minimum)"
+            },
+            "energyinstant_water_outlet": {
+                "name": "Consommation instantanée (Eau, Prises)"
+            },
+            "energyinstant_water_outlet_max": {
+                "name": "Consommation instantanée (Eau, Prises) (maximum)"
+            },
+            "energyinstant_water_outlet_min": {
+                "name": "Consommation instantanée (Eau, Prises) (minimum)"
+            },
+            "energyinstant_water_total": {
+                "name": "Consommation instantanée (Eau, Total)"
+            },
+            "energyinstant_water_total_max": {
+                "name": "Consommation instantanée (Eau, Total) (maximum)"
+            },
+            "energyinstant_water_total_min": {
+                "name": "Consommation instantanée (Eau, Total) (minimum)"
+            },
+            "energyinstant_water_w": {
+                "name": "Puissance (Eau)"
+            },
+            "energyinstant_water_w_max": {
+                "name": "Puissance (Eau) (maximum)"
+            },
+            "energyinstant_water_w_min": {
+                "name": "Puissance (Eau) (minimum)"
+            },
+            "energyinstantcooli": {
+                "name": "Courant (Refroidissement)"
+            },
+            "energyinstantcooli_max": {
+                "name": "Courant (Refroidissement) (maximum)"
+            },
+            "energyinstantcooli_min": {
+                "name": "Courant (Refroidissement) (minimum)"
+            },
+            "energyinstantcoolp": {
+                "name": "Puissance (Refroidissement)"
+            },
+            "energyinstantcoolp_max": {
+                "name": "Puissance (Refroidissement) (maximum)"
+            },
+            "energyinstantcoolp_min": {
+                "name": "Puissance (Refroidissement) (minimum)"
+            },
+            "energyinstantdhwi": {
+                "name": "Courant (Eau chaude)"
+            },
+            "energyinstantdhwi_max": {
+                "name": "Courant (Eau chaude) (maximum)"
+            },
+            "energyinstantdhwi_min": {
+                "name": "Courant (Eau chaude) (minimum)"
+            },
+            "energyinstantdhwp": {
+                "name": "Puissance (Eau chaude)"
+            },
+            "energyinstantdhwp_max": {
+                "name": "Puissance (Eau chaude) (maximum)"
+            },
+            "energyinstantdhwp_min": {
+                "name": "Puissance (Eau chaude) (minimum)"
+            },
+            "energyinstantecsi": {
+                "name": "Courant (Eau chaude)"
+            },
+            "energyinstantecsi_max": {
+                "name": "Courant (Eau chaude) (maximum)"
+            },
+            "energyinstantecsi_min": {
+                "name": "Courant (Eau chaude) (minimum)"
+            },
+            "energyinstantecsp": {
+                "name": "Puissance (Eau chaude)"
+            },
+            "energyinstantecsp_max": {
+                "name": "Puissance (Eau chaude) (maximum)"
+            },
+            "energyinstantecsp_min": {
+                "name": "Puissance (Eau chaude) (minimum)"
+            },
+            "energyinstantheati": {
+                "name": "Courant (Chauffage)"
+            },
+            "energyinstantheati_max": {
+                "name": "Courant (Chauffage) (maximum)"
+            },
+            "energyinstantheati_min": {
+                "name": "Courant (Chauffage) (minimum)"
+            },
+            "energyinstantheatp": {
+                "name": "Puissance (Chauffage)"
+            },
+            "energyinstantheatp_max": {
+                "name": "Puissance (Chauffage) (maximum)"
+            },
+            "energyinstantheatp_min": {
+                "name": "Puissance (Chauffage) (minimum)"
+            },
+            "energyinstantti1i": {
+                "name": "Courant (TI1)"
+            },
+            "energyinstantti1i_max": {
+                "name": "Courant (TI1) (maximum)"
+            },
+            "energyinstantti1i_min": {
+                "name": "Courant (TI1) (minimum)"
+            },
+            "energyinstantti1p": {
+                "name": "Puissance (TI1)"
+            },
+            "energyinstantti1p_max": {
+                "name": "Puissance (TI1) (maximum)"
+            },
+            "energyinstantti1p_min": {
+                "name": "Puissance (TI1) (minimum)"
+            },
+            "energyinstanttotelec": {
+                "name": "Courant (Électricité)"
+            },
+            "energyinstanttotelec_max": {
+                "name": "Courant (Électricité) (maximum)"
+            },
+            "energyinstanttotelec_min": {
+                "name": "Courant (Électricité) (minimum)"
+            },
+            "energyinstanttotelec_p": {
+                "name": "Puissance (Électricité)"
+            },
+            "energyinstanttotelec_p_max": {
+                "name": "Puissance (Électricité) (maximum)"
+            },
+            "energyinstanttotelec_p_min": {
+                "name": "Puissance (Électricité) (minimum)"
+            },
+            "energyinstanttoteleci": {
+                "name": "Courant (Électricité)"
+            },
+            "energyinstanttoteleci_max": {
+                "name": "Courant (Électricité) (maximum)"
+            },
+            "energyinstanttoteleci_min": {
+                "name": "Courant (Électricité) (minimum)"
+            },
+            "energyinstanttotelecp": {
+                "name": "Puissance (Électricité)"
+            },
+            "energyinstanttotelecp_max": {
+                "name": "Puissance (Électricité) (maximum)"
+            },
+            "energyinstanttotelecp_min": {
+                "name": "Puissance (Électricité) (minimum)"
+            },
+            "energyscalecooli": {
+                "name": "Échelle — Courant (Refroidissement)"
+            },
+            "energyscalecooli_max": {
+                "name": "Échelle — Courant (Refroidissement) (maximum)"
+            },
+            "energyscalecooli_min": {
+                "name": "Échelle — Courant (Refroidissement) (minimum)"
+            },
+            "energyscalecoolp": {
+                "name": "Échelle — Puissance (Refroidissement)"
+            },
+            "energyscalecoolp_max": {
+                "name": "Échelle — Puissance (Refroidissement) (maximum)"
+            },
+            "energyscalecoolp_min": {
+                "name": "Échelle — Puissance (Refroidissement) (minimum)"
+            },
+            "energyscaledhwi": {
+                "name": "Échelle — Courant (Eau chaude)"
+            },
+            "energyscaledhwi_max": {
+                "name": "Échelle — Courant (Eau chaude) (maximum)"
+            },
+            "energyscaledhwi_min": {
+                "name": "Échelle — Courant (Eau chaude) (minimum)"
+            },
+            "energyscaledhwp": {
+                "name": "Échelle — Puissance (Eau chaude)"
+            },
+            "energyscaledhwp_max": {
+                "name": "Échelle — Puissance (Eau chaude) (maximum)"
+            },
+            "energyscaledhwp_min": {
+                "name": "Échelle — Puissance (Eau chaude) (minimum)"
+            },
+            "energyscaleecsi": {
+                "name": "Échelle — Courant (Eau chaude)"
+            },
+            "energyscaleecsi_max": {
+                "name": "Échelle — Courant (Eau chaude) (maximum)"
+            },
+            "energyscaleecsi_min": {
+                "name": "Échelle — Courant (Eau chaude) (minimum)"
+            },
+            "energyscaleecsp": {
+                "name": "Échelle — Puissance (Eau chaude)"
+            },
+            "energyscaleecsp_max": {
+                "name": "Échelle — Puissance (Eau chaude) (maximum)"
+            },
+            "energyscaleecsp_min": {
+                "name": "Échelle — Puissance (Eau chaude) (minimum)"
+            },
+            "energyscaleheati": {
+                "name": "Échelle — Courant (Chauffage)"
+            },
+            "energyscaleheati_max": {
+                "name": "Échelle — Courant (Chauffage) (maximum)"
+            },
+            "energyscaleheati_min": {
+                "name": "Échelle — Courant (Chauffage) (minimum)"
+            },
+            "energyscaleheatp": {
+                "name": "Échelle — Puissance (Chauffage)"
+            },
+            "energyscaleheatp_max": {
+                "name": "Échelle — Puissance (Chauffage) (maximum)"
+            },
+            "energyscaleheatp_min": {
+                "name": "Échelle — Puissance (Chauffage) (minimum)"
+            },
+            "energyscaleti1i": {
+                "name": "Échelle — Courant (TI1)"
+            },
+            "energyscaleti1i_max": {
+                "name": "Échelle — Courant (TI1) (maximum)"
+            },
+            "energyscaleti1i_min": {
+                "name": "Échelle — Courant (TI1) (minimum)"
+            },
+            "energyscaleti1p": {
+                "name": "Échelle — Puissance (TI1)"
+            },
+            "energyscaleti1p_max": {
+                "name": "Échelle — Puissance (TI1) (maximum)"
+            },
+            "energyscaleti1p_min": {
+                "name": "Échelle — Puissance (TI1) (minimum)"
+            },
+            "energyscaletotelec": {
+                "name": "Échelle — Courant (Électricité)"
+            },
+            "energyscaletotelec_max": {
+                "name": "Échelle — Courant (Électricité) (maximum)"
+            },
+            "energyscaletotelec_min": {
+                "name": "Échelle — Courant (Électricité) (minimum)"
+            },
+            "energyscaletotelec_p": {
+                "name": "Échelle — Puissance (Électricité)"
+            },
+            "energyscaletotelec_p_max": {
+                "name": "Échelle — Puissance (Électricité) (maximum)"
+            },
+            "energyscaletotelec_p_min": {
+                "name": "Échelle — Puissance (Électricité) (minimum)"
+            },
+            "energyscaletoteleci": {
+                "name": "Échelle — Courant (Électricité)"
+            },
+            "energyscaletoteleci_max": {
+                "name": "Échelle — Courant (Électricité) (maximum)"
+            },
+            "energyscaletoteleci_min": {
+                "name": "Échelle — Courant (Électricité) (minimum)"
+            },
+            "energyscaletotelecp": {
+                "name": "Échelle — Puissance (Électricité)"
+            },
+            "energyscaletotelecp_max": {
+                "name": "Échelle — Puissance (Électricité) (maximum)"
+            },
+            "energyscaletotelecp_min": {
+                "name": "Échelle — Puissance (Électricité) (minimum)"
+            },
+            "energytotindexwatt": {
+                "name": "Index de consommation (Électricité)"
+            },
+            "gsmlevel": {
+                "name": "Niveau du signal mobile"
+            },
+            "heatsetpoint": {
+                "name": "Consigne de chauffage"
+            },
+            "histo": {
+                "name": "Historique"
+            },
+            "hvacmode": {
+                "name": "Mode de chauffage et refroidissement"
+            },
+            "hygroin": {
+                "name": "Humidité"
+            },
+            "inactiveproduct": {
+                "name": "Produit inactif"
+            },
+            "index": {
+                "name": "Index"
+            },
+            "indexstart": {
+                "name": "Index de départ"
+            },
+            "indextimeon": {
+                "name": "Index de durée de fonctionnement"
+            },
+            "intrusion": {
+                "name": "Intrusion"
+            },
+            "intrusiondetect": {
+                "name": "Intrusion"
+            },
+            "irv1state": {
+                "name": "État (IRV 1)"
+            },
+            "irv2state": {
+                "name": "État (IRV 2)"
+            },
+            "irv3state": {
+                "name": "État (IRV 3)"
+            },
+            "irv4state": {
+                "name": "État (IRV 4)"
+            },
+            "irv5state": {
+                "name": "État (IRV 5)"
+            },
+            "irv6state": {
+                "name": "État (IRV 6)"
+            },
+            "irv7state": {
+                "name": "État (IRV 7)"
+            },
+            "irv8state": {
+                "name": "État (IRV 8)"
+            },
+            "irvcmd": {
+                "name": "Commande IRV"
+            },
+            "irvid": {
+                "name": "Identifiant IRV"
+            },
+            "isreference": {
+                "name": "Appareil de référence"
+            },
+            "jobs": {
+                "name": "Tâches internes"
+            },
+            "jobsmp": {
+                "name": "Tâches du module principal"
+            },
+            "jobsrm": {
+                "name": "Tâches du module radio"
+            },
+            "kerneldownloadforced": {
+                "name": "Téléchargement forcé du micrologiciel"
+            },
+            "kerneluptodate": {
+                "name": "Micrologiciel à jour"
+            },
+            "keyreference": {
+                "name": "Référence du module radio"
+            },
+            "keyversionhw": {
+                "name": "Version matérielle radio"
+            },
+            "keyversionstack": {
+                "name": "Version de la pile radio"
+            },
+            "keyversionsw": {
+                "name": "Version logicielle radio"
+            },
+            "label": {
+                "name": "Libellé"
+            },
+            "last_usage": {
+                "name": "Usage"
+            },
+            "latitude": {
+                "name": "Latitude"
+            },
+            "level": {
+                "name": "Niveau"
+            },
+            "levelcmd": {
+                "name": "Commande de niveau"
+            },
+            "lightpower": {
+                "name": "Irradiance solaire"
+            },
+            "livecheckrunning": {
+                "name": "Vérification en cours"
+            },
+            "loaddefect": {
+                "name": "Défaut charge"
+            },
+            "loadsheddingon": {
+                "name": "Délestage"
+            },
+            "localisation": {
+                "name": "Localisation"
+            },
+            "localmode": {
+                "name": "Mode de fonctionnement local"
+            },
+            "localsetpoint": {
+                "name": "Consigne locale"
+            },
+            "localsetpremainingtimestr": {
+                "name": "Durée restante de la consigne locale"
+            },
+            "longitude": {
+                "name": "Longitude"
+            },
+            "mac": {
+                "name": "Adresse MAC"
+            },
+            "mainid": {
+                "name": "Identifiant du module principal"
+            },
+            "mainreference": {
+                "name": "Référence du module principal"
+            },
+            "maintenance": {
+                "name": "Maintenance"
+            },
+            "maintenanceneeded": {
+                "name": "Maintenance nécessaire"
+            },
+            "mainversionhw": {
+                "name": "Version matérielle principale"
+            },
+            "mainversionsw": {
+                "name": "Version logicielle principale"
+            },
+            "manufacturer": {
+                "name": "Fabricant"
+            },
+            "maxcoolsetpoint": {
+                "name": "Consigne maximale de refroidissement"
+            },
+            "maxdailyouttemp": {
+                "name": "Température extérieure maximale du jour"
+            },
+            "maxheatsetpoint": {
+                "name": "Consigne maximale de chauffage"
+            },
+            "maxsetpoint": {
+                "name": "Consigne maximale de température"
+            },
+            "mincoolsetpoint": {
+                "name": "Consigne minimale de refroidissement"
+            },
+            "minheatsetpoint": {
+                "name": "Consigne minimale de chauffage"
+            },
+            "minsetpoint": {
+                "name": "Consigne minimale de température"
+            },
+            "modeasso": {
+                "name": "Mode association"
+            },
+            "modelidentifier": {
+                "name": "Identifiant du modèle"
+            },
+            "nbelem": {
+                "name": "Nombre d’éléments"
+            },
+            "nbrfactuators": {
+                "name": "Nombre d’actionneurs radio"
+            },
+            "networkdefect": {
+                "name": "Défaut réseau"
+            },
+            "obstacle_defect": {
+                "name": "Obstacle détecté"
+            },
+            "obstacledefect": {
+                "name": "Obstacle détecté"
+            },
+            "ondusk": {
+                "name": "Activation au crépuscule"
+            },
+            "onfavpos": {
+                "name": "Activation de la position favorite"
+            },
+            "onpresencedetected": {
+                "name": "Activation sur présence"
+            },
+            "openingdetected": {
+                "name": "Ouverture détectée"
+            },
+            "openstate": {
+                "name": "État de l’ouverture"
+            },
+            "outtemperature": {
+                "name": "Température extérieure"
+            },
+            "overrideremainingtime": {
+                "name": "Durée restante de la dérogation"
+            },
+            "overridesetpoint": {
+                "name": "Consigne de dérogation"
+            },
+            "part": {
+                "name": "Partition d’alarme"
+            },
+            "part1state": {
+                "name": "État (PART 1)"
+            },
+            "part2state": {
+                "name": "État (PART 2)"
+            },
+            "part3state": {
+                "name": "État (PART 3)"
+            },
+            "part4state": {
+                "name": "État (PART 4)"
+            },
+            "part5state": {
+                "name": "État (PART 5)"
+            },
+            "part6state": {
+                "name": "État (PART 6)"
+            },
+            "part7state": {
+                "name": "État (PART 7)"
+            },
+            "part8state": {
+                "name": "État (PART 8)"
+            },
+            "partcmd": {
+                "name": "Commande de partition d’alarme"
+            },
+            "password_empty": {
+                "name": "Mot de passe vide"
+            },
             "pending_alarm_events": {
-                "name": "Évènements d'alarme en attente"
+                "name": "Événements d’alarme en attente"
+            },
+            "period": {
+                "name": "Période"
+            },
+            "periodoffset": {
+                "name": "Décalage de période"
+            },
+            "permissions": {
+                "name": "Autorisations"
+            },
+            "plt_registered": {
+                "name": "Plateforme enregistrée"
+            },
+            "position": {
+                "name": "Position"
+            },
+            "positioncmd": {
+                "name": "Commande de position"
+            },
+            "power": {
+                "name": "Puissance"
+            },
+            "prealarm": {
+                "name": "Préalarme"
+            },
+            "presencedetected": {
+                "name": "Présence détectée"
+            },
+            "productconf": {
+                "name": "Configuration"
+            },
+            "productiondefect": {
+                "name": "Défaut de production"
+            },
+            "productname": {
+                "name": "Nom du produit"
+            },
+            "readable": {
+                "name": "Lisible"
+            },
+            "recfav": {
+                "name": "Mémoriser la position favorite"
+            },
+            "regtemperature": {
+                "name": "Température de régulation"
+            },
+            "remotesurveydefect": {
+                "name": "Défaut supervision"
+            },
+            "reset": {
+                "name": "Réinitialiser"
+            },
+            "selectedprog": {
+                "name": "Programme sélectionné"
+            },
+            "sendasso": {
+                "name": "Envoyer la commande d’association"
+            },
+            "sendnetremoteassomode": {
+                "name": "Mode association distant"
+            },
+            "setpoint": {
+                "name": "Consigne de température"
+            },
+            "shuttercmd": {
+                "name": "Commande de volet"
+            },
+            "simdefect": {
+                "name": "Carte SIM absente"
+            },
+            "slope": {
+                "name": "Pente de chauffe"
+            },
+            "softplan": {
+                "name": "Paquet logiciel"
+            },
+            "softplan0": {
+                "name": "Paquet logiciel (0)"
+            },
+            "softplan1": {
+                "name": "Paquet logiciel (1)"
+            },
+            "softplan2": {
+                "name": "Paquet logiciel (2)"
+            },
+            "softplan3": {
+                "name": "Paquet logiciel (3)"
+            },
+            "softversion": {
+                "name": "Version logicielle"
+            },
+            "softversion0": {
+                "name": "Version logicielle (0)"
+            },
+            "softversion1": {
+                "name": "Version logicielle (1)"
+            },
+            "softversion2": {
+                "name": "Version logicielle (2)"
+            },
+            "softversion3": {
+                "name": "Version logicielle (3)"
+            },
+            "speed": {
+                "name": "Vitesse de ventilation"
+            },
+            "speedstring": {
+                "name": "Vitesse de ventilation"
+            },
+            "state": {
+                "name": "État"
+            },
+            "summer_offset": {
+                "name": "Décalage d’heure d’été"
+            },
+            "summeroffset": {
+                "name": "Décalage d’heure d’été"
+            },
+            "supervisionmode": {
+                "name": "Mode de supervision"
+            },
+            "synchropps": {
+                "name": "Synchronisation temporelle"
+            },
+            "synchroradio": {
+                "name": "Synchronisation radio"
+            },
+            "systalarmdefect": {
+                "name": "Défaut du système d’alarme"
+            },
+            "systautoprotect": {
+                "name": "Autoprotection"
+            },
+            "systbatterydefect": {
+                "name": "Défaut de pile"
+            },
+            "systopenissue": {
+                "name": "Armement de l’alarme bloqué"
+            },
+            "systsectordefect": {
+                "name": "Défaut secteur"
+            },
+            "systsupervisiondefect": {
+                "name": "Défaut supervision"
+            },
+            "systtechnicaldefect": {
+                "name": "Défaut technique"
+            },
+            "techsmokedefect": {
+                "name": "Fumée détectée"
+            },
+            "techwaterdefect": {
+                "name": "Fuite détectée"
             },
             "tywatt_energy_distrib_elec_heating": {
                 "name": "Consommation électrique - Chauffage"
@@ -354,163 +3348,858 @@
             "temperature": {
                 "name": "Température"
             },
-            "outtemperature": {
-                "name": "Température extérieure"
+            "tempoon": {
+                "name": "Temporisation"
             },
-            "ambienttemperature": {
-                "name": "Température ambiante"
+            "tempsensordefect": {
+                "name": "Défaut sonde"
             },
-            "battlevel": {
-                "name": "Niveau de batterie"
+            "tempsensoropencirc": {
+                "name": "Sonde coupée"
             },
-            "level": {
-                "name": "Niveau"
+            "tempsensorshortcut": {
+                "name": "Sonde en court-circuit"
             },
-            "position": {
-                "name": "Position"
+            "thermic_defect": {
+                "name": "Surchauffe"
             },
-            "hygroin": {
-                "name": "Humidité"
+            "thermicdefect": {
+                "name": "Surchauffe"
             },
-            "energy": {
-                "name": "Énergie"
+            "thermiclevel": {
+                "name": "Allure de chauffage"
             },
-            "power": {
-                "name": "Puissance"
+            "timedelay": {
+                "name": "Temporisation"
             },
-            "current": {
-                "name": "Courant"
-            },
-            "value": {
-                "name": "Valeur"
-            },
-            "state": {
-                "name": "État"
-            },
-            "config": {
-                "name": "Configuration"
-            },
-            "supervisionmode": {
-                "name": "Mode de supervision"
-            },
-            "productname": {
-                "name": "Nom du produit"
-            },
-            "mac": {
-                "name": "Adresse MAC"
-            },
-            "softversion": {
-                "name": "Version logicielle"
-            },
-            "mainversionhw": {
-                "name": "Version matérielle principale"
-            },
-            "keyversionhw": {
-                "name": "Version matérielle clé"
-            },
-            "longitude": {
-                "name": "Longitude"
-            },
-            "latitude": {
-                "name": "Latitude"
-            },
-            "clock": {
-                "name": "Horloge"
+            "timeoncpt": {
+                "name": "Compteur de durée de fonctionnement"
             },
             "timezone": {
                 "name": "Fuseau horaire"
             },
-            "clock_source": {
-                "name": "Source de l'horloge"
+            "total": {
+                "name": "Total"
             },
-            "summer_offset": {
-                "name": "Décalage été"
+            "uid": {
+                "name": "Identifiant de l’appareil"
             },
-            "bdd_status": {
-                "name": "Statut de la base de données"
+            "unackedevent": {
+                "name": "Événements non acquittés"
             },
-            "permissions": {
-                "name": "Permissions"
+            "unitautoprotect": {
+                "name": "Autoprotection"
             },
-            "readable": {
-                "name": "Lisible"
+            "unitbatterydefect": {
+                "name": "Défaut de pile"
             },
-            "writable": {
-                "name": "Modifiable"
-            }
-        },
-        "binary_sensor": {
-            "tempsensordefect": {
-                "name": "Défaut capteur température"
+            "unitinternaldefect": {
+                "name": "Défaut interne"
             },
-            "tempsensoropencirc": {
-                "name": "Circuit ouvert capteur température"
-            },
-            "tempsensorshortcut": {
-                "name": "Court-circuit capteur température"
-            },
-            "productiondefect": {
-                "name": "Défaut de production"
-            },
-            "batterycmddefect": {
-                "name": "Défaut batterie commande"
-            },
-            "thermic_defect": {
-                "name": "Défaut thermique"
+            "up_defect": {
+                "name": "Montée non autorisée"
             },
             "update_available": {
                 "name": "Mise à jour disponible"
             },
-            "batt_defect": {
-                "name": "Défaut de batterie"
+            "updefect": {
+                "name": "Montée non autorisée"
             },
-            "up_defect": {
-                "name": "Défaut montée"
+            "usage": {
+                "name": "Usage"
             },
-            "down_defect": {
-                "name": "Défaut descente"
+            "usemode": {
+                "name": "Mode de fonctionnement"
             },
-            "obstacle_defect": {
-                "name": "Défaut obstacle"
+            "value": {
+                "name": "Valeur"
             },
-            "intrusion": {
+            "videolinkdefect": {
+                "name": "Défaut lien vidéo"
+            },
+            "waterflowreq": {
+                "name": "Débit d’eau demandé"
+            },
+            "weather": {
+                "name": "Météo"
+            },
+            "writable": {
+                "name": "Modifiable"
+            },
+            "zclversion": {
+                "name": "Version de la bibliothèque Zigbee"
+            },
+            "zone1state": {
+                "name": "État (ZONE 1)"
+            },
+            "zone2state": {
+                "name": "État (ZONE 2)"
+            },
+            "zone3state": {
+                "name": "État (ZONE 3)"
+            },
+            "zone4state": {
+                "name": "État (ZONE 4)"
+            },
+            "zone5state": {
+                "name": "État (ZONE 5)"
+            },
+            "zone6state": {
+                "name": "État (ZONE 6)"
+            },
+            "zone7state": {
+                "name": "État (ZONE 7)"
+            },
+            "zone8state": {
+                "name": "État (ZONE 8)"
+            },
+            "zonecmd": {
+                "name": "Commande de zone d’alarme"
+            },
+            "zones": {
+                "name": "Zones d’alarme"
+            }
+        },
+        "binary_sensor": {
+            "absence": {
+                "name": "Mode absence"
+            },
+            "absencesetpoint": {
+                "name": "Température d’absence"
+            },
+            "absmaxcoolsetpoint": {
+                "name": "Consigne maximale de refroidissement"
+            },
+            "absmaxheatsetpoint": {
+                "name": "Consigne maximale de chauffage"
+            },
+            "absmincoolsetpoint": {
+                "name": "Consigne minimale de refroidissement"
+            },
+            "absminheatsetpoint": {
+                "name": "Consigne minimale de chauffage"
+            },
+            "ackeventcmd": {
+                "name": "Commande d’acquittement des événements"
+            },
+            "activationcpt": {
+                "name": "Nombre d’activations"
+            },
+            "activationindex": {
+                "name": "Index d’activation"
+            },
+            "alarmcmd": {
+                "name": "Commande d’alarme"
+            },
+            "alarmintrusion": {
                 "name": "Intrusion"
             },
-            "techsmokedefect": {
-                "name": "Défaut détecteur de fumée"
+            "alarmmode": {
+                "name": "Mode de l’alarme"
             },
-            "protocol_x3d": {
-                "name": "Protocole X3D"
+            "alarmsos": {
+                "name": "Alarme SOS"
             },
-            "protocol_zigbee": {
-                "name": "Protocole Zigbee"
+            "alarmstate": {
+                "name": "État de l’alarme"
             },
-            "protocol_x3dv": {
-                "name": "Protocole X3DV"
+            "alarmtechnical": {
+                "name": "Alarme technique"
             },
-            "protocol_pltservice": {
-                "name": "Protocole PltService"
+            "ambienttemperature": {
+                "name": "Température ambiante"
             },
-            "protocol_http": {
-                "name": "Protocole HTTP"
+            "anticipcoeff": {
+                "name": "Coefficient d’anticipation"
             },
-            "bdd_empty": {
-                "name": "Base de données vide"
+            "anticpcoeff": {
+                "name": "Coefficient d’anticipation"
+            },
+            "antifroston": {
+                "name": "Protection hors gel"
+            },
+            "antifrostsetpoint": {
+                "name": "Température hors gel"
+            },
+            "antifrostwhenoff": {
+                "name": "Protection hors gel"
+            },
+            "antiseizurecmd": {
+                "name": "Commande d’antigrippage"
+            },
+            "antiseizureperiod": {
+                "name": "Intervalle d’antigrippage"
             },
             "api_mode": {
                 "name": "Mode API"
             },
-            "plt_registered": {
-                "name": "Plateforme enregistrée"
+            "area_id": {
+                "name": "Identifiant de la zone"
+            },
+            "authorization": {
+                "name": "Autorisation"
+            },
+            "batt_defect": {
+                "name": "Défaut pile"
+            },
+            "battdefect": {
+                "name": "Défaut pile"
+            },
+            "batterycmddefect": {
+                "name": "Défaut de commande de pile"
+            },
+            "battlevel": {
+                "name": "Charge de la batterie"
+            },
+            "bdd_empty": {
+                "name": "Base de données vide"
+            },
+            "bdd_status": {
+                "name": "État de la base de données"
+            },
+            "boost": {
+                "name": "Boost"
+            },
+            "booston": {
+                "name": "Boost"
+            },
+            "bootreference": {
+                "name": "Référence du chargeur de démarrage"
+            },
+            "bootversion": {
+                "name": "Version du chargeur de démarrage"
+            },
+            "brightness": {
+                "name": "Luminosité"
+            },
+            "calibrationdefect": {
+                "name": "Défaut étalonnage"
+            },
+            "clock": {
+                "name": "Heure de la passerelle"
+            },
+            "clock_source": {
+                "name": "Source de l’horloge"
+            },
+            "cmddefect": {
+                "name": "Défaut commande"
+            },
+            "comfortmode": {
+                "name": "Mode confort"
+            },
+            "config": {
+                "name": "Configuration"
+            },
+            "configsensor": {
+                "name": "Configuration du capteur"
+            },
+            "configtemp": {
+                "name": "Configuration de température"
+            },
+            "coolsetpoint": {
+                "name": "Consigne de refroidissement"
+            },
+            "current": {
+                "name": "Courant"
+            },
+            "currentpower": {
+                "name": "Puissance"
+            },
+            "currentsetpoint": {
+                "name": "Consigne de température"
+            },
+            "dailypower": {
+                "name": "Puissance journalière"
+            },
+            "delaysetpoint": {
+                "name": "Temporisation de consigne"
+            },
+            "delaythermiclevel": {
+                "name": "Temporisation de l’allure de chauffage"
+            },
+            "device_endpoint": {
+                "name": "Point de terminaison"
+            },
+            "device_id": {
+                "name": "Identifiant du point de terminaison TYDOM"
+            },
+            "device_name": {
+                "name": "Nom de l’appareil"
+            },
+            "device_type": {
+                "name": "Type d’appareil"
+            },
+            "direction": {
+                "name": "Direction"
+            },
+            "down_defect": {
+                "name": "Descente non autorisée"
+            },
+            "downdefect": {
+                "name": "Descente non autorisée"
+            },
+            "energy": {
+                "name": "Énergie"
+            },
+            "gsmlevel": {
+                "name": "Niveau du signal mobile"
+            },
+            "heatsetpoint": {
+                "name": "Consigne de chauffage"
+            },
+            "histo": {
+                "name": "Historique"
+            },
+            "hvacmode": {
+                "name": "Mode de chauffage et refroidissement"
+            },
+            "hygroin": {
+                "name": "Humidité"
+            },
+            "inactiveproduct": {
+                "name": "Produit inactif"
+            },
+            "index": {
+                "name": "Index"
+            },
+            "indexstart": {
+                "name": "Index de départ"
+            },
+            "indextimeon": {
+                "name": "Index de durée de fonctionnement"
+            },
+            "intrusion": {
+                "name": "Intrusion"
+            },
+            "intrusiondetect": {
+                "name": "Intrusion"
+            },
+            "irv1state": {
+                "name": "État (IRV 1)"
+            },
+            "irv2state": {
+                "name": "État (IRV 2)"
+            },
+            "irv3state": {
+                "name": "État (IRV 3)"
+            },
+            "irv4state": {
+                "name": "État (IRV 4)"
+            },
+            "irv5state": {
+                "name": "État (IRV 5)"
+            },
+            "irv6state": {
+                "name": "État (IRV 6)"
+            },
+            "irv7state": {
+                "name": "État (IRV 7)"
+            },
+            "irv8state": {
+                "name": "État (IRV 8)"
+            },
+            "irvcmd": {
+                "name": "Commande IRV"
+            },
+            "irvid": {
+                "name": "Identifiant IRV"
+            },
+            "isreference": {
+                "name": "Appareil de référence"
+            },
+            "jobs": {
+                "name": "Tâches internes"
+            },
+            "jobsmp": {
+                "name": "Tâches du module principal"
+            },
+            "jobsrm": {
+                "name": "Tâches du module radio"
+            },
+            "kerneldownloadforced": {
+                "name": "Téléchargement forcé du micrologiciel"
+            },
+            "kerneluptodate": {
+                "name": "Micrologiciel à jour"
+            },
+            "keyreference": {
+                "name": "Référence du module radio"
+            },
+            "keyversionhw": {
+                "name": "Version matérielle radio"
+            },
+            "keyversionstack": {
+                "name": "Version de la pile radio"
+            },
+            "keyversionsw": {
+                "name": "Version logicielle radio"
+            },
+            "label": {
+                "name": "Libellé"
+            },
+            "last_usage": {
+                "name": "Usage"
+            },
+            "latitude": {
+                "name": "Latitude"
+            },
+            "level": {
+                "name": "Niveau"
+            },
+            "levelcmd": {
+                "name": "Commande de niveau"
+            },
+            "lightpower": {
+                "name": "Irradiance solaire"
+            },
+            "livecheckrunning": {
+                "name": "Vérification en cours"
+            },
+            "loaddefect": {
+                "name": "Défaut charge"
+            },
+            "loadsheddingon": {
+                "name": "Délestage"
+            },
+            "localisation": {
+                "name": "Localisation"
+            },
+            "localmode": {
+                "name": "Mode de fonctionnement local"
+            },
+            "localsetpoint": {
+                "name": "Consigne locale"
+            },
+            "localsetpremainingtimestr": {
+                "name": "Durée restante de la consigne locale"
+            },
+            "longitude": {
+                "name": "Longitude"
+            },
+            "mac": {
+                "name": "Adresse MAC"
+            },
+            "mainid": {
+                "name": "Identifiant du module principal"
+            },
+            "mainreference": {
+                "name": "Référence du module principal"
+            },
+            "maintenance": {
+                "name": "Maintenance"
+            },
+            "maintenanceneeded": {
+                "name": "Maintenance nécessaire"
+            },
+            "mainversionhw": {
+                "name": "Version matérielle principale"
+            },
+            "mainversionsw": {
+                "name": "Version logicielle principale"
+            },
+            "manufacturer": {
+                "name": "Fabricant"
+            },
+            "maxcoolsetpoint": {
+                "name": "Consigne maximale de refroidissement"
+            },
+            "maxdailyouttemp": {
+                "name": "Température extérieure maximale du jour"
+            },
+            "maxheatsetpoint": {
+                "name": "Consigne maximale de chauffage"
+            },
+            "maxsetpoint": {
+                "name": "Consigne maximale de température"
+            },
+            "mincoolsetpoint": {
+                "name": "Consigne minimale de refroidissement"
+            },
+            "minheatsetpoint": {
+                "name": "Consigne minimale de chauffage"
+            },
+            "minsetpoint": {
+                "name": "Consigne minimale de température"
+            },
+            "modeasso": {
+                "name": "Mode association"
+            },
+            "modelidentifier": {
+                "name": "Identifiant du modèle"
+            },
+            "nbelem": {
+                "name": "Nombre d’éléments"
+            },
+            "nbrfactuators": {
+                "name": "Nombre d’actionneurs radio"
+            },
+            "networkdefect": {
+                "name": "Défaut réseau"
+            },
+            "obstacle_defect": {
+                "name": "Obstacle détecté"
+            },
+            "obstacledefect": {
+                "name": "Obstacle détecté"
+            },
+            "ondusk": {
+                "name": "Activation au crépuscule"
+            },
+            "onfavpos": {
+                "name": "Activation de la position favorite"
+            },
+            "onpresencedetected": {
+                "name": "Activation sur présence"
+            },
+            "openingdetected": {
+                "name": "Ouverture détectée"
+            },
+            "openstate": {
+                "name": "État de l’ouverture"
+            },
+            "outtemperature": {
+                "name": "Température extérieure"
+            },
+            "overrideremainingtime": {
+                "name": "Durée restante de la dérogation"
+            },
+            "overridesetpoint": {
+                "name": "Consigne de dérogation"
+            },
+            "part": {
+                "name": "Partition d’alarme"
+            },
+            "part1state": {
+                "name": "État (PART 1)"
+            },
+            "part2state": {
+                "name": "État (PART 2)"
+            },
+            "part3state": {
+                "name": "État (PART 3)"
+            },
+            "part4state": {
+                "name": "État (PART 4)"
+            },
+            "part5state": {
+                "name": "État (PART 5)"
+            },
+            "part6state": {
+                "name": "État (PART 6)"
+            },
+            "part7state": {
+                "name": "État (PART 7)"
+            },
+            "part8state": {
+                "name": "État (PART 8)"
+            },
+            "partcmd": {
+                "name": "Commande de partition d’alarme"
             },
             "password_empty": {
                 "name": "Mot de passe vide"
             },
-            "maintenance": {
-                "name": "Maintenance"
+            "period": {
+                "name": "Période"
+            },
+            "periodoffset": {
+                "name": "Décalage de période"
+            },
+            "permissions": {
+                "name": "Autorisations"
+            },
+            "plt_registered": {
+                "name": "Plateforme enregistrée"
+            },
+            "position": {
+                "name": "Position"
+            },
+            "positioncmd": {
+                "name": "Commande de position"
+            },
+            "power": {
+                "name": "Puissance"
+            },
+            "prealarm": {
+                "name": "Préalarme"
+            },
+            "presencedetected": {
+                "name": "Présence détectée"
+            },
+            "productconf": {
+                "name": "Configuration"
+            },
+            "productiondefect": {
+                "name": "Défaut de production"
+            },
+            "productname": {
+                "name": "Nom du produit"
+            },
+            "protocol_available": {
+                "name": "{protocol} — Disponible"
+            },
+            "protocol_http": {
+                "name": "Protocole HTTP"
+            },
+            "protocol_installed": {
+                "name": "{protocol} — Installé"
+            },
+            "protocol_pltservice": {
+                "name": "Protocole PltService"
+            },
+            "protocol_ready": {
+                "name": "{protocol} — Prêt"
+            },
+            "protocol_status": {
+                "name": "{protocol} — En fonctionnement"
+            },
+            "protocol_x3d": {
+                "name": "Protocole X3D"
+            },
+            "protocol_x3dv": {
+                "name": "Protocole X3DV"
+            },
+            "protocol_zigbee": {
+                "name": "Protocole Zigbee"
+            },
+            "readable": {
+                "name": "Lisible"
+            },
+            "recfav": {
+                "name": "Mémoriser la position favorite"
+            },
+            "regtemperature": {
+                "name": "Température de régulation"
+            },
+            "remotesurveydefect": {
+                "name": "Défaut supervision"
+            },
+            "reset": {
+                "name": "Réinitialiser"
+            },
+            "selectedprog": {
+                "name": "Programme sélectionné"
+            },
+            "sendasso": {
+                "name": "Envoyer la commande d’association"
+            },
+            "sendnetremoteassomode": {
+                "name": "Mode association distant"
+            },
+            "setpoint": {
+                "name": "Consigne de température"
+            },
+            "shuttercmd": {
+                "name": "Commande de volet"
+            },
+            "simdefect": {
+                "name": "Carte SIM absente"
+            },
+            "slope": {
+                "name": "Pente de chauffe"
+            },
+            "softplan": {
+                "name": "Paquet logiciel"
+            },
+            "softplan0": {
+                "name": "Paquet logiciel (0)"
+            },
+            "softplan1": {
+                "name": "Paquet logiciel (1)"
+            },
+            "softplan2": {
+                "name": "Paquet logiciel (2)"
+            },
+            "softplan3": {
+                "name": "Paquet logiciel (3)"
+            },
+            "softversion": {
+                "name": "Version logicielle"
+            },
+            "softversion0": {
+                "name": "Version logicielle (0)"
+            },
+            "softversion1": {
+                "name": "Version logicielle (1)"
+            },
+            "softversion2": {
+                "name": "Version logicielle (2)"
+            },
+            "softversion3": {
+                "name": "Version logicielle (3)"
+            },
+            "speed": {
+                "name": "Vitesse de ventilation"
+            },
+            "speedstring": {
+                "name": "Vitesse de ventilation"
+            },
+            "state": {
+                "name": "État"
+            },
+            "summer_offset": {
+                "name": "Décalage d’heure d’été"
+            },
+            "summeroffset": {
+                "name": "Décalage d’heure d’été"
+            },
+            "supervisionmode": {
+                "name": "Mode de supervision"
+            },
+            "synchropps": {
+                "name": "Synchronisation temporelle"
+            },
+            "synchroradio": {
+                "name": "Synchronisation radio"
+            },
+            "systalarmdefect": {
+                "name": "Défaut du système d’alarme"
+            },
+            "systautoprotect": {
+                "name": "Autoprotection"
+            },
+            "systbatterydefect": {
+                "name": "Défaut de pile"
+            },
+            "systopenissue": {
+                "name": "Armement de l’alarme bloqué"
+            },
+            "systsectordefect": {
+                "name": "Défaut secteur"
+            },
+            "systsupervisiondefect": {
+                "name": "Défaut supervision"
+            },
+            "systtechnicaldefect": {
+                "name": "Défaut technique"
+            },
+            "techsmokedefect": {
+                "name": "Fumée détectée"
+            },
+            "techwaterdefect": {
+                "name": "Fuite détectée"
+            },
+            "temperature": {
+                "name": "Température"
+            },
+            "tempoon": {
+                "name": "Temporisation"
+            },
+            "tempsensordefect": {
+                "name": "Défaut sonde"
+            },
+            "tempsensoropencirc": {
+                "name": "Sonde coupée"
+            },
+            "tempsensorshortcut": {
+                "name": "Sonde en court-circuit"
+            },
+            "thermic_defect": {
+                "name": "Surchauffe"
+            },
+            "thermicdefect": {
+                "name": "Surchauffe"
+            },
+            "thermiclevel": {
+                "name": "Allure de chauffage"
+            },
+            "timedelay": {
+                "name": "Temporisation"
+            },
+            "timeoncpt": {
+                "name": "Compteur de durée de fonctionnement"
+            },
+            "timezone": {
+                "name": "Fuseau horaire"
+            },
+            "total": {
+                "name": "Total"
+            },
+            "uid": {
+                "name": "Identifiant de l’appareil"
+            },
+            "unackedevent": {
+                "name": "Événements non acquittés"
+            },
+            "unitautoprotect": {
+                "name": "Autoprotection"
+            },
+            "unitbatterydefect": {
+                "name": "Défaut de pile"
+            },
+            "unitinternaldefect": {
+                "name": "Défaut interne"
+            },
+            "up_defect": {
+                "name": "Montée non autorisée"
+            },
+            "update_available": {
+                "name": "Mise à jour disponible"
+            },
+            "updefect": {
+                "name": "Montée non autorisée"
+            },
+            "usage": {
+                "name": "Usage"
+            },
+            "usemode": {
+                "name": "Mode de fonctionnement"
+            },
+            "value": {
+                "name": "Valeur"
+            },
+            "videolinkdefect": {
+                "name": "Défaut lien vidéo"
+            },
+            "waterflowreq": {
+                "name": "Débit d’eau demandé"
+            },
+            "weather": {
+                "name": "Météo"
+            },
+            "writable": {
+                "name": "Modifiable"
+            },
+            "zclversion": {
+                "name": "Version de la bibliothèque Zigbee"
+            },
+            "zone1state": {
+                "name": "État (ZONE 1)"
+            },
+            "zone2state": {
+                "name": "État (ZONE 2)"
+            },
+            "zone3state": {
+                "name": "État (ZONE 3)"
+            },
+            "zone4state": {
+                "name": "État (ZONE 4)"
+            },
+            "zone5state": {
+                "name": "État (ZONE 5)"
+            },
+            "zone6state": {
+                "name": "État (ZONE 6)"
+            },
+            "zone7state": {
+                "name": "État (ZONE 7)"
+            },
+            "zone8state": {
+                "name": "État (ZONE 8)"
+            },
+            "zonecmd": {
+                "name": "Commande de zone d’alarme"
+            },
+            "zones": {
+                "name": "Zones d’alarme"
             }
         },
         "group": {},
-        "moment": {}
+        "moment": {},
+        "text": {
+            "association_name": {
+                "name": "Nom de l’appareil (facultatif)"
+            }
+        }
     }
 }

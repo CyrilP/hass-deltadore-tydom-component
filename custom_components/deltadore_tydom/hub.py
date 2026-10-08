@@ -3278,12 +3278,12 @@ class Hub:
 
             new_sensors = ha_device.get_sensors()
             if new_sensors:
-                # add new sensors
+                # Native translations can leave _attr_name unset. Log stable IDs.
                 LOGGER.debug(
                     "Ajout de %d nouveau(x) capteur(s) pour le device %s: %s",
                     len(new_sensors),
                     device.device_id,
-                    [s._attr_name for s in new_sensors],
+                    [sensor.unique_id for sensor in new_sensors],
                 )
                 self._add_discovered_entities(new_sensors)
             if isinstance(ha_device, HAEnergy):

@@ -50,6 +50,7 @@ def _load_generic_sensor_class():
             self.__dict__.update(kwargs)
 
     namespace = {
+        "set_entity_name": lambda *_args, **_kwargs: None,
         "DOMAIN": "deltadore_tydom",
         "EntityCategory": EntityCategory,
         "PERCENTAGE": "%",

@@ -86,8 +86,9 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.components.button import ButtonEntity
 from homeassistant.components.number import NumberEntity
 from homeassistant.components.select import SelectEntity
-from homeassistant.components.text import TextEntity, TextMode
+from homeassistant.components.text import TextEntity, TextEntityDescription, TextMode
 from homeassistant.components.event import EventDeviceClass, EventEntity
+from .entity_names import set_entity_name
 from .tydom.tydom_devices import (
     Tydom,
     TydomDevice,
@@ -610,6 +611,8 @@ class GenericSensor(SensorEntity):
         if name in self.diagnostic_attrs:
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
+        set_entity_name(self, attribute, fallback_name=name)
+
     def _get_hub(self):
         """Return the hub that owns this entity's TYDOM device."""
         return _get_hub_for_tydom_device(self.hass, self._device)
@@ -975,6 +978,8 @@ class GenericBinarySensor(BinarySensorBase):
         ):
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
+        set_entity_name(self, attribute, fallback_name=name)
+
     def _get_hub(self):
         """Return the hub that owns this entity's TYDOM device."""
         return _get_hub_for_tydom_device(self.hass, self._device)
@@ -1075,6 +1080,8 @@ class ClockSensor(SensorEntity):
             translation_key=f"clock_{attribute}",
         )
         self.entity_description = entity_description
+
+        set_entity_name(self, "clock_source" if attribute == "source" else attribute)
 
     @property
     def native_value(self) -> datetime | str | int | None:
@@ -1239,6 +1246,8 @@ class GeolocationSensor(SensorEntity):
         )
         self.entity_description = entity_description
 
+        set_entity_name(self, attribute)
+
     @property
     def native_value(self) -> float | None:
         """Return the geolocation value."""
@@ -1361,6 +1370,13 @@ class ProtocolBinarySensor(BinarySensorBase):
             translation_key=f"protocol_{protocol_name.lower()}_{attribute}",
         )
         self.entity_description = entity_description
+
+        set_entity_name(
+            self,
+            f"protocol_{attribute}",
+            fallback_name=self._attr_name,
+            placeholders={"protocol": protocol_name},
+        )
 
     @property
     def is_on(self) -> bool:
@@ -2624,6 +2640,9 @@ class HaClimate(ClimateEntity, HAEntity):
             # localSetpoint metadata, but the linked area still accepts the
             # local override command.
             self._attr_supported_features |= ClimateEntityFeature.TARGET_TEMPERATURE
+
+        if self._device.is_derived_area_climate:
+            set_entity_name(self, "thermostat")
 
     @property
     def supported_features(self) -> ClimateEntityFeature:
@@ -6878,6 +6897,9 @@ class HAButton(ButtonEntity, HAEntity):
         if icon is not None:
             self._attr_icon = icon
 
+        if not primary:
+            set_entity_name(self, action_name)
+
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
         await super().async_added_to_hass()
@@ -6979,6 +7001,11 @@ class HADeviceAssociationButton(ButtonEntity, HAEntity):
         self._attr_icon = icon
         self._attr_name = action_name
         self._attr_unique_id = f"{device.device_id}_button_{command}"
+
+        set_entity_name(
+            self,
+            "association_mode" if command == ASSOCIATION_COMMAND else "identify_device",
+        )
 
     async def async_added_to_hass(self) -> None:
         """Refresh when the associated product is updated."""
@@ -7084,6 +7111,16 @@ class HADeviceRemovalButton(HADeviceAssociationButton):
             self._attr_name = "Dissocier définitivement l'appareil"
         self._attr_unique_id = f"{device.device_id}_button_remove_association"
 
+        if isinstance(device, (TydomInterrupter, TydomRemoteControl)):
+            number = getattr(device, "button_number", None)
+            set_entity_name(
+                self,
+                "remove_button" if number is None else "remove_numbered_button",
+                placeholders=None if number is None else {"button_number": str(number)},
+            )
+        else:
+            set_entity_name(self, "remove_device")
+
     @property
     def available(self) -> bool:
         """Keep this explicit user control available whenever its product exists."""
@@ -7120,6 +7157,16 @@ class HAGroupableProductFinalizeAssociationButton(HADeviceAssociationButton):
         self._callback = callback
         self._attr_name = f"Configurer {channel} comme {usage_label}"
         self._attr_unique_id = f"{device.device_id}_button_finalize_{product_label.lower().replace(' ', '_')}"
+
+        key = {
+            "télécommande": "finalize_remote",
+            "clavier": "finalize_keypad",
+            "interrupteur": "finalize_switch",
+        }.get(usage_label, "finalize_association")
+        placeholders = {"channel": channel}
+        if key == "finalize_association":
+            placeholders["usage"] = usage_label
+        set_entity_name(self, key, placeholders=placeholders)
 
     async def async_press(self) -> None:
         """Persist the selected channel with its official product metadata."""
@@ -7164,6 +7211,8 @@ class HAGatewayAssociationCategorySelect(_GatewayAssociationEntity, SelectEntity
         self._attr_unique_id = f"{tydom_hub.hub_id}_association_category"
         self._attr_name = "1. Catégorie à associer"
 
+        set_entity_name(self, "association_category")
+
     @property
     def options(self) -> list[str]:
         """Return the product categories from the official workflow."""
@@ -7190,6 +7239,8 @@ class HAGatewayAssociationProductSelect(_GatewayAssociationEntity, SelectEntity)
         self._attr_unique_id = f"{tydom_hub.hub_id}_association_product"
         self._attr_name = "2. Produit à associer"
 
+        set_entity_name(self, "association_product")
+
     @property
     def options(self) -> list[str]:
         """Return products for the selected category only."""
@@ -7215,6 +7266,8 @@ class HAGatewayAssociationChannelSelect(_GatewayAssociationEntity, SelectEntity)
         super().__init__(tydom_hub)
         self._attr_unique_id = f"{tydom_hub.hub_id}_association_channel"
         self._attr_name = "3. Voie à associer"
+
+        set_entity_name(self, "association_channel")
 
     @property
     def available(self) -> bool:
@@ -7252,6 +7305,8 @@ class HAGatewayAssociationUsageSelect(_GatewayAssociationEntity, SelectEntity):
         self._attr_unique_id = f"{tydom_hub.hub_id}_association_usage"
         self._attr_name = "4. Usage / type d'association"
 
+        set_entity_name(self, "association_usage")
+
     @property
     def options(self) -> list[str]:
         """Return only usages documented for the selected product."""
@@ -7280,6 +7335,9 @@ class HAGatewayAssociationNameText(_GatewayAssociationEntity, TextEntity):
         self._attr_unique_id = f"{tydom_hub.hub_id}_association_name"
         self._attr_name = "Nom de l'appareil (facultatif)"
 
+        self.entity_description = TextEntityDescription(key="association_name")
+        set_entity_name(self, "association_name")
+
     @property
     def available(self) -> bool:
         """Show the field for every product the gateway can associate."""
@@ -7305,6 +7363,8 @@ class HAGatewayAssociationGuideButton(_GatewayAssociationEntity, ButtonEntity):
         super().__init__(tydom_hub)
         self._attr_unique_id = f"{tydom_hub.hub_id}_association_guide"
         self._attr_name = "5. Afficher le guide d'association"
+
+        set_entity_name(self, "association_guide")
 
     @property
     def available(self) -> bool:
@@ -7378,6 +7438,8 @@ class HAGatewayStartAssociationButton(_GatewayAssociationEntity, ButtonEntity):
         super().__init__(tydom_hub)
         self._attr_unique_id = f"{tydom_hub.hub_id}_start_product_association"
         self._attr_name = "6. Lancer l'écoute de la passerelle"
+
+        set_entity_name(self, "start_product_association")
 
     @property
     def available(self) -> bool:
@@ -7599,6 +7661,8 @@ class HAReloadButton(ButtonEntity):
         )
         hub.register_association_control(self)
 
+        set_entity_name(self, "reload_devices")
+
     @property
     def available(self) -> bool:
         """Avoid concurrent inventory rebuilds from the gateway page."""
@@ -7677,6 +7741,8 @@ class HANumber(NumberEntity, HAEntity):
         self._attr_native_step = step or 1.0
         self._attr_native_unit_of_measurement = unit
 
+        set_entity_name(self, attribute_name)
+
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
         await super().async_added_to_hass()
@@ -7742,6 +7808,8 @@ class HASelect(SelectEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_select_{attribute_name}"
         self._attr_name = attribute_name
         self._attr_options = options
+
+        set_entity_name(self, attribute_name)
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
@@ -7869,7 +7937,7 @@ class HARemoteBattery(BinarySensorEntity, HAEntity):
     _attr_has_entity_name = True
     _attr_device_class = BinarySensorDeviceClass.PROBLEM
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_name = "Battery fault"
+    _attr_translation_key = "battdefect"
 
     def __init__(self, device: TydomRemoteControl, hass) -> None:
         """Initialise the physical remote battery diagnostic."""
@@ -7882,6 +7950,8 @@ class HARemoteBattery(BinarySensorEntity, HAEntity):
             f"remote_control_{device.physical_device_id}_battery_defect"
         )
         self.add_device(device)
+
+        set_entity_name(self, "battDefect")
 
     def add_device(self, device: TydomRemoteControl) -> None:
         """Include another button endpoint in the physical battery diagnostic."""
@@ -7943,6 +8013,8 @@ class HAEvent(EventEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_event_{event_type}"
         self._attr_name = event_type
         self._attr_event_types = [event_type]
+
+        set_entity_name(self, event_type)
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
@@ -8055,7 +8127,7 @@ class HAInterrupterBattery(BinarySensorEntity, HAEntity):
     _attr_has_entity_name = True
     _attr_device_class = BinarySensorDeviceClass.PROBLEM
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_name = "Battery fault"
+    _attr_translation_key = "battdefect"
 
     def __init__(self, device: TydomInterrupter, hass) -> None:
         """Initialise the physical wall-switch battery diagnostic."""
@@ -8066,6 +8138,8 @@ class HAInterrupterBattery(BinarySensorEntity, HAEntity):
         self._battery_defect: bool | None = None
         self._attr_unique_id = f"interrupter_{device.physical_device_id}_battery_defect"
         self.add_device(device)
+
+        set_entity_name(self, "battDefect")
 
     def add_device(self, device: TydomInterrupter) -> None:
         """Include another button endpoint in the battery diagnostic."""

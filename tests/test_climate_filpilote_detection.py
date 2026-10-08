@@ -190,6 +190,7 @@ _module("homeassistant.components.select", SelectEntity=_StubEntity)
 _module(
     "homeassistant.components.text",
     TextEntity=_StubEntity,
+    TextEntityDescription=MagicMock(),
     TextMode=MagicMock(),
 )
 _module(
@@ -208,6 +209,11 @@ for package_name in (
 ):
     package = _module(package_name)
     package.__path__ = []
+
+_module(
+    "custom_components.deltadore_tydom.entity_names",
+    set_entity_name=MagicMock(),
+)
 
 _module(
     "custom_components.deltadore_tydom.const",
