@@ -3101,15 +3101,23 @@ class Hub:
             registry_targets
         ):
             unique_id_suffix = f"_shared_{registry_device_id}" if index > 0 else ""
+            weather_device_id = f"{device.device_id}_weather_{registry_device_id}"
+            weather_device_name = f"{registry_device_name} - Weather"
             sensor_registry_targets.append(
-                (registry_device_id, registry_device_name, unique_id_suffix)
+                (
+                    weather_device_id,
+                    weather_device_name,
+                    unique_id_suffix,
+                    registry_device_id,
+                )
             )
             weather_entities.append(
                 HaWeather(
                     device,
                     self._hass,
-                    registry_device_id=registry_device_id,
-                    registry_device_name=registry_device_name,
+                    registry_device_id=weather_device_id,
+                    registry_device_name=weather_device_name,
+                    registry_parent_device_id=registry_device_id,
                     unique_id_suffix=unique_id_suffix,
                 )
             )

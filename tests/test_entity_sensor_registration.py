@@ -84,7 +84,11 @@ def _load_gateway_registry_helper(registry):
         for node in module.body
         if isinstance(node, ast.FunctionDef)
         and node.name
-        in {"_get_hub_for_tydom_device", "_get_tydom_gateway_registry_device_id"}
+        in {
+            "_get_hub_for_tydom_device",
+            "_get_tydom_gateway_registry_device_id",
+            "_get_tydom_registry_device_id",
+        }
     ]
     isolated_module = ast.Module(
         body=[
@@ -109,7 +113,11 @@ def _load_gateway_registry_helper(registry):
         "dr": registry,
     }
     exec(compile(isolated_module, source_path, "exec"), namespace)
-    return namespace["_get_tydom_gateway_registry_device_id"], Tydom
+    return (
+        namespace["_get_tydom_gateway_registry_device_id"],
+        namespace["_get_tydom_registry_device_id"],
+        Tydom,
+    )
 
 
 class TestGatewayRegistryLink(TestCase):
@@ -119,7 +127,7 @@ class TestGatewayRegistryLink(TestCase):
         """A child device never looks up a same-named gateway in another entry."""
         registry = MagicMock()
         registry.async_get_device_id_by_identifier.return_value = "registry-gateway"
-        helper, Tydom = _load_gateway_registry_helper(registry)
+        helper, _device_helper, Tydom = _load_gateway_registry_helper(registry)
         client = object()
         gateway = Tydom()
         gateway.device_id = "gateway-id"
@@ -142,7 +150,7 @@ class TestGatewayRegistryLink(TestCase):
         """A startup ordering race leaves the optional parent link unset."""
         registry = MagicMock()
         registry.async_get_device_id_by_identifier.side_effect = ValueError
-        helper, Tydom = _load_gateway_registry_helper(registry)
+        helper, _device_helper, Tydom = _load_gateway_registry_helper(registry)
         client = object()
         gateway = Tydom()
         gateway.device_id = "gateway-id"
@@ -154,6 +162,31 @@ class TestGatewayRegistryLink(TestCase):
         hass = SimpleNamespace(data={"deltadore_tydom": {"entry-a": hub}})
 
         self.assertIsNone(helper(hass, SimpleNamespace(_tydom_client=client)))
+
+    def test_resolves_weather_parent_in_owning_config_entry(self) -> None:
+        """Weather child devices link only to their own controller registry."""
+        registry = MagicMock()
+        registry.async_get_device_id_by_identifier.return_value = "registry-controller"
+        _gateway_helper, helper, Tydom = _load_gateway_registry_helper(registry)
+        client = object()
+        gateway = Tydom()
+        gateway.device_id = "gateway-id"
+        hub = SimpleNamespace(
+            _entry=SimpleNamespace(entry_id="entry-a"),
+            _tydom_client=client,
+            devices={"gateway-id": gateway},
+        )
+        hass = SimpleNamespace(data={"deltadore_tydom": {"entry-a": hub}})
+
+        self.assertEqual(
+            helper(hass, SimpleNamespace(_tydom_client=client), "controller-id"),
+            "registry-controller",
+        )
+        registry.async_get_device_id_by_identifier.assert_called_once_with(
+            hass,
+            ("deltadore_tydom", "controller-id"),
+            config_entry_id="entry-a",
+        )
 
 
 def _load_opening_consumed_attrs():
@@ -260,8 +293,18 @@ class EntitySensorRegistrationTests(TestCase):
         del entity._device.thermicDefect
         entity._device.outTemperature = 18.5
         entity._sensor_registry_targets = (
-            ("ctrl_rdc", "Tywell Ctrl RdC", ""),
-            ("ctrl_etg", "Tywell Ctrl Etg", "_shared_ctrl_etg"),
+            (
+                "weather_ctrl_rdc",
+                "Tywell Ctrl RdC - Weather",
+                "",
+                "ctrl_rdc",
+            ),
+            (
+                "weather_ctrl_etg",
+                "Tywell Ctrl Etg - Weather",
+                "_shared_ctrl_etg",
+                "ctrl_etg",
+            ),
         )
 
         sensors = entity.get_sensors()
@@ -271,13 +314,15 @@ class EntitySensorRegistrationTests(TestCase):
             [sensor.registry_kwargs for sensor in sensors],
             [
                 {
-                    "registry_device_id": "ctrl_rdc",
-                    "registry_device_name": "Tywell Ctrl RdC",
+                    "registry_device_id": "weather_ctrl_rdc",
+                    "registry_device_name": "Tywell Ctrl RdC - Weather",
+                    "registry_parent_device_id": "ctrl_rdc",
                     "unique_id_suffix": "",
                 },
                 {
-                    "registry_device_id": "ctrl_etg",
-                    "registry_device_name": "Tywell Ctrl Etg",
+                    "registry_device_id": "weather_ctrl_etg",
+                    "registry_device_name": "Tywell Ctrl Etg - Weather",
+                    "registry_parent_device_id": "ctrl_etg",
                     "unique_id_suffix": "_shared_ctrl_etg",
                 },
             ],

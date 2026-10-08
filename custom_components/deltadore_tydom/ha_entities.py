@@ -367,16 +367,20 @@ class HAEntity:
                     device_id,
                     device_name,
                     unique_id_suffix,
+                    parent_device_id,
                     registered_sensors
                     if index == 0
                     else registrations_by_target.setdefault(device_id, []),
                 )
-                for index, (device_id, device_name, unique_id_suffix) in enumerate(
-                    registry_targets
-                )
+                for index, (
+                    device_id,
+                    device_name,
+                    unique_id_suffix,
+                    parent_device_id,
+                ) in enumerate(registry_targets)
             ]
         else:
-            target_registrations = [(None, None, "", registered_sensors)]
+            target_registrations = [(None, None, "", None, registered_sensors)]
 
         consumed_attrs = self._get_consumed_attrs()
         for attribute, value in self._device.__dict__.items():
@@ -412,6 +416,7 @@ class HAEntity:
                     registry_device_id,
                     registry_device_name,
                     unique_id_suffix,
+                    parent_device_id,
                     target_registered_sensors,
                 ) in target_registrations:
                     if attribute in target_registered_sensors:
@@ -421,6 +426,7 @@ class HAEntity:
                         device_kwargs = {
                             "registry_device_id": registry_device_id,
                             "registry_device_name": registry_device_name,
+                            "registry_parent_device_id": parent_device_id,
                             "unique_id_suffix": unique_id_suffix,
                         }
                     if is_binary_sensor:
@@ -565,6 +571,27 @@ def _get_tydom_gateway_registry_device_id(hass: Any, device: Any) -> str | None:
         return None
 
 
+def _get_tydom_registry_device_id(
+    hass: Any, device: Any, device_identifier: str
+) -> str | None:
+    """Resolve a TYDOM device identifier within its owning config entry."""
+    hub = _get_hub_for_tydom_device(hass, device)
+    entry = getattr(hub, "_entry", None)
+    if hub is None or entry is None:
+        return None
+
+    try:
+        return dr.async_get_device_id_by_identifier(
+            hass,
+            (DOMAIN, device_identifier),
+            config_entry_id=entry.entry_id,
+        )
+    except ValueError:
+        # The parent may not be registered yet. Omitting the optional parent
+        # link is safer than linking to another config entry.
+        return None
+
+
 class GenericSensor(SensorEntity):
     """Representation of a generic sensor."""
 
@@ -610,6 +637,7 @@ class GenericSensor(SensorEntity):
         *,
         registry_device_id: str | None = None,
         registry_device_name: str | None = None,
+        registry_parent_device_id: str | None = None,
         unique_id_suffix: str = "",
     ):
         """Initialize the sensor.
@@ -637,6 +665,8 @@ class GenericSensor(SensorEntity):
         if registry_device_id is not None:
             self._registry_device_id_override = str(registry_device_id)
             self._registry_device_name_override = str(registry_device_name)
+        if registry_parent_device_id is not None:
+            self._registry_parent_device_id_override = str(registry_parent_device_id)
         # Create entity description with translation key
         entity_description = SensorEntityDescription(
             key=attribute,
@@ -822,13 +852,24 @@ class GenericSensor(SensorEntity):
         if "sw_version" in device_info_dict and not grouped_with_parent:
             info["sw_version"] = device_info_dict["sw_version"]
 
-        # Link device to the owning Tydom gateway.
-        gateway_device_id = self._get_tydom_gateway_device_id()
-        if gateway_device_id is not None and gateway_device_id != registry_device_id:
-            if gateway_registry_device_id := _get_tydom_gateway_registry_device_id(
-                self.hass, self._device
+        if parent_device_id := getattr(
+            self, "_registry_parent_device_id_override", None
+        ):
+            if parent_registry_device_id := _get_tydom_registry_device_id(
+                self.hass, self._device, parent_device_id
             ):
-                info["via_device_id"] = gateway_registry_device_id
+                info["via_device_id"] = parent_registry_device_id
+        else:
+            # Link device to the owning Tydom gateway.
+            gateway_device_id = self._get_tydom_gateway_device_id()
+            if (
+                gateway_device_id is not None
+                and gateway_device_id != registry_device_id
+            ):
+                if gateway_registry_device_id := _get_tydom_gateway_registry_device_id(
+                    self.hass, self._device
+                ):
+                    info["via_device_id"] = gateway_registry_device_id
 
         return info
 
@@ -969,13 +1010,24 @@ class BinarySensorBase(BinarySensorEntity):
             product_name = getattr(self._device, "productName", None)
             if product_name is not None:
                 info["model"] = str(product_name)
-        # Link to gateway if available
-        gateway_device_id = self._get_tydom_gateway_device_id()
-        if gateway_device_id is not None and gateway_device_id != registry_device_id:
-            if gateway_registry_device_id := _get_tydom_gateway_registry_device_id(
-                self.hass, self._device
+        if parent_device_id := getattr(
+            self, "_registry_parent_device_id_override", None
+        ):
+            if parent_registry_device_id := _get_tydom_registry_device_id(
+                self.hass, self._device, parent_device_id
             ):
-                info["via_device_id"] = gateway_registry_device_id
+                info["via_device_id"] = parent_registry_device_id
+        else:
+            # Link to gateway if available.
+            gateway_device_id = self._get_tydom_gateway_device_id()
+            if (
+                gateway_device_id is not None
+                and gateway_device_id != registry_device_id
+            ):
+                if gateway_registry_device_id := _get_tydom_gateway_registry_device_id(
+                    self.hass, self._device
+                ):
+                    info["via_device_id"] = gateway_registry_device_id
         return info
 
     async def async_added_to_hass(self):
@@ -1018,6 +1070,7 @@ class GenericBinarySensor(BinarySensorBase):
         *,
         registry_device_id: str | None = None,
         registry_device_name: str | None = None,
+        registry_parent_device_id: str | None = None,
         unique_id_suffix: str = "",
     ):
         """Initialize the sensor."""
@@ -1028,6 +1081,8 @@ class GenericBinarySensor(BinarySensorBase):
         if registry_device_id is not None:
             self._registry_device_id_override = str(registry_device_id)
             self._registry_device_name_override = str(registry_device_name)
+        if registry_parent_device_id is not None:
+            self._registry_parent_device_id_override = str(registry_parent_device_id)
         # Create entity description with translation key
         entity_description = BinarySensorEntityDescription(
             key=attribute,
@@ -4105,6 +4160,7 @@ class HaWeather(WeatherEntity, HAEntity):
         *,
         registry_device_id: str | None = None,
         registry_device_name: str | None = None,
+        registry_parent_device_id: str | None = None,
         unique_id_suffix: str = "",
     ) -> None:
         """Initialize the sensor."""
@@ -4117,6 +4173,8 @@ class HaWeather(WeatherEntity, HAEntity):
         if registry_device_id is not None:
             self._registry_device_id_override = str(registry_device_id)
             self._registry_device_name_override = str(registry_device_name)
+        if registry_parent_device_id is not None:
+            self._registry_parent_device_id_override = str(registry_parent_device_id)
         if (
             self._device._metadata is not None
             and "dailyPower" in self._device._metadata
@@ -4183,6 +4241,13 @@ class HaWeather(WeatherEntity, HAEntity):
         }
         if "model" in device_info and not grouped_with_parent:
             info["model"] = device_info["model"]
+        if parent_device_id := getattr(
+            self, "_registry_parent_device_id_override", None
+        ):
+            if parent_registry_device_id := _get_tydom_registry_device_id(
+                self.hass, self._device, parent_device_id
+            ):
+                info["via_device_id"] = parent_registry_device_id
         return self._enrich_device_info(info)
 
 
