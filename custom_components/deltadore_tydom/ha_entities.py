@@ -617,6 +617,11 @@ class GenericSensor(SensorEntity):
         "energyIndex_ELEC_HOTWATER": "tywatt_energy_index_elec_hotwater",
         "energyIndex_ELEC_OTHER": "tywatt_energy_index_elec_other",
         "energyIndex_ELEC_TOTAL": "tywatt_energy_index_elec_total",
+        "outTemperature": "outtemperature",
+        "dailyPower": "dailypower",
+        "currentPower": "power",
+        "maxDailyOutTemp": "maxdailyouttemp",
+        "weather": "weather",
     }
     diagnostic_attrs = [
         "config",
@@ -821,6 +826,11 @@ class GenericSensor(SensorEntity):
         info: DeviceInfo = {
             "identifiers": {(DOMAIN, registry_device_id)},
         }
+        registry_translation_key = getattr(
+            self, "_registry_translation_key_override", None
+        )
+        if registry_translation_key:
+            info["translation_key"] = registry_translation_key
 
         # Add name if available
         # Avoid using generic names like "Produit 1" from productName
@@ -833,20 +843,21 @@ class GenericSensor(SensorEntity):
             "appareil",
         ]
 
-        if grouped_with_parent:
-            info["name"] = registry_device_name
-        elif hasattr(self._device, "device_name") and self._device.device_name:
-            info["name"] = self._device.device_name
-        elif "model" in device_info_dict:
-            model_name = device_info_dict["model"]
-            # Check if model name is generic - if so, use device ID instead
-            if model_name and model_name.lower().strip() not in generic_names:
-                info["name"] = model_name
+        if not registry_translation_key:
+            if grouped_with_parent:
+                info["name"] = registry_device_name
+            elif hasattr(self._device, "device_name") and self._device.device_name:
+                info["name"] = self._device.device_name
+            elif "model" in device_info_dict:
+                model_name = device_info_dict["model"]
+                # Check if model name is generic - if so, use device ID instead
+                if model_name and model_name.lower().strip() not in generic_names:
+                    info["name"] = model_name
+                else:
+                    # Use device ID for generic names
+                    info["name"] = f"Tydom Device {self._device.device_id[-6:]}"
             else:
-                # Use device ID for generic names
                 info["name"] = f"Tydom Device {self._device.device_id[-6:]}"
-        else:
-            info["name"] = f"Tydom Device {self._device.device_id[-6:]}"
 
         # Add manufacturer
         if "manufacturer" in device_info_dict:
@@ -865,9 +876,6 @@ class GenericSensor(SensorEntity):
         # Add software version
         if "sw_version" in device_info_dict and not grouped_with_parent:
             info["sw_version"] = device_info_dict["sw_version"]
-
-        if translation_key := getattr(self, "_registry_translation_key_override", None):
-            info["translation_key"] = translation_key
 
         if parent_device_id := getattr(
             self, "_registry_parent_device_id_override", None
@@ -987,6 +995,11 @@ class BinarySensorBase(BinarySensorEntity):
         info: DeviceInfo = {
             "identifiers": {(DOMAIN, registry_device_id)},
         }
+        registry_translation_key = getattr(
+            self, "_registry_translation_key_override", None
+        )
+        if registry_translation_key:
+            info["translation_key"] = registry_translation_key
         # Add name if available
         # Avoid using generic names like "Produit 1" from productName
         generic_names = [
@@ -998,24 +1011,25 @@ class BinarySensorBase(BinarySensorEntity):
             "appareil",
         ]
 
-        if grouped_with_parent:
-            info["name"] = registry_device_name
-        elif hasattr(self._device, "device_name") and self._device.device_name:
-            info["name"] = self._device.device_name
-        elif hasattr(self._device, "productName"):
-            product_name = getattr(self._device, "productName", None)
-            if product_name is not None:
-                product_str = str(product_name)
-                # Check if product name is generic - if so, use device ID instead
-                if product_str.lower().strip() not in generic_names:
-                    info["name"] = product_str
+        if not registry_translation_key:
+            if grouped_with_parent:
+                info["name"] = registry_device_name
+            elif hasattr(self._device, "device_name") and self._device.device_name:
+                info["name"] = self._device.device_name
+            elif hasattr(self._device, "productName"):
+                product_name = getattr(self._device, "productName", None)
+                if product_name is not None:
+                    product_str = str(product_name)
+                    # Check if product name is generic - if so, use device ID instead
+                    if product_str.lower().strip() not in generic_names:
+                        info["name"] = product_str
+                    else:
+                        # Use device ID for generic names
+                        info["name"] = f"Tydom Device {self._device.device_id[-6:]}"
                 else:
-                    # Use device ID for generic names
                     info["name"] = f"Tydom Device {self._device.device_id[-6:]}"
             else:
                 info["name"] = f"Tydom Device {self._device.device_id[-6:]}"
-        else:
-            info["name"] = f"Tydom Device {self._device.device_id[-6:]}"
         # Try to get manufacturer and model
         if hasattr(self._device, "manufacturer"):
             manufacturer = getattr(self._device, "manufacturer", None)
@@ -1027,8 +1041,6 @@ class BinarySensorBase(BinarySensorEntity):
             product_name = getattr(self._device, "productName", None)
             if product_name is not None:
                 info["model"] = str(product_name)
-        if translation_key := getattr(self, "_registry_translation_key_override", None):
-            info["translation_key"] = translation_key
         if parent_device_id := getattr(
             self, "_registry_parent_device_id_override", None
         ):
@@ -4261,11 +4273,12 @@ class HaWeather(WeatherEntity, HAEntity):
         grouped_with_parent = registry_device_id != self._device.device_id
         info: DeviceInfo = {
             "identifiers": {(DOMAIN, registry_device_id)},
-            "name": registry_device_name,
             "manufacturer": device_info["manufacturer"],
         }
         if translation_key := getattr(self, "_registry_translation_key_override", None):
             info["translation_key"] = translation_key
+        else:
+            info["name"] = registry_device_name
         if "model" in device_info and not grouped_with_parent:
             info["model"] = device_info["model"]
         if parent_device_id := getattr(
