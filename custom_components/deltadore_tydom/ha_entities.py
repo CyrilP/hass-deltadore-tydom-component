@@ -432,6 +432,14 @@ class HAEntity:
                             "registry_parent_device_id": parent_device_id,
                             "unique_id_suffix": unique_id_suffix,
                         }
+                        if registry_device_id == getattr(
+                            self, "_registry_device_id_override", None
+                        ) and (
+                            translation_key := getattr(
+                                self, "_registry_translation_key_override", None
+                            )
+                        ):
+                            device_kwargs["registry_translation_key"] = translation_key
                     if is_binary_sensor:
                         binary_sensor_class = (
                             BinarySensorDeviceClass.PROBLEM
@@ -640,6 +648,7 @@ class GenericSensor(SensorEntity):
         *,
         registry_device_id: str | None = None,
         registry_device_name: str | None = None,
+        registry_translation_key: str | None = None,
         registry_parent_device_id: str | None = None,
         unique_id_suffix: str = "",
     ):
@@ -668,6 +677,8 @@ class GenericSensor(SensorEntity):
         if registry_device_id is not None:
             self._registry_device_id_override = str(registry_device_id)
             self._registry_device_name_override = str(registry_device_name)
+        if registry_translation_key is not None:
+            self._registry_translation_key_override = registry_translation_key
         if registry_parent_device_id is not None:
             self._registry_parent_device_id_override = str(registry_parent_device_id)
         # Create entity description with translation key
@@ -855,6 +866,9 @@ class GenericSensor(SensorEntity):
         if "sw_version" in device_info_dict and not grouped_with_parent:
             info["sw_version"] = device_info_dict["sw_version"]
 
+        if translation_key := getattr(self, "_registry_translation_key_override", None):
+            info["translation_key"] = translation_key
+
         if parent_device_id := getattr(
             self, "_registry_parent_device_id_override", None
         ):
@@ -1013,6 +1027,8 @@ class BinarySensorBase(BinarySensorEntity):
             product_name = getattr(self._device, "productName", None)
             if product_name is not None:
                 info["model"] = str(product_name)
+        if translation_key := getattr(self, "_registry_translation_key_override", None):
+            info["translation_key"] = translation_key
         if parent_device_id := getattr(
             self, "_registry_parent_device_id_override", None
         ):
@@ -1073,6 +1089,7 @@ class GenericBinarySensor(BinarySensorBase):
         *,
         registry_device_id: str | None = None,
         registry_device_name: str | None = None,
+        registry_translation_key: str | None = None,
         registry_parent_device_id: str | None = None,
         unique_id_suffix: str = "",
     ):
@@ -1084,6 +1101,8 @@ class GenericBinarySensor(BinarySensorBase):
         if registry_device_id is not None:
             self._registry_device_id_override = str(registry_device_id)
             self._registry_device_name_override = str(registry_device_name)
+        if registry_translation_key is not None:
+            self._registry_translation_key_override = registry_translation_key
         if registry_parent_device_id is not None:
             self._registry_parent_device_id_override = str(registry_parent_device_id)
         # Create entity description with translation key

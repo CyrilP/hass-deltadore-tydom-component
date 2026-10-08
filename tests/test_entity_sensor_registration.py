@@ -309,6 +309,8 @@ class EntitySensorRegistrationTests(TestCase):
                 None,
             ),
         )
+        entity._registry_device_id_override = "weather_endpoint"
+        entity._registry_translation_key_override = "tywell_weather"
 
         sensors = entity.get_sensors()
 
@@ -320,6 +322,7 @@ class EntitySensorRegistrationTests(TestCase):
                     "registry_device_id": "weather_endpoint",
                     "registry_device_name": "Weather",
                     "registry_parent_device_id": None,
+                    "registry_translation_key": "tywell_weather",
                     "unique_id_suffix": "",
                 },
             ],
