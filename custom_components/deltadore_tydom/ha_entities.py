@@ -2853,6 +2853,21 @@ class HaClimate(ClimateEntity, HAEntity):
         return None
 
     @property
+    def current_humidity(self) -> float | None:
+        """Return the current humidity when the device advertises hygroIn."""
+        metadata = getattr(self._device, "_metadata", None)
+        if metadata is None or "hygroIn" not in metadata:
+            return None
+
+        humidity = getattr(self._device, "hygroIn", None)
+        if humidity is None:
+            return None
+
+        with suppress(TypeError, ValueError):
+            return float(humidity)
+        return None
+
+    @property
     def target_temperature(self) -> float | None:
         """Return the temperature currently set to be reached."""
         if hasattr(self._device, "area_id"):
