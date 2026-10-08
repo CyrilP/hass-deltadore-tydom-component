@@ -2655,6 +2655,24 @@ class HaClimate(ClimateEntity, HAEntity):
             return []
         return super().get_sensors()
 
+    def _supports_absence_mode(self) -> bool:
+        """Return whether TYDOM has advertised or reported absence mode."""
+        if self._device.is_area_trv:
+            return False
+        local_mode_metadata = (self._device._metadata or {}).get("localMode", {})
+        return (
+            isinstance(local_mode_metadata, dict)
+            and "ABSENCE" in local_mode_metadata.get("enum_values", [])
+        ) or getattr(self._device, "localMode", None) == "ABSENCE"
+
+    @property
+    def preset_modes(self) -> list[str]:
+        """Expose the standard Away preset when TYDOM reports absence mode."""
+        modes = list(self._attr_preset_modes)
+        if self._supports_absence_mode() and PRESET_AWAY not in modes:
+            modes.append(PRESET_AWAY)
+        return modes
+
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
         await super().async_added_to_hass()
@@ -2894,6 +2912,11 @@ class HaClimate(ClimateEntity, HAEntity):
             if level == "ANTI_FROST":
                 return PRESET_AWAY
             return PRESET_NONE
+        if (
+            not self._device.is_area_trv
+            and getattr(self._device, "localMode", None) == "ABSENCE"
+        ):
+            return PRESET_AWAY
         if hasattr(self._device, "comfortMode"):
             comfort_mode = getattr(self._device, "comfortMode", None)
             if comfort_mode == "ANTI_FROST":
@@ -2929,6 +2952,25 @@ class HaClimate(ClimateEntity, HAEntity):
                 # enum doesn't include AUTO (e.g. some RF 6600 units) are
                 # left untouched, matching the previous no-op behaviour.
                 await self._device.set_thermic_level("AUTO")
+            return
+        if preset_mode == PRESET_AWAY and self._supports_absence_mode():
+            local_mode_metadata = (self._device._metadata or {}).get("localMode", {})
+            if (
+                isinstance(local_mode_metadata, dict)
+                and "ABSENCE" in local_mode_metadata.get("enum_values", [])
+                and "w" in local_mode_metadata.get("permission", "")
+            ):
+                if hasattr(self._device, "area_id"):
+                    await self._device._tydom_client.put_area_data(
+                        self._device.area_id, "localMode", "ABSENCE"
+                    )
+                else:
+                    await self._device._tydom_client.put_devices_data(
+                        self._device._id,
+                        self._device._endpoint,
+                        "localMode",
+                        "ABSENCE",
+                    )
             return
         if preset_mode == PRESET_NONE:
             return
