@@ -840,21 +840,9 @@ class TydomBoiler(TydomDevice):
                 LOGGER.error("Unknown area HVAC mode: %s", mode)
                 return
 
-            # Some area-linked thermostats (e.g. Tybox Home RF 210) expose the
-            # HVAC command through the writable comfortMode attribute while
-            # authorization is read-only. Like homebridge-tydom, drive the mode
-            # register (localMode) alongside the direction so the thermostat
-            # actually leaves STOP/ABSENCE and applies the comfort order.
+            # Some area-linked thermostats expose the HVAC command
+            # through the writable comfortMode attribute.
             if self._supports_command_value("comfortMode", area_mode):
-                if mode == "STOP":
-                    if self._supports_command_value("localMode", "STOP"):
-                        await self._tydom_client.put_devices_data(
-                            self._id, self._endpoint, "localMode", "STOP"
-                        )
-                elif self._supports_command_value("localMode", "NORMAL"):
-                    await self._tydom_client.put_devices_data(
-                        self._id, self._endpoint, "localMode", "NORMAL"
-                    )
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "comfortMode", area_mode
                 )
