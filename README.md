@@ -24,7 +24,7 @@ The Delta Dore gateway can be detected using DHCP discovery.
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Troubleshooting](#troubleshooting)
-- [Gateway association, identification and radio removal — new, work in progress](#gateway-association-identification-and-radio-removal--new-work-in-progress)
+- [Gateway association, identification and radio removal](#gateway-association-identification-and-radio-removal)
 - [Illustrated association guides](#illustrated-association-guides)
 - [Capturing data for unsupported devices](#capturing-data-for-unsupported-devices)
 - [TYXAL+ remote management](#tyxal-remote-management)
@@ -49,7 +49,7 @@ Platform | Description
 `select` | Controls writable enumerated settings exposed by a device.
 `sensor` | Reports measurements and device information.
 `switch` | Controls binary outputs, plugs and TYDOM moments.
-`update` | Reports and installs supported TYDOM gateway firmware updates; the gateway does not report the target version.
+`update` | Exposes gateway firmware updates reported by TYDOM and starts installation; the target version is unavailable, so Home Assistant displays generic `latest`.
 `weather` | Reports weather information.
 
 ### Feature highlights
@@ -72,6 +72,30 @@ Platform | Description
 - Add, identify and safely remove compatible radio products directly from the
   gateway device page, with model-specific guidance and automatic inventory
   refresh after a successful operation.
+
+- Expose current humidity on climate entities when TYDOM advertises `hygroIn`,
+  and expose a native humidity sensor where that reading is supplied. Map the
+  TYDOM absence mode to Home Assistant's Away preset when advertised or
+  reported, allowing commands only when metadata marks it writable. Map
+  `ANTI_FROST` to Frost on reversible zone thermostats.
+- Recover writable setpoints for Tywell Control and Typass ATL climate entities
+  when live data arrives before optional metadata. Group each Tywell Control's
+  shutter scenarios by controller and exact shutter targets so multiple
+  controllers do not overwrite one another.
+- Share one weather device when multiple Tywell Controls reference the same
+  endpoint, keeping its weather entity and endpoint sensors together. Readings
+  include outdoor temperature, conditions, current and daily power, and daily
+  maximum outdoor temperature.
+- Expose a Home Assistant update entity when the gateway reports firmware
+  availability. Starting installation uses the TYDOM gateway update operation;
+  the target version is not provided, so Home Assistant displays generic
+  `latest`.
+- Download diagnostics for the integration and individual devices. They use
+  data already held by the integration, and Home Assistant redacts known
+  sensitive fields.
+- Use `deltadore_tydom.set_mode_using_stored_pin` in automations to arm or
+  disarm TYXAL+ with the PIN saved for that config entry. The manual alarm
+  panel continues to request the PIN.
 
 ### Tested hardware
 
@@ -190,9 +214,18 @@ configured for cloud/mediation continues to use its own configured connection.
 ### Entity names
 
 Measurements, settings, diagnostics and gateway controls use descriptive names
-across all supported device families. Names are available in British English,
-French, German, Spanish, Italian, Portuguese, Dutch and Polish, according to
-Home Assistant's language.
+across all supported device families. The full device-family catalogue is
+translated in British English, French, German, Spanish, Italian, Portuguese,
+Dutch and Polish, according to Home Assistant's language. Czech and Norwegian
+Bokmål resources also add the shared Tywell weather device and its readings,
+along with selected common sensor and diagnostic entity names. Coverage varies
+by entity across the ten locales; labels without a translation remain in
+English.
+
+The eight distribution and index sensors on TYWATT 1000 RT 2012 use
+Delta Dore terminology in English, French, German, Spanish, Italian and
+Portuguese; Dutch and Polish fall back to English. These labels do not change
+protocol attributes or entity identifiers.
 
 Device and scene names chosen in TYDOM, and entity names customised in Home
 Assistant, are preserved. Existing entity identifiers and automation references
@@ -212,6 +245,16 @@ These entities keep their identifiers and values for existing automations.
 Categorisation does not disable them or change your enabled/disabled choices.
 Temperature, humidity, setpoints and operating settings stay in the main view.
 
+Gateway API, protocol, software-version and update-status readings are also
+diagnostic where available.
+
+### Download diagnostics
+
+Download diagnostics from the integration config-entry page or an individual
+device page. The file is assembled from data already held by the integration
+and does not make an additional gateway request. Home Assistant redacts known
+sensitive fields, but review the file before sharing it publicly.
+
 ## Troubleshooting
 
 ### Enable debug logging
@@ -229,6 +272,10 @@ logger:
   logs:
     custom_components.deltadore_tydom: debug
 ```
+
+Some optional TYDOM endpoints are not implemented by every gateway or product.
+Their absence is logged at DEBUG level; HTTP errors for requests that do run
+remain warnings.
 
 ### Authentication and communication errors
 
@@ -276,7 +323,7 @@ After a configuration change, an old registry entry may first appear as
 **Unavailable** or **No longer provided**. Verify that the replacement device
 is present and working before using **Remove device**.
 
-## Gateway association, identification and radio removal — new, work in progress
+## Gateway association, identification and radio removal
 
 The **Configuration** card on the TYDOM/Tywell gateway device provides the
 radio-management controls. These act on the physical gateway; they are not
@@ -326,11 +373,13 @@ existing automations.
 
 ## Illustrated association guides
 
-Guided association and dissociation will be included in the next release.
-This feature is still a work in progress: the guides below have been confirmed
-on the stated gateway type, while support for other compatible products is
-being added and needs real-world confirmation. Select the relevant product and
-channel in Home Assistant, then follow the illustrated steps in order.
+Guided association is available in Home Assistant. The model-specific guides
+below adapt the official device procedures to the Home Assistant workflow.
+Hardware confirmation applies only to the products and gateway types marked
+as confirmed; other compatible products may show an official guide but still
+need real-world validation. Select the product and channel in Home Assistant,
+then follow the steps in order. Press **Start gateway listening** only when
+the guide reaches that point.
 
 <details>
 <summary><strong>TYXIA 2600 wall switch — Button A or B — Confirmed gateway: Tywell Pro</strong></summary>
@@ -490,6 +539,29 @@ Use **Permanently dissociate device** to remove it from the gateway.
 
 </details>
 
+<details>
+<summary><strong>Tywell Control — Confirmed gateway: Tywell Pro</strong></summary>
+
+1. On the TYDOM/Tywell gateway device page in Home Assistant, select the
+   **Tywell Control** association recipe and open **Show association guide**.
+2. On the Tywell Control, put the Tywell gateway into association mode as
+   instructed. The official guide shows the control screen below.
+
+   <img src="docs/images/association/catalog_tywell_control_step1.svg" width="48%" alt="Tywell Control screen shown in the official association step">
+
+3. Once the Tywell gateway is in association mode, press **Start gateway
+   listening** in Home Assistant. Do not start listening before this point.
+4. A progress bar appears directly on the Tywell Control while pairing runs.
+   Wait for its successful-association message.
+
+   <img src="docs/images/association/catalog_tywell_control_step2.svg" width="48%" alt="Progress bar displayed on the Tywell Control during association">
+
+5. Home Assistant discovers the new controller and refreshes the gateway
+   inventory automatically. This workflow was validated for a second Tywell
+   Control on a Tywell Pro gateway.
+
+</details>
+
 ### Device association and identification
 
 Some devices expose association and physical-identification commands through
@@ -533,6 +605,9 @@ also accepts a `config_entry_id`, so it can target a newly configured gateway
 that has no entities yet. `deltadore_tydom.remove_product_association` removes
 the selected product from the physical gateway (not only from Home Assistant)
 and therefore requires `confirm: true`.
+
+
+
 
 ## Capturing data for unsupported devices
 
@@ -705,8 +780,10 @@ reported arm or disarm transition.
   Refreshing or polling the gateway cannot force a sleeping device to transmit
   a newer value.
 - An exact model name is displayed only when TYDOM provides reliable product or
-  tutorial metadata. Other compatible devices retain a generic Delta Dore
-  model name rather than being guessed from broad capabilities.
+  tutorial metadata. For example, identifying a Tybox Home RF 210 from its
+  tutorial metadata names the model but does not confirm that every register,
+  preset or control is supported. Other compatible devices retain a generic
+  Delta Dore model name rather than being guessed from broad capabilities.
 - The capture tool records messages returned or published by the gateway. It
   cannot always reveal the exact outbound request sent by the official mobile
   application.
