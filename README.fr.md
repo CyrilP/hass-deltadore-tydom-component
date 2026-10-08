@@ -610,6 +610,47 @@ configuration des sirènes ne sont pas exposés.
 Assistant. Utilisez-le uniquement après avoir vérifié les défauts signalés et
 déterminé qu'un armement forcé est approprié.
 
+### Automatisations utilisant le PIN d'alarme mémorisé
+
+L'action facultative `deltadore_tydom.set_mode_using_stored_pin` permet à
+une automatisation d'armer ou de désarmer avec le **Code PIN de l'alarme**
+enregistré dans les paramètres de l'intégration de l'alarme ciblée, sans le
+recopier dans chaque automatisation. Choisissez `away` (Absent), `home`
+(Présent), `night` (Nuit) ou `disarm` (Désarmer). L'armement utilise les zones
+configurées pour le mode choisi. Sans PIN enregistré, l'action échoue sans
+envoyer de commande à l'alarme.
+
+```yaml
+action: deltadore_tydom.set_mode_using_stored_pin
+target:
+  entity_id: alarm_control_panel.tyxal_alarm
+data:
+  mode: night
+```
+
+Utilisez `mode: disarm` pour désarmer avec le même PIN mémorisé. Avec plusieurs
+entrées de l'intégration TYDOM, chaque alarme ciblée utilise le PIN de sa
+propre entrée.
+
+L'entité d'alarme, son identifiant et les actions standard
+`alarm_control_panel` restent inchangés. Le panneau d'alarme standard de Home
+Assistant continue de demander le code avec sa configuration actuelle. Les
+automatisations existantes qui fournissent un code continuent de fonctionner ;
+l'utilisation de cette nouvelle action est facultative.
+
+**Sécurité :** un utilisateur autorisé à appeler cette action peut armer ou
+désarmer sans ressaisir le PIN. Limitez l'accès à Home Assistant et vérifiez
+les déclencheurs des automatisations en conséquence. Il s'agit d'un armement
+normal, jamais forcé : les défauts et refus de la passerelle sont toujours
+traités par le fonctionnement existant. L'action n'expose pas le PIN mémorisé
+dans sa réponse ou les attributs de l'entité.
+
+Cette fonctionnalité concerne les actions et automatisations Home Assistant.
+Elle n'ajoute ni ne configure de support HomeKit, ne modifie pas les appels
+du pont HomeKit et ne garantit pas le fonctionnement depuis Apple Maison.
+La réussite d'une commande ne valide pas à elle seule le support complet
+d'un nouveau Hub d'alarme.
+
 ### Produits empêchant l'armement
 
 `deltadore_tydom.get_open_issues` interroge la centrale pour obtenir les

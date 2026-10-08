@@ -23,6 +23,7 @@ SERVICE_RENAME_ALARM_ZONE = "rename_alarm_zone"
 SERVICE_ENTER_ALARM_MAINTENANCE = "enter_alarm_maintenance"
 SERVICE_EXIT_ALARM_MAINTENANCE = "exit_alarm_maintenance"
 SERVICE_FORCE_ARM = "force_arm"
+SERVICE_SET_MODE_USING_STORED_PIN = "set_mode_using_stored_pin"
 
 ALARM_CODE_SCHEMA = vol.All(
     cv.string,
@@ -45,6 +46,12 @@ async def async_setup_entry(
     hub.add_alarm_callback = async_add_entities
 
     platform = async_get_current_platform()
+
+    platform.async_register_entity_service(
+        SERVICE_SET_MODE_USING_STORED_PIN,
+        {vol.Required("mode"): vol.In(("away", "home", "night", "disarm"))},
+        "async_set_mode_using_stored_pin",
+    )
 
     # This will call Entity.async_acknowledge_events(code=VALUE)
     platform.async_register_entity_service(
