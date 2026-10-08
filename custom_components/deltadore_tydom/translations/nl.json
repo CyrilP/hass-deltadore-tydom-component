@@ -1468,6 +1468,30 @@
             "techwaterdefect": {
                 "name": "Er is een waterlek gedetecteerd"
             },
+            "tywatt_energy_distrib_elec_heating": {
+                "name": "Elektriciteitsverbruik - Verwarming"
+            },
+            "tywatt_energy_distrib_elec_hotwater": {
+                "name": "Elektriciteitsverbruik - Warm water"
+            },
+            "tywatt_energy_distrib_elec_other": {
+                "name": "Elektriciteitsverbruik - Overig"
+            },
+            "tywatt_energy_distrib_elec_outlet": {
+                "name": "Elektriciteitsverbruik - Stekkers"
+            },
+            "tywatt_energy_index_elec_heating": {
+                "name": "Verbruikstellerstand (Elektriciteit, Verwarming)"
+            },
+            "tywatt_energy_index_elec_hotwater": {
+                "name": "Verbruikstellerstand (Elektriciteit, Warm water)"
+            },
+            "tywatt_energy_index_elec_other": {
+                "name": "Verbruikstellerstand (Elektriciteit, Overig)"
+            },
+            "tywatt_energy_index_elec_total": {
+                "name": "Verbruikstellerstand (Elektriciteit, Totaal)"
+            },
             "temperature": {
                 "name": "Temperatuur"
             },

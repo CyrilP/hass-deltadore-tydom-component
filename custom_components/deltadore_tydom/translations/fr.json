@@ -3321,6 +3321,30 @@
             "techwaterdefect": {
                 "name": "Fuite détectée"
             },
+            "tywatt_energy_distrib_elec_heating": {
+                "name": "Consommation électrique - Chauffage"
+            },
+            "tywatt_energy_distrib_elec_hotwater": {
+                "name": "Consommation électrique - Eau chaude"
+            },
+            "tywatt_energy_distrib_elec_other": {
+                "name": "Consommation électrique - Autres"
+            },
+            "tywatt_energy_distrib_elec_outlet": {
+                "name": "Consommation électrique - Prises"
+            },
+            "tywatt_energy_index_elec_heating": {
+                "name": "Index électrique - Chauffage"
+            },
+            "tywatt_energy_index_elec_hotwater": {
+                "name": "Index électrique - Eau chaude"
+            },
+            "tywatt_energy_index_elec_other": {
+                "name": "Index électrique - Autres"
+            },
+            "tywatt_energy_index_elec_total": {
+                "name": "Index électrique - Total"
+            },
             "temperature": {
                 "name": "Température"
             },

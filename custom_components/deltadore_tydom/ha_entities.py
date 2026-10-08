@@ -534,6 +534,16 @@ class GenericSensor(SensorEntity):
 
     _attr_should_poll = False
     _attr_has_entity_name = True
+    TRANSLATION_KEYS = {
+        "energyDistrib_ELEC_HEATING": "tywatt_energy_distrib_elec_heating",
+        "energyDistrib_ELEC_HOTWATER": "tywatt_energy_distrib_elec_hotwater",
+        "energyDistrib_ELEC_OTHER": "tywatt_energy_distrib_elec_other",
+        "energyDistrib_ELEC_OUTLET": "tywatt_energy_distrib_elec_outlet",
+        "energyIndex_ELEC_HEATING": "tywatt_energy_index_elec_heating",
+        "energyIndex_ELEC_HOTWATER": "tywatt_energy_index_elec_hotwater",
+        "energyIndex_ELEC_OTHER": "tywatt_energy_index_elec_other",
+        "energyIndex_ELEC_TOTAL": "tywatt_energy_index_elec_total",
+    }
     diagnostic_attrs = [
         "config",
         "supervisionMode",
@@ -581,16 +591,18 @@ class GenericSensor(SensorEntity):
         # unique_id format: {device_id}_{entity_name}
         # device_id is stable and unique (endpoint_id + "_" + device_id from Tydom API)
         self._attr_unique_id = f"{self._device.device_id}_{name}"
-        self._attr_name = name
+        translation_key = self.TRANSLATION_KEYS.get(attribute)
+        self._attr_name = None if translation_key else name
         self._attribute = attribute
         # Create entity description with translation key
         entity_description = SensorEntityDescription(
             key=attribute,
-            name=name,
+            name=None if translation_key else name,
             device_class=device_class,
             state_class=state_class,
             native_unit_of_measurement=unit_of_measurement,
-            translation_key=f"sensor_{attribute}" if attribute else None,
+            translation_key=translation_key
+            or (f"sensor_{attribute}" if attribute else None),
         )
         self.entity_description = entity_description
         self._attr_device_class = device_class

@@ -1468,6 +1468,30 @@
             "techwaterdefect": {
                 "name": "Wykryto wyciek wody"
             },
+            "tywatt_energy_distrib_elec_heating": {
+                "name": "Zużycie energii elektrycznej - Ogrzewanie"
+            },
+            "tywatt_energy_distrib_elec_hotwater": {
+                "name": "Zużycie energii elektrycznej - Ciepła woda"
+            },
+            "tywatt_energy_distrib_elec_other": {
+                "name": "Zużycie energii elektrycznej - Pozostałe"
+            },
+            "tywatt_energy_distrib_elec_outlet": {
+                "name": "Zużycie energii elektrycznej - Gniazda"
+            },
+            "tywatt_energy_index_elec_heating": {
+                "name": "Wskazanie licznika zużycia (Elektryczność, Ogrzewanie)"
+            },
+            "tywatt_energy_index_elec_hotwater": {
+                "name": "Wskazanie licznika zużycia (Elektryczność, Gorąca woda)"
+            },
+            "tywatt_energy_index_elec_other": {
+                "name": "Wskazanie licznika zużycia (Elektryczność, Pozostałe)"
+            },
+            "tywatt_energy_index_elec_total": {
+                "name": "Wskazanie licznika zużycia (Elektryczność, Łącznie)"
+            },
             "temperature": {
                 "name": "Temperatura"
             },

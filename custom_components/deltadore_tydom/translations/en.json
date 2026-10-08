@@ -3320,6 +3320,30 @@
             "techwaterdefect": {
                 "name": "Water leak detected"
             },
+            "tywatt_energy_distrib_elec_heating": {
+                "name": "Electricity consumption - Heating"
+            },
+            "tywatt_energy_distrib_elec_hotwater": {
+                "name": "Electricity consumption - Hot water"
+            },
+            "tywatt_energy_distrib_elec_other": {
+                "name": "Electricity consumption - Other"
+            },
+            "tywatt_energy_distrib_elec_outlet": {
+                "name": "Electricity consumption - Outlets"
+            },
+            "tywatt_energy_index_elec_heating": {
+                "name": "Electricity index - Heating"
+            },
+            "tywatt_energy_index_elec_hotwater": {
+                "name": "Electricity index - Hot water"
+            },
+            "tywatt_energy_index_elec_other": {
+                "name": "Electricity index - Other"
+            },
+            "tywatt_energy_index_elec_total": {
+                "name": "Electricity index - Total"
+            },
             "temperature": {
                 "name": "Temperature"
             },
