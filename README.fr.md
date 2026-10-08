@@ -39,7 +39,7 @@ passerelle Delta Dore peut être détectée par découverte DHCP.
 Plateforme | Description
 -- | --
 `alarm_control_panel` | Pilote une alarme TYXAL.
-`binary_sensor` | Indique les états binaires et les diagnostics.
+`binary_sensor` | Indique les états binaires, les diagnostics et le drapeau de mise à jour de la passerelle.
 `button` | Fournit des commandes sans état, notamment pour les portails, portes de garage et alarmes.
 `climate` | Pilote le chauffage, la climatisation et la ventilation.
 `cover` | Pilote les volets, stores et bannes.
@@ -51,7 +51,7 @@ Plateforme | Description
 `select` | Modifie les paramètres à choix multiple exposés par un appareil.
 `sensor` | Indique les mesures et informations des appareils.
 `switch` | Pilote les sorties binaires, prises et moments TYDOM.
-`update` | Installe les mises à jour de micrologiciel TYDOM prises en charge.
+`update` | Signale et installe les mises à jour du micrologiciel TYDOM prises en charge ; la passerelle ne fournit pas la version cible.
 `weather` | Indique les informations météorologiques.
 
 ### Fonctionnalités principales
