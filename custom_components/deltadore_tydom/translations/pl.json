@@ -1556,12 +1556,7 @@
                 "name": "Zastosowanie"
             },
             "usemode": {
-                "name": "Tryb pracy",
-                "state": {
-                    "SCHED": "Harmonogram",
-                    "OVERRIDE": "Nadpisanie",
-                    "MANUAL": "Ręcznie"
-                }
+                "name": "Tryb pracy"
             },
             "value": {
                 "name": "Wartość"
@@ -1625,6 +1620,14 @@
             },
             "tywell_weather_max_daily_outdoor_temperature": {
                 "name": "Maksymalna dzienna temperatura zewnętrzna"
+            },
+            "thermostat_use_mode": {
+                "name": "Tryb termostatu",
+                "state": {
+                    "sched": "Harmonogram",
+                    "override": "Nadpisanie",
+                    "manual": "Ręcznie"
+                }
             }
         },
         "binary_sensor": {

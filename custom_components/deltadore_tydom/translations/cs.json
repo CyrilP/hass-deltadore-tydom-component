@@ -447,12 +447,12 @@
             "writable": {
                 "name": "Writable"
             },
-            "usemode": {
-                "name": "Provozní režim",
+            "thermostat_use_mode": {
+                "name": "Režim termostatu",
                 "state": {
-                    "SCHED": "Program",
-                    "OVERRIDE": "Dočasná změna",
-                    "MANUAL": "Ručně"
+                    "sched": "Program",
+                    "override": "Dočasná změna",
+                    "manual": "Ručně"
                 }
             }
         },

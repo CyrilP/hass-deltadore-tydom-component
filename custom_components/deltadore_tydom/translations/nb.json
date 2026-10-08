@@ -447,12 +447,12 @@
             "writable": {
                 "name": "Writable"
             },
-            "usemode": {
-                "name": "Driftsmodus",
+            "thermostat_use_mode": {
+                "name": "Termostatmodus",
                 "state": {
-                    "SCHED": "Tidsprogram",
-                    "OVERRIDE": "Overstyring",
-                    "MANUAL": "Manuell"
+                    "sched": "Tidsprogram",
+                    "override": "Overstyring",
+                    "manual": "Manuell"
                 }
             }
         },

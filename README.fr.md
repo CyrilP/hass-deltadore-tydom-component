@@ -229,9 +229,9 @@ et réglages de fonctionnement restent dans la vue principale.
 
 ### Mode de fonctionnement du thermostat
 
-Lorsque TYDOM remonte `useMode`, le capteur existant **Mode de fonctionnement** devient un capteur Enum affichant **Programmation**, **Dérogation** ou **Manuel**. Il suit le retour réel de l’appareil et reste disponible dans la section principale Capteurs. Les libellés sont traduits dans les dix langues prises en charge ; les états bruts `SCHED`, `OVERRIDE` et `MANUAL` et les identifiants d’entités existants sont conservés pour les automatisations.
+Lorsque TYDOM remonte `useMode`, le nouveau capteur Enum **Mode du thermostat** affiche **Programmation**, **Dérogation** ou **Manuel** dans la section principale Capteurs. Il suit le retour réel de l’appareil, avec des libellés dans les dix langues prises en charge. Ses états HA sont `sched`, `override` et `manual`, car les traductions natives des états exigent des clés en minuscules.
 
-Ce capteur observe le mode de fonctionnement actuel. Il n’envoie aucune commande et ne modifie pas la programmation du thermostat. Une valeur ajoutée par un futur firmware reste visible avec son libellé brut.
+Le capteur **Mode de fonctionnement** existant conserve son identifiant et les états bruts `SCHED`, `OVERRIDE` et `MANUAL` pour les automatisations existantes. Les deux capteurs observent le même registre sans envoyer de commande ni modifier la programmation. Une valeur ajoutée par un futur firmware reste visible en minuscules dans le nouveau capteur Enum ; le capteur d’origine conserve sa valeur brute exacte.
 
 ## Dépannage
 

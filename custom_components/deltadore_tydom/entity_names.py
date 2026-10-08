@@ -543,6 +543,7 @@ ENTITY_NAMES: dict[str, str] = {
     "thermicdefect": "Overheat",
     "thermiclevel": "Heating level",
     "thermostat": "Thermostat",
+    "thermostat_use_mode": "Thermostat operating mode",
     "timedelay": "Time delay",
     "timeoncpt": "Operating time counter",
     "timezone": "Time zone",
