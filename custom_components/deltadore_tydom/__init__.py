@@ -31,6 +31,7 @@ from .hub import (
     remove_product_association,
     start_product_association,
 )
+from .schedule import async_register_schedule_service
 
 # Config schema for hassfest validation
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -75,6 +76,7 @@ ASSOCIATION_GUIDE_FRONTEND_RESOURCE_URL = (
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Delta Dore Tydom integration."""
 
+    async_register_schedule_service(hass)
     await hass.http.async_register_static_paths(
         [
             StaticPathConfig(

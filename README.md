@@ -28,6 +28,7 @@ The Delta Dore gateway can be detected using DHCP discovery.
 - [Illustrated association guides](#illustrated-association-guides)
 - [Capturing data for unsupported devices](#capturing-data-for-unsupported-devices)
 - [TYXAL+ remote management](#tyxal-remote-management)
+- [TYDOM programme snapshot — experimental, read-only](#tydom-programme-snapshot--experimental-read-only)
 - [Known limitations](#known-limitations)
 - [Security](#security)
 - [Contributing](#contributing)
@@ -653,6 +654,39 @@ When TYDOM reports the actor for an alarm transition, the alarm entity exposes
 `changed_by` with the user-code or product name and `changed_by_type` with
 either `access_code` or `product`. These attributes describe the latest
 reported arm or disarm transition.
+
+## TYDOM programme snapshot — experimental, read-only
+
+The `deltadore_tydom.get_schedule` action reads the complete programming
+document from the selected gateway's `/moments/file` endpoint. This is the
+read-only first stage of [#490](https://github.com/CyrilP/hass-deltadore-tydom-component/issues/490),
+pending validation against real TYDOM programmes. It does not change a
+programme, setpoint or operating mode. There is no `set_schedule` action yet.
+
+In **Developer tools > Actions**, select **Get TYDOM programme (read-only)**
+and choose your integration entry. The action requires a response variable,
+including in Developer tools. Use YAML mode there, or a script or automation:
+
+```yaml
+action: deltadore_tydom.get_schedule
+data:
+  config_entry_id: YOUR_TYDOM_CONFIG_ENTRY_ID
+response_variable: tydom_programme
+```
+
+The response contains `config_entry_id`, `scope: gateway`, `source: /moments/file`
+and `schedule`. The last field contains the original JSON document, including
+shared routines and any device, group, area, scenario or recurrence references.
+It is **not** a thermostat-specific weekly dictionary: different gateway
+versions may use different file structures. For a JSON export, use
+`{{ tydom_programme.schedule | to_json }}` in a subsequent script step.
+
+Each explicit call reads the gateway again, even if an earlier background
+request received a `404`. Missing files, rejected requests and timeouts are
+reported as errors, not as an empty programme; the action never creates a file.
+A `404` alone does not establish whether a thermostat has its own programme.
+When sharing a snapshot, remove private names, identifiers and location data,
+using consistent replacements so that references remain understandable.
 
 ## Known limitations
 

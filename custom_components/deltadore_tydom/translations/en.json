@@ -181,6 +181,16 @@
         }
     },
     "services": {
+        "get_schedule": {
+            "name": "Get TYDOM programme (read-only)",
+            "description": "Experimental read-only snapshot of the complete gateway programming document, including shared routines. Returns the original data without converting it to a thermostat-specific weekly plan or modifying anything. Requires a response variable.",
+            "fields": {
+                "config_entry_id": {
+                    "name": "TYDOM integration entry",
+                    "description": "Gateway whose programming document should be read."
+                }
+            }
+        },
         "acknowledge_events": {
             "name": "Acknowledge defect events",
             "description": "Acknowledge all defect alarm events."

@@ -182,6 +182,16 @@
         }
     },
     "services": {
+        "get_schedule": {
+            "name": "Lire la programmation TYDOM (lecture seule)",
+            "description": "Lecture expérimentale du document complet de programmation de la passerelle, y compris les routines partagées. Renvoie les données d'origine sans les convertir en planning hebdomadaire propre à un thermostat ni rien modifier. Nécessite une variable de réponse.",
+            "fields": {
+                "config_entry_id": {
+                    "name": "Entrée de l'intégration TYDOM",
+                    "description": "Passerelle dont le document de programmation doit être lu."
+                }
+            }
+        },
         "acknowledge_events": {
             "name": "Acquitter les événements de défaut",
             "description": "Acquitter tous les événements d'alarme de défaut."
