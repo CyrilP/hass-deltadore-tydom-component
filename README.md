@@ -199,6 +199,19 @@ Assistant, are preserved. Existing entity identifiers and automation references
 remain valid. Unknown attributes advertised by newer gateway firmware retain a
 readable technical name until a matching label is added.
 
+### Diagnostic entities
+
+Internal counters (`activationCpt`, `activationIndex`, `indexTimeOn`,
+`timeOnCpt`), device and area identifiers (`uid`, `area_id`), task registers
+(`jobs`, `jobsMP`, `jobsRM`), load shedding (`loadSheddingOn`) and maintenance
+status (`maintenanceNeeded`) appear in Home Assistant's **Diagnostic** section
+where supplied by the device. This applies to both sensors and binary sensors
+across device families.
+
+These entities keep their identifiers and values for existing automations.
+Categorisation does not disable them or change your enabled/disabled choices.
+Temperature, humidity, setpoints and operating settings stay in the main view.
+
 ## Troubleshooting
 
 ### Enable debug logging

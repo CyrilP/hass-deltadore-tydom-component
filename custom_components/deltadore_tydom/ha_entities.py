@@ -561,6 +561,17 @@ class GenericSensor(SensorEntity):
         "jobsMP",
         "softPlan",
         "softVersion",
+        # Internal counters, identifiers and service status across device families.
+        "activationCpt",
+        "activationIndex",
+        "area_id",
+        "uid",
+        "jobs",
+        "jobsRM",
+        "indexTimeOn",
+        "timeOnCpt",
+        "loadSheddingOn",
+        "maintenanceNeeded",
     ]
 
     def __init__(
@@ -608,7 +619,7 @@ class GenericSensor(SensorEntity):
         self._attr_device_class = device_class
         self._attr_state_class = state_class
         self._attr_native_unit_of_measurement = unit_of_measurement
-        if name in self.diagnostic_attrs:
+        if attribute in self.diagnostic_attrs:
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
         set_entity_name(self, attribute, fallback_name=name)
@@ -971,8 +982,8 @@ class GenericBinarySensor(BinarySensorBase):
         )
         self.entity_description = entity_description
         self._attr_device_class = device_class
-        # Set entity category for diagnostic/problem sensors
-        if device_class in (
+        # Apply the same raw-attribute category for scalar and binary readings.
+        if attribute in GenericSensor.diagnostic_attrs or device_class in (
             BinarySensorDeviceClass.PROBLEM,
             BinarySensorDeviceClass.UPDATE,
         ):
