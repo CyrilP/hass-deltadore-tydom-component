@@ -286,6 +286,9 @@ class HAEntity:
         device organization in Home Assistant's Area Registry.
         See: https://developers.home-assistant.io/docs/area_registry_index
         """
+        if info.get("via_device_id") is not None:
+            return info
+
         gateway_device_id = self._get_tydom_gateway_device_id()
         if gateway_device_id is not None and self._device is not None:
             if gateway_device_id != self._device.device_id:

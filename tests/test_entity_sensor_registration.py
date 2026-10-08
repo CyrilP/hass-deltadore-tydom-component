@@ -253,6 +253,15 @@ class EntitySensorRegistrationTests(TestCase):
             entity._registered_sensors = []
         return entity
 
+    def test_device_info_keeps_explicit_parent_link(self) -> None:
+        """A controller parent must not be overwritten by the gateway link."""
+        entity = self._entity("weather_endpoint")
+        entity._get_tydom_gateway_device_id = MagicMock(return_value="gateway-id")
+        device_info = {"via_device_id": "controller-registry-id"}
+
+        self.assertIs(entity._enrich_device_info(device_info), device_info)
+        entity._get_tydom_gateway_device_id.assert_not_called()
+
     def test_same_attribute_is_registered_for_each_device(self) -> None:
         """One device must not suppress a matching sensor on another device."""
         first = self._entity("gate_1")
