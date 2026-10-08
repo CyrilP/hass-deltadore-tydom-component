@@ -296,43 +296,31 @@ class EntitySensorRegistrationTests(TestCase):
         self.assertEqual(len(entity.get_sensors()), 1)
         self.assertEqual(entity.get_sensors(), [])
 
-    def test_shared_weather_sensor_is_registered_for_each_parent_device(self) -> None:
-        """A shared source gets one uniquely targeted sensor per controller."""
+    def test_shared_weather_sensor_is_registered_once_on_weather_device(self) -> None:
+        """A source shared by controllers gets one sensor on one Weather device."""
         entity = self._entity("weather_1")
         del entity._device.thermicDefect
         entity._device.outTemperature = 18.5
         entity._sensor_registry_targets = (
             (
-                "weather_ctrl_rdc",
-                "Tywell Ctrl RdC - Weather",
+                "weather_endpoint",
+                "Weather",
                 "",
-                "ctrl_rdc",
-            ),
-            (
-                "weather_ctrl_etg",
-                "Tywell Ctrl Etg - Weather",
-                "_shared_ctrl_etg",
-                "ctrl_etg",
+                None,
             ),
         )
 
         sensors = entity.get_sensors()
 
-        self.assertEqual(len(sensors), 2)
+        self.assertEqual(len(sensors), 1)
         self.assertEqual(
             [sensor.registry_kwargs for sensor in sensors],
             [
                 {
-                    "registry_device_id": "weather_ctrl_rdc",
-                    "registry_device_name": "Tywell Ctrl RdC - Weather",
-                    "registry_parent_device_id": "ctrl_rdc",
+                    "registry_device_id": "weather_endpoint",
+                    "registry_device_name": "Weather",
+                    "registry_parent_device_id": None,
                     "unique_id_suffix": "",
-                },
-                {
-                    "registry_device_id": "weather_ctrl_etg",
-                    "registry_device_name": "Tywell Ctrl Etg - Weather",
-                    "registry_parent_device_id": "ctrl_etg",
-                    "unique_id_suffix": "_shared_ctrl_etg",
                 },
             ],
         )
