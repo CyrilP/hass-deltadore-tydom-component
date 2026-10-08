@@ -1310,7 +1310,8 @@ class GatewayAssociationTests(IsolatedAsyncioTestCase):
         )
 
         button = HADeviceRemovalButton(device, None)
-        self.assertEqual(button._attr_name, "Dissocier le bouton 1")
+        self.assertEqual(button.translation_key, "remove_numbered_button")
+        self.assertEqual(button.translation_placeholders, {"button_number": "1"})
 
     async def test_button_removal_uses_group_siblings_and_drops_empty_member(
         self,

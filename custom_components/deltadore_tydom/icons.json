@@ -1,0 +1,204 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "protocol_available": {
+        "default": "mdi:lan-connect"
+      },
+      "protocol_http": {
+        "default": "mdi:web"
+      },
+      "protocol_installed": {
+        "default": "mdi:check-network-outline"
+      },
+      "protocol_pltservice": {
+        "default": "mdi:lan-connect"
+      },
+      "protocol_ready": {
+        "default": "mdi:check-network-outline"
+      },
+      "protocol_status": {
+        "default": "mdi:lan-connect"
+      },
+      "protocol_x3d": {
+        "default": "mdi:radio-tower"
+      },
+      "protocol_x3dv": {
+        "default": "mdi:radio-tower"
+      },
+      "protocol_zigbee": {
+        "default": "mdi:radio-tower"
+      }
+    },
+    "button": {
+      "acknowledge_events": {
+        "default": "mdi:notification-clear-all"
+      },
+      "association_guide": {
+        "default": "mdi:book-open-variant"
+      },
+      "association_mode": {
+        "default": "mdi:link-variant-plus"
+      },
+      "cancel_boost": {
+        "default": "mdi:timer-off-outline"
+      },
+      "finalize_association": {
+        "default": "mdi:form-select"
+      },
+      "finalize_keypad": {
+        "default": "mdi:dialpad"
+      },
+      "finalize_remote": {
+        "default": "mdi:remote"
+      },
+      "finalize_switch": {
+        "default": "mdi:light-switch"
+      },
+      "group_alarm": {
+        "default": "mdi:shield-home"
+      },
+      "group_awning": {
+        "default": "mdi:awning-outline"
+      },
+      "group_heating": {
+        "default": "mdi:radiator"
+      },
+      "group_light": {
+        "default": "mdi:lightbulb-group"
+      },
+      "group_plug": {
+        "default": "mdi:power-socket-eu"
+      },
+      "group_shutter": {
+        "default": "mdi:window-shutter"
+      },
+      "identify_device": {
+        "default": "mdi:map-marker-radius"
+      },
+      "refresh_energy": {
+        "default": "mdi:refresh"
+      },
+      "reload_devices": {
+        "default": "mdi:reload"
+      },
+      "remove_button": {
+        "default": "mdi:link-variant-remove"
+      },
+      "remove_device": {
+        "default": "mdi:link-variant-remove"
+      },
+      "remove_numbered_button": {
+        "default": "mdi:link-variant-remove"
+      },
+      "start_product_association": {
+        "default": "mdi:link-plus"
+      }
+    },
+    "climate": {
+      "thermostat": {
+        "default": "mdi:thermostat"
+      }
+    },
+    "event": {
+      "alarmcmd": {
+        "default": "mdi:shield-alert-outline"
+      },
+      "alarmintrusion": {
+        "default": "mdi:motion-sensor"
+      },
+      "alarmmode": {
+        "default": "mdi:shield-home"
+      },
+      "alarmsos": {
+        "default": "mdi:alarm-light-outline"
+      },
+      "alarmstate": {
+        "default": "mdi:shield-home"
+      },
+      "alarmtechnical": {
+        "default": "mdi:shield-alert-outline"
+      },
+      "interrupter_button": {
+        "default": "mdi:light-switch"
+      },
+      "intrusion": {
+        "default": "mdi:motion-sensor"
+      },
+      "intrusiondetect": {
+        "default": "mdi:motion-sensor"
+      },
+      "remote_button": {
+        "default": "mdi:remote"
+      }
+    },
+    "sensor": {
+      "alarmcmd": {
+        "default": "mdi:shield-alert-outline"
+      },
+      "alarmintrusion": {
+        "default": "mdi:motion-sensor"
+      },
+      "alarmmode": {
+        "default": "mdi:shield-home"
+      },
+      "alarmsos": {
+        "default": "mdi:alarm-light-outline"
+      },
+      "alarmstate": {
+        "default": "mdi:shield-home"
+      },
+      "alarmtechnical": {
+        "default": "mdi:shield-alert-outline"
+      },
+      "gsmlevel": {
+        "default": "mdi:signal-cellular-3"
+      },
+      "intrusion": {
+        "default": "mdi:motion-sensor"
+      },
+      "intrusiondetect": {
+        "default": "mdi:motion-sensor"
+      },
+      "last_usage": {
+        "default": "mdi:gesture-tap"
+      },
+      "localmode": {
+        "default": "mdi:format-list-bulleted-type"
+      },
+      "modeasso": {
+        "default": "mdi:link-variant-plus"
+      },
+      "pending_alarm_events": {
+        "default": "mdi:shield-alert-outline"
+      },
+      "unackedevent": {
+        "default": "mdi:alert-circle-outline"
+      },
+      "usemode": {
+        "default": "mdi:format-list-bulleted-type"
+      },
+      "zones": {
+        "default": "mdi:map-marker-multiple"
+      }
+    },
+    "select": {
+      "association_category": {
+        "default": "mdi:shape-outline"
+      },
+      "association_channel": {
+        "default": "mdi:gesture-tap-button"
+      },
+      "association_product": {
+        "default": "mdi:devices"
+      },
+      "association_usage": {
+        "default": "mdi:format-list-bulleted-type"
+      }
+    },
+    "text": {
+      "association_name": {
+        "default": "mdi:form-textbox"
+      }
+    }
+  }
+}

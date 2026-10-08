@@ -126,7 +126,9 @@ _module(
 # --- homeassistant.components.sensor ---
 _module(
     "homeassistant.components.sensor",
-    SensorDeviceClass=MagicMock(TEMPERATURE="temperature", BATTERY="battery"),
+    SensorDeviceClass=MagicMock(
+        TEMPERATURE="temperature", BATTERY="battery", HUMIDITY="humidity"
+    ),
     SensorStateClass=MagicMock(MEASUREMENT="measurement"),
     SensorEntity=_StubEntity,
     SensorEntityDescription=MagicMock(),
@@ -188,6 +190,7 @@ _module("homeassistant.components.select", SelectEntity=_StubEntity)
 _module(
     "homeassistant.components.text",
     TextEntity=_StubEntity,
+    TextEntityDescription=MagicMock(),
     TextMode=MagicMock(),
 )
 _module(
@@ -206,6 +209,11 @@ for package_name in (
 ):
     package = _module(package_name)
     package.__path__ = []
+
+_module(
+    "custom_components.deltadore_tydom.entity_names",
+    set_entity_name=MagicMock(),
+)
 
 _module(
     "custom_components.deltadore_tydom.const",
@@ -456,6 +464,22 @@ class FilPiloteDetectionTests(TestCase):
             },
         )
         self.assertFalse(entity._is_filpilote)
+
+
+class ClimateSensorMetadataTests(TestCase):
+    """Ensure ancillary climate sensors expose correct Home Assistant metadata."""
+
+    def test_hygro_in_is_a_humidity_measurement(self) -> None:
+        """Indoor relative humidity uses HA's humidity class and percentage unit."""
+        self.assertEqual(
+            HaClimate.sensor_classes["hygroIn"],
+            entities_module.SensorDeviceClass.HUMIDITY,
+        )
+        self.assertEqual(
+            HaClimate.state_classes["hygroIn"],
+            entities_module.SensorStateClass.MEASUREMENT,
+        )
+        self.assertEqual(HaClimate.units["hygroIn"], "%")
 
 
 class AreaTrvClimateTests(IsolatedAsyncioTestCase):

@@ -39,7 +39,7 @@ passerelle Delta Dore peut être détectée par découverte DHCP.
 Plateforme | Description
 -- | --
 `alarm_control_panel` | Pilote une alarme TYXAL.
-`binary_sensor` | Indique les états binaires et les diagnostics.
+`binary_sensor` | Indique les états binaires, les diagnostics et le drapeau de mise à jour de la passerelle.
 `button` | Fournit des commandes sans état, notamment pour les portails, portes de garage et alarmes.
 `climate` | Pilote le chauffage, la climatisation et la ventilation.
 `cover` | Pilote les volets, stores et bannes.
@@ -51,7 +51,7 @@ Plateforme | Description
 `select` | Modifie les paramètres à choix multiple exposés par un appareil.
 `sensor` | Indique les mesures et informations des appareils.
 `switch` | Pilote les sorties binaires, prises et moments TYDOM.
-`update` | Installe les mises à jour de micrologiciel TYDOM prises en charge.
+`update` | Signale et installe les mises à jour du micrologiciel TYDOM prises en charge ; la passerelle ne fournit pas la version cible.
 `weather` | Indique les informations météorologiques.
 
 ### Fonctionnalités principales
@@ -199,6 +199,19 @@ Cette fonctionnalité ne réinitialise pas la passerelle, ne modifie pas son mot
 de passe, ne supprime aucun produit et n'altère aucune association. Elle
 n'utilise pas le cloud Delta Dore. Une entrée distincte configurée en
 cloud/médiation continue à utiliser sa propre connexion configurée.
+
+### Noms des entités
+
+Les mesures, réglages, diagnostics et commandes de la passerelle portent des
+noms explicites pour toutes les familles d’appareils prises en charge. Les noms
+sont disponibles en français, anglais britannique, allemand, espagnol, italien,
+portugais, néerlandais et polonais, selon la langue de Home Assistant.
+
+Les noms des appareils et scènes choisis dans TYDOM, ainsi que les noms
+personnalisés dans Home Assistant, sont conservés. Les identifiants existants et
+les références des automatisations restent valides. Les attributs inconnus
+annoncés par un nouveau micrologiciel conservent un nom technique lisible
+jusqu’à l’ajout d’un libellé adapté.
 
 ## Dépannage
 

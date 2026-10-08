@@ -1,0 +1,2647 @@
+{
+  "application": "com.deltadore.tydom",
+  "version": "4.20.20-2",
+  "languages": [
+    "en",
+    "fr",
+    "de",
+    "es",
+    "it",
+    "pt",
+    "nl",
+    "pl"
+  ],
+  "note": "APK labels are used where their meaning matches the TYDOM attribute; HA-specific controls and internal diagnostics are adapted. Energy channel names use the APK metering usage labels.",
+  "attributes": {
+    "temperature": {
+      "attribute": "temperature",
+      "apk_resource": "SENSOR_DETAILS_TEMPERATURE_TITLE",
+      "source": "APK"
+    },
+    "outtemperature": {
+      "attribute": "outTemperature",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "ambienttemperature": {
+      "attribute": "ambientTemperature",
+      "apk_resource": "COMMAND_AMBIENT_TEMPERATURE",
+      "source": "APK"
+    },
+    "hygroin": {
+      "attribute": "hygroIn",
+      "apk_resource": "SENSOR_DETAILS_HUMIDITY_TITLE",
+      "source": "APK"
+    },
+    "battlevel": {
+      "attribute": "battLevel",
+      "apk_resource": "DEVICE_BATTERY_LEVEL",
+      "source": "APK"
+    },
+    "energy": {
+      "attribute": "energy",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "power": {
+      "attribute": "power",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "currentpower": {
+      "attribute": "currentPower",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "current": {
+      "attribute": "current",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "position": {
+      "attribute": "position",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "level": {
+      "attribute": "level",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "lightpower": {
+      "attribute": "lightPower",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "value": {
+      "attribute": "value",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "state": {
+      "attribute": "state",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "setpoint": {
+      "attribute": "setpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "currentsetpoint": {
+      "attribute": "currentSetpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "regtemperature": {
+      "attribute": "regTemperature",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "heatsetpoint": {
+      "attribute": "heatSetpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "coolsetpoint": {
+      "attribute": "coolSetpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "absencesetpoint": {
+      "attribute": "absenceSetpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "antifrostsetpoint": {
+      "attribute": "antifrostSetpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "localsetpoint": {
+      "attribute": "localSetpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "overridesetpoint": {
+      "attribute": "overrideSetpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "minsetpoint": {
+      "attribute": "minSetpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "minheatsetpoint": {
+      "attribute": "minHeatSetpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "absminheatsetpoint": {
+      "attribute": "absMinHeatSetpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "maxsetpoint": {
+      "attribute": "maxSetpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "maxheatsetpoint": {
+      "attribute": "maxHeatSetpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "absmaxheatsetpoint": {
+      "attribute": "absMaxHeatSetpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "mincoolsetpoint": {
+      "attribute": "minCoolSetpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "absmincoolsetpoint": {
+      "attribute": "absMinCoolSetpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "maxcoolsetpoint": {
+      "attribute": "maxCoolSetpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "absmaxcoolsetpoint": {
+      "attribute": "absMaxCoolSetpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "overrideremainingtime": {
+      "attribute": "overrideRemainingTime",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "localsetpremainingtimestr": {
+      "attribute": "localSetpRemainingTimeStr",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "thermiclevel": {
+      "attribute": "thermicLevel",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "hvacmode": {
+      "attribute": "hvacMode",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "comfortmode": {
+      "attribute": "comfortMode",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "usemode": {
+      "attribute": "useMode",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "localmode": {
+      "attribute": "localMode",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "selectedprog": {
+      "attribute": "selectedProg",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "openingdetected": {
+      "attribute": "openingDetected",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "openstate": {
+      "attribute": "openState",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "presencedetected": {
+      "attribute": "presenceDetected",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "antifrostwhenoff": {
+      "attribute": "antifrostWhenOff",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "antifroston": {
+      "attribute": "antifrostOn",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "boost": {
+      "attribute": "boost",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "booston": {
+      "attribute": "boostOn",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "loadsheddingon": {
+      "attribute": "loadSheddingOn",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "maintenanceneeded": {
+      "attribute": "maintenanceNeeded",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "activationcpt": {
+      "attribute": "activationCpt",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "activationindex": {
+      "attribute": "activationIndex",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "indextimeon": {
+      "attribute": "indexTimeOn",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "timeoncpt": {
+      "attribute": "timeOnCpt",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "antiseizureperiod": {
+      "attribute": "antiSeizurePeriod",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "anticipcoeff": {
+      "attribute": "anticipCoeff",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "anticpcoeff": {
+      "attribute": "anticpCoeff",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "authorization": {
+      "attribute": "authorization",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "uid": {
+      "attribute": "uid",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "area_id": {
+      "attribute": "area_id",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "jobs": {
+      "attribute": "jobs",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "jobsmp": {
+      "attribute": "jobsMP",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "jobsrm": {
+      "attribute": "jobsRM",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "config": {
+      "attribute": "config",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "productconf": {
+      "attribute": "productConf",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "configtemp": {
+      "attribute": "configTemp",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "configsensor": {
+      "attribute": "configSensor",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "supervisionmode": {
+      "attribute": "supervisionMode",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "productname": {
+      "attribute": "productName",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "manufacturer": {
+      "attribute": "manufacturer",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "mac": {
+      "attribute": "mac",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "softversion": {
+      "attribute": "softVersion",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "softplan": {
+      "attribute": "softPlan",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "bootreference": {
+      "attribute": "bootReference",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "bootversion": {
+      "attribute": "bootVersion",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "mainid": {
+      "attribute": "mainId",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "mainreference": {
+      "attribute": "mainReference",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "mainversionhw": {
+      "attribute": "mainVersionHW",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "mainversionsw": {
+      "attribute": "mainVersionSW",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "keyreference": {
+      "attribute": "keyReference",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "keyversionhw": {
+      "attribute": "keyVersionHW",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "keyversionsw": {
+      "attribute": "keyVersionSW",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "keyversionstack": {
+      "attribute": "keyVersionStack",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "zclversion": {
+      "attribute": "zclVersion",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "kerneluptodate": {
+      "attribute": "kernelUpToDate",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "update_available": {
+      "attribute": "update_available",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "latitude": {
+      "attribute": "latitude",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "longitude": {
+      "attribute": "longitude",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "clock": {
+      "attribute": "clock",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "timezone": {
+      "attribute": "timezone",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "clock_source": {
+      "attribute": "clock_source",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "summer_offset": {
+      "attribute": "summer_offset",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "summeroffset": {
+      "attribute": "summerOffset",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "bdd_status": {
+      "attribute": "bdd_status",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "bdd_empty": {
+      "attribute": "bdd_empty",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "permissions": {
+      "attribute": "permissions",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "readable": {
+      "attribute": "readable",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "writable": {
+      "attribute": "writable",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "api_mode": {
+      "attribute": "api_mode",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "plt_registered": {
+      "attribute": "plt_registered",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "password_empty": {
+      "attribute": "password_empty",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "maintenance": {
+      "attribute": "maintenance",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "intrusion": {
+      "attribute": "intrusion",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "intrusiondetect": {
+      "attribute": "intrusionDetect",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "alarmintrusion": {
+      "attribute": "alarmIntrusion",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "alarmstate": {
+      "attribute": "alarmState",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "alarmmode": {
+      "attribute": "alarmMode",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "gsmlevel": {
+      "attribute": "gsmLevel",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "prealarm": {
+      "attribute": "preAlarm",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "unackedevent": {
+      "attribute": "unackedEvent",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "nbrfactuators": {
+      "attribute": "nbRFActuators",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "nbelem": {
+      "attribute": "nbElem",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "speed": {
+      "attribute": "speed",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "speedstring": {
+      "attribute": "speedString",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "waterflowreq": {
+      "attribute": "waterFlowReq",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "maxdailyouttemp": {
+      "attribute": "maxDailyOutTemp",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "networkdefect": {
+      "attribute": "networkDefect",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "battdefect": {
+      "attribute": "battDefect",
+      "apk_resource": "BATTERY_FAULT",
+      "source": "APK"
+    },
+    "batt_defect": {
+      "attribute": "batt_defect",
+      "apk_resource": "BATTERY_FAULT",
+      "source": "APK"
+    },
+    "systbatterydefect": {
+      "attribute": "systBatteryDefect",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "unitbatterydefect": {
+      "attribute": "unitBatteryDefect",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "tempsensordefect": {
+      "attribute": "tempSensorDefect",
+      "apk_resource": "HVAC_DEFAULT_SENSOR_DEFECT",
+      "source": "APK"
+    },
+    "tempsensoropencirc": {
+      "attribute": "tempSensorOpenCirc",
+      "apk_resource": "HVAC_DEFAULT_SENSOR_OPENCIRC_DEFECT",
+      "source": "APK"
+    },
+    "tempsensorshortcut": {
+      "attribute": "tempSensorShortCut",
+      "apk_resource": "HVAC_DEFAULT_SENSOR_SHORTCUT_DEFECT",
+      "source": "APK"
+    },
+    "productiondefect": {
+      "attribute": "productionDefect",
+      "apk_resource": "HVAC_DEFAULT_SENSOR_PROD_DEFECT",
+      "source": "APK"
+    },
+    "calibrationdefect": {
+      "attribute": "calibrationDefect",
+      "apk_resource": "ETRV_CALIBRATION_DEFECT_TITLE",
+      "source": "APK"
+    },
+    "obstacledefect": {
+      "attribute": "obstacleDefect",
+      "apk_resource": "SHUTTER_DEFAULT_OBSTACLE_DEFECT",
+      "source": "APK"
+    },
+    "obstacle_defect": {
+      "attribute": "obstacle_defect",
+      "apk_resource": "SHUTTER_DEFAULT_OBSTACLE_DEFECT",
+      "source": "APK"
+    },
+    "thermicdefect": {
+      "attribute": "thermicDefect",
+      "apk_resource": "LIGHT_DEFAULT_THERMIC_DEFECT",
+      "source": "APK"
+    },
+    "thermic_defect": {
+      "attribute": "thermic_defect",
+      "apk_resource": "LIGHT_DEFAULT_THERMIC_DEFECT",
+      "source": "APK"
+    },
+    "cmddefect": {
+      "attribute": "cmdDefect",
+      "apk_resource": "LIGHT_DEFAULT_CMD_DEFECT",
+      "source": "APK"
+    },
+    "batterycmddefect": {
+      "attribute": "batteryCmdDefect",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "updefect": {
+      "attribute": "upDefect",
+      "apk_resource": "SHUTTER_DEFAULT_UP_DEFECT",
+      "source": "APK"
+    },
+    "up_defect": {
+      "attribute": "up_defect",
+      "apk_resource": "SHUTTER_DEFAULT_UP_DEFECT",
+      "source": "APK"
+    },
+    "downdefect": {
+      "attribute": "downDefect",
+      "apk_resource": "SHUTTER_DEFAULT_DOWN_DEFECT",
+      "source": "APK"
+    },
+    "down_defect": {
+      "attribute": "down_defect",
+      "apk_resource": "SHUTTER_DEFAULT_DOWN_DEFECT",
+      "source": "APK"
+    },
+    "loaddefect": {
+      "attribute": "loadDefect",
+      "apk_resource": "LIGHT_DEFAULT_LOAD_DEFECT",
+      "source": "APK"
+    },
+    "remotesurveydefect": {
+      "attribute": "remoteSurveyDefect",
+      "apk_resource": "MONITORING_FAULT",
+      "source": "APK"
+    },
+    "systsupervisiondefect": {
+      "attribute": "systSupervisionDefect",
+      "apk_resource": "MONITORING_FAULT",
+      "source": "APK"
+    },
+    "techsmokedefect": {
+      "attribute": "techSmokeDefect",
+      "apk_resource": "SENSOR_DEFAULT_TECH_SMOKE_DEFECT",
+      "source": "APK"
+    },
+    "simdefect": {
+      "attribute": "simDefect",
+      "apk_resource": "SIM_FAULT",
+      "source": "APK"
+    },
+    "videolinkdefect": {
+      "attribute": "videoLinkDefect",
+      "apk_resource": "VIDEO_LINK_FAULT",
+      "source": "APK"
+    },
+    "systsectordefect": {
+      "attribute": "systSectorDefect",
+      "apk_resource": "MAINS_FAULT",
+      "source": "APK"
+    },
+    "systtechnicaldefect": {
+      "attribute": "systTechnicalDefect",
+      "apk_resource": "HVAC_DEFAULT_TECHNICAL_DEFECT",
+      "source": "APK"
+    },
+    "systalarmdefect": {
+      "attribute": "systAlarmDefect",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "systautoprotect": {
+      "attribute": "systAutoProtect",
+      "apk_resource": "SELF_PROTECTION_FAULT",
+      "source": "APK"
+    },
+    "unitautoprotect": {
+      "attribute": "unitAutoProtect",
+      "apk_resource": "SELF_PROTECTION_FAULT",
+      "source": "APK"
+    },
+    "systopenissue": {
+      "attribute": "systOpenIssue",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "unitinternaldefect": {
+      "attribute": "unitInternalDefect",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "livecheckrunning": {
+      "attribute": "liveCheckRunning",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "inactiveproduct": {
+      "attribute": "inactiveProduct",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "isreference": {
+      "attribute": "isReference",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "delaysetpoint": {
+      "attribute": "delaySetpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "delaythermiclevel": {
+      "attribute": "delayThermicLevel",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "slope": {
+      "attribute": "slope",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "index": {
+      "attribute": "index",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "indexstart": {
+      "attribute": "indexStart",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "period": {
+      "attribute": "period",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "periodoffset": {
+      "attribute": "periodOffset",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "dailypower": {
+      "attribute": "dailyPower",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "direction": {
+      "attribute": "direction",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "tempoon": {
+      "attribute": "tempoOn",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "timedelay": {
+      "attribute": "timeDelay",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "absence": {
+      "attribute": "absence",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "device_id": {
+      "attribute": "device_id",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "device_name": {
+      "attribute": "device_name",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "device_endpoint": {
+      "attribute": "device_endpoint",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "device_type": {
+      "attribute": "device_type",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "last_usage": {
+      "attribute": "last_usage",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "usage": {
+      "attribute": "usage",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "modelidentifier": {
+      "attribute": "modelIdentifier",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "synchroradio": {
+      "attribute": "synchroRadio",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "synchropps": {
+      "attribute": "synchroPps",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "kerneldownloadforced": {
+      "attribute": "kernelDownloadForced",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex": {
+      "attribute": "energyIndex",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_elec_heating": {
+      "attribute": "energyIndex_ELEC_HEATING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_elec_hotwater": {
+      "attribute": "energyIndex_ELEC_HOTWATER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_elec_cooling": {
+      "attribute": "energyIndex_ELEC_COOLING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_elec_other": {
+      "attribute": "energyIndex_ELEC_OTHER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_elec_outlet": {
+      "attribute": "energyIndex_ELEC_OUTLET",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_elec_total": {
+      "attribute": "energyIndex_ELEC_TOTAL",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_elec_a": {
+      "attribute": "energyIndex_ELEC_A",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_elec_w": {
+      "attribute": "energyIndex_ELEC_W",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_gas_heating": {
+      "attribute": "energyIndex_GAS_HEATING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_gas_hotwater": {
+      "attribute": "energyIndex_GAS_HOTWATER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_gas_cooling": {
+      "attribute": "energyIndex_GAS_COOLING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_gas_other": {
+      "attribute": "energyIndex_GAS_OTHER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_gas_outlet": {
+      "attribute": "energyIndex_GAS_OUTLET",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_gas_total": {
+      "attribute": "energyIndex_GAS_TOTAL",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_gas_a": {
+      "attribute": "energyIndex_GAS_A",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_gas_w": {
+      "attribute": "energyIndex_GAS_W",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_water_heating": {
+      "attribute": "energyIndex_WATER_HEATING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_water_hotwater": {
+      "attribute": "energyIndex_WATER_HOTWATER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_water_cooling": {
+      "attribute": "energyIndex_WATER_COOLING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_water_other": {
+      "attribute": "energyIndex_WATER_OTHER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_water_outlet": {
+      "attribute": "energyIndex_WATER_OUTLET",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_water_total": {
+      "attribute": "energyIndex_WATER_TOTAL",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_water_a": {
+      "attribute": "energyIndex_WATER_A",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_water_w": {
+      "attribute": "energyIndex_WATER_W",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_gaz_heating": {
+      "attribute": "energyIndex_GAZ_HEATING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_gaz_hotwater": {
+      "attribute": "energyIndex_GAZ_HOTWATER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_gaz_cooling": {
+      "attribute": "energyIndex_GAZ_COOLING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_gaz_other": {
+      "attribute": "energyIndex_GAZ_OTHER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_gaz_outlet": {
+      "attribute": "energyIndex_GAZ_OUTLET",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_gaz_total": {
+      "attribute": "energyIndex_GAZ_TOTAL",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_gaz_a": {
+      "attribute": "energyIndex_GAZ_A",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindex_gaz_w": {
+      "attribute": "energyIndex_GAZ_W",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib": {
+      "attribute": "energyDistrib",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_elec_heating": {
+      "attribute": "energyDistrib_ELEC_HEATING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_elec_hotwater": {
+      "attribute": "energyDistrib_ELEC_HOTWATER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_elec_cooling": {
+      "attribute": "energyDistrib_ELEC_COOLING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_elec_other": {
+      "attribute": "energyDistrib_ELEC_OTHER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_elec_outlet": {
+      "attribute": "energyDistrib_ELEC_OUTLET",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_elec_total": {
+      "attribute": "energyDistrib_ELEC_TOTAL",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_elec_a": {
+      "attribute": "energyDistrib_ELEC_A",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_elec_w": {
+      "attribute": "energyDistrib_ELEC_W",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_gas_heating": {
+      "attribute": "energyDistrib_GAS_HEATING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_gas_hotwater": {
+      "attribute": "energyDistrib_GAS_HOTWATER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_gas_cooling": {
+      "attribute": "energyDistrib_GAS_COOLING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_gas_other": {
+      "attribute": "energyDistrib_GAS_OTHER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_gas_outlet": {
+      "attribute": "energyDistrib_GAS_OUTLET",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_gas_total": {
+      "attribute": "energyDistrib_GAS_TOTAL",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_gas_a": {
+      "attribute": "energyDistrib_GAS_A",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_gas_w": {
+      "attribute": "energyDistrib_GAS_W",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_water_heating": {
+      "attribute": "energyDistrib_WATER_HEATING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_water_hotwater": {
+      "attribute": "energyDistrib_WATER_HOTWATER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_water_cooling": {
+      "attribute": "energyDistrib_WATER_COOLING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_water_other": {
+      "attribute": "energyDistrib_WATER_OTHER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_water_outlet": {
+      "attribute": "energyDistrib_WATER_OUTLET",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_water_total": {
+      "attribute": "energyDistrib_WATER_TOTAL",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_water_a": {
+      "attribute": "energyDistrib_WATER_A",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_water_w": {
+      "attribute": "energyDistrib_WATER_W",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_gaz_heating": {
+      "attribute": "energyDistrib_GAZ_HEATING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_gaz_hotwater": {
+      "attribute": "energyDistrib_GAZ_HOTWATER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_gaz_cooling": {
+      "attribute": "energyDistrib_GAZ_COOLING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_gaz_other": {
+      "attribute": "energyDistrib_GAZ_OTHER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_gaz_outlet": {
+      "attribute": "energyDistrib_GAZ_OUTLET",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_gaz_total": {
+      "attribute": "energyDistrib_GAZ_TOTAL",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_gaz_a": {
+      "attribute": "energyDistrib_GAZ_A",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energydistrib_gaz_w": {
+      "attribute": "energyDistrib_GAZ_W",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant": {
+      "attribute": "energyInstant",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_heating": {
+      "attribute": "energyInstant_ELEC_HEATING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_hotwater": {
+      "attribute": "energyInstant_ELEC_HOTWATER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_cooling": {
+      "attribute": "energyInstant_ELEC_COOLING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_other": {
+      "attribute": "energyInstant_ELEC_OTHER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_outlet": {
+      "attribute": "energyInstant_ELEC_OUTLET",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_total": {
+      "attribute": "energyInstant_ELEC_TOTAL",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_a": {
+      "attribute": "energyInstant_ELEC_A",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_w": {
+      "attribute": "energyInstant_ELEC_W",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_heating": {
+      "attribute": "energyInstant_GAS_HEATING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_hotwater": {
+      "attribute": "energyInstant_GAS_HOTWATER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_cooling": {
+      "attribute": "energyInstant_GAS_COOLING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_other": {
+      "attribute": "energyInstant_GAS_OTHER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_outlet": {
+      "attribute": "energyInstant_GAS_OUTLET",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_total": {
+      "attribute": "energyInstant_GAS_TOTAL",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_a": {
+      "attribute": "energyInstant_GAS_A",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_w": {
+      "attribute": "energyInstant_GAS_W",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_heating": {
+      "attribute": "energyInstant_WATER_HEATING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_hotwater": {
+      "attribute": "energyInstant_WATER_HOTWATER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_cooling": {
+      "attribute": "energyInstant_WATER_COOLING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_other": {
+      "attribute": "energyInstant_WATER_OTHER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_outlet": {
+      "attribute": "energyInstant_WATER_OUTLET",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_total": {
+      "attribute": "energyInstant_WATER_TOTAL",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_a": {
+      "attribute": "energyInstant_WATER_A",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_w": {
+      "attribute": "energyInstant_WATER_W",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_heating": {
+      "attribute": "energyInstant_GAZ_HEATING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_hotwater": {
+      "attribute": "energyInstant_GAZ_HOTWATER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_cooling": {
+      "attribute": "energyInstant_GAZ_COOLING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_other": {
+      "attribute": "energyInstant_GAZ_OTHER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_outlet": {
+      "attribute": "energyInstant_GAZ_OUTLET",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_total": {
+      "attribute": "energyInstant_GAZ_TOTAL",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_a": {
+      "attribute": "energyInstant_GAZ_A",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_w": {
+      "attribute": "energyInstant_GAZ_W",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto": {
+      "attribute": "energyHisto",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_elec_heating": {
+      "attribute": "energyHisto_ELEC_HEATING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_elec_hotwater": {
+      "attribute": "energyHisto_ELEC_HOTWATER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_elec_cooling": {
+      "attribute": "energyHisto_ELEC_COOLING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_elec_other": {
+      "attribute": "energyHisto_ELEC_OTHER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_elec_outlet": {
+      "attribute": "energyHisto_ELEC_OUTLET",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_elec_total": {
+      "attribute": "energyHisto_ELEC_TOTAL",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_elec_a": {
+      "attribute": "energyHisto_ELEC_A",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_elec_w": {
+      "attribute": "energyHisto_ELEC_W",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_gas_heating": {
+      "attribute": "energyHisto_GAS_HEATING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_gas_hotwater": {
+      "attribute": "energyHisto_GAS_HOTWATER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_gas_cooling": {
+      "attribute": "energyHisto_GAS_COOLING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_gas_other": {
+      "attribute": "energyHisto_GAS_OTHER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_gas_outlet": {
+      "attribute": "energyHisto_GAS_OUTLET",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_gas_total": {
+      "attribute": "energyHisto_GAS_TOTAL",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_gas_a": {
+      "attribute": "energyHisto_GAS_A",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_gas_w": {
+      "attribute": "energyHisto_GAS_W",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_water_heating": {
+      "attribute": "energyHisto_WATER_HEATING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_water_hotwater": {
+      "attribute": "energyHisto_WATER_HOTWATER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_water_cooling": {
+      "attribute": "energyHisto_WATER_COOLING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_water_other": {
+      "attribute": "energyHisto_WATER_OTHER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_water_outlet": {
+      "attribute": "energyHisto_WATER_OUTLET",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_water_total": {
+      "attribute": "energyHisto_WATER_TOTAL",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_water_a": {
+      "attribute": "energyHisto_WATER_A",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_water_w": {
+      "attribute": "energyHisto_WATER_W",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_gaz_heating": {
+      "attribute": "energyHisto_GAZ_HEATING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_gaz_hotwater": {
+      "attribute": "energyHisto_GAZ_HOTWATER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_gaz_cooling": {
+      "attribute": "energyHisto_GAZ_COOLING",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_gaz_other": {
+      "attribute": "energyHisto_GAZ_OTHER",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_gaz_outlet": {
+      "attribute": "energyHisto_GAZ_OUTLET",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_gaz_total": {
+      "attribute": "energyHisto_GAZ_TOTAL",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_gaz_a": {
+      "attribute": "energyHisto_GAZ_A",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyhisto_gaz_w": {
+      "attribute": "energyHisto_GAZ_W",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindexheatwatt": {
+      "attribute": "energyIndexHeatWatt",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantheatp": {
+      "attribute": "energyInstantHeatP",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantheati": {
+      "attribute": "energyInstantHeatI",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaleheatp": {
+      "attribute": "energyScaleHeatP",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaleheati": {
+      "attribute": "energyScaleHeatI",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindexdhwwatt": {
+      "attribute": "energyIndexDhwWatt",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantdhwp": {
+      "attribute": "energyInstantDhwP",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantdhwi": {
+      "attribute": "energyInstantDhwI",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaledhwp": {
+      "attribute": "energyScaleDhwP",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaledhwi": {
+      "attribute": "energyScaleDhwI",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindexecswatt": {
+      "attribute": "energyIndexECSWatt",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantecsp": {
+      "attribute": "energyInstantECSP",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantecsi": {
+      "attribute": "energyInstantECSI",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaleecsp": {
+      "attribute": "energyScaleECSP",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaleecsi": {
+      "attribute": "energyScaleECSI",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindexcoolwatt": {
+      "attribute": "energyIndexCoolWatt",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantcoolp": {
+      "attribute": "energyInstantCoolP",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantcooli": {
+      "attribute": "energyInstantCoolI",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscalecoolp": {
+      "attribute": "energyScaleCoolP",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscalecooli": {
+      "attribute": "energyScaleCoolI",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindextotelecwatt": {
+      "attribute": "energyIndexTotElecWatt",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstanttotelecp": {
+      "attribute": "energyInstantTotElecP",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstanttoteleci": {
+      "attribute": "energyInstantTotElecI",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaletotelecp": {
+      "attribute": "energyScaleTotElecP",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaletoteleci": {
+      "attribute": "energyScaleTotElecI",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindexti1watt": {
+      "attribute": "energyIndexTi1Watt",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantti1p": {
+      "attribute": "energyInstantTi1P",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantti1i": {
+      "attribute": "energyInstantTi1I",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaleti1p": {
+      "attribute": "energyScaleTi1P",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaleti1i": {
+      "attribute": "energyScaleTi1I",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindexheatgas": {
+      "attribute": "energyIndexHeatGas",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyindexti1": {
+      "attribute": "energyIndexTi1",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energytotindexwatt": {
+      "attribute": "energyTotIndexWatt",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstanttotelec": {
+      "attribute": "energyInstantTotElec",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaletotelec": {
+      "attribute": "energyScaleTotElec",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstanttotelec_p": {
+      "attribute": "energyInstantTotElec_P",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaletotelec_p": {
+      "attribute": "energyScaleTotElec_P",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_max": {
+      "attribute": "energyinstant_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_min": {
+      "attribute": "energyinstant_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_heating_max": {
+      "attribute": "energyinstant_elec_heating_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_heating_min": {
+      "attribute": "energyinstant_elec_heating_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_hotwater_max": {
+      "attribute": "energyinstant_elec_hotwater_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_hotwater_min": {
+      "attribute": "energyinstant_elec_hotwater_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_cooling_max": {
+      "attribute": "energyinstant_elec_cooling_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_cooling_min": {
+      "attribute": "energyinstant_elec_cooling_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_other_max": {
+      "attribute": "energyinstant_elec_other_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_other_min": {
+      "attribute": "energyinstant_elec_other_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_outlet_max": {
+      "attribute": "energyinstant_elec_outlet_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_outlet_min": {
+      "attribute": "energyinstant_elec_outlet_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_total_max": {
+      "attribute": "energyinstant_elec_total_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_total_min": {
+      "attribute": "energyinstant_elec_total_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_a_max": {
+      "attribute": "energyinstant_elec_a_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_a_min": {
+      "attribute": "energyinstant_elec_a_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_w_max": {
+      "attribute": "energyinstant_elec_w_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_elec_w_min": {
+      "attribute": "energyinstant_elec_w_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_heating_max": {
+      "attribute": "energyinstant_gas_heating_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_heating_min": {
+      "attribute": "energyinstant_gas_heating_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_hotwater_max": {
+      "attribute": "energyinstant_gas_hotwater_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_hotwater_min": {
+      "attribute": "energyinstant_gas_hotwater_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_cooling_max": {
+      "attribute": "energyinstant_gas_cooling_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_cooling_min": {
+      "attribute": "energyinstant_gas_cooling_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_other_max": {
+      "attribute": "energyinstant_gas_other_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_other_min": {
+      "attribute": "energyinstant_gas_other_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_outlet_max": {
+      "attribute": "energyinstant_gas_outlet_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_outlet_min": {
+      "attribute": "energyinstant_gas_outlet_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_total_max": {
+      "attribute": "energyinstant_gas_total_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_total_min": {
+      "attribute": "energyinstant_gas_total_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_a_max": {
+      "attribute": "energyinstant_gas_a_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_a_min": {
+      "attribute": "energyinstant_gas_a_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_w_max": {
+      "attribute": "energyinstant_gas_w_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gas_w_min": {
+      "attribute": "energyinstant_gas_w_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_heating_max": {
+      "attribute": "energyinstant_water_heating_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_heating_min": {
+      "attribute": "energyinstant_water_heating_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_hotwater_max": {
+      "attribute": "energyinstant_water_hotwater_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_hotwater_min": {
+      "attribute": "energyinstant_water_hotwater_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_cooling_max": {
+      "attribute": "energyinstant_water_cooling_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_cooling_min": {
+      "attribute": "energyinstant_water_cooling_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_other_max": {
+      "attribute": "energyinstant_water_other_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_other_min": {
+      "attribute": "energyinstant_water_other_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_outlet_max": {
+      "attribute": "energyinstant_water_outlet_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_outlet_min": {
+      "attribute": "energyinstant_water_outlet_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_total_max": {
+      "attribute": "energyinstant_water_total_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_total_min": {
+      "attribute": "energyinstant_water_total_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_a_max": {
+      "attribute": "energyinstant_water_a_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_a_min": {
+      "attribute": "energyinstant_water_a_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_w_max": {
+      "attribute": "energyinstant_water_w_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_water_w_min": {
+      "attribute": "energyinstant_water_w_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_heating_max": {
+      "attribute": "energyinstant_gaz_heating_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_heating_min": {
+      "attribute": "energyinstant_gaz_heating_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_hotwater_max": {
+      "attribute": "energyinstant_gaz_hotwater_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_hotwater_min": {
+      "attribute": "energyinstant_gaz_hotwater_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_cooling_max": {
+      "attribute": "energyinstant_gaz_cooling_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_cooling_min": {
+      "attribute": "energyinstant_gaz_cooling_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_other_max": {
+      "attribute": "energyinstant_gaz_other_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_other_min": {
+      "attribute": "energyinstant_gaz_other_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_outlet_max": {
+      "attribute": "energyinstant_gaz_outlet_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_outlet_min": {
+      "attribute": "energyinstant_gaz_outlet_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_total_max": {
+      "attribute": "energyinstant_gaz_total_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_total_min": {
+      "attribute": "energyinstant_gaz_total_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_a_max": {
+      "attribute": "energyinstant_gaz_a_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_a_min": {
+      "attribute": "energyinstant_gaz_a_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_w_max": {
+      "attribute": "energyinstant_gaz_w_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstant_gaz_w_min": {
+      "attribute": "energyinstant_gaz_w_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantheatp_max": {
+      "attribute": "energyinstantheatp_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantheatp_min": {
+      "attribute": "energyinstantheatp_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantheati_max": {
+      "attribute": "energyinstantheati_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantheati_min": {
+      "attribute": "energyinstantheati_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaleheatp_max": {
+      "attribute": "energyscaleheatp_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaleheatp_min": {
+      "attribute": "energyscaleheatp_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaleheati_max": {
+      "attribute": "energyscaleheati_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaleheati_min": {
+      "attribute": "energyscaleheati_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantdhwp_max": {
+      "attribute": "energyinstantdhwp_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantdhwp_min": {
+      "attribute": "energyinstantdhwp_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantdhwi_max": {
+      "attribute": "energyinstantdhwi_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantdhwi_min": {
+      "attribute": "energyinstantdhwi_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaledhwp_max": {
+      "attribute": "energyscaledhwp_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaledhwp_min": {
+      "attribute": "energyscaledhwp_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaledhwi_max": {
+      "attribute": "energyscaledhwi_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaledhwi_min": {
+      "attribute": "energyscaledhwi_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantecsp_max": {
+      "attribute": "energyinstantecsp_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantecsp_min": {
+      "attribute": "energyinstantecsp_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantecsi_max": {
+      "attribute": "energyinstantecsi_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantecsi_min": {
+      "attribute": "energyinstantecsi_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaleecsp_max": {
+      "attribute": "energyscaleecsp_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaleecsp_min": {
+      "attribute": "energyscaleecsp_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaleecsi_max": {
+      "attribute": "energyscaleecsi_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaleecsi_min": {
+      "attribute": "energyscaleecsi_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantcoolp_max": {
+      "attribute": "energyinstantcoolp_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantcoolp_min": {
+      "attribute": "energyinstantcoolp_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantcooli_max": {
+      "attribute": "energyinstantcooli_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantcooli_min": {
+      "attribute": "energyinstantcooli_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscalecoolp_max": {
+      "attribute": "energyscalecoolp_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscalecoolp_min": {
+      "attribute": "energyscalecoolp_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscalecooli_max": {
+      "attribute": "energyscalecooli_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscalecooli_min": {
+      "attribute": "energyscalecooli_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstanttotelecp_max": {
+      "attribute": "energyinstanttotelecp_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstanttotelecp_min": {
+      "attribute": "energyinstanttotelecp_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstanttoteleci_max": {
+      "attribute": "energyinstanttoteleci_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstanttoteleci_min": {
+      "attribute": "energyinstanttoteleci_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaletotelecp_max": {
+      "attribute": "energyscaletotelecp_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaletotelecp_min": {
+      "attribute": "energyscaletotelecp_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaletoteleci_max": {
+      "attribute": "energyscaletoteleci_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaletoteleci_min": {
+      "attribute": "energyscaletoteleci_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantti1p_max": {
+      "attribute": "energyinstantti1p_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantti1p_min": {
+      "attribute": "energyinstantti1p_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantti1i_max": {
+      "attribute": "energyinstantti1i_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstantti1i_min": {
+      "attribute": "energyinstantti1i_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaleti1p_max": {
+      "attribute": "energyscaleti1p_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaleti1p_min": {
+      "attribute": "energyscaleti1p_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaleti1i_max": {
+      "attribute": "energyscaleti1i_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaleti1i_min": {
+      "attribute": "energyscaleti1i_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstanttotelec_max": {
+      "attribute": "energyinstanttotelec_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstanttotelec_min": {
+      "attribute": "energyinstanttotelec_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaletotelec_max": {
+      "attribute": "energyscaletotelec_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaletotelec_min": {
+      "attribute": "energyscaletotelec_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstanttotelec_p_max": {
+      "attribute": "energyinstanttotelec_p_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyinstanttotelec_p_min": {
+      "attribute": "energyinstanttotelec_p_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaletotelec_p_max": {
+      "attribute": "energyscaletotelec_p_Max",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "energyscaletotelec_p_min": {
+      "attribute": "energyscaletotelec_p_Min",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "softversion0": {
+      "attribute": "softVersion0",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "softversion1": {
+      "attribute": "softVersion1",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "softversion2": {
+      "attribute": "softVersion2",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "softversion3": {
+      "attribute": "softVersion3",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "softplan0": {
+      "attribute": "softPlan0",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "softplan1": {
+      "attribute": "softPlan1",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "softplan2": {
+      "attribute": "softPlan2",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "softplan3": {
+      "attribute": "softPlan3",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "zone1state": {
+      "attribute": "zone1State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "zone2state": {
+      "attribute": "zone2State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "zone3state": {
+      "attribute": "zone3State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "zone4state": {
+      "attribute": "zone4State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "zone5state": {
+      "attribute": "zone5State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "zone6state": {
+      "attribute": "zone6State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "zone7state": {
+      "attribute": "zone7State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "zone8state": {
+      "attribute": "zone8State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "part1state": {
+      "attribute": "part1State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "part2state": {
+      "attribute": "part2State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "part3state": {
+      "attribute": "part3State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "part4state": {
+      "attribute": "part4State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "part5state": {
+      "attribute": "part5State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "part6state": {
+      "attribute": "part6State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "part7state": {
+      "attribute": "part7State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "part8state": {
+      "attribute": "part8State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "irv1state": {
+      "attribute": "irv1State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "irv2state": {
+      "attribute": "irv2State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "irv3state": {
+      "attribute": "irv3State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "irv4state": {
+      "attribute": "irv4State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "irv5state": {
+      "attribute": "irv5State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "irv6state": {
+      "attribute": "irv6State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "irv7state": {
+      "attribute": "irv7State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "irv8state": {
+      "attribute": "irv8State",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "alarmsos": {
+      "attribute": "alarmSOS",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "alarmtechnical": {
+      "attribute": "alarmTechnical",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "alarmcmd": {
+      "attribute": "alarmCmd",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "ackeventcmd": {
+      "attribute": "ackEventCmd",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "modeasso": {
+      "attribute": "modeAsso",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "irvid": {
+      "attribute": "irvId",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "irvcmd": {
+      "attribute": "irvCmd",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "part": {
+      "attribute": "part",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "partcmd": {
+      "attribute": "partCmd",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "zonecmd": {
+      "attribute": "zoneCmd",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "zones": {
+      "attribute": "zones",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "antiseizurecmd": {
+      "attribute": "antiSeizureCmd",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "levelcmd": {
+      "attribute": "levelCmd",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "positioncmd": {
+      "attribute": "positionCmd",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "shuttercmd": {
+      "attribute": "shutterCmd",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "ondusk": {
+      "attribute": "onDusk",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "onpresencedetected": {
+      "attribute": "onPresenceDetected",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "onfavpos": {
+      "attribute": "onFavPos",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "recfav": {
+      "attribute": "recFav",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "sendasso": {
+      "attribute": "sendAsso",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "sendnetremoteassomode": {
+      "attribute": "sendNetRemoteAssoMode",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "reset": {
+      "attribute": "reset",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "label": {
+      "attribute": "label",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "histo": {
+      "attribute": "histo",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "localisation": {
+      "attribute": "localisation",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "weather": {
+      "attribute": "weather",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "total": {
+      "attribute": "TOTAL",
+      "apk_resource": null,
+      "source": "Home Assistant adaptation"
+    },
+    "techwaterdefect": {
+      "attribute": "techWaterDefect",
+      "apk_resource": "SENSOR_DEFAULT_TECH_WATER_DEFECT",
+      "source": "APK"
+    },
+    "brightness": {
+      "attribute": "brightness",
+      "apk_resource": "DEVICE_BRIGHTNESS",
+      "source": "APK"
+    }
+  }
+}

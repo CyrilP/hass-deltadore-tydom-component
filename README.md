@@ -37,7 +37,7 @@ The Delta Dore gateway can be detected using DHCP discovery.
 Platform | Description
 -- | --
 `alarm_control_panel` | Controls a TYXAL alarm.
-`binary_sensor` | Reports binary states and diagnostics.
+`binary_sensor` | Reports binary states, diagnostics and the gateway firmware update flag.
 `button` | Exposes stateless controls such as gate, garage door and alarm actions.
 `climate` | Controls heating, cooling and ventilation.
 `cover` | Controls shutters, blinds and awnings.
@@ -49,7 +49,7 @@ Platform | Description
 `select` | Controls writable enumerated settings exposed by a device.
 `sensor` | Reports measurements and device information.
 `switch` | Controls binary outputs, plugs and TYDOM moments.
-`update` | Installs supported TYDOM firmware updates.
+`update` | Reports and installs supported TYDOM gateway firmware updates; the gateway does not report the target version.
 `weather` | Reports weather information.
 
 ### Feature highlights
@@ -186,6 +186,18 @@ and do not need another button press.
 This feature does not reset the gateway, change its password, remove products
 or alter associations. It does not use the Delta Dore cloud. A separate entry
 configured for cloud/mediation continues to use its own configured connection.
+
+### Entity names
+
+Measurements, settings, diagnostics and gateway controls use descriptive names
+across all supported device families. Names are available in British English,
+French, German, Spanish, Italian, Portuguese, Dutch and Polish, according to
+Home Assistant's language.
+
+Device and scene names chosen in TYDOM, and entity names customised in Home
+Assistant, are preserved. Existing entity identifiers and automation references
+remain valid. Unknown attributes advertised by newer gateway firmware retain a
+readable technical name until a matching label is added.
 
 ## Troubleshooting
 

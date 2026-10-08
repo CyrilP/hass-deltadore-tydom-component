@@ -1,525 +1,3912 @@
 {
-    "device": {
-        "tywell_weather": {
-            "name": "Weer"
-        }
-    },
-    "config": {
-        "step": {
-            "user": {
-                "title": "Delta Dore Tydom Configuration",
-                "description": "Choose the configuration mode. Cloud mode automatically retrieves Tydom credentials from your Delta Dore account. Manual mode requires you to enter the Tydom password directly. Local button pairing retrieves the local password only after an explicit press on the gateway.",
-                "data": {
-                    "config_mode": "Configuration mode"
-                }
-            },
-            "user_manual": {
-                "title": "Delta Dore Tydom Configuration",
-                "description": "Configure your Tydom gateway using manual credentials.",
-                "data": {
-                    "host": "Tydom or mediation IP/hostname",
-                    "mac": "MAC address (12 characters, no separators)",
-                    "password": "Tydom password",
-                    "tydom_password": "Tydom password",
-                    "refresh_interval": "Refresh interval in minutes (default: 30)",
-                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
-                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
-                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
-                    "pin": "Alarm PIN (optional, required for alarm control)"
-                }
-            },
-            "user_local_pair": {
-                "title": "Pair Delta Dore Tydom locally",
-                "description": "Use this only for a local gateway when its password is unknown. Complete all fields first. As the final step, press the gateway's physical button and immediately select Submit; do not edit the form between the button press and submission. The temporary pairing window is used once to retrieve the local password; the password itself is never shown or logged.",
-                "data": {
-                    "host": "Local Tydom gateway IP/hostname",
-                    "mac": "MAC address (12 characters, no separators)",
-                    "refresh_interval": "Refresh interval in minutes (default: 30)",
-                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
-                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
-                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
-                    "pin": "Alarm PIN (optional, required for alarm control)"
-                }
-            },
-            "user_cloud": {
-                "title": "Delta Dore Tydom Configuration",
-                "description": "Configure your Tydom gateway using your Delta Dore cloud account. The Tydom password will be retrieved automatically.",
-                "data": {
-                    "host": "Tydom or mediation IP/hostname (use 'mediation.tydom.com' for cloud mode)",
-                    "mac": "MAC address (12 characters, no separators)",
-                    "email": "Delta Dore cloud account email",
-                    "password": "Delta Dore cloud account password",
-                    "tydom_password": "Tydom password (retrieved automatically)",
-                    "refresh_interval": "Refresh interval in minutes (default: 30)",
-                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
-                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
-                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
-                    "pin": "Alarm PIN (optional, required for alarm control)"
-                }
-            },
-            "discovery_confirm": {
-                "title": "Delta Dore Tydom Configuration",
-                "description": "A Tydom gateway was discovered ({name}). Choose the configuration mode. Local button pairing retrieves the local password only after an explicit press on the gateway.",
-                "data": {
-                    "config_mode": "Configuration mode"
-                }
-            },
-            "discovery_confirm_manual": {
-                "title": "Delta Dore Tydom Configuration",
-                "description": "A Tydom gateway was discovered ({name}). Configure it using manual credentials.",
-                "data": {
-                    "host": "Tydom or mediation IP/hostname",
-                    "mac": "MAC address (12 characters, no separators)",
-                    "tydom_password": "Tydom password",
-                    "refresh_interval": "Refresh interval in minutes (default: 30)",
-                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
-                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
-                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
-                    "pin": "Alarm PIN (optional, required for alarm control)"
-                }
-            },
-            "discovery_confirm_local_pair": {
-                "title": "Pair discovered Delta Dore Tydom locally",
-                "description": "A Tydom gateway was discovered ({name}). Use this only when its local password is unknown. Complete all fields first. As the final step, press the gateway's physical button and immediately select Submit; do not edit the form between the button press and submission. The temporary pairing window is used once to retrieve the local password; the password itself is never shown or logged.",
-                "data": {
-                    "host": "Local Tydom gateway IP/hostname",
-                    "mac": "MAC address (12 characters, no separators)",
-                    "refresh_interval": "Refresh interval in minutes (default: 30)",
-                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
-                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
-                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
-                    "pin": "Alarm PIN (optional, required for alarm control)"
-                }
-            },
-            "discovery_confirm_cloud": {
-                "title": "Delta Dore Tydom Configuration",
-                "description": "A Tydom gateway was discovered ({name}). Configure it using your Delta Dore cloud account. The Tydom password will be retrieved automatically.",
-                "data": {
-                    "host": "Tydom or mediation IP/hostname (use 'mediation.tydom.com' for cloud mode)",
-                    "mac": "MAC address (12 characters, no separators)",
-                    "email": "Delta Dore cloud account email",
-                    "password": "Delta Dore cloud account password",
-                    "refresh_interval": "Refresh interval in minutes (default: 30)",
-                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
-                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
-                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)",
-                    "pin": "Alarm PIN (optional, required for alarm control)"
-                }
-            },
-            "reauth_confirm": {
-                "title": "Re-authenticate Delta Dore Tydom",
-                "description": "The credentials for {name} have expired or are invalid. Please update them."
-            }
-        },
-        "error": {
-            "already_configured": "Device is already configured",
-            "invalid_host": "Hostname or IP is invalid",
-            "invalid_macaddress": "MAC address is invalid",
-            "invalid_email": "Email is invalid",
-            "invalid_password": "Password is invalid",
-            "invalid_refresh_interval": "Refresh interval is not valid",
-            "communication_error": "Couldn't connect to Tydom Gateway",
-            "authentication_error": "Authentication error",
-            "local_pairing_failed": "The local pairing window was unavailable or the gateway did not return a password. Press the gateway button and submit the form again.",
-            "invalid_zone_config": "Zone configuration is invalid. syntax is : zone_id_1,zone_id_2... Example: 1,2,4",
-            "validation_error": "Validation error",
-            "value_out_of_range": "Value is out of allowed range",
-            "value_invalid_step": "Value is not a multiple of the allowed step",
-            "value_invalid_enum": "Value is not in allowed values",
-            "attribute_not_writable": "Attribute is not writable"
-        },
-        "abort": {
-            "discover_timeout": "Unable to discover devices",
-            "no_bridges": "No device discovered",
-            "all_configured": "All device are already configured",
-            "unknown": "Unknown error occurred",
-            "cannot_connect": "Unable to connect to the device",
-            "already_configured": "Device is already configured",
-            "reauth_entry_not_found": "Re-authentication entry not found",
-            "reauth_successful": "Re-authentication successful"
-        }
-    },
-    "options": {
-        "step": {
-            "init": {
-                "title": "Delta Dore Tydom Options",
-                "description": "Choose an option",
-                "menu_options": {
-                    "configure": "Configure (zones, refresh interval, alarm PIN)",
-                    "actions": "Actions (reload devices)"
-                }
-            },
-            "configure": {
-                "title": "Delta Dore Tydom Configuration",
-                "description": "Update your Tydom integration settings.",
-                "data": {
-                    "pin": "Alarm PIN (optional, required for alarm control)",
-                    "refresh_interval": "Refresh interval in minutes (default: 30)",
-                    "zones_away": "Active zones in away alarm mode (comma-separated, e.g., 1,2,4)",
-                    "zones_home": "Active zones in home alarm mode (comma-separated, e.g., 1,2,4)",
-                    "zones_night": "Active zones in night alarm mode (comma-separated, e.g., 1,2,4)"
-                }
-            },
-            "actions": {
-                "title": "Delta Dore Tydom Actions",
-                "description": "Available actions for Tydom integration{status}\n\nHub status: {hub_status}",
-                "data": {
-                    "reload_devices": "Reload devices",
-                    "reload_devices_button": "Reload all devices"
-                }
-            }
-        },
-        "error": {
-            "invalid_refresh_interval": "Refresh interval is not valid",
-            "invalid_zone_config": "Zone configuration is invalid. syntax is : zone_id_1,zone_id_2... Example: 1,2,4",
-            "reload_error": "Error reloading devices",
-            "hub_not_found": "Tydom hub not found"
-        }
-    },
-    "selector": {
-        "config_mode": {
-            "options": {
-                "tydom_cloud_account": "Retrieve Tydom credentials using Delta Dore cloud account",
-                "tydom_credentials": "Enter Tydom credentials manually",
-                "tydom_local_button_pairing": "Pair locally using the gateway button"
-            }
-        }
-    },
-    "services": {
-        "acknowledge_events": {
-            "name": "Acknowledge defect events",
-            "description": "Acknowledge all defect alarm events."
-        },
-        "force_arm": {
-            "name": "Force arm alarm",
-            "description": "Explicitly force an alarm mode despite defects that caused normal arming to be refused.",
-            "fields": {
-                "code": {"name": "TYXAL user code", "description": "User code authorised to arm the alarm."},
-                "mode": {"name": "Arming mode", "description": "Configured Home Assistant alarm mode to force."}
-            }
-        },
-        "get_events": {
-            "name": "Get alarm events",
-            "description": "Get alarm events",
-            "fields": {
-                "event_type": {
-                    "name": "Event type",
-                    "description": "Alarm event type"
-                }
-            }
-        },
-        "get_alarm_products": {
-            "name": "Get alarm products and zones",
-            "description": "Retrieve the products and zones configured on a TYXAL alarm."
-        },
-        "get_alarm_product_configuration": {
-            "name": "Get alarm product configuration",
-            "description": "Retrieve the active state and zone assignment of a TYXAL alarm product while the CS8000 is in maintenance mode.",
-            "fields": {
-                "code": {"name": "TYXAL installer code", "description": "Installer code used while the CS8000 is in maintenance mode."},
-                "product_id": {"name": "Product ID", "description": "Identifier returned by Get alarm products and zones."}
-            }
-        },
-        "enter_alarm_maintenance": {
-            "name": "Enter alarm maintenance mode",
-            "description": "Put a disarmed TYXAL CS8000 into maintenance mode before reading or changing its configuration.",
-            "fields": {
-                "code": {"name": "TYXAL installer code", "description": "Installer code for the CS8000. Do not use an ordinary user alarm code."}
-            }
-        },
-        "exit_alarm_maintenance": {
-            "name": "Exit alarm maintenance mode",
-            "description": "Return a TYXAL CS8000 from maintenance mode to its normal disarmed state.",
-            "fields": {
-                "code": {"name": "TYXAL installer code", "description": "Installer code for the CS8000."}
-            }
-        },
-        "configure_alarm_product": {
-            "name": "Configure alarm product",
-            "description": "Enable or disable a TYXAL product and change its zone assignment.",
-            "fields": {
-                "code": {"name": "TYXAL installer code", "description": "Installer code used while the CS8000 is in maintenance mode."},
-                "product_id": {"name": "Product ID", "description": "Identifier returned by Get alarm products and zones."},
-                "active": {"name": "Active", "description": "Whether the product should participate in the alarm system."},
-                "zone": {"name": "Zone", "description": "Zone to which the product should be assigned."}
-            }
-        },
-        "rename_alarm_zone": {
-            "name": "Rename alarm zone",
-            "description": "Change the custom name of one TYXAL alarm zone, or clear it by supplying an empty name.",
-            "fields": {
-                "code": {"name": "TYXAL installer code", "description": "Installer code used while the CS8000 is in maintenance mode."},
-                "zone_id": {"name": "Zone ID", "description": "Identifier returned by Get alarm products and zones."},
-                "name": {"name": "Zone name", "description": "New custom name for the zone. Supply an empty string to clear its custom or standard label."}
-            }
-        },
-        "reload_devices": {
-            "name": "Reload devices",
-            "description": "Reload all devices and entities as at initial startup. This action removes all existing entities and recreates them from scratch."
-        },
-        "activate_group_scenario": {
-            "name": "Activate scenario on group",
-            "description": "Activate a scenario on a Tydom group",
-            "fields": {
-                "scenario_id": {
-                    "name": "Scenario ID",
-                    "description": "The ID of the scenario to activate"
-                }
-            }
-        }
-    },
     "entity": {
-        "scene": {},
-        "switch": {},
-        "button": {
-            "acknowledge_events": {
-                "name": "Acknowledge events"
-            },
-            "cancel_boost": {
-                "name": "Cancel Boost"
-            },
-            "group_light": {
-                "name": "Light Group"
-            },
-            "group_shutter": {
-                "name": "Shutter Group"
-            },
-            "group_awning": {
-                "name": "Awning Group"
-            },
-            "group_plug": {
-                "name": "Plug Group"
-            },
-            "group_heating": {
-                "name": "Heating Group"
-            },
-            "group_alarm": {
-                "name": "Alarm Group"
-            },
-            "refresh_energy": {
-                "name": "Refresh energy data"
-            }
-        },
-        "number": {},
-        "select": {},
-        "event": {
-            "remote_button": {
-                "name": "Button {button_number}"
-            },
-            "interrupter_button": {
-                "name": "Button {button_number}"
-            }
-        },
-        "cover": {
-            "tywell_shutters": {
-                "name": "Shutters"
-            },
-            "tywell_shutters_day": {
-                "name": "Day shutters"
-            },
-            "tywell_shutters_night": {
-                "name": "Night shutters"
-            }
-        },
-        "light": {},
-        "climate": {},
-        "alarm_control_panel": {},
-        "lock": {},
-        "weather": {},
-        "update": {},
         "sensor": {
-            "tywell_weather_condition": {"name": "Weer"},
-            "tywell_weather_outdoor_temperature": {"name": "Buitentemperatuur"},
-            "tywell_weather_daily_power": {"name": "Dagelijks vermogen"},
-            "tywell_weather_power": {"name": "Vermogen"},
-            "tywell_weather_max_daily_outdoor_temperature": {"name": "Dagelijkse maximale buitentemperatuur"},
-            "pending_alarm_events": {
-                "name": "Pending alarm events"
+            "absence": {
+                "name": "Afwezigheidsmodus"
             },
-            "tywatt_energy_distrib_elec_heating": {
-                "name": "Electricity consumption - Heating"
+            "absencesetpoint": {
+                "name": "Afwezigheidstemperatuur"
             },
-            "tywatt_energy_distrib_elec_hotwater": {
-                "name": "Electricity consumption - Hot water"
+            "absmaxcoolsetpoint": {
+                "name": "Maximale insteltemperatuur koeling"
             },
-            "tywatt_energy_distrib_elec_other": {
-                "name": "Electricity consumption - Other"
+            "absmaxheatsetpoint": {
+                "name": "Maximale insteltemperatuur verwarming"
             },
-            "tywatt_energy_distrib_elec_outlet": {
-                "name": "Electricity consumption - Outlets"
+            "absmincoolsetpoint": {
+                "name": "Minimale insteltemperatuur koeling"
             },
-            "tywatt_energy_index_elec_heating": {
-                "name": "Electricity index - Heating"
+            "absminheatsetpoint": {
+                "name": "Minimale insteltemperatuur verwarming"
             },
-            "tywatt_energy_index_elec_hotwater": {
-                "name": "Electricity index - Hot water"
+            "ackeventcmd": {
+                "name": "Gebeurtenissen bevestigen"
             },
-            "tywatt_energy_index_elec_other": {
-                "name": "Electricity index - Other"
+            "activationcpt": {
+                "name": "Aantal activeringen"
             },
-            "tywatt_energy_index_elec_total": {
-                "name": "Electricity index - Total"
+            "activationindex": {
+                "name": "Activeringsindex"
             },
-            "temperature": {
-                "name": "Temperature"
+            "alarmcmd": {
+                "name": "Alarmopdracht"
             },
-            "outtemperature": {
-                "name": "Outdoor temperature"
+            "alarmintrusion": {
+                "name": "Inbraak"
+            },
+            "alarmmode": {
+                "name": "Alarmmodus"
+            },
+            "alarmsos": {
+                "name": "SOS-alarm"
+            },
+            "alarmstate": {
+                "name": "Alarmstatus"
+            },
+            "alarmtechnical": {
+                "name": "Technisch alarm"
             },
             "ambienttemperature": {
-                "name": "Ambient temperature"
+                "name": "Omgevingstemperatuur"
+            },
+            "anticipcoeff": {
+                "name": "Anticipatiecoëfficiënt"
+            },
+            "anticpcoeff": {
+                "name": "Anticipatiecoëfficiënt"
+            },
+            "antifroston": {
+                "name": "Vorstbeveiliging"
+            },
+            "antifrostsetpoint": {
+                "name": "Vorstbeveiligingstemperatuur"
+            },
+            "antifrostwhenoff": {
+                "name": "Vorstbeveiliging"
+            },
+            "antiseizurecmd": {
+                "name": "Opdracht tegen vastlopen"
+            },
+            "antiseizureperiod": {
+                "name": "Interval tegen vastlopen"
+            },
+            "api_mode": {
+                "name": "API-modus"
+            },
+            "area_id": {
+                "name": "Gebiedsidentificatie"
+            },
+            "authorization": {
+                "name": "Autorisatie"
+            },
+            "batt_defect": {
+                "name": "Storing batterij"
+            },
+            "battdefect": {
+                "name": "Storing batterij"
+            },
+            "batterycmddefect": {
+                "name": "Storing batterijbediening"
             },
             "battlevel": {
-                "name": "Battery level"
+                "name": "Batterijniveau"
             },
-            "level": {
-                "name": "Level"
-            },
-            "position": {
-                "name": "Position"
-            },
-            "hygroin": {
-                "name": "Humidity"
-            },
-            "energy": {
-                "name": "Energy"
-            },
-            "power": {
-                "name": "Power"
-            },
-            "current": {
-                "name": "Current"
-            },
-            "value": {
-                "name": "Value"
-            },
-            "state": {
-                "name": "State"
-            },
-            "config": {
-                "name": "Configuration"
-            },
-            "supervisionmode": {
-                "name": "Supervision mode"
-            },
-            "productname": {
-                "name": "Product name"
-            },
-            "mac": {
-                "name": "MAC address"
-            },
-            "softversion": {
-                "name": "Software version"
-            },
-            "mainversionhw": {
-                "name": "Main hardware version"
-            },
-            "keyversionhw": {
-                "name": "Key hardware version"
-            },
-            "longitude": {
-                "name": "Longitude"
-            },
-            "latitude": {
-                "name": "Latitude"
-            },
-            "clock": {
-                "name": "Clock"
-            },
-            "timezone": {
-                "name": "Timezone"
-            },
-            "clock_source": {
-                "name": "Clock source"
-            },
-            "summer_offset": {
-                "name": "Summer offset"
+            "bdd_empty": {
+                "name": "Database leeg"
             },
             "bdd_status": {
-                "name": "Database status"
+                "name": "Databasestatus"
+            },
+            "boost": {
+                "name": "Boost"
+            },
+            "booston": {
+                "name": "Boost"
+            },
+            "bootreference": {
+                "name": "Bootloaderreferentie"
+            },
+            "bootversion": {
+                "name": "Bootloaderversie"
+            },
+            "brightness": {
+                "name": "Helderheid"
+            },
+            "calibrationdefect": {
+                "name": "Kalibratiefout"
+            },
+            "clock": {
+                "name": "Gatewaytijd"
+            },
+            "clock_source": {
+                "name": "Klokbron"
+            },
+            "cmddefect": {
+                "name": "Storing opdracht"
+            },
+            "comfortmode": {
+                "name": "Comfortmodus"
+            },
+            "config": {
+                "name": "Configuratie"
+            },
+            "configsensor": {
+                "name": "Sensorconfiguratie"
+            },
+            "configtemp": {
+                "name": "Temperatuurconfiguratie"
+            },
+            "coolsetpoint": {
+                "name": "Insteltemperatuur koeling"
+            },
+            "current": {
+                "name": "Stroomsterkte"
+            },
+            "currentpower": {
+                "name": "Vermogen"
+            },
+            "currentsetpoint": {
+                "name": "Temperatuurinstelling"
+            },
+            "dailypower": {
+                "name": "Dagelijks vermogen"
+            },
+            "delaysetpoint": {
+                "name": "Vertraging temperatuurinstelling"
+            },
+            "delaythermiclevel": {
+                "name": "Vertraging verwarmingsstand"
+            },
+            "device_endpoint": {
+                "name": "Endpoint"
+            },
+            "device_id": {
+                "name": "TYDOM-endpointidentificatie"
+            },
+            "device_name": {
+                "name": "Apparaatnaam"
+            },
+            "device_type": {
+                "name": "Apparaattype"
+            },
+            "direction": {
+                "name": "Richting"
+            },
+            "down_defect": {
+                "name": "Omlaag niet toegelaten"
+            },
+            "downdefect": {
+                "name": "Omlaag niet toegelaten"
+            },
+            "energy": {
+                "name": "Energie"
+            },
+            "energydistrib": {
+                "name": "Verbruiksverdeling"
+            },
+            "energydistrib_elec_a": {
+                "name": "Stroomsterkte (Elektriciteit)"
+            },
+            "energydistrib_elec_cooling": {
+                "name": "Verbruiksverdeling (Elektriciteit, Koeling)"
+            },
+            "energydistrib_elec_heating": {
+                "name": "Verbruiksverdeling (Elektriciteit, Verwarming)"
+            },
+            "energydistrib_elec_hotwater": {
+                "name": "Verbruiksverdeling (Elektriciteit, Warm water)"
+            },
+            "energydistrib_elec_other": {
+                "name": "Verbruiksverdeling (Elektriciteit, Overig)"
+            },
+            "energydistrib_elec_outlet": {
+                "name": "Verbruiksverdeling (Elektriciteit, Stekkers)"
+            },
+            "energydistrib_elec_total": {
+                "name": "Verbruiksverdeling (Elektriciteit, Totaal)"
+            },
+            "energydistrib_elec_w": {
+                "name": "Vermogen (Elektriciteit)"
+            },
+            "energydistrib_gas_a": {
+                "name": "Stroomsterkte (Gas)"
+            },
+            "energydistrib_gas_cooling": {
+                "name": "Verbruiksverdeling (Gas, Koeling)"
+            },
+            "energydistrib_gas_heating": {
+                "name": "Verbruiksverdeling (Gas, Verwarming)"
+            },
+            "energydistrib_gas_hotwater": {
+                "name": "Verbruiksverdeling (Gas, Warm water)"
+            },
+            "energydistrib_gas_other": {
+                "name": "Verbruiksverdeling (Gas, Overig)"
+            },
+            "energydistrib_gas_outlet": {
+                "name": "Verbruiksverdeling (Gas, Stekkers)"
+            },
+            "energydistrib_gas_total": {
+                "name": "Verbruiksverdeling (Gas, Totaal)"
+            },
+            "energydistrib_gas_w": {
+                "name": "Vermogen (Gas)"
+            },
+            "energydistrib_gaz_a": {
+                "name": "Stroomsterkte (Gas)"
+            },
+            "energydistrib_gaz_cooling": {
+                "name": "Verbruiksverdeling (Gas, Koeling)"
+            },
+            "energydistrib_gaz_heating": {
+                "name": "Verbruiksverdeling (Gas, Verwarming)"
+            },
+            "energydistrib_gaz_hotwater": {
+                "name": "Verbruiksverdeling (Gas, Warm water)"
+            },
+            "energydistrib_gaz_other": {
+                "name": "Verbruiksverdeling (Gas, Overig)"
+            },
+            "energydistrib_gaz_outlet": {
+                "name": "Verbruiksverdeling (Gas, Stekkers)"
+            },
+            "energydistrib_gaz_total": {
+                "name": "Verbruiksverdeling (Gas, Totaal)"
+            },
+            "energydistrib_gaz_w": {
+                "name": "Vermogen (Gas)"
+            },
+            "energydistrib_water_a": {
+                "name": "Stroomsterkte (Water)"
+            },
+            "energydistrib_water_cooling": {
+                "name": "Verbruiksverdeling (Water, Koeling)"
+            },
+            "energydistrib_water_heating": {
+                "name": "Verbruiksverdeling (Water, Verwarming)"
+            },
+            "energydistrib_water_hotwater": {
+                "name": "Verbruiksverdeling (Water, Warm water)"
+            },
+            "energydistrib_water_other": {
+                "name": "Verbruiksverdeling (Water, Overig)"
+            },
+            "energydistrib_water_outlet": {
+                "name": "Verbruiksverdeling (Water, Stekkers)"
+            },
+            "energydistrib_water_total": {
+                "name": "Verbruiksverdeling (Water, Totaal)"
+            },
+            "energydistrib_water_w": {
+                "name": "Vermogen (Water)"
+            },
+            "energyhisto": {
+                "name": "Verbruikshistorie"
+            },
+            "energyhisto_elec_a": {
+                "name": "Stroomsterkte (Elektriciteit)"
+            },
+            "energyhisto_elec_cooling": {
+                "name": "Verbruikshistorie (Elektriciteit, Koeling)"
+            },
+            "energyhisto_elec_heating": {
+                "name": "Verbruikshistorie (Elektriciteit, Verwarming)"
+            },
+            "energyhisto_elec_hotwater": {
+                "name": "Verbruikshistorie (Elektriciteit, Warm water)"
+            },
+            "energyhisto_elec_other": {
+                "name": "Verbruikshistorie (Elektriciteit, Overig)"
+            },
+            "energyhisto_elec_outlet": {
+                "name": "Verbruikshistorie (Elektriciteit, Stekkers)"
+            },
+            "energyhisto_elec_total": {
+                "name": "Verbruikshistorie (Elektriciteit, Totaal)"
+            },
+            "energyhisto_elec_w": {
+                "name": "Vermogen (Elektriciteit)"
+            },
+            "energyhisto_gas_a": {
+                "name": "Stroomsterkte (Gas)"
+            },
+            "energyhisto_gas_cooling": {
+                "name": "Verbruikshistorie (Gas, Koeling)"
+            },
+            "energyhisto_gas_heating": {
+                "name": "Verbruikshistorie (Gas, Verwarming)"
+            },
+            "energyhisto_gas_hotwater": {
+                "name": "Verbruikshistorie (Gas, Warm water)"
+            },
+            "energyhisto_gas_other": {
+                "name": "Verbruikshistorie (Gas, Overig)"
+            },
+            "energyhisto_gas_outlet": {
+                "name": "Verbruikshistorie (Gas, Stekkers)"
+            },
+            "energyhisto_gas_total": {
+                "name": "Verbruikshistorie (Gas, Totaal)"
+            },
+            "energyhisto_gas_w": {
+                "name": "Vermogen (Gas)"
+            },
+            "energyhisto_gaz_a": {
+                "name": "Stroomsterkte (Gas)"
+            },
+            "energyhisto_gaz_cooling": {
+                "name": "Verbruikshistorie (Gas, Koeling)"
+            },
+            "energyhisto_gaz_heating": {
+                "name": "Verbruikshistorie (Gas, Verwarming)"
+            },
+            "energyhisto_gaz_hotwater": {
+                "name": "Verbruikshistorie (Gas, Warm water)"
+            },
+            "energyhisto_gaz_other": {
+                "name": "Verbruikshistorie (Gas, Overig)"
+            },
+            "energyhisto_gaz_outlet": {
+                "name": "Verbruikshistorie (Gas, Stekkers)"
+            },
+            "energyhisto_gaz_total": {
+                "name": "Verbruikshistorie (Gas, Totaal)"
+            },
+            "energyhisto_gaz_w": {
+                "name": "Vermogen (Gas)"
+            },
+            "energyhisto_water_a": {
+                "name": "Stroomsterkte (Water)"
+            },
+            "energyhisto_water_cooling": {
+                "name": "Verbruikshistorie (Water, Koeling)"
+            },
+            "energyhisto_water_heating": {
+                "name": "Verbruikshistorie (Water, Verwarming)"
+            },
+            "energyhisto_water_hotwater": {
+                "name": "Verbruikshistorie (Water, Warm water)"
+            },
+            "energyhisto_water_other": {
+                "name": "Verbruikshistorie (Water, Overig)"
+            },
+            "energyhisto_water_outlet": {
+                "name": "Verbruikshistorie (Water, Stekkers)"
+            },
+            "energyhisto_water_total": {
+                "name": "Verbruikshistorie (Water, Totaal)"
+            },
+            "energyhisto_water_w": {
+                "name": "Vermogen (Water)"
+            },
+            "energyindex": {
+                "name": "Verbruikstellerstand"
+            },
+            "energyindex_elec_a": {
+                "name": "Stroomsterkte (Elektriciteit)"
+            },
+            "energyindex_elec_cooling": {
+                "name": "Verbruikstellerstand (Elektriciteit, Koeling)"
+            },
+            "energyindex_elec_heating": {
+                "name": "Verbruikstellerstand (Elektriciteit, Verwarming)"
+            },
+            "energyindex_elec_hotwater": {
+                "name": "Verbruikstellerstand (Elektriciteit, Warm water)"
+            },
+            "energyindex_elec_other": {
+                "name": "Verbruikstellerstand (Elektriciteit, Overig)"
+            },
+            "energyindex_elec_outlet": {
+                "name": "Verbruikstellerstand (Elektriciteit, Stekkers)"
+            },
+            "energyindex_elec_total": {
+                "name": "Verbruikstellerstand (Elektriciteit, Totaal)"
+            },
+            "energyindex_elec_w": {
+                "name": "Vermogen (Elektriciteit)"
+            },
+            "energyindex_gas_a": {
+                "name": "Stroomsterkte (Gas)"
+            },
+            "energyindex_gas_cooling": {
+                "name": "Verbruikstellerstand (Gas, Koeling)"
+            },
+            "energyindex_gas_heating": {
+                "name": "Verbruikstellerstand (Gas, Verwarming)"
+            },
+            "energyindex_gas_hotwater": {
+                "name": "Verbruikstellerstand (Gas, Warm water)"
+            },
+            "energyindex_gas_other": {
+                "name": "Verbruikstellerstand (Gas, Overig)"
+            },
+            "energyindex_gas_outlet": {
+                "name": "Verbruikstellerstand (Gas, Stekkers)"
+            },
+            "energyindex_gas_total": {
+                "name": "Verbruikstellerstand (Gas, Totaal)"
+            },
+            "energyindex_gas_w": {
+                "name": "Vermogen (Gas)"
+            },
+            "energyindex_gaz_a": {
+                "name": "Stroomsterkte (Gas)"
+            },
+            "energyindex_gaz_cooling": {
+                "name": "Verbruikstellerstand (Gas, Koeling)"
+            },
+            "energyindex_gaz_heating": {
+                "name": "Verbruikstellerstand (Gas, Verwarming)"
+            },
+            "energyindex_gaz_hotwater": {
+                "name": "Verbruikstellerstand (Gas, Warm water)"
+            },
+            "energyindex_gaz_other": {
+                "name": "Verbruikstellerstand (Gas, Overig)"
+            },
+            "energyindex_gaz_outlet": {
+                "name": "Verbruikstellerstand (Gas, Stekkers)"
+            },
+            "energyindex_gaz_total": {
+                "name": "Verbruikstellerstand (Gas, Totaal)"
+            },
+            "energyindex_gaz_w": {
+                "name": "Vermogen (Gas)"
+            },
+            "energyindex_water_a": {
+                "name": "Stroomsterkte (Water)"
+            },
+            "energyindex_water_cooling": {
+                "name": "Verbruikstellerstand (Water, Koeling)"
+            },
+            "energyindex_water_heating": {
+                "name": "Verbruikstellerstand (Water, Verwarming)"
+            },
+            "energyindex_water_hotwater": {
+                "name": "Verbruikstellerstand (Water, Warm water)"
+            },
+            "energyindex_water_other": {
+                "name": "Verbruikstellerstand (Water, Overig)"
+            },
+            "energyindex_water_outlet": {
+                "name": "Verbruikstellerstand (Water, Stekkers)"
+            },
+            "energyindex_water_total": {
+                "name": "Verbruikstellerstand (Water, Totaal)"
+            },
+            "energyindex_water_w": {
+                "name": "Vermogen (Water)"
+            },
+            "energyindexcoolwatt": {
+                "name": "Energie (Koeling)"
+            },
+            "energyindexdhwwatt": {
+                "name": "Energie (Warm water)"
+            },
+            "energyindexecswatt": {
+                "name": "Energie (Warm water)"
+            },
+            "energyindexheatgas": {
+                "name": "Verbruikstellerstand (Gas, Verwarming)"
+            },
+            "energyindexheatwatt": {
+                "name": "Energie (Verwarming)"
+            },
+            "energyindexti1": {
+                "name": "Verbruikstellerstand (TI1)"
+            },
+            "energyindexti1watt": {
+                "name": "Energie (TI1)"
+            },
+            "energyindextotelecwatt": {
+                "name": "Energie (Elektriciteit)"
+            },
+            "energyinstant": {
+                "name": "Actueel verbruik"
+            },
+            "energyinstant_elec_a": {
+                "name": "Stroomsterkte (Elektriciteit)"
+            },
+            "energyinstant_elec_a_max": {
+                "name": "Stroomsterkte (Elektriciteit) (maximum)"
+            },
+            "energyinstant_elec_a_min": {
+                "name": "Stroomsterkte (Elektriciteit) (minimum)"
+            },
+            "energyinstant_elec_cooling": {
+                "name": "Actueel verbruik (Elektriciteit, Koeling)"
+            },
+            "energyinstant_elec_cooling_max": {
+                "name": "Actueel verbruik (Elektriciteit, Koeling) (maximum)"
+            },
+            "energyinstant_elec_cooling_min": {
+                "name": "Actueel verbruik (Elektriciteit, Koeling) (minimum)"
+            },
+            "energyinstant_elec_heating": {
+                "name": "Actueel verbruik (Elektriciteit, Verwarming)"
+            },
+            "energyinstant_elec_heating_max": {
+                "name": "Actueel verbruik (Elektriciteit, Verwarming) (maximum)"
+            },
+            "energyinstant_elec_heating_min": {
+                "name": "Actueel verbruik (Elektriciteit, Verwarming) (minimum)"
+            },
+            "energyinstant_elec_hotwater": {
+                "name": "Actueel verbruik (Elektriciteit, Warm water)"
+            },
+            "energyinstant_elec_hotwater_max": {
+                "name": "Actueel verbruik (Elektriciteit, Warm water) (maximum)"
+            },
+            "energyinstant_elec_hotwater_min": {
+                "name": "Actueel verbruik (Elektriciteit, Warm water) (minimum)"
+            },
+            "energyinstant_elec_other": {
+                "name": "Actueel verbruik (Elektriciteit, Overig)"
+            },
+            "energyinstant_elec_other_max": {
+                "name": "Actueel verbruik (Elektriciteit, Overig) (maximum)"
+            },
+            "energyinstant_elec_other_min": {
+                "name": "Actueel verbruik (Elektriciteit, Overig) (minimum)"
+            },
+            "energyinstant_elec_outlet": {
+                "name": "Actueel verbruik (Elektriciteit, Stekkers)"
+            },
+            "energyinstant_elec_outlet_max": {
+                "name": "Actueel verbruik (Elektriciteit, Stekkers) (maximum)"
+            },
+            "energyinstant_elec_outlet_min": {
+                "name": "Actueel verbruik (Elektriciteit, Stekkers) (minimum)"
+            },
+            "energyinstant_elec_total": {
+                "name": "Actueel verbruik (Elektriciteit, Totaal)"
+            },
+            "energyinstant_elec_total_max": {
+                "name": "Actueel verbruik (Elektriciteit, Totaal) (maximum)"
+            },
+            "energyinstant_elec_total_min": {
+                "name": "Actueel verbruik (Elektriciteit, Totaal) (minimum)"
+            },
+            "energyinstant_elec_w": {
+                "name": "Vermogen (Elektriciteit)"
+            },
+            "energyinstant_elec_w_max": {
+                "name": "Vermogen (Elektriciteit) (maximum)"
+            },
+            "energyinstant_elec_w_min": {
+                "name": "Vermogen (Elektriciteit) (minimum)"
+            },
+            "energyinstant_gas_a": {
+                "name": "Stroomsterkte (Gas)"
+            },
+            "energyinstant_gas_a_max": {
+                "name": "Stroomsterkte (Gas) (maximum)"
+            },
+            "energyinstant_gas_a_min": {
+                "name": "Stroomsterkte (Gas) (minimum)"
+            },
+            "energyinstant_gas_cooling": {
+                "name": "Actueel verbruik (Gas, Koeling)"
+            },
+            "energyinstant_gas_cooling_max": {
+                "name": "Actueel verbruik (Gas, Koeling) (maximum)"
+            },
+            "energyinstant_gas_cooling_min": {
+                "name": "Actueel verbruik (Gas, Koeling) (minimum)"
+            },
+            "energyinstant_gas_heating": {
+                "name": "Actueel verbruik (Gas, Verwarming)"
+            },
+            "energyinstant_gas_heating_max": {
+                "name": "Actueel verbruik (Gas, Verwarming) (maximum)"
+            },
+            "energyinstant_gas_heating_min": {
+                "name": "Actueel verbruik (Gas, Verwarming) (minimum)"
+            },
+            "energyinstant_gas_hotwater": {
+                "name": "Actueel verbruik (Gas, Warm water)"
+            },
+            "energyinstant_gas_hotwater_max": {
+                "name": "Actueel verbruik (Gas, Warm water) (maximum)"
+            },
+            "energyinstant_gas_hotwater_min": {
+                "name": "Actueel verbruik (Gas, Warm water) (minimum)"
+            },
+            "energyinstant_gas_other": {
+                "name": "Actueel verbruik (Gas, Overig)"
+            },
+            "energyinstant_gas_other_max": {
+                "name": "Actueel verbruik (Gas, Overig) (maximum)"
+            },
+            "energyinstant_gas_other_min": {
+                "name": "Actueel verbruik (Gas, Overig) (minimum)"
+            },
+            "energyinstant_gas_outlet": {
+                "name": "Actueel verbruik (Gas, Stekkers)"
+            },
+            "energyinstant_gas_outlet_max": {
+                "name": "Actueel verbruik (Gas, Stekkers) (maximum)"
+            },
+            "energyinstant_gas_outlet_min": {
+                "name": "Actueel verbruik (Gas, Stekkers) (minimum)"
+            },
+            "energyinstant_gas_total": {
+                "name": "Actueel verbruik (Gas, Totaal)"
+            },
+            "energyinstant_gas_total_max": {
+                "name": "Actueel verbruik (Gas, Totaal) (maximum)"
+            },
+            "energyinstant_gas_total_min": {
+                "name": "Actueel verbruik (Gas, Totaal) (minimum)"
+            },
+            "energyinstant_gas_w": {
+                "name": "Vermogen (Gas)"
+            },
+            "energyinstant_gas_w_max": {
+                "name": "Vermogen (Gas) (maximum)"
+            },
+            "energyinstant_gas_w_min": {
+                "name": "Vermogen (Gas) (minimum)"
+            },
+            "energyinstant_gaz_a": {
+                "name": "Stroomsterkte (Gas)"
+            },
+            "energyinstant_gaz_a_max": {
+                "name": "Stroomsterkte (Gas) (maximum)"
+            },
+            "energyinstant_gaz_a_min": {
+                "name": "Stroomsterkte (Gas) (minimum)"
+            },
+            "energyinstant_gaz_cooling": {
+                "name": "Actueel verbruik (Gas, Koeling)"
+            },
+            "energyinstant_gaz_cooling_max": {
+                "name": "Actueel verbruik (Gas, Koeling) (maximum)"
+            },
+            "energyinstant_gaz_cooling_min": {
+                "name": "Actueel verbruik (Gas, Koeling) (minimum)"
+            },
+            "energyinstant_gaz_heating": {
+                "name": "Actueel verbruik (Gas, Verwarming)"
+            },
+            "energyinstant_gaz_heating_max": {
+                "name": "Actueel verbruik (Gas, Verwarming) (maximum)"
+            },
+            "energyinstant_gaz_heating_min": {
+                "name": "Actueel verbruik (Gas, Verwarming) (minimum)"
+            },
+            "energyinstant_gaz_hotwater": {
+                "name": "Actueel verbruik (Gas, Warm water)"
+            },
+            "energyinstant_gaz_hotwater_max": {
+                "name": "Actueel verbruik (Gas, Warm water) (maximum)"
+            },
+            "energyinstant_gaz_hotwater_min": {
+                "name": "Actueel verbruik (Gas, Warm water) (minimum)"
+            },
+            "energyinstant_gaz_other": {
+                "name": "Actueel verbruik (Gas, Overig)"
+            },
+            "energyinstant_gaz_other_max": {
+                "name": "Actueel verbruik (Gas, Overig) (maximum)"
+            },
+            "energyinstant_gaz_other_min": {
+                "name": "Actueel verbruik (Gas, Overig) (minimum)"
+            },
+            "energyinstant_gaz_outlet": {
+                "name": "Actueel verbruik (Gas, Stekkers)"
+            },
+            "energyinstant_gaz_outlet_max": {
+                "name": "Actueel verbruik (Gas, Stekkers) (maximum)"
+            },
+            "energyinstant_gaz_outlet_min": {
+                "name": "Actueel verbruik (Gas, Stekkers) (minimum)"
+            },
+            "energyinstant_gaz_total": {
+                "name": "Actueel verbruik (Gas, Totaal)"
+            },
+            "energyinstant_gaz_total_max": {
+                "name": "Actueel verbruik (Gas, Totaal) (maximum)"
+            },
+            "energyinstant_gaz_total_min": {
+                "name": "Actueel verbruik (Gas, Totaal) (minimum)"
+            },
+            "energyinstant_gaz_w": {
+                "name": "Vermogen (Gas)"
+            },
+            "energyinstant_gaz_w_max": {
+                "name": "Vermogen (Gas) (maximum)"
+            },
+            "energyinstant_gaz_w_min": {
+                "name": "Vermogen (Gas) (minimum)"
+            },
+            "energyinstant_max": {
+                "name": "Actueel verbruik (maximum)"
+            },
+            "energyinstant_min": {
+                "name": "Actueel verbruik (minimum)"
+            },
+            "energyinstant_water_a": {
+                "name": "Stroomsterkte (Water)"
+            },
+            "energyinstant_water_a_max": {
+                "name": "Stroomsterkte (Water) (maximum)"
+            },
+            "energyinstant_water_a_min": {
+                "name": "Stroomsterkte (Water) (minimum)"
+            },
+            "energyinstant_water_cooling": {
+                "name": "Actueel verbruik (Water, Koeling)"
+            },
+            "energyinstant_water_cooling_max": {
+                "name": "Actueel verbruik (Water, Koeling) (maximum)"
+            },
+            "energyinstant_water_cooling_min": {
+                "name": "Actueel verbruik (Water, Koeling) (minimum)"
+            },
+            "energyinstant_water_heating": {
+                "name": "Actueel verbruik (Water, Verwarming)"
+            },
+            "energyinstant_water_heating_max": {
+                "name": "Actueel verbruik (Water, Verwarming) (maximum)"
+            },
+            "energyinstant_water_heating_min": {
+                "name": "Actueel verbruik (Water, Verwarming) (minimum)"
+            },
+            "energyinstant_water_hotwater": {
+                "name": "Actueel verbruik (Water, Warm water)"
+            },
+            "energyinstant_water_hotwater_max": {
+                "name": "Actueel verbruik (Water, Warm water) (maximum)"
+            },
+            "energyinstant_water_hotwater_min": {
+                "name": "Actueel verbruik (Water, Warm water) (minimum)"
+            },
+            "energyinstant_water_other": {
+                "name": "Actueel verbruik (Water, Overig)"
+            },
+            "energyinstant_water_other_max": {
+                "name": "Actueel verbruik (Water, Overig) (maximum)"
+            },
+            "energyinstant_water_other_min": {
+                "name": "Actueel verbruik (Water, Overig) (minimum)"
+            },
+            "energyinstant_water_outlet": {
+                "name": "Actueel verbruik (Water, Stekkers)"
+            },
+            "energyinstant_water_outlet_max": {
+                "name": "Actueel verbruik (Water, Stekkers) (maximum)"
+            },
+            "energyinstant_water_outlet_min": {
+                "name": "Actueel verbruik (Water, Stekkers) (minimum)"
+            },
+            "energyinstant_water_total": {
+                "name": "Actueel verbruik (Water, Totaal)"
+            },
+            "energyinstant_water_total_max": {
+                "name": "Actueel verbruik (Water, Totaal) (maximum)"
+            },
+            "energyinstant_water_total_min": {
+                "name": "Actueel verbruik (Water, Totaal) (minimum)"
+            },
+            "energyinstant_water_w": {
+                "name": "Vermogen (Water)"
+            },
+            "energyinstant_water_w_max": {
+                "name": "Vermogen (Water) (maximum)"
+            },
+            "energyinstant_water_w_min": {
+                "name": "Vermogen (Water) (minimum)"
+            },
+            "energyinstantcooli": {
+                "name": "Stroomsterkte (Koeling)"
+            },
+            "energyinstantcooli_max": {
+                "name": "Stroomsterkte (Koeling) (maximum)"
+            },
+            "energyinstantcooli_min": {
+                "name": "Stroomsterkte (Koeling) (minimum)"
+            },
+            "energyinstantcoolp": {
+                "name": "Vermogen (Koeling)"
+            },
+            "energyinstantcoolp_max": {
+                "name": "Vermogen (Koeling) (maximum)"
+            },
+            "energyinstantcoolp_min": {
+                "name": "Vermogen (Koeling) (minimum)"
+            },
+            "energyinstantdhwi": {
+                "name": "Stroomsterkte (Warm water)"
+            },
+            "energyinstantdhwi_max": {
+                "name": "Stroomsterkte (Warm water) (maximum)"
+            },
+            "energyinstantdhwi_min": {
+                "name": "Stroomsterkte (Warm water) (minimum)"
+            },
+            "energyinstantdhwp": {
+                "name": "Vermogen (Warm water)"
+            },
+            "energyinstantdhwp_max": {
+                "name": "Vermogen (Warm water) (maximum)"
+            },
+            "energyinstantdhwp_min": {
+                "name": "Vermogen (Warm water) (minimum)"
+            },
+            "energyinstantecsi": {
+                "name": "Stroomsterkte (Warm water)"
+            },
+            "energyinstantecsi_max": {
+                "name": "Stroomsterkte (Warm water) (maximum)"
+            },
+            "energyinstantecsi_min": {
+                "name": "Stroomsterkte (Warm water) (minimum)"
+            },
+            "energyinstantecsp": {
+                "name": "Vermogen (Warm water)"
+            },
+            "energyinstantecsp_max": {
+                "name": "Vermogen (Warm water) (maximum)"
+            },
+            "energyinstantecsp_min": {
+                "name": "Vermogen (Warm water) (minimum)"
+            },
+            "energyinstantheati": {
+                "name": "Stroomsterkte (Verwarming)"
+            },
+            "energyinstantheati_max": {
+                "name": "Stroomsterkte (Verwarming) (maximum)"
+            },
+            "energyinstantheati_min": {
+                "name": "Stroomsterkte (Verwarming) (minimum)"
+            },
+            "energyinstantheatp": {
+                "name": "Vermogen (Verwarming)"
+            },
+            "energyinstantheatp_max": {
+                "name": "Vermogen (Verwarming) (maximum)"
+            },
+            "energyinstantheatp_min": {
+                "name": "Vermogen (Verwarming) (minimum)"
+            },
+            "energyinstantti1i": {
+                "name": "Stroomsterkte (TI1)"
+            },
+            "energyinstantti1i_max": {
+                "name": "Stroomsterkte (TI1) (maximum)"
+            },
+            "energyinstantti1i_min": {
+                "name": "Stroomsterkte (TI1) (minimum)"
+            },
+            "energyinstantti1p": {
+                "name": "Vermogen (TI1)"
+            },
+            "energyinstantti1p_max": {
+                "name": "Vermogen (TI1) (maximum)"
+            },
+            "energyinstantti1p_min": {
+                "name": "Vermogen (TI1) (minimum)"
+            },
+            "energyinstanttotelec": {
+                "name": "Stroomsterkte (Elektriciteit)"
+            },
+            "energyinstanttotelec_max": {
+                "name": "Stroomsterkte (Elektriciteit) (maximum)"
+            },
+            "energyinstanttotelec_min": {
+                "name": "Stroomsterkte (Elektriciteit) (minimum)"
+            },
+            "energyinstanttotelec_p": {
+                "name": "Vermogen (Elektriciteit)"
+            },
+            "energyinstanttotelec_p_max": {
+                "name": "Vermogen (Elektriciteit) (maximum)"
+            },
+            "energyinstanttotelec_p_min": {
+                "name": "Vermogen (Elektriciteit) (minimum)"
+            },
+            "energyinstanttoteleci": {
+                "name": "Stroomsterkte (Elektriciteit)"
+            },
+            "energyinstanttoteleci_max": {
+                "name": "Stroomsterkte (Elektriciteit) (maximum)"
+            },
+            "energyinstanttoteleci_min": {
+                "name": "Stroomsterkte (Elektriciteit) (minimum)"
+            },
+            "energyinstanttotelecp": {
+                "name": "Vermogen (Elektriciteit)"
+            },
+            "energyinstanttotelecp_max": {
+                "name": "Vermogen (Elektriciteit) (maximum)"
+            },
+            "energyinstanttotelecp_min": {
+                "name": "Vermogen (Elektriciteit) (minimum)"
+            },
+            "energyscalecooli": {
+                "name": "Schaal — Stroomsterkte (Koeling)"
+            },
+            "energyscalecooli_max": {
+                "name": "Schaal — Stroomsterkte (Koeling) (maximum)"
+            },
+            "energyscalecooli_min": {
+                "name": "Schaal — Stroomsterkte (Koeling) (minimum)"
+            },
+            "energyscalecoolp": {
+                "name": "Schaal — Vermogen (Koeling)"
+            },
+            "energyscalecoolp_max": {
+                "name": "Schaal — Vermogen (Koeling) (maximum)"
+            },
+            "energyscalecoolp_min": {
+                "name": "Schaal — Vermogen (Koeling) (minimum)"
+            },
+            "energyscaledhwi": {
+                "name": "Schaal — Stroomsterkte (Warm water)"
+            },
+            "energyscaledhwi_max": {
+                "name": "Schaal — Stroomsterkte (Warm water) (maximum)"
+            },
+            "energyscaledhwi_min": {
+                "name": "Schaal — Stroomsterkte (Warm water) (minimum)"
+            },
+            "energyscaledhwp": {
+                "name": "Schaal — Vermogen (Warm water)"
+            },
+            "energyscaledhwp_max": {
+                "name": "Schaal — Vermogen (Warm water) (maximum)"
+            },
+            "energyscaledhwp_min": {
+                "name": "Schaal — Vermogen (Warm water) (minimum)"
+            },
+            "energyscaleecsi": {
+                "name": "Schaal — Stroomsterkte (Warm water)"
+            },
+            "energyscaleecsi_max": {
+                "name": "Schaal — Stroomsterkte (Warm water) (maximum)"
+            },
+            "energyscaleecsi_min": {
+                "name": "Schaal — Stroomsterkte (Warm water) (minimum)"
+            },
+            "energyscaleecsp": {
+                "name": "Schaal — Vermogen (Warm water)"
+            },
+            "energyscaleecsp_max": {
+                "name": "Schaal — Vermogen (Warm water) (maximum)"
+            },
+            "energyscaleecsp_min": {
+                "name": "Schaal — Vermogen (Warm water) (minimum)"
+            },
+            "energyscaleheati": {
+                "name": "Schaal — Stroomsterkte (Verwarming)"
+            },
+            "energyscaleheati_max": {
+                "name": "Schaal — Stroomsterkte (Verwarming) (maximum)"
+            },
+            "energyscaleheati_min": {
+                "name": "Schaal — Stroomsterkte (Verwarming) (minimum)"
+            },
+            "energyscaleheatp": {
+                "name": "Schaal — Vermogen (Verwarming)"
+            },
+            "energyscaleheatp_max": {
+                "name": "Schaal — Vermogen (Verwarming) (maximum)"
+            },
+            "energyscaleheatp_min": {
+                "name": "Schaal — Vermogen (Verwarming) (minimum)"
+            },
+            "energyscaleti1i": {
+                "name": "Schaal — Stroomsterkte (TI1)"
+            },
+            "energyscaleti1i_max": {
+                "name": "Schaal — Stroomsterkte (TI1) (maximum)"
+            },
+            "energyscaleti1i_min": {
+                "name": "Schaal — Stroomsterkte (TI1) (minimum)"
+            },
+            "energyscaleti1p": {
+                "name": "Schaal — Vermogen (TI1)"
+            },
+            "energyscaleti1p_max": {
+                "name": "Schaal — Vermogen (TI1) (maximum)"
+            },
+            "energyscaleti1p_min": {
+                "name": "Schaal — Vermogen (TI1) (minimum)"
+            },
+            "energyscaletotelec": {
+                "name": "Schaal — Stroomsterkte (Elektriciteit)"
+            },
+            "energyscaletotelec_max": {
+                "name": "Schaal — Stroomsterkte (Elektriciteit) (maximum)"
+            },
+            "energyscaletotelec_min": {
+                "name": "Schaal — Stroomsterkte (Elektriciteit) (minimum)"
+            },
+            "energyscaletotelec_p": {
+                "name": "Schaal — Vermogen (Elektriciteit)"
+            },
+            "energyscaletotelec_p_max": {
+                "name": "Schaal — Vermogen (Elektriciteit) (maximum)"
+            },
+            "energyscaletotelec_p_min": {
+                "name": "Schaal — Vermogen (Elektriciteit) (minimum)"
+            },
+            "energyscaletoteleci": {
+                "name": "Schaal — Stroomsterkte (Elektriciteit)"
+            },
+            "energyscaletoteleci_max": {
+                "name": "Schaal — Stroomsterkte (Elektriciteit) (maximum)"
+            },
+            "energyscaletoteleci_min": {
+                "name": "Schaal — Stroomsterkte (Elektriciteit) (minimum)"
+            },
+            "energyscaletotelecp": {
+                "name": "Schaal — Vermogen (Elektriciteit)"
+            },
+            "energyscaletotelecp_max": {
+                "name": "Schaal — Vermogen (Elektriciteit) (maximum)"
+            },
+            "energyscaletotelecp_min": {
+                "name": "Schaal — Vermogen (Elektriciteit) (minimum)"
+            },
+            "energytotindexwatt": {
+                "name": "Verbruikstellerstand (Elektriciteit)"
+            },
+            "gsmlevel": {
+                "name": "Mobiele signaalsterkte"
+            },
+            "heatsetpoint": {
+                "name": "Insteltemperatuur verwarming"
+            },
+            "histo": {
+                "name": "Geschiedenis"
+            },
+            "hvacmode": {
+                "name": "Verwarmings- en koelmodus"
+            },
+            "hygroin": {
+                "name": "Luchtvochtigheid"
+            },
+            "inactiveproduct": {
+                "name": "Inactief product"
+            },
+            "index": {
+                "name": "Tellerstand"
+            },
+            "indexstart": {
+                "name": "Begintellerstand"
+            },
+            "indextimeon": {
+                "name": "Bedrijfstijdindex"
+            },
+            "intrusion": {
+                "name": "Inbraak"
+            },
+            "intrusiondetect": {
+                "name": "Inbraak"
+            },
+            "irv1state": {
+                "name": "Status (IRV 1)"
+            },
+            "irv2state": {
+                "name": "Status (IRV 2)"
+            },
+            "irv3state": {
+                "name": "Status (IRV 3)"
+            },
+            "irv4state": {
+                "name": "Status (IRV 4)"
+            },
+            "irv5state": {
+                "name": "Status (IRV 5)"
+            },
+            "irv6state": {
+                "name": "Status (IRV 6)"
+            },
+            "irv7state": {
+                "name": "Status (IRV 7)"
+            },
+            "irv8state": {
+                "name": "Status (IRV 8)"
+            },
+            "irvcmd": {
+                "name": "IRV-opdracht"
+            },
+            "irvid": {
+                "name": "IRV-identificatie"
+            },
+            "isreference": {
+                "name": "Referentieapparaat"
+            },
+            "jobs": {
+                "name": "Interne taken"
+            },
+            "jobsmp": {
+                "name": "Taken hoofdmodule"
+            },
+            "jobsrm": {
+                "name": "Taken radiomodule"
+            },
+            "kerneldownloadforced": {
+                "name": "Geforceerde firmwaredownload"
+            },
+            "kerneluptodate": {
+                "name": "Firmware bijgewerkt"
+            },
+            "keyreference": {
+                "name": "Referentie radiomodule"
+            },
+            "keyversionhw": {
+                "name": "Hardwareversie radiomodule"
+            },
+            "keyversionstack": {
+                "name": "Versie radioprotocolstack"
+            },
+            "keyversionsw": {
+                "name": "Softwareversie radiomodule"
+            },
+            "label": {
+                "name": "Label"
+            },
+            "last_usage": {
+                "name": "Gebruik"
+            },
+            "latitude": {
+                "name": "Breedtegraad"
+            },
+            "level": {
+                "name": "Niveau"
+            },
+            "levelcmd": {
+                "name": "Niveauopdracht"
+            },
+            "lightpower": {
+                "name": "Zonnestraling"
+            },
+            "livecheckrunning": {
+                "name": "Controle bezig"
+            },
+            "loaddefect": {
+                "name": "Storing lading"
+            },
+            "loadsheddingon": {
+                "name": "Lastafschakeling"
+            },
+            "localisation": {
+                "name": "Locatie"
+            },
+            "localmode": {
+                "name": "Lokale bedrijfsmodus"
+            },
+            "localsetpoint": {
+                "name": "Lokale temperatuurinstelling"
+            },
+            "localsetpremainingtimestr": {
+                "name": "Resterende tijd lokale instelling"
+            },
+            "longitude": {
+                "name": "Lengtegraad"
+            },
+            "mac": {
+                "name": "MAC-adres"
+            },
+            "mainid": {
+                "name": "Identificatie hoofdmodule"
+            },
+            "mainreference": {
+                "name": "Referentie hoofdmodule"
+            },
+            "maintenance": {
+                "name": "Onderhoud"
+            },
+            "maintenanceneeded": {
+                "name": "Onderhoud nodig"
+            },
+            "mainversionhw": {
+                "name": "Hardwareversie hoofdmodule"
+            },
+            "mainversionsw": {
+                "name": "Softwareversie hoofdmodule"
+            },
+            "manufacturer": {
+                "name": "Fabrikant"
+            },
+            "maxcoolsetpoint": {
+                "name": "Maximale insteltemperatuur koeling"
+            },
+            "maxdailyouttemp": {
+                "name": "Dagelijkse maximale buitentemperatuur"
+            },
+            "maxheatsetpoint": {
+                "name": "Maximale insteltemperatuur verwarming"
+            },
+            "maxsetpoint": {
+                "name": "Maximale temperatuurinstelling"
+            },
+            "mincoolsetpoint": {
+                "name": "Minimale insteltemperatuur koeling"
+            },
+            "minheatsetpoint": {
+                "name": "Minimale insteltemperatuur verwarming"
+            },
+            "minsetpoint": {
+                "name": "Minimale temperatuurinstelling"
+            },
+            "modeasso": {
+                "name": "Koppelmodus"
+            },
+            "modelidentifier": {
+                "name": "Modelidentificatie"
+            },
+            "nbelem": {
+                "name": "Aantal elementen"
+            },
+            "nbrfactuators": {
+                "name": "Aantal radioactuatoren"
+            },
+            "networkdefect": {
+                "name": "Netwerkstoring"
+            },
+            "obstacle_defect": {
+                "name": "Obstakel gedetecteerd"
+            },
+            "obstacledefect": {
+                "name": "Obstakel gedetecteerd"
+            },
+            "ondusk": {
+                "name": "Activering bij schemering"
+            },
+            "onfavpos": {
+                "name": "Activering voorkeurspositie"
+            },
+            "onpresencedetected": {
+                "name": "Activering bij aanwezigheid"
+            },
+            "openingdetected": {
+                "name": "Opening gedetecteerd"
+            },
+            "openstate": {
+                "name": "Openingsstatus"
+            },
+            "outtemperature": {
+                "name": "Buitentemperatuur"
+            },
+            "overrideremainingtime": {
+                "name": "Resterende tijd tijdelijke instelling"
+            },
+            "overridesetpoint": {
+                "name": "Tijdelijke temperatuurinstelling"
+            },
+            "part": {
+                "name": "Alarmdeel"
+            },
+            "part1state": {
+                "name": "Status (PART 1)"
+            },
+            "part2state": {
+                "name": "Status (PART 2)"
+            },
+            "part3state": {
+                "name": "Status (PART 3)"
+            },
+            "part4state": {
+                "name": "Status (PART 4)"
+            },
+            "part5state": {
+                "name": "Status (PART 5)"
+            },
+            "part6state": {
+                "name": "Status (PART 6)"
+            },
+            "part7state": {
+                "name": "Status (PART 7)"
+            },
+            "part8state": {
+                "name": "Status (PART 8)"
+            },
+            "partcmd": {
+                "name": "Opdracht alarmdeel"
+            },
+            "password_empty": {
+                "name": "Wachtwoord leeg"
+            },
+            "pending_alarm_events": {
+                "name": "Openstaande alarmgebeurtenissen"
+            },
+            "period": {
+                "name": "Periode"
+            },
+            "periodoffset": {
+                "name": "Periodeverschuiving"
             },
             "permissions": {
-                "name": "Permissions"
+                "name": "Machtigingen"
+            },
+            "plt_registered": {
+                "name": "Platform geregistreerd"
+            },
+            "position": {
+                "name": "Positie"
+            },
+            "positioncmd": {
+                "name": "Positieopdracht"
+            },
+            "power": {
+                "name": "Vermogen"
+            },
+            "prealarm": {
+                "name": "Vooralarm"
+            },
+            "presencedetected": {
+                "name": "Aanwezigheid gedetecteerd"
+            },
+            "productconf": {
+                "name": "Configuratie"
+            },
+            "productiondefect": {
+                "name": "Productiestoring"
+            },
+            "productname": {
+                "name": "Productnaam"
             },
             "readable": {
-                "name": "Readable"
+                "name": "Leesbaar"
+            },
+            "recfav": {
+                "name": "Voorkeurspositie opslaan"
+            },
+            "regtemperature": {
+                "name": "Regeltemperatuur"
+            },
+            "remotesurveydefect": {
+                "name": "Storing supervisie"
+            },
+            "reset": {
+                "name": "Resetten"
+            },
+            "selectedprog": {
+                "name": "Geselecteerd programma"
+            },
+            "sendasso": {
+                "name": "Koppelopdracht verzenden"
+            },
+            "sendnetremoteassomode": {
+                "name": "Koppelmodus op afstand"
+            },
+            "setpoint": {
+                "name": "Temperatuurinstelling"
+            },
+            "shuttercmd": {
+                "name": "Rolluikopdracht"
+            },
+            "simdefect": {
+                "name": "Sim-kaart ontbreekt"
+            },
+            "slope": {
+                "name": "Helling verwarmingscurve"
+            },
+            "softplan": {
+                "name": "Softwarepakket"
+            },
+            "softplan0": {
+                "name": "Softwarepakket (0)"
+            },
+            "softplan1": {
+                "name": "Softwarepakket (1)"
+            },
+            "softplan2": {
+                "name": "Softwarepakket (2)"
+            },
+            "softplan3": {
+                "name": "Softwarepakket (3)"
+            },
+            "softversion": {
+                "name": "Softwareversie"
+            },
+            "softversion0": {
+                "name": "Softwareversie (0)"
+            },
+            "softversion1": {
+                "name": "Softwareversie (1)"
+            },
+            "softversion2": {
+                "name": "Softwareversie (2)"
+            },
+            "softversion3": {
+                "name": "Softwareversie (3)"
+            },
+            "speed": {
+                "name": "Ventilatorsnelheid"
+            },
+            "speedstring": {
+                "name": "Ventilatorsnelheid"
+            },
+            "state": {
+                "name": "Status"
+            },
+            "summer_offset": {
+                "name": "Zomertijdverschil"
+            },
+            "summeroffset": {
+                "name": "Zomertijdverschil"
+            },
+            "supervisionmode": {
+                "name": "Bewakingsmodus"
+            },
+            "synchropps": {
+                "name": "Tijdsynchronisatie"
+            },
+            "synchroradio": {
+                "name": "Radiosynchronisatie"
+            },
+            "systalarmdefect": {
+                "name": "Alarmsysteemstoring"
+            },
+            "systautoprotect": {
+                "name": "Automatische bescherming"
+            },
+            "systbatterydefect": {
+                "name": "Batterijstoring"
+            },
+            "systopenissue": {
+                "name": "Inschakeling alarm geblokkeerd"
+            },
+            "systsectordefect": {
+                "name": "Storing netspanning"
+            },
+            "systsupervisiondefect": {
+                "name": "Storing supervisie"
+            },
+            "systtechnicaldefect": {
+                "name": "Technisch defect"
+            },
+            "techsmokedefect": {
+                "name": "Er is rook gedetecteerd"
+            },
+            "techwaterdefect": {
+                "name": "Er is een waterlek gedetecteerd"
+            },
+            "tywatt_energy_distrib_elec_heating": {
+                "name": "Elektriciteitsverbruik - Verwarming"
+            },
+            "tywatt_energy_distrib_elec_hotwater": {
+                "name": "Elektriciteitsverbruik - Warm water"
+            },
+            "tywatt_energy_distrib_elec_other": {
+                "name": "Elektriciteitsverbruik - Overig"
+            },
+            "tywatt_energy_distrib_elec_outlet": {
+                "name": "Elektriciteitsverbruik - Stekkers"
+            },
+            "tywatt_energy_index_elec_heating": {
+                "name": "Verbruikstellerstand (Elektriciteit, Verwarming)"
+            },
+            "tywatt_energy_index_elec_hotwater": {
+                "name": "Verbruikstellerstand (Elektriciteit, Warm water)"
+            },
+            "tywatt_energy_index_elec_other": {
+                "name": "Verbruikstellerstand (Elektriciteit, Overig)"
+            },
+            "tywatt_energy_index_elec_total": {
+                "name": "Verbruikstellerstand (Elektriciteit, Totaal)"
+            },
+            "temperature": {
+                "name": "Temperatuur"
+            },
+            "tempoon": {
+                "name": "Tijdvertraging"
+            },
+            "tempsensordefect": {
+                "name": "Storing sonde"
+            },
+            "tempsensoropencirc": {
+                "name": "Sonde ontkoppeld"
+            },
+            "tempsensorshortcut": {
+                "name": "Kortsluiting sonde"
+            },
+            "thermic_defect": {
+                "name": "Oververhitting"
+            },
+            "thermicdefect": {
+                "name": "Oververhitting"
+            },
+            "thermiclevel": {
+                "name": "Verwarmingsstand"
+            },
+            "timedelay": {
+                "name": "Tijdvertraging"
+            },
+            "timeoncpt": {
+                "name": "Bedrijfstijdteller"
+            },
+            "timezone": {
+                "name": "Tijdzone"
+            },
+            "total": {
+                "name": "Totaal"
+            },
+            "uid": {
+                "name": "Apparaatidentificatie"
+            },
+            "unackedevent": {
+                "name": "Niet bevestigde gebeurtenissen"
+            },
+            "unitautoprotect": {
+                "name": "Automatische bescherming"
+            },
+            "unitbatterydefect": {
+                "name": "Batterijstoring"
+            },
+            "unitinternaldefect": {
+                "name": "Interne storing"
+            },
+            "up_defect": {
+                "name": "Omhoog niet toegelaten"
+            },
+            "update_available": {
+                "name": "Update beschikbaar"
+            },
+            "updefect": {
+                "name": "Omhoog niet toegelaten"
+            },
+            "usage": {
+                "name": "Gebruik"
+            },
+            "usemode": {
+                "name": "Bedrijfsmodus"
+            },
+            "value": {
+                "name": "Waarde"
+            },
+            "videolinkdefect": {
+                "name": "Storing videolink"
+            },
+            "waterflowreq": {
+                "name": "Gevraagd waterdebiet"
+            },
+            "weather": {
+                "name": "Weer"
             },
             "writable": {
-                "name": "Writable"
+                "name": "Schrijfbaar"
+            },
+            "zclversion": {
+                "name": "Versie Zigbee-clusterbibliotheek"
+            },
+            "zone1state": {
+                "name": "Status (ZONE 1)"
+            },
+            "zone2state": {
+                "name": "Status (ZONE 2)"
+            },
+            "zone3state": {
+                "name": "Status (ZONE 3)"
+            },
+            "zone4state": {
+                "name": "Status (ZONE 4)"
+            },
+            "zone5state": {
+                "name": "Status (ZONE 5)"
+            },
+            "zone6state": {
+                "name": "Status (ZONE 6)"
+            },
+            "zone7state": {
+                "name": "Status (ZONE 7)"
+            },
+            "zone8state": {
+                "name": "Status (ZONE 8)"
+            },
+            "zonecmd": {
+                "name": "Opdracht alarmzone"
+            },
+            "zones": {
+                "name": "Alarmzones"
+            },
+            "tywell_weather_power": {
+                "name": "Vermogen"
+            },
+            "tywell_weather_condition": {
+                "name": "Weer"
+            },
+            "tywell_weather_outdoor_temperature": {
+                "name": "Buitentemperatuur"
+            },
+            "tywell_weather_daily_power": {
+                "name": "Dagelijks vermogen"
+            },
+            "tywell_weather_max_daily_outdoor_temperature": {
+                "name": "Dagelijkse maximale buitentemperatuur"
             }
         },
         "binary_sensor": {
-            "tempsensordefect": {
-                "name": "Temperature sensor defect"
+            "absence": {
+                "name": "Afwezigheidsmodus"
             },
-            "tempsensoropencirc": {
-                "name": "Temperature sensor open circuit"
+            "absencesetpoint": {
+                "name": "Afwezigheidstemperatuur"
             },
-            "tempsensorshortcut": {
-                "name": "Temperature sensor short circuit"
+            "absmaxcoolsetpoint": {
+                "name": "Maximale insteltemperatuur koeling"
             },
-            "productiondefect": {
-                "name": "Production defect"
+            "absmaxheatsetpoint": {
+                "name": "Maximale insteltemperatuur verwarming"
             },
-            "batterycmddefect": {
-                "name": "Battery command defect"
+            "absmincoolsetpoint": {
+                "name": "Minimale insteltemperatuur koeling"
             },
-            "thermic_defect": {
-                "name": "Thermic defect"
+            "absminheatsetpoint": {
+                "name": "Minimale insteltemperatuur verwarming"
             },
-            "update_available": {
-                "name": "Update available"
+            "ackeventcmd": {
+                "name": "Gebeurtenissen bevestigen"
+            },
+            "activationcpt": {
+                "name": "Aantal activeringen"
+            },
+            "activationindex": {
+                "name": "Activeringsindex"
+            },
+            "alarmcmd": {
+                "name": "Alarmopdracht"
+            },
+            "alarmintrusion": {
+                "name": "Inbraak"
+            },
+            "alarmmode": {
+                "name": "Alarmmodus"
+            },
+            "alarmsos": {
+                "name": "SOS-alarm"
+            },
+            "alarmstate": {
+                "name": "Alarmstatus"
+            },
+            "alarmtechnical": {
+                "name": "Technisch alarm"
+            },
+            "ambienttemperature": {
+                "name": "Omgevingstemperatuur"
+            },
+            "anticipcoeff": {
+                "name": "Anticipatiecoëfficiënt"
+            },
+            "anticpcoeff": {
+                "name": "Anticipatiecoëfficiënt"
+            },
+            "antifroston": {
+                "name": "Vorstbeveiliging"
+            },
+            "antifrostsetpoint": {
+                "name": "Vorstbeveiligingstemperatuur"
+            },
+            "antifrostwhenoff": {
+                "name": "Vorstbeveiliging"
+            },
+            "antiseizurecmd": {
+                "name": "Opdracht tegen vastlopen"
+            },
+            "antiseizureperiod": {
+                "name": "Interval tegen vastlopen"
+            },
+            "api_mode": {
+                "name": "API-modus"
+            },
+            "area_id": {
+                "name": "Gebiedsidentificatie"
+            },
+            "authorization": {
+                "name": "Autorisatie"
             },
             "batt_defect": {
-                "name": "Battery defect"
+                "name": "Storing batterij"
             },
-            "up_defect": {
-                "name": "Up defect"
+            "battdefect": {
+                "name": "Storing batterij"
+            },
+            "batterycmddefect": {
+                "name": "Storing batterijbediening"
+            },
+            "battlevel": {
+                "name": "Batterijniveau"
+            },
+            "bdd_empty": {
+                "name": "Database leeg"
+            },
+            "bdd_status": {
+                "name": "Databasestatus"
+            },
+            "boost": {
+                "name": "Boost"
+            },
+            "booston": {
+                "name": "Boost"
+            },
+            "bootreference": {
+                "name": "Bootloaderreferentie"
+            },
+            "bootversion": {
+                "name": "Bootloaderversie"
+            },
+            "brightness": {
+                "name": "Helderheid"
+            },
+            "calibrationdefect": {
+                "name": "Kalibratiefout"
+            },
+            "clock": {
+                "name": "Gatewaytijd"
+            },
+            "clock_source": {
+                "name": "Klokbron"
+            },
+            "cmddefect": {
+                "name": "Storing opdracht"
+            },
+            "comfortmode": {
+                "name": "Comfortmodus"
+            },
+            "config": {
+                "name": "Configuratie"
+            },
+            "configsensor": {
+                "name": "Sensorconfiguratie"
+            },
+            "configtemp": {
+                "name": "Temperatuurconfiguratie"
+            },
+            "coolsetpoint": {
+                "name": "Insteltemperatuur koeling"
+            },
+            "current": {
+                "name": "Stroomsterkte"
+            },
+            "currentpower": {
+                "name": "Vermogen"
+            },
+            "currentsetpoint": {
+                "name": "Temperatuurinstelling"
+            },
+            "dailypower": {
+                "name": "Dagelijks vermogen"
+            },
+            "delaysetpoint": {
+                "name": "Vertraging temperatuurinstelling"
+            },
+            "delaythermiclevel": {
+                "name": "Vertraging verwarmingsstand"
+            },
+            "device_endpoint": {
+                "name": "Endpoint"
+            },
+            "device_id": {
+                "name": "TYDOM-endpointidentificatie"
+            },
+            "device_name": {
+                "name": "Apparaatnaam"
+            },
+            "device_type": {
+                "name": "Apparaattype"
+            },
+            "direction": {
+                "name": "Richting"
             },
             "down_defect": {
-                "name": "Down defect"
+                "name": "Omlaag niet toegelaten"
             },
-            "obstacle_defect": {
-                "name": "Obstacle defect"
+            "downdefect": {
+                "name": "Omlaag niet toegelaten"
+            },
+            "energy": {
+                "name": "Energie"
+            },
+            "gsmlevel": {
+                "name": "Mobiele signaalsterkte"
+            },
+            "heatsetpoint": {
+                "name": "Insteltemperatuur verwarming"
+            },
+            "histo": {
+                "name": "Geschiedenis"
+            },
+            "hvacmode": {
+                "name": "Verwarmings- en koelmodus"
+            },
+            "hygroin": {
+                "name": "Luchtvochtigheid"
+            },
+            "inactiveproduct": {
+                "name": "Inactief product"
+            },
+            "index": {
+                "name": "Tellerstand"
+            },
+            "indexstart": {
+                "name": "Begintellerstand"
+            },
+            "indextimeon": {
+                "name": "Bedrijfstijdindex"
             },
             "intrusion": {
-                "name": "Intrusion"
+                "name": "Inbraak"
             },
-            "techsmokedefect": {
-                "name": "Smoke detector defect"
+            "intrusiondetect": {
+                "name": "Inbraak"
             },
-            "protocol_x3d": {
-                "name": "X3D Protocol"
+            "irv1state": {
+                "name": "Status (IRV 1)"
             },
-            "protocol_zigbee": {
-                "name": "Zigbee Protocol"
+            "irv2state": {
+                "name": "Status (IRV 2)"
             },
-            "protocol_x3dv": {
-                "name": "X3DV Protocol"
+            "irv3state": {
+                "name": "Status (IRV 3)"
             },
-            "protocol_pltservice": {
-                "name": "PltService Protocol"
+            "irv4state": {
+                "name": "Status (IRV 4)"
+            },
+            "irv5state": {
+                "name": "Status (IRV 5)"
+            },
+            "irv6state": {
+                "name": "Status (IRV 6)"
+            },
+            "irv7state": {
+                "name": "Status (IRV 7)"
+            },
+            "irv8state": {
+                "name": "Status (IRV 8)"
+            },
+            "irvcmd": {
+                "name": "IRV-opdracht"
+            },
+            "irvid": {
+                "name": "IRV-identificatie"
+            },
+            "isreference": {
+                "name": "Referentieapparaat"
+            },
+            "jobs": {
+                "name": "Interne taken"
+            },
+            "jobsmp": {
+                "name": "Taken hoofdmodule"
+            },
+            "jobsrm": {
+                "name": "Taken radiomodule"
+            },
+            "kerneldownloadforced": {
+                "name": "Geforceerde firmwaredownload"
+            },
+            "kerneluptodate": {
+                "name": "Firmware bijgewerkt"
+            },
+            "keyreference": {
+                "name": "Referentie radiomodule"
+            },
+            "keyversionhw": {
+                "name": "Hardwareversie radiomodule"
+            },
+            "keyversionstack": {
+                "name": "Versie radioprotocolstack"
+            },
+            "keyversionsw": {
+                "name": "Softwareversie radiomodule"
+            },
+            "label": {
+                "name": "Label"
+            },
+            "last_usage": {
+                "name": "Gebruik"
+            },
+            "latitude": {
+                "name": "Breedtegraad"
+            },
+            "level": {
+                "name": "Niveau"
+            },
+            "levelcmd": {
+                "name": "Niveauopdracht"
+            },
+            "lightpower": {
+                "name": "Zonnestraling"
+            },
+            "livecheckrunning": {
+                "name": "Controle bezig"
+            },
+            "loaddefect": {
+                "name": "Storing lading"
+            },
+            "loadsheddingon": {
+                "name": "Lastafschakeling"
+            },
+            "localisation": {
+                "name": "Locatie"
+            },
+            "localmode": {
+                "name": "Lokale bedrijfsmodus"
+            },
+            "localsetpoint": {
+                "name": "Lokale temperatuurinstelling"
+            },
+            "localsetpremainingtimestr": {
+                "name": "Resterende tijd lokale instelling"
+            },
+            "longitude": {
+                "name": "Lengtegraad"
+            },
+            "mac": {
+                "name": "MAC-adres"
+            },
+            "mainid": {
+                "name": "Identificatie hoofdmodule"
+            },
+            "mainreference": {
+                "name": "Referentie hoofdmodule"
+            },
+            "maintenance": {
+                "name": "Onderhoud"
+            },
+            "maintenanceneeded": {
+                "name": "Onderhoud nodig"
+            },
+            "mainversionhw": {
+                "name": "Hardwareversie hoofdmodule"
+            },
+            "mainversionsw": {
+                "name": "Softwareversie hoofdmodule"
+            },
+            "manufacturer": {
+                "name": "Fabrikant"
+            },
+            "maxcoolsetpoint": {
+                "name": "Maximale insteltemperatuur koeling"
+            },
+            "maxdailyouttemp": {
+                "name": "Dagelijkse maximale buitentemperatuur"
+            },
+            "maxheatsetpoint": {
+                "name": "Maximale insteltemperatuur verwarming"
+            },
+            "maxsetpoint": {
+                "name": "Maximale temperatuurinstelling"
+            },
+            "mincoolsetpoint": {
+                "name": "Minimale insteltemperatuur koeling"
+            },
+            "minheatsetpoint": {
+                "name": "Minimale insteltemperatuur verwarming"
+            },
+            "minsetpoint": {
+                "name": "Minimale temperatuurinstelling"
+            },
+            "modeasso": {
+                "name": "Koppelmodus"
+            },
+            "modelidentifier": {
+                "name": "Modelidentificatie"
+            },
+            "nbelem": {
+                "name": "Aantal elementen"
+            },
+            "nbrfactuators": {
+                "name": "Aantal radioactuatoren"
+            },
+            "networkdefect": {
+                "name": "Netwerkstoring"
+            },
+            "obstacle_defect": {
+                "name": "Obstakel gedetecteerd"
+            },
+            "obstacledefect": {
+                "name": "Obstakel gedetecteerd"
+            },
+            "ondusk": {
+                "name": "Activering bij schemering"
+            },
+            "onfavpos": {
+                "name": "Activering voorkeurspositie"
+            },
+            "onpresencedetected": {
+                "name": "Activering bij aanwezigheid"
+            },
+            "openingdetected": {
+                "name": "Opening gedetecteerd"
+            },
+            "openstate": {
+                "name": "Openingsstatus"
+            },
+            "outtemperature": {
+                "name": "Buitentemperatuur"
+            },
+            "overrideremainingtime": {
+                "name": "Resterende tijd tijdelijke instelling"
+            },
+            "overridesetpoint": {
+                "name": "Tijdelijke temperatuurinstelling"
+            },
+            "part": {
+                "name": "Alarmdeel"
+            },
+            "part1state": {
+                "name": "Status (PART 1)"
+            },
+            "part2state": {
+                "name": "Status (PART 2)"
+            },
+            "part3state": {
+                "name": "Status (PART 3)"
+            },
+            "part4state": {
+                "name": "Status (PART 4)"
+            },
+            "part5state": {
+                "name": "Status (PART 5)"
+            },
+            "part6state": {
+                "name": "Status (PART 6)"
+            },
+            "part7state": {
+                "name": "Status (PART 7)"
+            },
+            "part8state": {
+                "name": "Status (PART 8)"
+            },
+            "partcmd": {
+                "name": "Opdracht alarmdeel"
+            },
+            "password_empty": {
+                "name": "Wachtwoord leeg"
+            },
+            "period": {
+                "name": "Periode"
+            },
+            "periodoffset": {
+                "name": "Periodeverschuiving"
+            },
+            "permissions": {
+                "name": "Machtigingen"
+            },
+            "plt_registered": {
+                "name": "Platform geregistreerd"
+            },
+            "position": {
+                "name": "Positie"
+            },
+            "positioncmd": {
+                "name": "Positieopdracht"
+            },
+            "power": {
+                "name": "Vermogen"
+            },
+            "prealarm": {
+                "name": "Vooralarm"
+            },
+            "presencedetected": {
+                "name": "Aanwezigheid gedetecteerd"
+            },
+            "productconf": {
+                "name": "Configuratie"
+            },
+            "productiondefect": {
+                "name": "Productiestoring"
+            },
+            "productname": {
+                "name": "Productnaam"
+            },
+            "protocol_available": {
+                "name": "{protocol} — Beschikbaar"
             },
             "protocol_http": {
                 "name": "HTTP Protocol"
             },
-            "bdd_empty": {
-                "name": "Database empty"
+            "protocol_installed": {
+                "name": "{protocol} — Geïnstalleerd"
             },
-            "api_mode": {
-                "name": "API Mode"
+            "protocol_pltservice": {
+                "name": "PltService Protocol"
             },
-            "plt_registered": {
-                "name": "Platform registered"
+            "protocol_ready": {
+                "name": "{protocol} — Gereed"
             },
-            "password_empty": {
-                "name": "Password empty"
+            "protocol_status": {
+                "name": "{protocol} — Actief"
             },
-            "maintenance": {
-                "name": "Maintenance"
+            "protocol_x3d": {
+                "name": "X3D Protocol"
+            },
+            "protocol_x3dv": {
+                "name": "X3DV Protocol"
+            },
+            "protocol_zigbee": {
+                "name": "Zigbee Protocol"
+            },
+            "readable": {
+                "name": "Leesbaar"
+            },
+            "recfav": {
+                "name": "Voorkeurspositie opslaan"
+            },
+            "regtemperature": {
+                "name": "Regeltemperatuur"
+            },
+            "remotesurveydefect": {
+                "name": "Storing supervisie"
+            },
+            "reset": {
+                "name": "Resetten"
+            },
+            "selectedprog": {
+                "name": "Geselecteerd programma"
+            },
+            "sendasso": {
+                "name": "Koppelopdracht verzenden"
+            },
+            "sendnetremoteassomode": {
+                "name": "Koppelmodus op afstand"
+            },
+            "setpoint": {
+                "name": "Temperatuurinstelling"
+            },
+            "shuttercmd": {
+                "name": "Rolluikopdracht"
+            },
+            "simdefect": {
+                "name": "Sim-kaart ontbreekt"
+            },
+            "slope": {
+                "name": "Helling verwarmingscurve"
+            },
+            "softplan": {
+                "name": "Softwarepakket"
+            },
+            "softplan0": {
+                "name": "Softwarepakket (0)"
+            },
+            "softplan1": {
+                "name": "Softwarepakket (1)"
+            },
+            "softplan2": {
+                "name": "Softwarepakket (2)"
+            },
+            "softplan3": {
+                "name": "Softwarepakket (3)"
+            },
+            "softversion": {
+                "name": "Softwareversie"
+            },
+            "softversion0": {
+                "name": "Softwareversie (0)"
+            },
+            "softversion1": {
+                "name": "Softwareversie (1)"
+            },
+            "softversion2": {
+                "name": "Softwareversie (2)"
+            },
+            "softversion3": {
+                "name": "Softwareversie (3)"
+            },
+            "speed": {
+                "name": "Ventilatorsnelheid"
+            },
+            "speedstring": {
+                "name": "Ventilatorsnelheid"
+            },
+            "state": {
+                "name": "Status"
+            },
+            "summer_offset": {
+                "name": "Zomertijdverschil"
+            },
+            "summeroffset": {
+                "name": "Zomertijdverschil"
+            },
+            "supervisionmode": {
+                "name": "Bewakingsmodus"
+            },
+            "synchropps": {
+                "name": "Tijdsynchronisatie"
+            },
+            "synchroradio": {
+                "name": "Radiosynchronisatie"
+            },
+            "systalarmdefect": {
+                "name": "Alarmsysteemstoring"
+            },
+            "systautoprotect": {
+                "name": "Automatische bescherming"
+            },
+            "systbatterydefect": {
+                "name": "Batterijstoring"
+            },
+            "systopenissue": {
+                "name": "Inschakeling alarm geblokkeerd"
+            },
+            "systsectordefect": {
+                "name": "Storing netspanning"
+            },
+            "systsupervisiondefect": {
+                "name": "Storing supervisie"
+            },
+            "systtechnicaldefect": {
+                "name": "Technisch defect"
+            },
+            "techsmokedefect": {
+                "name": "Er is rook gedetecteerd"
+            },
+            "techwaterdefect": {
+                "name": "Er is een waterlek gedetecteerd"
+            },
+            "temperature": {
+                "name": "Temperatuur"
+            },
+            "tempoon": {
+                "name": "Tijdvertraging"
+            },
+            "tempsensordefect": {
+                "name": "Storing sonde"
+            },
+            "tempsensoropencirc": {
+                "name": "Sonde ontkoppeld"
+            },
+            "tempsensorshortcut": {
+                "name": "Kortsluiting sonde"
+            },
+            "thermic_defect": {
+                "name": "Oververhitting"
+            },
+            "thermicdefect": {
+                "name": "Oververhitting"
+            },
+            "thermiclevel": {
+                "name": "Verwarmingsstand"
+            },
+            "timedelay": {
+                "name": "Tijdvertraging"
+            },
+            "timeoncpt": {
+                "name": "Bedrijfstijdteller"
+            },
+            "timezone": {
+                "name": "Tijdzone"
+            },
+            "total": {
+                "name": "Totaal"
+            },
+            "uid": {
+                "name": "Apparaatidentificatie"
+            },
+            "unackedevent": {
+                "name": "Niet bevestigde gebeurtenissen"
+            },
+            "unitautoprotect": {
+                "name": "Automatische bescherming"
+            },
+            "unitbatterydefect": {
+                "name": "Batterijstoring"
+            },
+            "unitinternaldefect": {
+                "name": "Interne storing"
+            },
+            "up_defect": {
+                "name": "Omhoog niet toegelaten"
+            },
+            "update_available": {
+                "name": "Update beschikbaar"
+            },
+            "updefect": {
+                "name": "Omhoog niet toegelaten"
+            },
+            "usage": {
+                "name": "Gebruik"
+            },
+            "usemode": {
+                "name": "Bedrijfsmodus"
+            },
+            "value": {
+                "name": "Waarde"
+            },
+            "videolinkdefect": {
+                "name": "Storing videolink"
+            },
+            "waterflowreq": {
+                "name": "Gevraagd waterdebiet"
+            },
+            "weather": {
+                "name": "Weer"
+            },
+            "writable": {
+                "name": "Schrijfbaar"
+            },
+            "zclversion": {
+                "name": "Versie Zigbee-clusterbibliotheek"
+            },
+            "zone1state": {
+                "name": "Status (ZONE 1)"
+            },
+            "zone2state": {
+                "name": "Status (ZONE 2)"
+            },
+            "zone3state": {
+                "name": "Status (ZONE 3)"
+            },
+            "zone4state": {
+                "name": "Status (ZONE 4)"
+            },
+            "zone5state": {
+                "name": "Status (ZONE 5)"
+            },
+            "zone6state": {
+                "name": "Status (ZONE 6)"
+            },
+            "zone7state": {
+                "name": "Status (ZONE 7)"
+            },
+            "zone8state": {
+                "name": "Status (ZONE 8)"
+            },
+            "zonecmd": {
+                "name": "Opdracht alarmzone"
+            },
+            "zones": {
+                "name": "Alarmzones"
             }
         },
-        "group": {},
-        "moment": {}
+        "number": {
+            "absence": {
+                "name": "Afwezigheidsmodus"
+            },
+            "absencesetpoint": {
+                "name": "Afwezigheidstemperatuur"
+            },
+            "absmaxcoolsetpoint": {
+                "name": "Maximale insteltemperatuur koeling"
+            },
+            "absmaxheatsetpoint": {
+                "name": "Maximale insteltemperatuur verwarming"
+            },
+            "absmincoolsetpoint": {
+                "name": "Minimale insteltemperatuur koeling"
+            },
+            "absminheatsetpoint": {
+                "name": "Minimale insteltemperatuur verwarming"
+            },
+            "ackeventcmd": {
+                "name": "Gebeurtenissen bevestigen"
+            },
+            "activationcpt": {
+                "name": "Aantal activeringen"
+            },
+            "activationindex": {
+                "name": "Activeringsindex"
+            },
+            "alarmcmd": {
+                "name": "Alarmopdracht"
+            },
+            "alarmintrusion": {
+                "name": "Inbraak"
+            },
+            "alarmmode": {
+                "name": "Alarmmodus"
+            },
+            "alarmsos": {
+                "name": "SOS-alarm"
+            },
+            "alarmstate": {
+                "name": "Alarmstatus"
+            },
+            "alarmtechnical": {
+                "name": "Technisch alarm"
+            },
+            "ambienttemperature": {
+                "name": "Omgevingstemperatuur"
+            },
+            "anticipcoeff": {
+                "name": "Anticipatiecoëfficiënt"
+            },
+            "anticpcoeff": {
+                "name": "Anticipatiecoëfficiënt"
+            },
+            "antifroston": {
+                "name": "Vorstbeveiliging"
+            },
+            "antifrostsetpoint": {
+                "name": "Vorstbeveiligingstemperatuur"
+            },
+            "antifrostwhenoff": {
+                "name": "Vorstbeveiliging"
+            },
+            "antiseizurecmd": {
+                "name": "Opdracht tegen vastlopen"
+            },
+            "antiseizureperiod": {
+                "name": "Interval tegen vastlopen"
+            },
+            "api_mode": {
+                "name": "API-modus"
+            },
+            "area_id": {
+                "name": "Gebiedsidentificatie"
+            },
+            "authorization": {
+                "name": "Autorisatie"
+            },
+            "batt_defect": {
+                "name": "Storing batterij"
+            },
+            "battdefect": {
+                "name": "Storing batterij"
+            },
+            "batterycmddefect": {
+                "name": "Storing batterijbediening"
+            },
+            "battlevel": {
+                "name": "Batterijniveau"
+            },
+            "bdd_empty": {
+                "name": "Database leeg"
+            },
+            "bdd_status": {
+                "name": "Databasestatus"
+            },
+            "boost": {
+                "name": "Boost"
+            },
+            "booston": {
+                "name": "Boost"
+            },
+            "bootreference": {
+                "name": "Bootloaderreferentie"
+            },
+            "bootversion": {
+                "name": "Bootloaderversie"
+            },
+            "brightness": {
+                "name": "Helderheid"
+            },
+            "calibrationdefect": {
+                "name": "Kalibratiefout"
+            },
+            "clock": {
+                "name": "Gatewaytijd"
+            },
+            "clock_source": {
+                "name": "Klokbron"
+            },
+            "cmddefect": {
+                "name": "Storing opdracht"
+            },
+            "comfortmode": {
+                "name": "Comfortmodus"
+            },
+            "config": {
+                "name": "Configuratie"
+            },
+            "configsensor": {
+                "name": "Sensorconfiguratie"
+            },
+            "configtemp": {
+                "name": "Temperatuurconfiguratie"
+            },
+            "coolsetpoint": {
+                "name": "Insteltemperatuur koeling"
+            },
+            "current": {
+                "name": "Stroomsterkte"
+            },
+            "currentpower": {
+                "name": "Vermogen"
+            },
+            "currentsetpoint": {
+                "name": "Temperatuurinstelling"
+            },
+            "dailypower": {
+                "name": "Dagelijks vermogen"
+            },
+            "delaysetpoint": {
+                "name": "Vertraging temperatuurinstelling"
+            },
+            "delaythermiclevel": {
+                "name": "Vertraging verwarmingsstand"
+            },
+            "device_endpoint": {
+                "name": "Endpoint"
+            },
+            "device_id": {
+                "name": "TYDOM-endpointidentificatie"
+            },
+            "device_name": {
+                "name": "Apparaatnaam"
+            },
+            "device_type": {
+                "name": "Apparaattype"
+            },
+            "direction": {
+                "name": "Richting"
+            },
+            "down_defect": {
+                "name": "Omlaag niet toegelaten"
+            },
+            "downdefect": {
+                "name": "Omlaag niet toegelaten"
+            },
+            "energy": {
+                "name": "Energie"
+            },
+            "gsmlevel": {
+                "name": "Mobiele signaalsterkte"
+            },
+            "heatsetpoint": {
+                "name": "Insteltemperatuur verwarming"
+            },
+            "histo": {
+                "name": "Geschiedenis"
+            },
+            "hvacmode": {
+                "name": "Verwarmings- en koelmodus"
+            },
+            "hygroin": {
+                "name": "Luchtvochtigheid"
+            },
+            "inactiveproduct": {
+                "name": "Inactief product"
+            },
+            "index": {
+                "name": "Tellerstand"
+            },
+            "indexstart": {
+                "name": "Begintellerstand"
+            },
+            "indextimeon": {
+                "name": "Bedrijfstijdindex"
+            },
+            "intrusion": {
+                "name": "Inbraak"
+            },
+            "intrusiondetect": {
+                "name": "Inbraak"
+            },
+            "irv1state": {
+                "name": "Status (IRV 1)"
+            },
+            "irv2state": {
+                "name": "Status (IRV 2)"
+            },
+            "irv3state": {
+                "name": "Status (IRV 3)"
+            },
+            "irv4state": {
+                "name": "Status (IRV 4)"
+            },
+            "irv5state": {
+                "name": "Status (IRV 5)"
+            },
+            "irv6state": {
+                "name": "Status (IRV 6)"
+            },
+            "irv7state": {
+                "name": "Status (IRV 7)"
+            },
+            "irv8state": {
+                "name": "Status (IRV 8)"
+            },
+            "irvcmd": {
+                "name": "IRV-opdracht"
+            },
+            "irvid": {
+                "name": "IRV-identificatie"
+            },
+            "isreference": {
+                "name": "Referentieapparaat"
+            },
+            "jobs": {
+                "name": "Interne taken"
+            },
+            "jobsmp": {
+                "name": "Taken hoofdmodule"
+            },
+            "jobsrm": {
+                "name": "Taken radiomodule"
+            },
+            "kerneldownloadforced": {
+                "name": "Geforceerde firmwaredownload"
+            },
+            "kerneluptodate": {
+                "name": "Firmware bijgewerkt"
+            },
+            "keyreference": {
+                "name": "Referentie radiomodule"
+            },
+            "keyversionhw": {
+                "name": "Hardwareversie radiomodule"
+            },
+            "keyversionstack": {
+                "name": "Versie radioprotocolstack"
+            },
+            "keyversionsw": {
+                "name": "Softwareversie radiomodule"
+            },
+            "label": {
+                "name": "Label"
+            },
+            "last_usage": {
+                "name": "Gebruik"
+            },
+            "latitude": {
+                "name": "Breedtegraad"
+            },
+            "level": {
+                "name": "Niveau"
+            },
+            "levelcmd": {
+                "name": "Niveauopdracht"
+            },
+            "lightpower": {
+                "name": "Zonnestraling"
+            },
+            "livecheckrunning": {
+                "name": "Controle bezig"
+            },
+            "loaddefect": {
+                "name": "Storing lading"
+            },
+            "loadsheddingon": {
+                "name": "Lastafschakeling"
+            },
+            "localisation": {
+                "name": "Locatie"
+            },
+            "localmode": {
+                "name": "Lokale bedrijfsmodus"
+            },
+            "localsetpoint": {
+                "name": "Lokale temperatuurinstelling"
+            },
+            "localsetpremainingtimestr": {
+                "name": "Resterende tijd lokale instelling"
+            },
+            "longitude": {
+                "name": "Lengtegraad"
+            },
+            "mac": {
+                "name": "MAC-adres"
+            },
+            "mainid": {
+                "name": "Identificatie hoofdmodule"
+            },
+            "mainreference": {
+                "name": "Referentie hoofdmodule"
+            },
+            "maintenance": {
+                "name": "Onderhoud"
+            },
+            "maintenanceneeded": {
+                "name": "Onderhoud nodig"
+            },
+            "mainversionhw": {
+                "name": "Hardwareversie hoofdmodule"
+            },
+            "mainversionsw": {
+                "name": "Softwareversie hoofdmodule"
+            },
+            "manufacturer": {
+                "name": "Fabrikant"
+            },
+            "maxcoolsetpoint": {
+                "name": "Maximale insteltemperatuur koeling"
+            },
+            "maxdailyouttemp": {
+                "name": "Dagelijkse maximale buitentemperatuur"
+            },
+            "maxheatsetpoint": {
+                "name": "Maximale insteltemperatuur verwarming"
+            },
+            "maxsetpoint": {
+                "name": "Maximale temperatuurinstelling"
+            },
+            "mincoolsetpoint": {
+                "name": "Minimale insteltemperatuur koeling"
+            },
+            "minheatsetpoint": {
+                "name": "Minimale insteltemperatuur verwarming"
+            },
+            "minsetpoint": {
+                "name": "Minimale temperatuurinstelling"
+            },
+            "modeasso": {
+                "name": "Koppelmodus"
+            },
+            "modelidentifier": {
+                "name": "Modelidentificatie"
+            },
+            "nbelem": {
+                "name": "Aantal elementen"
+            },
+            "nbrfactuators": {
+                "name": "Aantal radioactuatoren"
+            },
+            "networkdefect": {
+                "name": "Netwerkstoring"
+            },
+            "obstacle_defect": {
+                "name": "Obstakel gedetecteerd"
+            },
+            "obstacledefect": {
+                "name": "Obstakel gedetecteerd"
+            },
+            "ondusk": {
+                "name": "Activering bij schemering"
+            },
+            "onfavpos": {
+                "name": "Activering voorkeurspositie"
+            },
+            "onpresencedetected": {
+                "name": "Activering bij aanwezigheid"
+            },
+            "openingdetected": {
+                "name": "Opening gedetecteerd"
+            },
+            "openstate": {
+                "name": "Openingsstatus"
+            },
+            "outtemperature": {
+                "name": "Buitentemperatuur"
+            },
+            "overrideremainingtime": {
+                "name": "Resterende tijd tijdelijke instelling"
+            },
+            "overridesetpoint": {
+                "name": "Tijdelijke temperatuurinstelling"
+            },
+            "part": {
+                "name": "Alarmdeel"
+            },
+            "part1state": {
+                "name": "Status (PART 1)"
+            },
+            "part2state": {
+                "name": "Status (PART 2)"
+            },
+            "part3state": {
+                "name": "Status (PART 3)"
+            },
+            "part4state": {
+                "name": "Status (PART 4)"
+            },
+            "part5state": {
+                "name": "Status (PART 5)"
+            },
+            "part6state": {
+                "name": "Status (PART 6)"
+            },
+            "part7state": {
+                "name": "Status (PART 7)"
+            },
+            "part8state": {
+                "name": "Status (PART 8)"
+            },
+            "partcmd": {
+                "name": "Opdracht alarmdeel"
+            },
+            "password_empty": {
+                "name": "Wachtwoord leeg"
+            },
+            "period": {
+                "name": "Periode"
+            },
+            "periodoffset": {
+                "name": "Periodeverschuiving"
+            },
+            "permissions": {
+                "name": "Machtigingen"
+            },
+            "plt_registered": {
+                "name": "Platform geregistreerd"
+            },
+            "position": {
+                "name": "Positie"
+            },
+            "positioncmd": {
+                "name": "Positieopdracht"
+            },
+            "power": {
+                "name": "Vermogen"
+            },
+            "prealarm": {
+                "name": "Vooralarm"
+            },
+            "presencedetected": {
+                "name": "Aanwezigheid gedetecteerd"
+            },
+            "productconf": {
+                "name": "Configuratie"
+            },
+            "productiondefect": {
+                "name": "Productiestoring"
+            },
+            "productname": {
+                "name": "Productnaam"
+            },
+            "readable": {
+                "name": "Leesbaar"
+            },
+            "recfav": {
+                "name": "Voorkeurspositie opslaan"
+            },
+            "regtemperature": {
+                "name": "Regeltemperatuur"
+            },
+            "remotesurveydefect": {
+                "name": "Storing supervisie"
+            },
+            "reset": {
+                "name": "Resetten"
+            },
+            "selectedprog": {
+                "name": "Geselecteerd programma"
+            },
+            "sendasso": {
+                "name": "Koppelopdracht verzenden"
+            },
+            "sendnetremoteassomode": {
+                "name": "Koppelmodus op afstand"
+            },
+            "setpoint": {
+                "name": "Temperatuurinstelling"
+            },
+            "shuttercmd": {
+                "name": "Rolluikopdracht"
+            },
+            "simdefect": {
+                "name": "Sim-kaart ontbreekt"
+            },
+            "slope": {
+                "name": "Helling verwarmingscurve"
+            },
+            "softplan": {
+                "name": "Softwarepakket"
+            },
+            "softplan0": {
+                "name": "Softwarepakket (0)"
+            },
+            "softplan1": {
+                "name": "Softwarepakket (1)"
+            },
+            "softplan2": {
+                "name": "Softwarepakket (2)"
+            },
+            "softplan3": {
+                "name": "Softwarepakket (3)"
+            },
+            "softversion": {
+                "name": "Softwareversie"
+            },
+            "softversion0": {
+                "name": "Softwareversie (0)"
+            },
+            "softversion1": {
+                "name": "Softwareversie (1)"
+            },
+            "softversion2": {
+                "name": "Softwareversie (2)"
+            },
+            "softversion3": {
+                "name": "Softwareversie (3)"
+            },
+            "speed": {
+                "name": "Ventilatorsnelheid"
+            },
+            "speedstring": {
+                "name": "Ventilatorsnelheid"
+            },
+            "state": {
+                "name": "Status"
+            },
+            "summer_offset": {
+                "name": "Zomertijdverschil"
+            },
+            "summeroffset": {
+                "name": "Zomertijdverschil"
+            },
+            "supervisionmode": {
+                "name": "Bewakingsmodus"
+            },
+            "synchropps": {
+                "name": "Tijdsynchronisatie"
+            },
+            "synchroradio": {
+                "name": "Radiosynchronisatie"
+            },
+            "systalarmdefect": {
+                "name": "Alarmsysteemstoring"
+            },
+            "systautoprotect": {
+                "name": "Automatische bescherming"
+            },
+            "systbatterydefect": {
+                "name": "Batterijstoring"
+            },
+            "systopenissue": {
+                "name": "Inschakeling alarm geblokkeerd"
+            },
+            "systsectordefect": {
+                "name": "Storing netspanning"
+            },
+            "systsupervisiondefect": {
+                "name": "Storing supervisie"
+            },
+            "systtechnicaldefect": {
+                "name": "Technisch defect"
+            },
+            "techsmokedefect": {
+                "name": "Er is rook gedetecteerd"
+            },
+            "techwaterdefect": {
+                "name": "Er is een waterlek gedetecteerd"
+            },
+            "temperature": {
+                "name": "Temperatuur"
+            },
+            "tempoon": {
+                "name": "Tijdvertraging"
+            },
+            "tempsensordefect": {
+                "name": "Storing sonde"
+            },
+            "tempsensoropencirc": {
+                "name": "Sonde ontkoppeld"
+            },
+            "tempsensorshortcut": {
+                "name": "Kortsluiting sonde"
+            },
+            "thermic_defect": {
+                "name": "Oververhitting"
+            },
+            "thermicdefect": {
+                "name": "Oververhitting"
+            },
+            "thermiclevel": {
+                "name": "Verwarmingsstand"
+            },
+            "timedelay": {
+                "name": "Tijdvertraging"
+            },
+            "timeoncpt": {
+                "name": "Bedrijfstijdteller"
+            },
+            "timezone": {
+                "name": "Tijdzone"
+            },
+            "total": {
+                "name": "Totaal"
+            },
+            "uid": {
+                "name": "Apparaatidentificatie"
+            },
+            "unackedevent": {
+                "name": "Niet bevestigde gebeurtenissen"
+            },
+            "unitautoprotect": {
+                "name": "Automatische bescherming"
+            },
+            "unitbatterydefect": {
+                "name": "Batterijstoring"
+            },
+            "unitinternaldefect": {
+                "name": "Interne storing"
+            },
+            "up_defect": {
+                "name": "Omhoog niet toegelaten"
+            },
+            "update_available": {
+                "name": "Update beschikbaar"
+            },
+            "updefect": {
+                "name": "Omhoog niet toegelaten"
+            },
+            "usage": {
+                "name": "Gebruik"
+            },
+            "usemode": {
+                "name": "Bedrijfsmodus"
+            },
+            "value": {
+                "name": "Waarde"
+            },
+            "videolinkdefect": {
+                "name": "Storing videolink"
+            },
+            "waterflowreq": {
+                "name": "Gevraagd waterdebiet"
+            },
+            "weather": {
+                "name": "Weer"
+            },
+            "writable": {
+                "name": "Schrijfbaar"
+            },
+            "zclversion": {
+                "name": "Versie Zigbee-clusterbibliotheek"
+            },
+            "zone1state": {
+                "name": "Status (ZONE 1)"
+            },
+            "zone2state": {
+                "name": "Status (ZONE 2)"
+            },
+            "zone3state": {
+                "name": "Status (ZONE 3)"
+            },
+            "zone4state": {
+                "name": "Status (ZONE 4)"
+            },
+            "zone5state": {
+                "name": "Status (ZONE 5)"
+            },
+            "zone6state": {
+                "name": "Status (ZONE 6)"
+            },
+            "zone7state": {
+                "name": "Status (ZONE 7)"
+            },
+            "zone8state": {
+                "name": "Status (ZONE 8)"
+            },
+            "zonecmd": {
+                "name": "Opdracht alarmzone"
+            },
+            "zones": {
+                "name": "Alarmzones"
+            }
+        },
+        "select": {
+            "absence": {
+                "name": "Afwezigheidsmodus"
+            },
+            "absencesetpoint": {
+                "name": "Afwezigheidstemperatuur"
+            },
+            "absmaxcoolsetpoint": {
+                "name": "Maximale insteltemperatuur koeling"
+            },
+            "absmaxheatsetpoint": {
+                "name": "Maximale insteltemperatuur verwarming"
+            },
+            "absmincoolsetpoint": {
+                "name": "Minimale insteltemperatuur koeling"
+            },
+            "absminheatsetpoint": {
+                "name": "Minimale insteltemperatuur verwarming"
+            },
+            "ackeventcmd": {
+                "name": "Gebeurtenissen bevestigen"
+            },
+            "activationcpt": {
+                "name": "Aantal activeringen"
+            },
+            "activationindex": {
+                "name": "Activeringsindex"
+            },
+            "alarmcmd": {
+                "name": "Alarmopdracht"
+            },
+            "alarmintrusion": {
+                "name": "Inbraak"
+            },
+            "alarmmode": {
+                "name": "Alarmmodus"
+            },
+            "alarmsos": {
+                "name": "SOS-alarm"
+            },
+            "alarmstate": {
+                "name": "Alarmstatus"
+            },
+            "alarmtechnical": {
+                "name": "Technisch alarm"
+            },
+            "ambienttemperature": {
+                "name": "Omgevingstemperatuur"
+            },
+            "anticipcoeff": {
+                "name": "Anticipatiecoëfficiënt"
+            },
+            "anticpcoeff": {
+                "name": "Anticipatiecoëfficiënt"
+            },
+            "antifroston": {
+                "name": "Vorstbeveiliging"
+            },
+            "antifrostsetpoint": {
+                "name": "Vorstbeveiligingstemperatuur"
+            },
+            "antifrostwhenoff": {
+                "name": "Vorstbeveiliging"
+            },
+            "antiseizurecmd": {
+                "name": "Opdracht tegen vastlopen"
+            },
+            "antiseizureperiod": {
+                "name": "Interval tegen vastlopen"
+            },
+            "api_mode": {
+                "name": "API-modus"
+            },
+            "area_id": {
+                "name": "Gebiedsidentificatie"
+            },
+            "association_category": {
+                "name": "1. Te koppelen categorie"
+            },
+            "association_channel": {
+                "name": "3. Te koppelen kanaal"
+            },
+            "association_product": {
+                "name": "2. Te koppelen product"
+            },
+            "association_usage": {
+                "name": "4. Gebruik / koppelingstype"
+            },
+            "authorization": {
+                "name": "Autorisatie"
+            },
+            "batt_defect": {
+                "name": "Storing batterij"
+            },
+            "battdefect": {
+                "name": "Storing batterij"
+            },
+            "batterycmddefect": {
+                "name": "Storing batterijbediening"
+            },
+            "battlevel": {
+                "name": "Batterijniveau"
+            },
+            "bdd_empty": {
+                "name": "Database leeg"
+            },
+            "bdd_status": {
+                "name": "Databasestatus"
+            },
+            "boost": {
+                "name": "Boost"
+            },
+            "booston": {
+                "name": "Boost"
+            },
+            "bootreference": {
+                "name": "Bootloaderreferentie"
+            },
+            "bootversion": {
+                "name": "Bootloaderversie"
+            },
+            "brightness": {
+                "name": "Helderheid"
+            },
+            "calibrationdefect": {
+                "name": "Kalibratiefout"
+            },
+            "clock": {
+                "name": "Gatewaytijd"
+            },
+            "clock_source": {
+                "name": "Klokbron"
+            },
+            "cmddefect": {
+                "name": "Storing opdracht"
+            },
+            "comfortmode": {
+                "name": "Comfortmodus"
+            },
+            "config": {
+                "name": "Configuratie"
+            },
+            "configsensor": {
+                "name": "Sensorconfiguratie"
+            },
+            "configtemp": {
+                "name": "Temperatuurconfiguratie"
+            },
+            "coolsetpoint": {
+                "name": "Insteltemperatuur koeling"
+            },
+            "current": {
+                "name": "Stroomsterkte"
+            },
+            "currentpower": {
+                "name": "Vermogen"
+            },
+            "currentsetpoint": {
+                "name": "Temperatuurinstelling"
+            },
+            "dailypower": {
+                "name": "Dagelijks vermogen"
+            },
+            "delaysetpoint": {
+                "name": "Vertraging temperatuurinstelling"
+            },
+            "delaythermiclevel": {
+                "name": "Vertraging verwarmingsstand"
+            },
+            "device_endpoint": {
+                "name": "Endpoint"
+            },
+            "device_id": {
+                "name": "TYDOM-endpointidentificatie"
+            },
+            "device_name": {
+                "name": "Apparaatnaam"
+            },
+            "device_type": {
+                "name": "Apparaattype"
+            },
+            "direction": {
+                "name": "Richting"
+            },
+            "down_defect": {
+                "name": "Omlaag niet toegelaten"
+            },
+            "downdefect": {
+                "name": "Omlaag niet toegelaten"
+            },
+            "energy": {
+                "name": "Energie"
+            },
+            "gsmlevel": {
+                "name": "Mobiele signaalsterkte"
+            },
+            "heatsetpoint": {
+                "name": "Insteltemperatuur verwarming"
+            },
+            "histo": {
+                "name": "Geschiedenis"
+            },
+            "hvacmode": {
+                "name": "Verwarmings- en koelmodus"
+            },
+            "hygroin": {
+                "name": "Luchtvochtigheid"
+            },
+            "inactiveproduct": {
+                "name": "Inactief product"
+            },
+            "index": {
+                "name": "Tellerstand"
+            },
+            "indexstart": {
+                "name": "Begintellerstand"
+            },
+            "indextimeon": {
+                "name": "Bedrijfstijdindex"
+            },
+            "intrusion": {
+                "name": "Inbraak"
+            },
+            "intrusiondetect": {
+                "name": "Inbraak"
+            },
+            "irv1state": {
+                "name": "Status (IRV 1)"
+            },
+            "irv2state": {
+                "name": "Status (IRV 2)"
+            },
+            "irv3state": {
+                "name": "Status (IRV 3)"
+            },
+            "irv4state": {
+                "name": "Status (IRV 4)"
+            },
+            "irv5state": {
+                "name": "Status (IRV 5)"
+            },
+            "irv6state": {
+                "name": "Status (IRV 6)"
+            },
+            "irv7state": {
+                "name": "Status (IRV 7)"
+            },
+            "irv8state": {
+                "name": "Status (IRV 8)"
+            },
+            "irvcmd": {
+                "name": "IRV-opdracht"
+            },
+            "irvid": {
+                "name": "IRV-identificatie"
+            },
+            "isreference": {
+                "name": "Referentieapparaat"
+            },
+            "jobs": {
+                "name": "Interne taken"
+            },
+            "jobsmp": {
+                "name": "Taken hoofdmodule"
+            },
+            "jobsrm": {
+                "name": "Taken radiomodule"
+            },
+            "kerneldownloadforced": {
+                "name": "Geforceerde firmwaredownload"
+            },
+            "kerneluptodate": {
+                "name": "Firmware bijgewerkt"
+            },
+            "keyreference": {
+                "name": "Referentie radiomodule"
+            },
+            "keyversionhw": {
+                "name": "Hardwareversie radiomodule"
+            },
+            "keyversionstack": {
+                "name": "Versie radioprotocolstack"
+            },
+            "keyversionsw": {
+                "name": "Softwareversie radiomodule"
+            },
+            "label": {
+                "name": "Label"
+            },
+            "last_usage": {
+                "name": "Gebruik"
+            },
+            "latitude": {
+                "name": "Breedtegraad"
+            },
+            "level": {
+                "name": "Niveau"
+            },
+            "levelcmd": {
+                "name": "Niveauopdracht"
+            },
+            "lightpower": {
+                "name": "Zonnestraling"
+            },
+            "livecheckrunning": {
+                "name": "Controle bezig"
+            },
+            "loaddefect": {
+                "name": "Storing lading"
+            },
+            "loadsheddingon": {
+                "name": "Lastafschakeling"
+            },
+            "localisation": {
+                "name": "Locatie"
+            },
+            "localmode": {
+                "name": "Lokale bedrijfsmodus"
+            },
+            "localsetpoint": {
+                "name": "Lokale temperatuurinstelling"
+            },
+            "localsetpremainingtimestr": {
+                "name": "Resterende tijd lokale instelling"
+            },
+            "longitude": {
+                "name": "Lengtegraad"
+            },
+            "mac": {
+                "name": "MAC-adres"
+            },
+            "mainid": {
+                "name": "Identificatie hoofdmodule"
+            },
+            "mainreference": {
+                "name": "Referentie hoofdmodule"
+            },
+            "maintenance": {
+                "name": "Onderhoud"
+            },
+            "maintenanceneeded": {
+                "name": "Onderhoud nodig"
+            },
+            "mainversionhw": {
+                "name": "Hardwareversie hoofdmodule"
+            },
+            "mainversionsw": {
+                "name": "Softwareversie hoofdmodule"
+            },
+            "manufacturer": {
+                "name": "Fabrikant"
+            },
+            "maxcoolsetpoint": {
+                "name": "Maximale insteltemperatuur koeling"
+            },
+            "maxdailyouttemp": {
+                "name": "Dagelijkse maximale buitentemperatuur"
+            },
+            "maxheatsetpoint": {
+                "name": "Maximale insteltemperatuur verwarming"
+            },
+            "maxsetpoint": {
+                "name": "Maximale temperatuurinstelling"
+            },
+            "mincoolsetpoint": {
+                "name": "Minimale insteltemperatuur koeling"
+            },
+            "minheatsetpoint": {
+                "name": "Minimale insteltemperatuur verwarming"
+            },
+            "minsetpoint": {
+                "name": "Minimale temperatuurinstelling"
+            },
+            "modeasso": {
+                "name": "Koppelmodus"
+            },
+            "modelidentifier": {
+                "name": "Modelidentificatie"
+            },
+            "nbelem": {
+                "name": "Aantal elementen"
+            },
+            "nbrfactuators": {
+                "name": "Aantal radioactuatoren"
+            },
+            "networkdefect": {
+                "name": "Netwerkstoring"
+            },
+            "obstacle_defect": {
+                "name": "Obstakel gedetecteerd"
+            },
+            "obstacledefect": {
+                "name": "Obstakel gedetecteerd"
+            },
+            "ondusk": {
+                "name": "Activering bij schemering"
+            },
+            "onfavpos": {
+                "name": "Activering voorkeurspositie"
+            },
+            "onpresencedetected": {
+                "name": "Activering bij aanwezigheid"
+            },
+            "openingdetected": {
+                "name": "Opening gedetecteerd"
+            },
+            "openstate": {
+                "name": "Openingsstatus"
+            },
+            "outtemperature": {
+                "name": "Buitentemperatuur"
+            },
+            "overrideremainingtime": {
+                "name": "Resterende tijd tijdelijke instelling"
+            },
+            "overridesetpoint": {
+                "name": "Tijdelijke temperatuurinstelling"
+            },
+            "part": {
+                "name": "Alarmdeel"
+            },
+            "part1state": {
+                "name": "Status (PART 1)"
+            },
+            "part2state": {
+                "name": "Status (PART 2)"
+            },
+            "part3state": {
+                "name": "Status (PART 3)"
+            },
+            "part4state": {
+                "name": "Status (PART 4)"
+            },
+            "part5state": {
+                "name": "Status (PART 5)"
+            },
+            "part6state": {
+                "name": "Status (PART 6)"
+            },
+            "part7state": {
+                "name": "Status (PART 7)"
+            },
+            "part8state": {
+                "name": "Status (PART 8)"
+            },
+            "partcmd": {
+                "name": "Opdracht alarmdeel"
+            },
+            "password_empty": {
+                "name": "Wachtwoord leeg"
+            },
+            "period": {
+                "name": "Periode"
+            },
+            "periodoffset": {
+                "name": "Periodeverschuiving"
+            },
+            "permissions": {
+                "name": "Machtigingen"
+            },
+            "plt_registered": {
+                "name": "Platform geregistreerd"
+            },
+            "position": {
+                "name": "Positie"
+            },
+            "positioncmd": {
+                "name": "Positieopdracht"
+            },
+            "power": {
+                "name": "Vermogen"
+            },
+            "prealarm": {
+                "name": "Vooralarm"
+            },
+            "presencedetected": {
+                "name": "Aanwezigheid gedetecteerd"
+            },
+            "productconf": {
+                "name": "Configuratie"
+            },
+            "productiondefect": {
+                "name": "Productiestoring"
+            },
+            "productname": {
+                "name": "Productnaam"
+            },
+            "readable": {
+                "name": "Leesbaar"
+            },
+            "recfav": {
+                "name": "Voorkeurspositie opslaan"
+            },
+            "regtemperature": {
+                "name": "Regeltemperatuur"
+            },
+            "remotesurveydefect": {
+                "name": "Storing supervisie"
+            },
+            "reset": {
+                "name": "Resetten"
+            },
+            "selectedprog": {
+                "name": "Geselecteerd programma"
+            },
+            "sendasso": {
+                "name": "Koppelopdracht verzenden"
+            },
+            "sendnetremoteassomode": {
+                "name": "Koppelmodus op afstand"
+            },
+            "setpoint": {
+                "name": "Temperatuurinstelling"
+            },
+            "shuttercmd": {
+                "name": "Rolluikopdracht"
+            },
+            "simdefect": {
+                "name": "Sim-kaart ontbreekt"
+            },
+            "slope": {
+                "name": "Helling verwarmingscurve"
+            },
+            "softplan": {
+                "name": "Softwarepakket"
+            },
+            "softplan0": {
+                "name": "Softwarepakket (0)"
+            },
+            "softplan1": {
+                "name": "Softwarepakket (1)"
+            },
+            "softplan2": {
+                "name": "Softwarepakket (2)"
+            },
+            "softplan3": {
+                "name": "Softwarepakket (3)"
+            },
+            "softversion": {
+                "name": "Softwareversie"
+            },
+            "softversion0": {
+                "name": "Softwareversie (0)"
+            },
+            "softversion1": {
+                "name": "Softwareversie (1)"
+            },
+            "softversion2": {
+                "name": "Softwareversie (2)"
+            },
+            "softversion3": {
+                "name": "Softwareversie (3)"
+            },
+            "speed": {
+                "name": "Ventilatorsnelheid"
+            },
+            "speedstring": {
+                "name": "Ventilatorsnelheid"
+            },
+            "state": {
+                "name": "Status"
+            },
+            "summer_offset": {
+                "name": "Zomertijdverschil"
+            },
+            "summeroffset": {
+                "name": "Zomertijdverschil"
+            },
+            "supervisionmode": {
+                "name": "Bewakingsmodus"
+            },
+            "synchropps": {
+                "name": "Tijdsynchronisatie"
+            },
+            "synchroradio": {
+                "name": "Radiosynchronisatie"
+            },
+            "systalarmdefect": {
+                "name": "Alarmsysteemstoring"
+            },
+            "systautoprotect": {
+                "name": "Automatische bescherming"
+            },
+            "systbatterydefect": {
+                "name": "Batterijstoring"
+            },
+            "systopenissue": {
+                "name": "Inschakeling alarm geblokkeerd"
+            },
+            "systsectordefect": {
+                "name": "Storing netspanning"
+            },
+            "systsupervisiondefect": {
+                "name": "Storing supervisie"
+            },
+            "systtechnicaldefect": {
+                "name": "Technisch defect"
+            },
+            "techsmokedefect": {
+                "name": "Er is rook gedetecteerd"
+            },
+            "techwaterdefect": {
+                "name": "Er is een waterlek gedetecteerd"
+            },
+            "temperature": {
+                "name": "Temperatuur"
+            },
+            "tempoon": {
+                "name": "Tijdvertraging"
+            },
+            "tempsensordefect": {
+                "name": "Storing sonde"
+            },
+            "tempsensoropencirc": {
+                "name": "Sonde ontkoppeld"
+            },
+            "tempsensorshortcut": {
+                "name": "Kortsluiting sonde"
+            },
+            "thermic_defect": {
+                "name": "Oververhitting"
+            },
+            "thermicdefect": {
+                "name": "Oververhitting"
+            },
+            "thermiclevel": {
+                "name": "Verwarmingsstand"
+            },
+            "timedelay": {
+                "name": "Tijdvertraging"
+            },
+            "timeoncpt": {
+                "name": "Bedrijfstijdteller"
+            },
+            "timezone": {
+                "name": "Tijdzone"
+            },
+            "total": {
+                "name": "Totaal"
+            },
+            "uid": {
+                "name": "Apparaatidentificatie"
+            },
+            "unackedevent": {
+                "name": "Niet bevestigde gebeurtenissen"
+            },
+            "unitautoprotect": {
+                "name": "Automatische bescherming"
+            },
+            "unitbatterydefect": {
+                "name": "Batterijstoring"
+            },
+            "unitinternaldefect": {
+                "name": "Interne storing"
+            },
+            "up_defect": {
+                "name": "Omhoog niet toegelaten"
+            },
+            "update_available": {
+                "name": "Update beschikbaar"
+            },
+            "updefect": {
+                "name": "Omhoog niet toegelaten"
+            },
+            "usage": {
+                "name": "Gebruik"
+            },
+            "usemode": {
+                "name": "Bedrijfsmodus"
+            },
+            "value": {
+                "name": "Waarde"
+            },
+            "videolinkdefect": {
+                "name": "Storing videolink"
+            },
+            "waterflowreq": {
+                "name": "Gevraagd waterdebiet"
+            },
+            "weather": {
+                "name": "Weer"
+            },
+            "writable": {
+                "name": "Schrijfbaar"
+            },
+            "zclversion": {
+                "name": "Versie Zigbee-clusterbibliotheek"
+            },
+            "zone1state": {
+                "name": "Status (ZONE 1)"
+            },
+            "zone2state": {
+                "name": "Status (ZONE 2)"
+            },
+            "zone3state": {
+                "name": "Status (ZONE 3)"
+            },
+            "zone4state": {
+                "name": "Status (ZONE 4)"
+            },
+            "zone5state": {
+                "name": "Status (ZONE 5)"
+            },
+            "zone6state": {
+                "name": "Status (ZONE 6)"
+            },
+            "zone7state": {
+                "name": "Status (ZONE 7)"
+            },
+            "zone8state": {
+                "name": "Status (ZONE 8)"
+            },
+            "zonecmd": {
+                "name": "Opdracht alarmzone"
+            },
+            "zones": {
+                "name": "Alarmzones"
+            }
+        },
+        "event": {
+            "alarmcmd": {
+                "name": "Alarmopdracht"
+            },
+            "alarmintrusion": {
+                "name": "Inbraak"
+            },
+            "alarmmode": {
+                "name": "Alarmmodus"
+            },
+            "alarmsos": {
+                "name": "SOS-alarm"
+            },
+            "alarmstate": {
+                "name": "Alarmstatus"
+            },
+            "alarmtechnical": {
+                "name": "Technisch alarm"
+            },
+            "interrupter_button": {
+                "name": "Knop {button_number}"
+            },
+            "intrusion": {
+                "name": "Inbraak"
+            },
+            "intrusiondetect": {
+                "name": "Inbraak"
+            },
+            "remote_button": {
+                "name": "Knop {button_number}"
+            }
+        },
+        "button": {
+            "acknowledge_events": {
+                "name": "Gebeurtenissen bevestigen"
+            },
+            "association_guide": {
+                "name": "5. Koppelhandleiding weergeven"
+            },
+            "association_mode": {
+                "name": "Koppelmodus starten"
+            },
+            "cancel_boost": {
+                "name": "Boost annuleren"
+            },
+            "finalize_association": {
+                "name": "{channel} als {usage} configureren"
+            },
+            "finalize_keypad": {
+                "name": "{channel} als toetsenpaneel configureren"
+            },
+            "finalize_remote": {
+                "name": "{channel} als afstandsbediening configureren"
+            },
+            "finalize_switch": {
+                "name": "{channel} als wandschakelaar configureren"
+            },
+            "group_alarm": {
+                "name": "Alarmgroep"
+            },
+            "group_awning": {
+                "name": "Zonweringsgroep"
+            },
+            "group_heating": {
+                "name": "Verwarmingsgroep"
+            },
+            "group_light": {
+                "name": "Lichtgroep"
+            },
+            "group_plug": {
+                "name": "Stopcontactgroep"
+            },
+            "group_shutter": {
+                "name": "Rolluikgroep"
+            },
+            "identify_device": {
+                "name": "Apparaat identificeren"
+            },
+            "refresh_energy": {
+                "name": "Energiegegevens vernieuwen"
+            },
+            "reload_devices": {
+                "name": "Apparaten opnieuw laden"
+            },
+            "remove_button": {
+                "name": "Deze knop ontkoppelen"
+            },
+            "remove_device": {
+                "name": "Apparaat definitief ontkoppelen"
+            },
+            "remove_numbered_button": {
+                "name": "Knop {button_number} ontkoppelen"
+            },
+            "start_product_association": {
+                "name": "6. Gateway laten luisteren"
+            },
+            "toggle": {
+                "name": "Omschakelen"
+            }
+        },
+        "text": {
+            "association_name": {
+                "name": "Apparaatnaam (optioneel)"
+            }
+        },
+        "climate": {
+            "thermostat": {
+                "name": "Thermostaat"
+            }
+        },
+        "cover": {
+            "tywell_shutters": {
+                "name": "Rolluiken"
+            },
+            "tywell_shutters_day": {
+                "name": "Rolluiken dag"
+            },
+            "tywell_shutters_night": {
+                "name": "Rolluiken nacht"
+            }
+        }
+    },
+    "device": {
+        "tywell_weather": {
+            "name": "Weer"
+        }
     }
 }
