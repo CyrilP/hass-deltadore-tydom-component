@@ -2908,6 +2908,17 @@ class HaClimate(ClimateEntity, HAEntity):
         )
         if self._uses_local_mode:
             self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
+            # Replace any presets derived above.  These zones have no comfort
+            # or eco order: comfortMode is the write-only season register, so
+            # the generic extraction finds nothing usable and falls back to a
+            # hardcoded [NORMAL, ECO, COMFORT] the hardware does not implement.
+            # ABSENCE is the one real preset they do have.
+            if "ABSENCE" in self._local_mode_values:
+                self._attr_preset_modes = [PRESET_NONE, PRESET_AWAY]
+                self._attr_supported_features |= ClimateEntityFeature.PRESET_MODE
+            else:
+                self._attr_preset_modes = []
+                self._attr_supported_features &= ~ClimateEntityFeature.PRESET_MODE
 
         # Fan speed (Naviclim X3D reversible AC). Naviclim zones expose a numeric
         # `speed` (1..3) for manual speeds and a `speedString` ["AUTO"] register
@@ -3264,6 +3275,11 @@ class HaClimate(ClimateEntity, HAEntity):
             if level == "ANTI_FROST":
                 return PRESET_AWAY
             return PRESET_NONE
+        if self._uses_local_mode:
+            local_mode = getattr(self._device, "localMode", None)
+            if local_mode == "ABSENCE":
+                return PRESET_AWAY
+            return PRESET_NONE if self._attr_preset_modes else None
         if (
             not self._device.is_area_trv
             and getattr(self._device, "localMode", None) == "ABSENCE"
@@ -3285,6 +3301,12 @@ class HaClimate(ClimateEntity, HAEntity):
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new target preset mode."""
+        if self._uses_local_mode:
+            if preset_mode == PRESET_AWAY:
+                await self._device.set_local_mode("ABSENCE")
+            elif preset_mode == PRESET_NONE:
+                await self._device.set_local_mode("NORMAL")
+            return
         if getattr(self, "_is_filpilote", False):
             # Drive the pilot-wire order register directly (as the app does).
             if preset_mode == PRESET_COMFORT:
