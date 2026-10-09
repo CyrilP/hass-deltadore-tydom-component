@@ -1489,6 +1489,9 @@
             "tywatt_energy_index_elec_other": {
                 "name": "Índice eléctrico - Otras"
             },
+            "tywatt_energy_index_elec_outlet": {
+                "name": "Índice eléctrico - Tomas"
+            },
             "tywatt_energy_index_elec_total": {
                 "name": "Índice eléctrico - Total"
             },

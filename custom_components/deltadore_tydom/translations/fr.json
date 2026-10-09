@@ -3357,6 +3357,9 @@
             "tywatt_energy_index_elec_other": {
                 "name": "Index électrique - Autres"
             },
+            "tywatt_energy_index_elec_outlet": {
+                "name": "Index électrique - Prises"
+            },
             "tywatt_energy_index_elec_total": {
                 "name": "Index électrique - Total"
             },
