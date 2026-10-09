@@ -923,6 +923,52 @@ class TestDevicePolling(IsolatedAsyncioTestCase):
             "/devices/8/endpoints/8/data"
         )
 
+    async def test_cdata_poll_waits_for_stream_completion(self) -> None:
+        """A cdata GET must stay pending until the handler receives its EOR."""
+        client = self._client()
+        client._message_handler = MagicMock()
+        completion_event = asyncio.Event()
+        client._message_handler.prepare_request.return_value = (
+            "request-1",
+            b"request",
+        )
+        client._message_handler.register_cdata_poll.return_value = completion_event
+        request_sent = asyncio.Event()
+        client.send_bytes = AsyncMock(side_effect=lambda _request: request_sent.set())
+
+        poll = asyncio.create_task(
+            client.get_poll_device_data(
+                "/devices/10/endpoints/20/cdata?name=energyIndex"
+            )
+        )
+        await request_sent.wait()
+        await asyncio.sleep(0)
+        self.assertFalse(poll.done())
+
+        completion_event.set()
+        await poll
+        client._message_handler.remove_cdata_poll.assert_called_once_with("request-1")
+
+    async def test_cdata_poll_timeout_cleans_pending_waiter(self) -> None:
+        """A missing EOR must not leave a stale transaction waiter behind."""
+        client = self._client()
+        client._message_handler = MagicMock()
+        completion_event = asyncio.Event()
+        client._message_handler.prepare_request.return_value = (
+            "request-1",
+            b"request",
+        )
+        client._message_handler.register_cdata_poll.return_value = completion_event
+        client.send_bytes = AsyncMock()
+
+        with patch.object(client_module, "_CDATA_POLL_RESPONSE_TIMEOUT", 0.001):
+            await client.get_poll_device_data(
+                "/devices/10/endpoints/20/cdata?name=energyIndex"
+            )
+
+        self.assertFalse(completion_event.is_set())
+        client._message_handler.remove_cdata_poll.assert_called_once_with("request-1")
+
     async def test_cdata_poll_can_target_one_energy_endpoint(self) -> None:
         """An entity refresh button must poll only its own TYWATT endpoint."""
         client = self._client()
