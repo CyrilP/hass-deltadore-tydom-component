@@ -2856,8 +2856,53 @@ class HaClimate(ClimateEntity, HAEntity):
         has_pilot_wire_command = hasattr(self._device, "hvacMode") or hasattr(
             self._device, "authorization"
         )
+        # X3D heating zones behind a TYDOM HOME carry their whole state in one
+        # read/write `localMode` register (NORMAL | ANTI_FROST | STOP |
+        # ABSENCE).  `authorization` and `comfortMode` only carry the
+        # installation-wide season (STOP/HEATING) and stay HEATING while a zone
+        # is switched off, so neither can yield the zone's own mode.  Frost
+        # protection is the order the app sends when a zone is switched off: it
+        # is armed permanently and cannot be lifted, so it reads as off here.
+        #
+        # Both permissions are required: the register is written to drive the
+        # zone and read back to report its state, so a write-only register
+        # cannot serve here.
+        local_mode_meta = (metadata or {}).get("localMode")
+        local_mode_permission = (
+            local_mode_meta.get("permission", "")
+            if isinstance(local_mode_meta, dict)
+            else ""
+        )
+        self._local_mode_values = (
+            list(local_mode_meta.get("enum_values") or [])
+            if isinstance(local_mode_meta, dict)
+            and "r" in local_mode_permission
+            and "w" in local_mode_permission
+            else []
+        )
+        self._uses_local_mode = (
+            "NORMAL" in self._local_mode_values
+            and "ANTI_FROST" in self._local_mode_values
+            # `localMode` is not unique to these zones: area attributes use the
+            # same name with LOCAL_SETPOINT for temporary overrides on
+            # TRV-backed areas and Typass ATL zones.  Area-derived entities
+            # build their mode list from area_hvac_modes() above, which can
+            # include COOL, so they must keep it.
+            and not hasattr(self._device, "area_id")
+            # Reversible zones (heat pump / AC) reach [off, heat, cool] above
+            # from their own enum metadata.  Frost protection is a preset on
+            # those, not an off state, and collapsing them here would drop
+            # cooling altogether — see #453 / #455.
+            and HVACMode.COOL not in self._attr_hvac_modes
+        )
+        # A zone that carries localMode is driven through it exclusively.  It
+        # would otherwise also satisfy the pilot-wire test when it exposes no
+        # setpoint, and the two paths disagree: most properties check
+        # _is_filpilote first and would read and write thermicLevel, bypassing
+        # localMode entirely.
         self._is_filpilote = (
-            has_pilot_wire_command
+            not self._uses_local_mode
+            and has_pilot_wire_command
             and has_thermic_level
             and not has_setpoint_meta
             and not has_live_setpoint
@@ -2877,35 +2922,6 @@ class HaClimate(ClimateEntity, HAEntity):
             # show a temperature control that would write a phantom setpoint.
             self._attr_supported_features &= ~ClimateEntityFeature.TARGET_TEMPERATURE
 
-        # X3D heating zones behind a TYDOM HOME carry their whole state in one
-        # read/write `localMode` register (NORMAL | ANTI_FROST | STOP |
-        # ABSENCE).  `authorization` and `comfortMode` only carry the
-        # installation-wide season (STOP/HEATING) and stay HEATING while a zone
-        # is switched off, so neither can yield the zone's own mode.  Frost
-        # protection is the order the app sends when a zone is switched off: it
-        # is armed permanently and cannot be lifted, so it reads as off here.
-        local_mode_meta = (metadata or {}).get("localMode")
-        self._local_mode_values = (
-            list(local_mode_meta.get("enum_values") or [])
-            if isinstance(local_mode_meta, dict)
-            and "w" in local_mode_meta.get("permission", "")
-            else []
-        )
-        self._uses_local_mode = (
-            "NORMAL" in self._local_mode_values
-            and "ANTI_FROST" in self._local_mode_values
-            # `localMode` is not unique to these zones: area attributes use the
-            # same name with LOCAL_SETPOINT for temporary overrides on
-            # TRV-backed areas and Typass ATL zones.  Area-derived entities
-            # build their mode list from area_hvac_modes() above, which can
-            # include COOL, so they must keep it.
-            and not hasattr(self._device, "area_id")
-            # Reversible zones (heat pump / AC) reach [off, heat, cool] above
-            # from their own enum metadata.  Frost protection is a preset on
-            # those, not an off state, and collapsing them here would drop
-            # cooling altogether — see #453 / #455.
-            and HVACMode.COOL not in self._attr_hvac_modes
-        )
         if self._uses_local_mode:
             self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
             # Replace any presets derived above.  These zones have no comfort
@@ -3134,6 +3150,12 @@ class HaClimate(ClimateEntity, HAEntity):
             local_mode = getattr(self._device, "localMode", None)
             if local_mode in self.OFF_LOCAL_MODES:
                 return HVACAction.OFF
+            # A running zone falls through to the setpoint comparison below.
+            # These zones populate no setpoint while following their schedule,
+            # so target_temperature is None and heat delivery cannot be
+            # inferred: HEATING is reported for the whole time the zone is on.
+            # The gateway exposes nothing else to distinguish it from idle.
+            # ABSENCE does report a setpoint, and resolves correctly.
 
         authorization = getattr(self._device, "authorization", None)
         thermic_level = getattr(self._device, "thermicLevel", None)

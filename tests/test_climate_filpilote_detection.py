@@ -750,6 +750,104 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
         self.assertIn(HVACMode.COOL, entity._attr_hvac_modes)
         self.assertEqual(entity.preset_mode, entities_module.PRESET_AWAY)
 
+    def test_zone_without_setpoint_metadata_is_not_pilot_wire(self) -> None:
+        """A localMode zone must never also take the fil-pilote path.
+
+        Without setpoint metadata or a live setpoint such a zone satisfies the
+        pilot-wire test too, and most properties check _is_filpilote first —
+        they would read and write thermicLevel, bypassing localMode entirely.
+        """
+        entity, _client = _thermostat(
+            metadata={
+                "authorization": {
+                    "type": "string",
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "thermicLevel": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["STOP", "ANTI_FROST"],
+                },
+                "localMode": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+                },
+            },
+            data={
+                "authorization": "HEATING",
+                "thermicLevel": "ANTI_FROST",
+                "localMode": "ANTI_FROST",
+                "ambientTemperature": 22.41,
+            },
+        )
+
+        self.assertTrue(entity._uses_local_mode)
+        self.assertFalse(entity._is_filpilote)
+        self.assertEqual(entity._attr_hvac_modes, [HVACMode.OFF, HVACMode.HEAT])
+        self.assertEqual(
+            entity._attr_preset_modes,
+            [entities_module.PRESET_NONE, entities_module.PRESET_AWAY],
+        )
+        self.assertEqual(entity.hvac_mode, HVACMode.OFF)
+        self.assertEqual(entity.hvac_action, entities_module.HVACAction.OFF)
+        self.assertEqual(entity.preset_mode, entities_module.PRESET_NONE)
+
+    async def test_zone_without_setpoint_metadata_writes_local_mode(self) -> None:
+        """The same zone must drive localMode, not the pilot-wire register."""
+        entity, client = _thermostat(
+            metadata={
+                "authorization": {
+                    "type": "string",
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "thermicLevel": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["STOP", "ANTI_FROST"],
+                },
+                "localMode": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+                },
+            },
+            data={
+                "authorization": "HEATING",
+                "thermicLevel": "ANTI_FROST",
+                "localMode": "ANTI_FROST",
+            },
+        )
+
+        await entity.async_set_hvac_mode(HVACMode.HEAT)
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "localMode", "NORMAL"
+        )
+
+    def test_write_only_local_mode_is_not_used(self) -> None:
+        """The register is read to report state, so write-only will not do."""
+        entity, _client = _thermostat(
+            metadata={
+                "localMode": {
+                    "type": "string",
+                    "permission": "w",
+                    "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+                },
+                "heatSetpoint": {
+                    "type": "numeric",
+                    "permission": "rw",
+                    "min": 1.0,
+                    "max": 50.0,
+                },
+            },
+            data={"localMode": "ANTI_FROST", "heatSetpoint": None},
+        )
+
+        self.assertFalse(entity._uses_local_mode)
+
     def test_anti_frost_reads_as_off(self) -> None:
         """Frost protection is what the app calls off."""
         entity, _client = self._zone(local_mode="ANTI_FROST")
