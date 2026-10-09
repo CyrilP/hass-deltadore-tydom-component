@@ -2707,8 +2707,14 @@ class HaClimate(ClimateEntity, HAEntity):
                 add_preset(mode)
 
         thermic_level = metadata.get("thermicLevel", {})
+        # NO_REGUL is a TYDOM-internal "no regulation" marker (e.g. the Tybox
+        # Home RF 210 boiler/heat-pump exposes thermicLevel [STOP, NO_REGUL,
+        # ANTI_FROST]), not a user-selectable comfort level. Exposing it as a
+        # preset is confusing and, worse, when the live register leaves that
+        # value preset_mode falls back to PRESET_NONE, which would then be
+        # absent from preset_modes (issue #505). Keep it out of the list.
         for mode in thermic_level.get("enum_values", []):
-            if mode not in ["STOP", "AUTO"]:
+            if mode not in ["STOP", "AUTO", "NO_REGUL"]:
                 add_preset(mode)
 
         # Add common presets if available
@@ -2954,6 +2960,15 @@ class HaClimate(ClimateEntity, HAEntity):
         modes = list(self._attr_preset_modes)
         if self._supports_absence_mode() and PRESET_AWAY not in modes:
             modes.append(PRESET_AWAY)
+        # preset_mode falls back to PRESET_NONE whenever the live register
+        # value is not a user-facing preset (e.g. thermicLevel STOP/NO_REGUL or
+        # localMode NORMAL/STOP on a Tybox Home RF 210). Home Assistant requires
+        # the reported preset_mode to be a member of preset_modes, so advertise
+        # PRESET_NONE to keep the selector valid instead of rendering it empty
+        # (issue #505). The fil-pilote path already includes PRESET_NONE in
+        # _attr_preset_modes, so this is a no-op there.
+        if modes and PRESET_NONE not in modes:
+            modes.append(PRESET_NONE)
         return modes
 
     async def async_added_to_hass(self) -> None:
