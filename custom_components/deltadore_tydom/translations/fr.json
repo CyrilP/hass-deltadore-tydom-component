@@ -3488,6 +3488,14 @@
             },
             "tywell_weather_max_daily_outdoor_temperature": {
                 "name": "Température extérieure maximale du jour"
+            },
+            "thermostat_use_mode": {
+                "name": "Mode du thermostat",
+                "state": {
+                    "sched": "Programmation",
+                    "override": "Dérogation",
+                    "manual": "Manuel"
+                }
             }
         },
         "binary_sensor": {

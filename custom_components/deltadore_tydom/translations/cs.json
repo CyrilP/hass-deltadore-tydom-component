@@ -446,6 +446,14 @@
             },
             "writable": {
                 "name": "Writable"
+            },
+            "thermostat_use_mode": {
+                "name": "Režim termostatu",
+                "state": {
+                    "sched": "Program",
+                    "override": "Dočasná změna",
+                    "manual": "Ručně"
+                }
             }
         },
         "binary_sensor": {

@@ -245,6 +245,12 @@ These entities keep their identifiers and values for existing automations.
 Categorisation does not disable them or change your enabled/disabled choices.
 Temperature, humidity, setpoints and operating settings stay in the main view.
 
+### Thermostat operating mode
+
+Where TYDOM reports `useMode`, the new **Thermostat operating mode** Enum sensor shows **Schedule**, **Override** or **Manual** in the main Sensors section. It follows the device's actual feedback, with labels in all ten supported languages. Its HA states are `sched`, `override` and `manual`, as lowercase keys are required for native state translations.
+
+The existing **Operating mode** sensor retains its identity and raw `SCHED`, `OVERRIDE` and `MANUAL` states for existing automations. Both sensors observe the same register without sending commands or changing schedules. A future firmware value remains visible in the new Enum sensor in lowercase; the original sensor retains the exact raw value.
+
 Gateway API, protocol, software-version and update-status readings are also
 diagnostic where available.
 

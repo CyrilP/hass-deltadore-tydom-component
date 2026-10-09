@@ -1620,6 +1620,14 @@
             },
             "tywell_weather_max_daily_outdoor_temperature": {
                 "name": "Temperatura exterior máxima diária"
+            },
+            "thermostat_use_mode": {
+                "name": "Modo do termóstato",
+                "state": {
+                    "sched": "Programação",
+                    "override": "Substituição",
+                    "manual": "Manual"
+                }
             }
         },
         "binary_sensor": {

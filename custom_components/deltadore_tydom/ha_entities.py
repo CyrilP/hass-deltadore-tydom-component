@@ -468,6 +468,10 @@ class HAEntity:
                                 **device_kwargs,
                             )
                         )
+                    if attribute == "useMode" and not is_binary_sensor:
+                        sensors.append(
+                            ThermostatUseModeSensor(self._device, **device_kwargs)
+                        )
                     target_registered_sensors.append(attribute)
                     created_sensor = True
                 if created_sensor:
@@ -985,6 +989,52 @@ class GenericSensor(SensorEntity):
             and self._device._ha_device is self
         ):
             self._device._ha_device = None
+
+
+class ThermostatUseModeSensor(GenericSensor):
+    """Translated view of useMode without changing the historic raw sensor."""
+
+    def __init__(self, device: TydomDevice, **device_kwargs):
+        """Share the raw sensor's physical owner with a distinct stable ID."""
+        super().__init__(
+            device,
+            SensorDeviceClass.ENUM,
+            None,
+            "useMode",
+            "useMode",
+            None,
+            **device_kwargs,
+        )
+        self._attr_unique_id += "_enum"
+        set_entity_name(self, "thermostat_use_mode")
+
+    @property
+    def options(self) -> list[str]:
+        """Normalise live metadata options for HA's lowercase state keys."""
+        metadata = (self._device._metadata or {}).get("useMode", {})
+        advertised = metadata.get("enum_values") if isinstance(metadata, dict) else None
+        options = (
+            [value.lower() for value in advertised if isinstance(value, str) and value]
+            if isinstance(advertised, (list, tuple))
+            else []
+        )
+        if not options:
+            options = ["sched", "override", "manual"]
+        # A new real value must remain visible rather than break HA validation.
+        if (reported := self.native_value) is not None and reported not in options:
+            options.append(reported)
+        return list(dict.fromkeys(options))
+
+    @property
+    def native_value(self) -> str | None:
+        """Translate only this new view; leave the TYDOM register untouched."""
+        value = getattr(self._device, "useMode", None)
+        return value.lower() if isinstance(value, str) and value else None
+
+    @property
+    def native_unit_of_measurement(self) -> None:
+        """An Enum cannot expose a numeric unit, including TYDOM's NA marker."""
+        return None
 
 
 class BinarySensorBase(BinarySensorEntity):

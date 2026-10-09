@@ -446,6 +446,14 @@
             },
             "writable": {
                 "name": "Writable"
+            },
+            "thermostat_use_mode": {
+                "name": "Termostatmodus",
+                "state": {
+                    "sched": "Tidsprogram",
+                    "override": "Overstyring",
+                    "manual": "Manuell"
+                }
             }
         },
         "binary_sensor": {
