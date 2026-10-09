@@ -1161,6 +1161,10 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
                                     },
                                 },
                                 {
+                                    # energyHisto is no longer polled or turned
+                                    # into a sensor (its real payload is
+                                    # {"samples": [...]}); a reply must be
+                                    # ignored without creating an attribute.
                                     "name": "energyHisto",
                                     "status": "OK",
                                     "parameters": {
@@ -1184,7 +1188,7 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         self.assertEqual(device.energyInstant_ELEC_W, 1200)
         self.assertEqual(device.energyDistrib_ELEC_HEATING, 14484)
         self.assertEqual(device.energyDistrib_ELEC_HOTWATER, 201117)
-        self.assertEqual(device.energyHisto_ELEC_TOTAL, 1234)
+        self.assertFalse(hasattr(device, "energyHisto_ELEC_TOTAL"))
 
     async def test_energy_cdata_ignores_failed_and_malformed_values(self) -> None:
         """Unsupported cdata replies must not create misleading sensors."""
