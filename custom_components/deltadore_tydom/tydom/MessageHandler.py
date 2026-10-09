@@ -119,7 +119,7 @@ def _parse_energy_cdata_element(element: Any) -> dict[str, int | float]:
             return {}
         return {f"{name}_{unit}": measure / _ENERGY_INSTANT_DIVISORS[unit]}
 
-    if name in {"energyDistrib", "energyHisto"}:
+    if name == "energyDistrib":
         return {
             f"{name}_{key}": value
             for key, value in values.items()
@@ -1507,22 +1507,6 @@ class MessageHandler:
                                             + "&unit="
                                             + unit
                                             + "&reset=false"
-                                        )
-                                        self.tydom_client.add_poll_device_url_5m(url)
-                                        LOGGER.debug("Add poll device : " + url)
-                        elif elem["name"] == "energyHisto":
-                            for params in elem["parameters"]:
-                                if params["name"] == "dest":
-                                    for dest in params["enum_values"]:
-                                        url = (
-                                            "/devices/"
-                                            + str(i["id"])
-                                            + "/endpoints/"
-                                            + str(endpoint["id"])
-                                            + "/cdata?name="
-                                            + elem["name"]
-                                            + "&period=YEAR&periodOffset=0&dest="
-                                            + dest
                                         )
                                         self.tydom_client.add_poll_device_url_5m(url)
                                         LOGGER.debug("Add poll device : " + url)
