@@ -1489,6 +1489,9 @@
             "tywatt_energy_index_elec_other": {
                 "name": "Stromzählerstand - Sonstige"
             },
+            "tywatt_energy_index_elec_outlet": {
+                "name": "Stromzählerstand - Steckdosen"
+            },
             "tywatt_energy_index_elec_total": {
                 "name": "Stromzählerstand - Gesamt"
             },

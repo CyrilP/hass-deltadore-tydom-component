@@ -621,6 +621,7 @@ class GenericSensor(SensorEntity):
         "energyIndex_ELEC_HEATING": "tywatt_energy_index_elec_heating",
         "energyIndex_ELEC_HOTWATER": "tywatt_energy_index_elec_hotwater",
         "energyIndex_ELEC_OTHER": "tywatt_energy_index_elec_other",
+        "energyIndex_ELEC_OUTLET": "tywatt_energy_index_elec_outlet",
         "energyIndex_ELEC_TOTAL": "tywatt_energy_index_elec_total",
         "outTemperature": "tywell_weather_outdoor_temperature",
         "dailyPower": "tywell_weather_daily_power",

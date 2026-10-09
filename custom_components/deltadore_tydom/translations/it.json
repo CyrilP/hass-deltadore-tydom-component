@@ -1489,6 +1489,9 @@
             "tywatt_energy_index_elec_other": {
                 "name": "Indice elettrico - Altre"
             },
+            "tywatt_energy_index_elec_outlet": {
+                "name": "Indice elettrico - Prese"
+            },
             "tywatt_energy_index_elec_total": {
                 "name": "Indice elettrico - Totale"
             },
