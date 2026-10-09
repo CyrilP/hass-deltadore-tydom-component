@@ -322,7 +322,17 @@
             }
         },
         "light": {},
-        "climate": {},
+        "climate": {
+            "tydom_climate": {
+                "state_attributes": {
+                    "preset_mode": {
+                        "state": {
+                            "frost_protection": "Frostbeskyttelse"
+                        }
+                    }
+                }
+            }
+        },
         "alarm_control_panel": {},
         "lock": {},
         "weather": {},

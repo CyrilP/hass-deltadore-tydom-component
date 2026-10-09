@@ -97,6 +97,16 @@
     "climate": {
       "thermostat": {
         "default": "mdi:thermostat"
+      },
+      "tydom_climate": {
+        "default": "mdi:thermostat",
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "frost_protection": "mdi:snowflake-thermometer"
+            }
+          }
+        }
       }
     },
     "event": {
