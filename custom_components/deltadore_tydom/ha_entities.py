@@ -2770,6 +2770,22 @@ class HaClimate(ClimateEntity, HAEntity):
         ):
             self._attr_hvac_modes.append(HVACMode.HEAT)
 
+        # A thermostat driven by a writable comfortMode accepts only
+        # STOP/HEATING/COOLING (the gateway's /events/home/hvac support list
+        # excludes AUTO), so do not offer HVACMode.AUTO for it unless a
+        # dedicated hvacMode register advertises an AUTO value. (#463)
+        if HVACMode.AUTO in self._attr_hvac_modes and self._device._metadata:
+            comfort_mode = self._device._metadata.get("comfortMode")
+            hvac_mode_meta = self._device._metadata.get("hvacMode")
+            comfort_is_writable = isinstance(
+                comfort_mode, dict
+            ) and "w" in comfort_mode.get("permission", "")
+            hvac_mode_has_auto = isinstance(
+                hvac_mode_meta, dict
+            ) and "AUTO" in hvac_mode_meta.get("enum_values", [])
+            if comfort_is_writable and not hvac_mode_has_auto:
+                self._attr_hvac_modes.remove(HVACMode.AUTO)
+
         self._registered_sensors = []
         if self._device.device_id.endswith("_area_climate"):
             # The source passive controller already exposes these as sensors;
