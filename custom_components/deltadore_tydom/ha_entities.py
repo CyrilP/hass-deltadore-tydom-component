@@ -4145,6 +4145,32 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
             info["model"] = device_info["model"]
         return info
 
+    async def async_set_mode_using_stored_pin(self, mode: str) -> None:
+        """Run a normal alarm command with this gateway's configured PIN."""
+        commands = {
+            "away": self.async_alarm_arm_away,
+            "home": self.async_alarm_arm_home,
+            "night": self.async_alarm_arm_night,
+            "disarm": self.async_alarm_disarm,
+        }
+        command = commands.get(mode)
+        if command is None:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="unsupported_stored_pin_alarm_mode",
+            )
+
+        stored_pin = self._device._tydom_client._alarm_pin
+        if stored_pin is None or not str(stored_pin).strip():
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="stored_alarm_pin_missing",
+            )
+
+        # Supply the PIN explicitly without changing the standard HA action
+        # handlers or the code request shown by the alarm panel.
+        await command(str(stored_pin).strip())
+
     async def async_alarm_disarm(self, code=None) -> None:
         """Send disarm command."""
         await self._run_alarm_command(self._device.alarm_disarm(code), "disarming")
