@@ -188,9 +188,34 @@ TYDOM password | Manual mode | The gateway password, which is different from the
 Refresh interval | Yes | Periodic refresh interval from 1 to 1,440 minutes; the default is 30 minutes. Push events remain active between refreshes.
 Home, Away and Night zones | No | Comma-separated TYXAL zone IDs from 0 to 8, for example `1,2,4`. Each field defines the zones armed by that Home Assistant alarm mode.
 Alarm PIN | No | Required when using Home Assistant to change the alarm mode; not required for read-only alarm state.
+Entity mode | Yes | **Full (all entities)** by default, or **Simplified (essential entities)** to disable technical entities.
 
 After setup, open the integration's **Configure** menu to change the refresh
-interval, alarm zones or PIN.
+interval, alarm zones, PIN or entity mode.
+
+### Full or simplified entity mode
+
+Choose the mode during setup or later under **Configure → Configure**. The
+setting applies to all devices belonging to this integration entry.
+
+- **Full** keeps the usual entity defaults; upgrading does not change existing
+  installations.
+- **Simplified** keeps everyday controls and useful readings: lights, covers,
+  heating settings, remote-button events, opening, smoke and leak detection,
+  temperature and energy measurements. Alarm state, pending issues, battery
+  faults and transmission faults remain available, as do smoke-detector battery
+  warnings. Technical registers, firmware details and maintenance/configuration
+  controls are disabled.
+
+Disabled entities remain in Home Assistant's entity registry, with the same
+identifiers. Enable any you need individually in **Settings → Devices & services
+→ Entities**, using the filter for disabled entities. Individual changes are
+preserved when devices are reloaded or Home Assistant restarts.
+
+Changing an existing installation to Simplified also disables its technical
+entities: check any automations or dashboards that use them before switching.
+Returning to Full restores only entities disabled by this mode, not entities
+you disabled manually or controls disabled by default.
 
 ### Pair locally using the gateway button
 

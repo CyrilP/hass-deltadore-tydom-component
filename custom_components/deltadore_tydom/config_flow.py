@@ -36,6 +36,9 @@ from .const import (
     CONF_CLOUD_MODE,
     CONF_LOCAL_BUTTON_MODE,
     CONF_MANUAL_MODE,
+    CONF_ENTITY_MODE,
+    ENTITY_MODE_ALL,
+    ENTITY_MODE_SIMPLIFIED,
 )
 from . import hub
 from .tydom.tydom_client import (
@@ -57,7 +60,17 @@ DATA_SCHEMA = vol.Schema(
         vol.Optional(CONF_ZONES_AWAY): cv.string,
         vol.Optional(CONF_ZONES_NIGHT): cv.string,
         vol.Optional(CONF_PIN): str,
+        vol.Optional(CONF_ENTITY_MODE, default=ENTITY_MODE_ALL): vol.In(
+            [ENTITY_MODE_ALL, ENTITY_MODE_SIMPLIFIED]
+        ),
     }
+)
+
+ENTITY_MODE_SELECTOR = selector.SelectSelector(
+    selector.SelectSelectorConfig(
+        options=[ENTITY_MODE_ALL, ENTITY_MODE_SIMPLIFIED],
+        translation_key=CONF_ENTITY_MODE,
+    )
 )
 
 
@@ -216,6 +229,7 @@ async def validate_input(
         CONF_ZONES_AWAY: data.get(CONF_ZONES_AWAY),
         CONF_ZONES_NIGHT: data.get(CONF_ZONES_NIGHT),
         CONF_PIN: data.get(CONF_PIN),
+        CONF_ENTITY_MODE: data.get(CONF_ENTITY_MODE, ENTITY_MODE_ALL),
     }
 
 
@@ -451,6 +465,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             autocomplete="off",
                         )
                     ),
+                    vol.Required(
+                        CONF_ENTITY_MODE,
+                        default=user_input.get(CONF_ENTITY_MODE, ENTITY_MODE_ALL),
+                    ): ENTITY_MODE_SELECTOR,
                 }
             ),
             errors=_errors,
@@ -606,6 +624,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             autocomplete="off",
                         )
                     ),
+                    vol.Required(
+                        CONF_ENTITY_MODE,
+                        default=user_input.get(CONF_ENTITY_MODE, ENTITY_MODE_ALL),
+                    ): ENTITY_MODE_SELECTOR,
                 }
             ),
             errors=errors,
@@ -773,6 +795,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             autocomplete="off",
                         )
                     ),
+                    vol.Required(
+                        CONF_ENTITY_MODE,
+                        default=user_input.get(CONF_ENTITY_MODE, ENTITY_MODE_ALL),
+                    ): ENTITY_MODE_SELECTOR,
                 }
             ),
             errors=_errors,
@@ -976,6 +1002,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             autocomplete="off",
                         )
                     ),
+                    vol.Required(
+                        CONF_ENTITY_MODE,
+                        default=user_input.get(CONF_ENTITY_MODE, ENTITY_MODE_ALL),
+                    ): ENTITY_MODE_SELECTOR,
                 }
             ),
         )
@@ -1121,6 +1151,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             autocomplete="off",
                         )
                     ),
+                    vol.Required(
+                        CONF_ENTITY_MODE,
+                        default=user_input.get(CONF_ENTITY_MODE, ENTITY_MODE_ALL),
+                    ): ENTITY_MODE_SELECTOR,
                 }
             ),
         )
@@ -1160,6 +1194,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_ZONES_AWAY: existing_entry.data.get(CONF_ZONES_AWAY, ""),
                         CONF_ZONES_NIGHT: existing_entry.data.get(CONF_ZONES_NIGHT, ""),
                         CONF_PIN: existing_entry.data.get(CONF_PIN, ""),
+                        CONF_ENTITY_MODE: existing_entry.data.get(
+                            CONF_ENTITY_MODE, ENTITY_MODE_ALL
+                        ),
                     }
                     validated_data = await validate_input(self.hass, True, data)
                 else:
@@ -1177,6 +1214,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_ZONES_AWAY: existing_entry.data.get(CONF_ZONES_AWAY, ""),
                         CONF_ZONES_NIGHT: existing_entry.data.get(CONF_ZONES_NIGHT, ""),
                         CONF_PIN: existing_entry.data.get(CONF_PIN, ""),
+                        CONF_ENTITY_MODE: existing_entry.data.get(
+                            CONF_ENTITY_MODE, ENTITY_MODE_ALL
+                        ),
                     }
                     validated_data = await validate_input(self.hass, False, data)
 
@@ -1323,6 +1363,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         default_zone_night = ""
         default_refresh_interval = "30"
         default_pin = ""
+        default_entity_mode = self.config_entry.data.get(
+            CONF_ENTITY_MODE, ENTITY_MODE_ALL
+        )
         if CONF_ZONES_HOME in self.config_entry.data:
             default_zone_home = self.config_entry.data[CONF_ZONES_HOME]
 
@@ -1344,6 +1387,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             default_zone_night = user_input.get(CONF_ZONES_NIGHT, "")
             default_refresh_interval = user_input.get(CONF_REFRESH_INTERVAL, "30")
             default_pin = user_input.get(CONF_PIN, "")
+            default_entity_mode = user_input.get(CONF_ENTITY_MODE, default_entity_mode)
 
             try:
                 # Validate zones
@@ -1384,6 +1428,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 updated_data[CONF_ZONES_NIGHT] = default_zone_night
                 updated_data[CONF_REFRESH_INTERVAL] = default_refresh_interval
                 updated_data[CONF_PIN] = default_pin
+                updated_data[CONF_ENTITY_MODE] = default_entity_mode
 
                 # Update entry
                 self.hass.config_entries.async_update_entry(
@@ -1469,6 +1514,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                             autocomplete="off",
                         )
                     ),
+                    vol.Required(
+                        CONF_ENTITY_MODE, default=default_entity_mode
+                    ): ENTITY_MODE_SELECTOR,
                 }
             ),
             errors=_errors,
