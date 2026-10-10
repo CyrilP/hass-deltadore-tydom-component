@@ -1043,6 +1043,12 @@ class TydomBoiler(TydomDevice):
             self._id, self._endpoint, "thermicLevel", level
         )
 
+    async def set_local_mode(self, mode):
+        """Set a zone's localMode order (NORMAL/ANTI_FROST/STOP/ABSENCE)."""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "localMode", mode
+        )
+
     async def set_fan_speed(self, speed) -> None:
         """Set a manual fan speed on a Naviclim (X3D) HVAC zone.
 
