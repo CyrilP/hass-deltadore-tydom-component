@@ -729,7 +729,14 @@ class GenericSensor(SensorEntity):
         self._attr_device_class = device_class
         self._attr_state_class = state_class
         self._attr_native_unit_of_measurement = unit_of_measurement
-        if attribute in self.diagnostic_attrs:
+        # Every generic value exposed by the TYDOM gateway itself (firmware and
+        # library versions, site identifier, internal counters, ...) is
+        # diagnostic metadata rather than a user-facing measurement. Categorise
+        # the gateway's generic sensors wholesale so firmware fields that are not
+        # individually listed in ``diagnostic_attrs`` (e.g. ``libwebsocketsVersion``,
+        # ``LwIPVersion``, ``MbedTLSVersion``, ``siteId``) are not surfaced as
+        # regular sensors.
+        if attribute in self.diagnostic_attrs or isinstance(device, Tydom):
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
         # Weather-specific labels must survive generic capability naming.
@@ -1215,10 +1222,16 @@ class GenericBinarySensor(BinarySensorBase):
         )
         self.entity_description = entity_description
         self._attr_device_class = device_class
-        # Apply the same raw-attribute category for scalar and binary readings.
-        if attribute in GenericSensor.diagnostic_attrs or device_class in (
-            BinarySensorDeviceClass.PROBLEM,
-            BinarySensorDeviceClass.UPDATE,
+        # Apply the same raw-attribute category for scalar and binary readings,
+        # and treat every generic reading of the gateway itself as diagnostic.
+        if (
+            attribute in GenericSensor.diagnostic_attrs
+            or isinstance(device, Tydom)
+            or device_class
+            in (
+                BinarySensorDeviceClass.PROBLEM,
+                BinarySensorDeviceClass.UPDATE,
+            )
         ):
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
