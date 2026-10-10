@@ -326,7 +326,11 @@
         "alarm_control_panel": {},
         "lock": {},
         "weather": {},
-        "update": {},
+        "update": {
+            "firmware": {
+                "name": "Firmware"
+            }
+        },
         "sensor": {
             "tywell_weather_condition": {"name": "Počasí"},
             "tywell_weather_outdoor_temperature": {"name": "Venkovní teplota"},

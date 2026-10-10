@@ -1901,7 +1901,11 @@
         "alarm_control_panel": {},
         "lock": {},
         "weather": {},
-        "update": {},
+        "update": {
+            "firmware": {
+                "name": "Firmware"
+            }
+        },
         "sensor": {
             "absence": {
                 "name": "Mode absence"
