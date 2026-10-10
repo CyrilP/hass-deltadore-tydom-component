@@ -326,7 +326,11 @@
         "alarm_control_panel": {},
         "lock": {},
         "weather": {},
-        "update": {},
+        "update": {
+            "firmware": {
+                "name": "Fastvare"
+            }
+        },
         "sensor": {
             "tywell_weather_condition": {"name": "Vær"},
             "tywell_weather_outdoor_temperature": {"name": "Utetemperatur"},

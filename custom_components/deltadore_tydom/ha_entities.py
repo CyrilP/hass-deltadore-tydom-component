@@ -1664,8 +1664,14 @@ class HATydom(UpdateEntity, HAEntity):
     _attr_title = "Tydom"
 
     _ha_device = None
-    _attr_has_entity_name = False
-    _attr_entity_category = None
+    # Show the entity as "Firmware" (via translation_key) prefixed by the device
+    # name, like ZHA. has_entity_name keeps the already-registered entity_id
+    # stable for existing installs.
+    _attr_has_entity_name = True
+    _attr_translation_key = "firmware"
+    # Place the firmware "Up-to-date" entity in the Configuration section of the
+    # device page (like ZHA/Zigbee) instead of Controls.
+    _attr_entity_category = EntityCategory.CONFIG
     entity_description: str
 
     _attr_should_poll = False
@@ -1719,7 +1725,6 @@ class HATydom(UpdateEntity, HAEntity):
         self._attr_supported_features = UpdateEntityFeature.INSTALL
         self._attr_device_class = UpdateDeviceClass.FIRMWARE
         self._attr_unique_id = f"{self._device.device_id}"
-        self._attr_name = self._device.device_name
         self._registered_sensors = []
         # Track which protocol/geoloc/clock sensors have been created to avoid duplicates
         self._created_protocol_sensors: set[str] = set()
