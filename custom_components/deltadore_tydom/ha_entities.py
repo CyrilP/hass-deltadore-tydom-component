@@ -3326,7 +3326,13 @@ class HaClimate(ClimateEntity, HAEntity):
         if self._uses_local_mode:
             if preset_mode == PRESET_AWAY:
                 await self._device.set_local_mode("ABSENCE")
-            elif preset_mode == PRESET_NONE:
+            elif (
+                preset_mode == PRESET_NONE
+                and getattr(self._device, "localMode", None) == "ABSENCE"
+            ):
+                # Clearing the preset lifts ABSENCE only.  A zone parked at
+                # ANTI_FROST or STOP is off, and writing NORMAL there would
+                # switch heating on as a side effect of clearing a preset.
                 await self._device.set_local_mode("NORMAL")
             return
         if getattr(self, "_is_filpilote", False):

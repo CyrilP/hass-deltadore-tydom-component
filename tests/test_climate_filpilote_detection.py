@@ -608,6 +608,8 @@ class AbsencePresetTests(IsolatedAsyncioTestCase):
         await entity.async_set_preset_mode(entities_module.PRESET_AWAY)
 
         client.put_devices_data.assert_not_awaited()
+
+
 class LocalModeZoneTests(IsolatedAsyncioTestCase):
     """X3D heating zones that carry their state in `localMode`.
 
@@ -906,6 +908,29 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
         client.put_devices_data.assert_awaited_once_with(
             "20", "10", "localMode", "ABSENCE"
         )
+
+    async def test_clearing_the_preset_does_not_switch_an_off_zone_on(self) -> None:
+        """Clearing a preset on an off zone must leave it off.
+
+        ANTI_FROST and STOP both read as off, so writing NORMAL there would
+        turn heating on as a side effect of clearing a preset.
+        """
+        for off_mode in ("ANTI_FROST", "STOP"):
+            with self.subTest(local_mode=off_mode):
+                entity, client = self._zone(local_mode=off_mode)
+
+                await entity.async_set_preset_mode(entities_module.PRESET_NONE)
+
+                client.put_devices_data.assert_not_awaited()
+                self.assertEqual(entity.hvac_mode, HVACMode.OFF)
+
+    async def test_clearing_the_preset_on_a_running_zone_writes_nothing(self) -> None:
+        """A NORMAL zone has no preset to clear, so there is nothing to write."""
+        entity, client = self._zone(local_mode="NORMAL")
+
+        await entity.async_set_preset_mode(entities_module.PRESET_NONE)
+
+        client.put_devices_data.assert_not_awaited()
 
     async def test_preset_none_returns_the_zone_to_normal(self) -> None:
         """Clearing the preset lifts ABSENCE rather than doing nothing."""
