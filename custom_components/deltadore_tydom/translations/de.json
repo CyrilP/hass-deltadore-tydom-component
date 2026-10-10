@@ -2365,6 +2365,9 @@
             },
             "zones": {
                 "name": "Alarmzonen"
+            },
+            "climate_command_pending": {
+                "name": "Befehl ausstehend"
             }
         },
         "number": {
@@ -3913,6 +3916,14 @@
             "tywell_shutters_night": {
                 "name": "Rollläden Nacht"
             }
+        }
+    },
+    "exceptions": {
+        "invalid_target_temperature": {
+            "message": "Die Solltemperatur muss eine endliche Zahl sein."
+        },
+        "target_temperature_out_of_range": {
+            "message": "Die angeforderte Temperatur {temperature} liegt außerhalb der Gerätegrenzen ({minimum} bis {maximum})."
         }
     },
     "device": {

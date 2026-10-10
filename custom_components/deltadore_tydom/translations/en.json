@@ -4266,6 +4266,9 @@
             },
             "zones": {
                 "name": "Alarm zones"
+            },
+            "climate_command_pending": {
+                "name": "Command pending"
             }
         },
         "group": {},
@@ -4274,6 +4277,14 @@
             "association_name": {
                 "name": "Device name (optional)"
             }
+        }
+    },
+    "exceptions": {
+        "invalid_target_temperature": {
+            "message": "The target temperature must be a finite number."
+        },
+        "target_temperature_out_of_range": {
+            "message": "The requested temperature {temperature} is outside the device limits ({minimum} to {maximum})."
         }
     },
     "device": {

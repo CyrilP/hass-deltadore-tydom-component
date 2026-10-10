@@ -4267,6 +4267,9 @@
             },
             "zones": {
                 "name": "Zones d’alarme"
+            },
+            "climate_command_pending": {
+                "name": "Commande en attente"
             }
         },
         "group": {},
@@ -4275,6 +4278,14 @@
             "association_name": {
                 "name": "Nom de l’appareil (facultatif)"
             }
+        }
+    },
+    "exceptions": {
+        "invalid_target_temperature": {
+            "message": "La température de consigne doit être un nombre fini."
+        },
+        "target_temperature_out_of_range": {
+            "message": "La température demandée {temperature} est hors des limites de l’appareil ({minimum} à {maximum})."
         }
     },
     "device": {

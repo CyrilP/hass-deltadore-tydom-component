@@ -257,6 +257,8 @@ devices_module = _load(
 )
 TydomBoiler = devices_module.TydomBoiler
 
+_load("custom_components.deltadore_tydom.climate_commands", "climate_commands.py")
+
 entities_module = _load(
     "custom_components.deltadore_tydom.ha_entities", "ha_entities.py"
 )

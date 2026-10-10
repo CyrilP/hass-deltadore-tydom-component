@@ -2365,6 +2365,9 @@
             },
             "zones": {
                 "name": "Zonas de alarme"
+            },
+            "climate_command_pending": {
+                "name": "Comando pendente"
             }
         },
         "number": {
@@ -3913,6 +3916,14 @@
             "tywell_shutters_night": {
                 "name": "Estores de noite"
             }
+        }
+    },
+    "exceptions": {
+        "invalid_target_temperature": {
+            "message": "A temperatura pretendida deve ser um número finito."
+        },
+        "target_temperature_out_of_range": {
+            "message": "A temperatura solicitada {temperature} está fora dos limites do dispositivo ({minimum} a {maximum})."
         }
     },
     "device": {
