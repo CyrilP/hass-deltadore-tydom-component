@@ -15,6 +15,11 @@ from homeassistant.helpers.entity import EntityDescription
 
 ENTITY_NAMES: dict[str, str] = {
     "climate_command_pending": "Command pending",
+    "tywell_weather_condition": "Weather",
+    "tywell_weather_daily_power": "Daily power",
+    "tywell_weather_max_daily_outdoor_temperature": "Daily maximum outdoor temperature",
+    "tywell_weather_outdoor_temperature": "Outdoor temperature",
+    "tywell_weather_power": "Power",
     "absence": "Away mode",
     "absencesetpoint": "Away temperature",
     "absmaxcoolsetpoint": "Maximum cooling setpoint",
@@ -539,6 +544,7 @@ ENTITY_NAMES: dict[str, str] = {
     "thermicdefect": "Overheat",
     "thermiclevel": "Heating level",
     "thermostat": "Thermostat",
+    "thermostat_use_mode": "Thermostat operating mode",
     "timedelay": "Time delay",
     "timeoncpt": "Operating time counter",
     "timezone": "Time zone",

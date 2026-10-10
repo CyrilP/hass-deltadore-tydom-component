@@ -26,7 +26,7 @@ passerelle Delta Dore peut être détectée par découverte DHCP.
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Dépannage](#dépannage)
-- [Association, identification et dissociation radio — nouveauté en cours de validation](#association-identification-et-dissociation-radio--nouveauté-en-cours-de-validation)
+- [Association, identification et dissociation radio](#association-identification-et-dissociation-radio)
 - [Guides d'association illustrés](#guides-dassociation-illustrés)
 - [Capturer les données d'un appareil non pris en charge](#capturer-les-données-dun-appareil-non-pris-en-charge)
 - [Gestion à distance TYXAL+](#gestion-à-distance-tyxal)
@@ -51,7 +51,7 @@ Plateforme | Description
 `select` | Modifie les paramètres à choix multiple exposés par un appareil.
 `sensor` | Indique les mesures et informations des appareils.
 `switch` | Pilote les sorties binaires, prises et moments TYDOM.
-`update` | Signale et installe les mises à jour du micrologiciel TYDOM prises en charge ; la passerelle ne fournit pas la version cible.
+`update` | Signale les mises à jour du micrologiciel annoncées par TYDOM et permet de lancer l’installation ; la version cible n’étant pas fournie, Home Assistant affiche `latest`.
 `weather` | Indique les informations météorologiques.
 
 ### Fonctionnalités principales
@@ -77,6 +77,32 @@ Plateforme | Description
 - Ajoute, identifie et dissocie proprement les produits radio compatibles
   depuis la page de la passerelle, avec des guides propres à chaque modèle et
   une actualisation automatique de l'inventaire après succès.
+
+- Expose l'humidité actuelle sur les entités de climat lorsque TYDOM annonce
+  `hygroIn`, ainsi qu'un capteur d'humidité natif lorsque cette mesure est
+  fournie. Le mode Absence de TYDOM correspond à la présélection Away de Home
+  Assistant lorsqu'il est annoncé ou reçu ; les commandes ne sont permises que
+  si les métadonnées l'indiquent comme modifiable. `ANTI_FROST` correspond
+  à Frost sur les thermostats de zone réversibles.
+- Préserve les consignes de climat modifiables des zones Tywell Control et
+  Typass ATL lorsque les données arrivent avant les métadonnées facultatives.
+  Regroupe les scénarios de volets par contrôleur et cibles exactes, afin qu'un
+  Tywell Control ne remplace pas les commandes d'un autre.
+- Partage un seul appareil météo lorsque plusieurs Tywell Control utilisent le
+  même point de terminaison, avec l'entité météo et ses capteurs associés.
+  Les relevés comprennent la température extérieure, les conditions météo,
+  les puissances actuelle et quotidienne et la température extérieure maximale
+  du jour.
+- Expose une entité de mise à jour Home Assistant lorsque la passerelle signale
+  une mise à jour du micrologiciel. L'installation utilise la commande de mise
+  à jour TYDOM ; la version cible n'étant pas fournie, Home Assistant affiche
+  `latest`.
+- Télécharge les diagnostics de l'intégration et de chaque appareil. Ils
+  utilisent les données déjà détenues par l'intégration ; Home Assistant masque
+  les champs sensibles connus.
+- Utilise `deltadore_tydom.set_mode_using_stored_pin` dans les automatisations
+  pour armer ou désarmer TYXAL+ avec le PIN enregistré pour cette entrée. Le
+  panneau d'alarme manuel continue de demander le PIN.
 
 ### Matériel testé
 
@@ -174,9 +200,38 @@ Mot de passe TYDOM | Mode manuel | Mot de passe de la passerelle, différent du 
 Intervalle de rafraîchissement | Oui | Intervalle de rafraîchissement périodique compris entre 1 et 1 440 minutes ; la valeur par défaut est de 30 minutes. Les événements transmis en temps réel restent actifs entre les rafraîchissements.
 Zones Présent, Absent et Nuit | Non | Identifiants de zones TYXAL compris entre 0 et 8, séparés par des virgules, par exemple `1,2,4`. Chaque champ définit les zones armées par le mode d'alarme Home Assistant correspondant.
 Code PIN de l'alarme | Non | Nécessaire pour modifier le mode de l'alarme depuis Home Assistant ; inutile pour consulter uniquement son état.
+Mode des entités | Oui | **Complet (toutes les entités)** par défaut, ou **Simplifié (entités essentielles)** pour désactiver les entités techniques.
 
 Après la configuration, ouvrez le menu **Configurer** de l'intégration pour
-modifier l'intervalle de rafraîchissement, les zones d'alarme ou le code PIN.
+modifier l'intervalle de rafraîchissement, les zones d'alarme, le code PIN ou le mode des entités.
+
+### Mode complet ou simplifié
+
+Choisissez ce mode pendant la configuration initiale ou ensuite dans
+**Configurer → Configurer**. Il s'applique à tous les appareils de cette entrée
+d'intégration.
+
+- **Complet** conserve les réglages habituels des entités ; une mise à jour ne
+  modifie pas les installations existantes.
+- **Simplifié** conserve les commandes quotidiennes et les mesures utiles :
+  éclairages, volets, réglages du chauffage, événements des boutons de
+  télécommande, détection d'ouverture, de fumée et de fuite, températures et
+  mesures d'énergie. L'état de l'alarme, les événements en attente, les défauts
+  de pile et de transmission restent disponibles, ainsi que les alertes de pile
+  des détecteurs de fumée. Les registres techniques, informations de firmware et
+  commandes de maintenance/configuration sont désactivés.
+
+Les entités désactivées restent dans le registre Home Assistant avec les mêmes
+identifiants. Réactivez celles dont vous avez besoin dans **Paramètres → Appareils
+et services → Entités**, avec le filtre des entités désactivées. Les changements
+individuels sont conservés lors d'un rechargement des appareils ou d'un
+redémarrage de Home Assistant.
+
+Passer une installation existante en mode simplifié désactive aussi ses entités
+techniques : vérifiez auparavant les automatisations et tableaux de bord qui
+les utilisent. Revenir au mode complet réactive uniquement les entités
+désactivées par ce mode, pas celles désactivées manuellement ni les commandes
+désactivées par défaut.
 
 ### Appairer en local avec le bouton de la passerelle
 
@@ -204,8 +259,19 @@ cloud/médiation continue à utiliser sa propre connexion configurée.
 
 Les mesures, réglages, diagnostics et commandes de la passerelle portent des
 noms explicites pour toutes les familles d’appareils prises en charge. Les noms
-sont disponibles en français, anglais britannique, allemand, espagnol, italien,
-portugais, néerlandais et polonais, selon la langue de Home Assistant.
+sont traduits pour toutes les familles en français, anglais britannique,
+allemand, espagnol, italien, portugais, néerlandais et polonais, selon la langue
+de Home Assistant. Les ressources en tchèque et en norvégien bokmål ajoutent
+aussi l'appareil météo partagé de Tywell et ses relevés, ainsi que certains noms
+de capteurs et d'entités de diagnostic courants. La couverture varie selon
+l'entité parmi les dix locales ; les libellés sans traduction restent en
+anglais.
+
+Les huit capteurs de distribution et d'index du TYWATT 1000 RT 2012
+utilisent la terminologie Delta Dore en français, anglais, allemand, espagnol,
+italien et portugais ; le néerlandais et le polonais utilisent les libellés
+anglais. Ces noms ne modifient ni les attributs du protocole ni les identifiants
+des entités.
 
 Les noms des appareils et scènes choisis dans TYDOM, ainsi que les noms
 personnalisés dans Home Assistant, sont conservés. Les identifiants existants et
@@ -220,6 +286,37 @@ L’entité climate utilise les limites actuelles de chauffage ou de refroidisse
 Le capteur binaire de diagnostic **Commande en attente** s’active lorsque Home Assistant envoie une demande de mode, de consigne ou de préréglage. L’entité climate conserve les valeurs remontées par le thermostat : la fin de l’envoi réseau ne confirme pas le changement physique. L’indicateur se désactive lorsqu’une mise à jour TYDOM rapporte la valeur demandée, ou si l’envoi échoue. Plusieurs demandes en attente sont confirmées séparément.
 
 Après deux minutes sans retour correspondant, le statut devient `unconfirmed` et l’indicateur reste actif. Cela ne prouve pas que la commande a échoué. Aucune nouvelle commande n’est envoyée automatiquement. Les valeurs demandées et `command_status` sont aussi disponibles dans les attributs climate. Les demandes en attente sont effacées au déchargement de l’intégration.
+
+### Entités de diagnostic
+
+Les compteurs internes (`activationCpt`, `activationIndex`, `indexTimeOn`,
+`timeOnCpt`), identifiants d'appareil et de zone (`uid`, `area_id`), registres de
+tâches (`jobs`, `jobsMP`, `jobsRM`), états de délestage (`loadSheddingOn`) et de
+maintenance (`maintenanceNeeded`) apparaissent dans la section **Diagnostic**
+de Home Assistant lorsqu'ils sont fournis par l'appareil. Ce classement
+s'applique aux capteurs et capteurs binaires de toutes les familles d'appareils.
+
+Ces entités conservent leurs identifiants et leurs valeurs pour les
+automatisations existantes. Ce classement ne les désactive pas et ne modifie
+pas vos choix d'activation ou de désactivation. Température, humidité, consignes
+et réglages de fonctionnement restent dans la vue principale.
+
+### Mode de fonctionnement du thermostat
+
+Lorsque TYDOM remonte `useMode`, le nouveau capteur Enum **Mode du thermostat** affiche **Programmation**, **Dérogation** ou **Manuel** dans la section principale Capteurs. Il suit le retour réel de l’appareil, avec des libellés dans les dix langues prises en charge. Ses états HA sont `sched`, `override` et `manual`, car les traductions natives des états exigent des clés en minuscules.
+
+Le capteur **Mode de fonctionnement** existant conserve son identifiant et les états bruts `SCHED`, `OVERRIDE` et `MANUAL` pour les automatisations existantes. Les deux capteurs observent le même registre sans envoyer de commande ni modifier la programmation. Une valeur ajoutée par un futur firmware reste visible en minuscules dans le nouveau capteur Enum ; le capteur d’origine conserve sa valeur brute exacte.
+Les mesures de l'API, du protocole, des versions logicielles et de l'état des
+mises à jour de la passerelle sont également diagnostiques lorsqu'elles sont
+disponibles.
+
+### Télécharger les diagnostics
+
+Téléchargez les diagnostics depuis la page de configuration de l'intégration ou
+depuis la page d'un appareil. Le fichier est constitué de données déjà détenues
+en mémoire par l'intégration et ne déclenche aucune requête supplémentaire vers
+la passerelle. Home Assistant masque les champs sensibles connus ; vérifiez
+néanmoins le fichier avant de le partager publiquement.
 
 ## Dépannage
 
@@ -240,6 +337,11 @@ logger:
   logs:
     custom_components.deltadore_tydom: debug
 ```
+
+Toutes les passerelles et tous les produits ne prennent pas en charge les
+points de terminaison TYDOM facultatifs. Leur absence est journalisée au niveau
+DEBUG ; les erreurs HTTP des requêtes réellement exécutées restent des
+avertissements.
 
 ### Erreurs d'authentification et de communication
 
@@ -294,7 +396,7 @@ apparaître comme **Indisponible** ou **Plus fournie**. Vérifiez que l'appareil
 de remplacement est présent et fonctionne avant d'utiliser **Supprimer
 l'appareil**.
 
-## Association, identification et dissociation radio — nouveauté en cours de validation
+## Association, identification et dissociation radio
 
 La carte **Configuration** de l'appareil passerelle TYDOM/Tywell fournit les
 commandes de gestion radio. Elles agissent sur la passerelle physique : ce ne
@@ -347,12 +449,14 @@ gestion ; elles ne modifient pas les automatisations existantes.
 
 ## Guides d'association illustrés
 
-L'association et la dissociation guidées seront incluses dans la prochaine
-version. Cette fonctionnalité reste en cours de validation : les guides
-ci-dessous sont confirmés sur le type de passerelle indiqué, tandis que la
-prise en charge des autres produits compatibles est ajoutée et doit encore
-être confirmée sur le matériel. Sélectionnez le produit et la voie concernés
-dans Home Assistant, puis suivez les étapes illustrées dans l'ordre.
+L'association guidée est disponible dans Home Assistant. Les fiches ci-dessous
+adaptent les procédures officielles des appareils au parcours Home Assistant.
+La validation matérielle concerne uniquement les produits et types de
+passerelle explicitement indiqués comme confirmés ; d'autres produits
+compatibles peuvent proposer un guide officiel sans avoir encore été testés
+sur matériel. Sélectionnez le produit et la voie dans Home Assistant, puis
+suivez les étapes dans l'ordre. Cliquez sur **Lancer l'écoute de la passerelle**
+uniquement lorsque le guide arrive à cette étape.
 
 <details>
 <summary><strong>Interrupteur mural TYXIA 2600 — Bouton A ou B — Passerelle confirmée : Tywell Pro</strong></summary>
@@ -521,6 +625,31 @@ passerelle.
 
 </details>
 
+<details>
+<summary><strong>Tywell Control — Passerelle confirmée : Tywell Pro</strong></summary>
+
+1. Dans Home Assistant, ouvrez la page de la passerelle TYDOM/Tywell,
+   sélectionnez la recette d'association **Tywell Control**, puis affichez le
+   **Guide d'association**.
+2. Sur le Tywell Control, mettez la box Tywell en mode association comme
+   indiqué. Le guide officiel montre l'écran de la commande ci-dessous.
+
+   <img src="docs/images/association/catalog_tywell_control_step1.svg" width="48%" alt="Écran du Tywell Control illustré à l'étape officielle d'association">
+
+3. Une fois la box Tywell en mode association, cliquez sur **Lancer l'écoute
+   de la passerelle** dans Home Assistant. Ne démarrez pas l'écoute avant
+   cette étape.
+4. Une barre de progression s'affiche directement sur le Tywell Control
+   pendant l'association. Attendez le message confirmant sa réussite.
+
+   <img src="docs/images/association/catalog_tywell_control_step2.svg" width="48%" alt="Barre de progression affichée sur le Tywell Control pendant l'association">
+
+5. Home Assistant découvre le nouveau contrôleur et actualise automatiquement
+   l'inventaire de la passerelle. Ce parcours a été validé pour un second
+   Tywell Control sur une passerelle Tywell Pro.
+
+</details>
+
 ## Capturer les données d'un appareil non pris en charge
 
 Le dépôt fournit un outil de capture en lecture seule destiné à documenter les
@@ -604,6 +733,47 @@ configuration des sirènes ne sont pas exposés.
 Assistant. Utilisez-le uniquement après avoir vérifié les défauts signalés et
 déterminé qu'un armement forcé est approprié.
 
+### Automatisations utilisant le PIN d'alarme mémorisé
+
+L'action facultative `deltadore_tydom.set_mode_using_stored_pin` permet à
+une automatisation d'armer ou de désarmer avec le **Code PIN de l'alarme**
+enregistré dans les paramètres de l'intégration de l'alarme ciblée, sans le
+recopier dans chaque automatisation. Choisissez `away` (Absent), `home`
+(Présent), `night` (Nuit) ou `disarm` (Désarmer). L'armement utilise les zones
+configurées pour le mode choisi. Sans PIN enregistré, l'action échoue sans
+envoyer de commande à l'alarme.
+
+```yaml
+action: deltadore_tydom.set_mode_using_stored_pin
+target:
+  entity_id: alarm_control_panel.tyxal_alarm
+data:
+  mode: night
+```
+
+Utilisez `mode: disarm` pour désarmer avec le même PIN mémorisé. Avec plusieurs
+entrées de l'intégration TYDOM, chaque alarme ciblée utilise le PIN de sa
+propre entrée.
+
+L'entité d'alarme, son identifiant et les actions standard
+`alarm_control_panel` restent inchangés. Le panneau d'alarme standard de Home
+Assistant continue de demander le code avec sa configuration actuelle. Les
+automatisations existantes qui fournissent un code continuent de fonctionner ;
+l'utilisation de cette nouvelle action est facultative.
+
+**Sécurité :** un utilisateur autorisé à appeler cette action peut armer ou
+désarmer sans ressaisir le PIN. Limitez l'accès à Home Assistant et vérifiez
+les déclencheurs des automatisations en conséquence. Il s'agit d'un armement
+normal, jamais forcé : les défauts et refus de la passerelle sont toujours
+traités par le fonctionnement existant. L'action n'expose pas le PIN mémorisé
+dans sa réponse ou les attributs de l'entité.
+
+Cette fonctionnalité concerne les actions et automatisations Home Assistant.
+Elle n'ajoute ni ne configure de support HomeKit, ne modifie pas les appels
+du pont HomeKit et ne garantit pas le fonctionnement depuis Apple Maison.
+La réussite d'une commande ne valide pas à elle seule le support complet
+d'un nouveau Hub d'alarme.
+
 ### Produits empêchant l'armement
 
 `deltadore_tydom.get_open_issues` interroge la centrale pour obtenir les
@@ -669,9 +839,11 @@ attributs décrivent la dernière transition d'armement ou de désarmement reçu
   cadence. L'actualisation ou l'interrogation de la passerelle ne peut pas
   forcer un appareil endormi à transmettre une valeur plus récente.
 - Un nom de modèle exact n'est affiché que lorsque TYDOM fournit des métadonnées
-  produit ou tutoriel fiables. Les autres appareils compatibles conservent un
-  nom de modèle Delta Dore générique plutôt que d'être identifiés à partir de
-  capacités trop générales.
+  produit ou tutoriel fiables. Par exemple, les métadonnées de tutoriel peuvent
+  identifier un Tybox Home RF 210, sans confirmer la prise en charge de tous ses
+  registres, présélections ou commandes. Les autres appareils compatibles
+  conservent un nom de modèle Delta Dore générique plutôt que d'être identifiés
+  à partir de capacités trop générales.
 - L'outil de capture enregistre les messages renvoyés ou publiés par la
   passerelle. Il ne permet pas toujours d'identifier la requête sortante exacte
   envoyée par l'application mobile officielle.

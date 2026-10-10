@@ -16,4 +16,6 @@ async def async_setup_entry(
 ) -> None:
     """Set up binary sensors for Deltadore windows."""
     hub = hass.data[DOMAIN][config_entry.entry_id]
-    hub.add_binary_sensor_callback = async_add_entities
+    hub.add_binary_sensor_callback = hub.entity_profile.wrap_adder(
+        "binary_sensor", async_add_entities
+    )

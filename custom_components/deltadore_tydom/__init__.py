@@ -23,9 +23,12 @@ from .const import (
     CONF_ZONES_AWAY,
     CONF_ZONES_NIGHT,
     CONF_REFRESH_INTERVAL,
+    CONF_ENTITY_MODE,
+    ENTITY_MODE_ALL,
     LOGGER,
 )
 from .device_removal import can_remove_device
+from .entity_profile import EntityProfile
 from .ha_entities import ASSOCIATION_COMMAND, IDENTIFY_COMMAND, start_command
 from .hub import (
     remove_product_association,
@@ -555,6 +558,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # This creates each HA object for each platform your device requires.
     # It's done by calling the `async_setup_entry` function in each platform module.
+    tydom_hub.entity_profile = EntityProfile(hass, entry)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
@@ -609,4 +613,7 @@ async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
         entry.data[CONF_ZONES_HOME],
         entry.data[CONF_ZONES_AWAY],
         entry.data[CONF_ZONES_NIGHT],
+    )
+    tydom_hub.entity_profile.async_set_mode(
+        entry.data.get(CONF_ENTITY_MODE, ENTITY_MODE_ALL)
     )

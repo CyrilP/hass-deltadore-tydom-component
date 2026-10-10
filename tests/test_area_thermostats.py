@@ -692,10 +692,10 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         self.assertEqual(weather.registry_device_id, "10_20")
         self.assertEqual(weather.registry_device_name, "Tywell Ctrl RdC")
 
-    async def test_weather_endpoint_stays_separate_when_controller_is_ambiguous(
+    async def test_weather_endpoint_is_grouped_with_all_tywell_controllers(
         self,
     ) -> None:
-        """Do not guess a physical parent when several Tywell controls exist."""
+        """Expose shared Tywell weather under every physical controller."""
         handler_module.device_name.update(
             {
                 "10_20": "Tywell Ctrl RdC",
@@ -720,8 +720,15 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         )
 
         self.assertIsInstance(weather, TydomWeather)
-        self.assertEqual(weather.registry_device_id, "30_40")
-        self.assertEqual(weather.registry_device_name, "Produit 1")
+        self.assertEqual(
+            weather.registry_device_targets,
+            (
+                ("10_20", "Tywell Ctrl RdC"),
+                ("11_21", "Tywell Ctrl Étage"),
+            ),
+        )
+        self.assertEqual(weather.registry_device_id, "10_20")
+        self.assertEqual(weather.registry_device_name, "Tywell Ctrl RdC")
 
     def test_registry_identity_is_always_a_string(self) -> None:
         """Home Assistant registry identifiers and names are normalised."""
@@ -971,6 +978,90 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
                 call("7", "setpoint", "21.5"),
             ],
         )
+
+    async def test_self_controlled_thermostat_is_not_area_bound(self) -> None:
+        """A writable-comfortMode endpoint owns its own state (#463).
+
+        The Tybox Home RF 210 reports its real mode on the device endpoint while
+        the area it is grouped into can hold a different/stale mode. Such an
+        endpoint must stay a standalone thermostat: no area_id, and its endpoint
+        state must not be shadowed by the area.
+        """
+        handler_module.device_type["10_20"] = "boiler"
+        handler_module.device_metadata["10_20"] = {
+            "authorization": {
+                "enum_values": ["STOP", "HEATING", "COOLING", "AUTO"],
+                "permission": "r",
+            },
+            "comfortMode": {
+                "enum_values": ["STOP", "HEATING", "COOLING"],
+                "permission": "w",
+            },
+        }
+        # The area advertises a different mode than the physical thermostat.
+        await self.handler.parse_areas_data(
+            [
+                {
+                    "id": 7,
+                    "data": [
+                        {
+                            "name": "authorization",
+                            "value": "HEATING",
+                            "validity": "upToDate",
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [
+                        {
+                            "id": 10,
+                            "error": 0,
+                            "link": {"type": "area", "id": 7},
+                            "data": [
+                                {
+                                    "name": "authorization",
+                                    "value": "COOLING",
+                                    "validity": "upToDate",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+
+        device = devices[0]
+        # Not bound to the area, and the endpoint's own COOLING state wins over
+        # the area's HEATING.
+        self.assertFalse(hasattr(device, "area_id"))
+        self.assertEqual(device.authorization, "COOLING")
+
+        # A later area push must not reach the standalone thermostat.
+        pushed = await self.handler.parse_areas_data(
+            [
+                {
+                    "id": 7,
+                    "data": [
+                        {
+                            "name": "authorization",
+                            "value": "HEATING",
+                            "validity": "upToDate",
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+        self.assertEqual(pushed, [])
+        self.assertEqual(device.authorization, "COOLING")
 
     async def test_reversible_area_uses_mode_specific_setpoint(self) -> None:
         """A reversible system writes the register matching its current mode."""

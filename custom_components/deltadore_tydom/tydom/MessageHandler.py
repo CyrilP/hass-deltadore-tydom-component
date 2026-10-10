@@ -119,7 +119,7 @@ def _parse_energy_cdata_element(element: Any) -> dict[str, int | float]:
             return {}
         return {f"{name}_{unit}": measure / _ENERGY_INSTANT_DIVISORS[unit]}
 
-    if name in {"energyDistrib", "energyHisto"}:
+    if name == "energyDistrib":
         return {
             f"{name}_{key}": value
             for key, value in values.items()
@@ -542,6 +542,24 @@ def _refresh_interrupter_info() -> None:
                 "button": button,
                 "configured_action": config.get("configured_action", "TOGGLE"),
             }
+
+
+def _has_writable_comfort_mode(metadata: dict[str, Any] | None) -> bool:
+    """Return whether an endpoint drives its own thermostat via comfortMode.
+
+    A writable ``comfortMode`` register means the endpoint accepts heat/cool/
+    stop commands directly and reports its own mode and setpoints. Such a
+    thermostat is authoritative on its own endpoint and must not be treated as a
+    passive member of the area it is grouped into. (#463, Tybox Home RF 210)
+    """
+    if not isinstance(metadata, dict):
+        return False
+    comfort_mode = metadata.get("comfortMode")
+    return (
+        isinstance(comfort_mode, dict)
+        and "w" in comfort_mode.get("permission", "")
+        and bool(comfort_mode.get("enum_values"))
+    )
 
 
 class MessageHandler:
@@ -1241,11 +1259,15 @@ class MessageHandler:
                         device_metadata.get(controller_uid),
                     )
                 ]
-                if len(physical_controllers) == 1:
-                    controller_uid = physical_controllers[0]
-                    weather_device.group_with_registry_device(
-                        controller_uid,
-                        device_name.get(controller_uid, "Tywell Control"),
+                if physical_controllers:
+                    weather_device.group_with_registry_devices(
+                        [
+                            (
+                                controller_uid,
+                                device_name.get(controller_uid, "Tywell Control"),
+                            )
+                            for controller_uid in physical_controllers
+                        ]
                     )
                 return weather_device
             case "sensorDF":
@@ -1503,22 +1525,6 @@ class MessageHandler:
                                             + "&unit="
                                             + unit
                                             + "&reset=false"
-                                        )
-                                        self.tydom_client.add_poll_device_url_5m(url)
-                                        LOGGER.debug("Add poll device : " + url)
-                        elif elem["name"] == "energyHisto":
-                            for params in elem["parameters"]:
-                                if params["name"] == "dest":
-                                    for dest in params["enum_values"]:
-                                        url = (
-                                            "/devices/"
-                                            + str(i["id"])
-                                            + "/endpoints/"
-                                            + str(endpoint["id"])
-                                            + "/cdata?name="
-                                            + elem["name"]
-                                            + "&period=YEAR&periodOffset=0&dest="
-                                            + dest
                                         )
                                         self.tydom_client.add_poll_device_url_5m(url)
                                         LOGGER.debug("Add poll device : " + url)
@@ -1888,6 +1894,19 @@ class MessageHandler:
                         passive_climate_uid = None
 
                         link = endpoint.get("link")
+                        # An endpoint that exposes a writable ``comfortMode``
+                        # drives its own thermostat (heat/cool/stop) directly, so
+                        # its ``/devices/data`` state and setpoints are
+                        # authoritative. Such a thermostat must not be bound to
+                        # the area it is merely grouped into: the area aggregates
+                        # a zone and can report a different/stale mode (e.g. a
+                        # Tybox Home RF 210 reporting COOLING on its endpoint
+                        # while the area still reads HEATING), which otherwise
+                        # shadows the real state and routes commands to the wrong
+                        # target. (#463)
+                        endpoint_controls_own_thermostat = _has_writable_comfort_mode(
+                            device_metadata.get(unique_id)
+                        )
                         if (
                             isinstance(link, dict)
                             and link.get("type") == "area"
@@ -1908,17 +1927,23 @@ class MessageHandler:
                                         area_id, device_metadata.get(unique_id, {})
                                     ).copy()
                                 )
+                            elif endpoint_controls_own_thermostat:
+                                # Keep it a standalone device endpoint: drop the
+                                # area binding so reads and writes target the real
+                                # thermostat endpoint rather than the zone.
+                                area_id = None
                             else:
                                 data["area_id"] = area_id
 
-                            reference = AreaDeviceReference(
-                                uid=reference_uid,
-                                device_id=str(device_id),
-                                endpoint_id=str(endpoint_id),
-                            )
-                            self._area_devices.setdefault(area_id, {})[
-                                reference_uid
-                            ] = reference
+                            if area_id is not None:
+                                reference = AreaDeviceReference(
+                                    uid=reference_uid,
+                                    device_id=str(device_id),
+                                    endpoint_id=str(endpoint_id),
+                                )
+                                self._area_devices.setdefault(area_id, {})[
+                                    reference_uid
+                                ] = reference
 
                         # Endpoint-level errors can accompany usable values. Trust
                         # each field's validity instead of discarding the full payload.

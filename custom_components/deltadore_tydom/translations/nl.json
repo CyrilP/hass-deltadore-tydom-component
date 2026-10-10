@@ -1605,6 +1605,29 @@
             },
             "zones": {
                 "name": "Alarmzones"
+            },
+            "tywell_weather_power": {
+                "name": "Vermogen"
+            },
+            "tywell_weather_condition": {
+                "name": "Weer"
+            },
+            "tywell_weather_outdoor_temperature": {
+                "name": "Buitentemperatuur"
+            },
+            "tywell_weather_daily_power": {
+                "name": "Dagelijks vermogen"
+            },
+            "tywell_weather_max_daily_outdoor_temperature": {
+                "name": "Dagelijkse maximale buitentemperatuur"
+            },
+            "thermostat_use_mode": {
+                "name": "Thermostaatmodus",
+                "state": {
+                    "sched": "Programma",
+                    "override": "Tijdelijke aanpassing",
+                    "manual": "Handmatig"
+                }
             }
         },
         "binary_sensor": {
@@ -3898,6 +3921,11 @@
         },
         "target_temperature_out_of_range": {
             "message": "De gevraagde temperatuur {temperature} valt buiten de apparaatgrenzen ({minimum} tot {maximum})."
+        }
+    },
+    "device": {
+        "tywell_weather": {
+            "name": "Weer"
         }
     }
 }

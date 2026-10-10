@@ -159,6 +159,35 @@ class ClimateSetpointPreservationTests(IsolatedAsyncioTestCase):
         self.assertEqual(device.setpoint, 20)
 
 
+    async def test_area_thermostat_uses_writable_comfort_mode(self) -> None:
+        """Use device-level comfortMode when the area thermostat exposes it."""
+        device, client = _boiler(
+            metadata={
+                "authorization": {
+                    "enum_values": ["STOP", "HEATING", "COOLING"],
+                    "permission": "r",
+                },
+                "comfortMode": {
+                    "enum_values": ["STOP", "HEATING", "COOLING"],
+                    "permission": "rw",
+                },
+            },
+            data={
+                "area_id": "42",
+                "authorization": "HEATING",
+                "comfortMode": "HEATING",
+                "setpoint": 21.5,
+            },
+        )
+
+        await device.set_hvac_mode("COOLING")
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "comfortMode", "COOLING"
+        )
+        client.put_area_data.assert_not_awaited()
+
+
 if __name__ == "__main__":
     import unittest
 

@@ -25,6 +25,7 @@ _CONFIRMED_TUTORIAL_MODELS = {
     "split_takao_type_1": "Atlantic Naviclim 875311",
     "split_takao_type_2": "Atlantic Naviclim 875311",
     "tysense_sun": "Tysense Sun",
+    "tybox_210_rf": "Tybox Home RF 210",
     "tywatt_serie1000": "TYWATT 1000",
     "tywell_control": "Tywell Control",
     "tywell_control_2050": "Tywell 2050",
@@ -358,6 +359,16 @@ class TydomDevice:
         return str(getattr(self, "_registry_device_name", self._name))
 
     @property
+    def registry_device_targets(self) -> tuple[tuple[str, str], ...]:
+        """Return all HA devices this protocol endpoint should be grouped with."""
+        targets = getattr(self, "_registry_device_targets", None)
+        if targets is not None:
+            return tuple(targets)
+        if self.registry_device_id != self.device_id:
+            return ((self.registry_device_id, self.registry_device_name),)
+        return ()
+
+    @property
     def is_physical_tywell_control(self) -> bool:
         """Return whether this endpoint represents a Tywell wall controller."""
         return is_physical_tywell_control_profile(
@@ -369,8 +380,19 @@ class TydomDevice:
 
     def group_with_registry_device(self, device_id: str, device_name: str) -> None:
         """Group this protocol endpoint with another physical HA device."""
-        self._registry_device_id = str(device_id)
-        self._registry_device_name = str(device_name)
+        self.group_with_registry_devices([(device_id, device_name)])
+
+    def group_with_registry_devices(
+        self, devices: list[tuple[str, str]] | tuple[tuple[str, str], ...]
+    ) -> None:
+        """Group this shared protocol endpoint with one or more physical devices."""
+        targets = tuple(
+            (str(device_id), str(device_name)) for device_id, device_name in devices
+        )
+        if not targets:
+            return
+        self._registry_device_targets = targets
+        self._registry_device_id, self._registry_device_name = targets[0]
 
     @property
     def battery_level_attributes(self) -> set[str]:
@@ -845,6 +867,16 @@ class TydomBoiler(TydomDevice):
             if area_mode is None:
                 LOGGER.error("Unknown area HVAC mode: %s", mode)
                 return
+
+            # Some area-linked thermostats expose the HVAC command
+            # through the writable comfortMode attribute.
+            if self._supports_command_value("comfortMode", area_mode):
+                await self._tydom_client.put_devices_data(
+                    self._id, self._endpoint, "comfortMode", area_mode
+                )
+                return
+
+            # Fallback for controllers using area authorization.
             await self._tydom_client.put_area_data(
                 self.area_id, "authorization", area_mode
             )

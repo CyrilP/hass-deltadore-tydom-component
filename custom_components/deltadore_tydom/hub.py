@@ -3094,11 +3094,65 @@ class Hub:
     async def _create_weather_device(self, device: TydomWeather) -> None:
         """Create weather device."""
         LOGGER.debug("Create weather %s", device.device_id)
-        ha_device = HaWeather(device, self._hass)
-        self.ha_devices[device.device_id] = ha_device
+        registry_targets = device.registry_device_targets
+        weather_entities = []
+        sensor_registry_targets = []
+        if len(registry_targets) > 1:
+            # One TYDOM weather endpoint can be shared by multiple Tywell Controls.
+            # Home Assistant allows only one parent device, so represent the
+            # endpoint once under its gateway instead of duplicating it under
+            # each controller.
+            weather_device_id = device.device_id
+            weather_device_name = "Weather"
+            sensor_registry_targets.append(
+                (weather_device_id, weather_device_name, "", None)
+            )
+            weather_entities.append(
+                HaWeather(
+                    device,
+                    self._hass,
+                    registry_device_id=weather_device_id,
+                    registry_device_name=weather_device_name,
+                    registry_translation_key="tywell_weather",
+                )
+            )
+        else:
+            for index, (registry_device_id, registry_device_name) in enumerate(
+                registry_targets
+            ):
+                unique_id_suffix = f"_shared_{registry_device_id}" if index > 0 else ""
+                weather_device_id = f"{device.device_id}_weather_{registry_device_id}"
+                weather_device_name = f"{registry_device_name} - Weather"
+                sensor_registry_targets.append(
+                    (
+                        weather_device_id,
+                        weather_device_name,
+                        unique_id_suffix,
+                        registry_device_id,
+                    )
+                )
+                weather_entities.append(
+                    HaWeather(
+                        device,
+                        self._hass,
+                        registry_device_id=weather_device_id,
+                        registry_device_name=weather_device_name,
+                        registry_parent_device_id=registry_device_id,
+                        unique_id_suffix=unique_id_suffix,
+                    )
+                )
+
+        if not weather_entities:
+            weather_entities.append(HaWeather(device, self._hass))
+        elif sensor_registry_targets:
+            weather_entities[0]._sensor_registry_targets = tuple(
+                sensor_registry_targets
+            )
+
+        self.ha_devices[device.device_id] = weather_entities[0]
         if self.add_weather_callback is not None:
-            self.add_weather_callback([ha_device])
-        self._add_discovered_entities(ha_device.get_sensors())
+            self.add_weather_callback(weather_entities)
+        self._add_discovered_entities(weather_entities[0].get_sensors())
 
     async def _create_water_device(self, device: TydomWater) -> None:
         """Create water/moisture device."""

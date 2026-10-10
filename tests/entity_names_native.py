@@ -11,7 +11,10 @@ from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase, TestCase
 from unittest.mock import AsyncMock, Mock, patch
 
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
+from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from custom_components.deltadore_tydom.entity_names import ENTITY_NAMES
@@ -21,6 +24,8 @@ from custom_components.deltadore_tydom.ha_entities import (
     ClockSensor,
     GenericBinarySensor,
     GenericSensor,
+    HaClimate,
+    HAEntity,
     HAButton,
     HADeviceAssociationButton,
     HAGatewayAssociationCategorySelect,
@@ -29,6 +34,7 @@ from custom_components.deltadore_tydom.ha_entities import (
     HANumber,
     HASelect,
     ProtocolBinarySensor,
+    ThermostatUseModeSensor,
 )
 
 from custom_components.deltadore_tydom.hub import Hub
@@ -52,10 +58,242 @@ def attach_platform(entity, language, domain):
         domain=domain,
         platform_translations=names,
         object_id_platform_translations=names,
+        default_language_platform_translations=names,
+        default_language_component_translations={},
         component_translations={},
         object_id_component_translations={},
     )
     return entity
+
+
+class ThermostatUseModeTests(IsolatedAsyncioTestCase):
+    """Exercise the actual HA Enum sensor while preserving existing identity."""
+
+    def device(self, *, value="SCHED", metadata=None):
+        """Build a real thermostat whose transport must never be invoked."""
+        from custom_components.deltadore_tydom.tydom.tydom_devices import TydomBoiler
+
+        client = Mock()
+        client.put_devices_data = AsyncMock()
+        device = TydomBoiler(
+            client,
+            "43_42",
+            "42",
+            "Thermostat",
+            "boiler",
+            "43",
+            metadata
+            if metadata is not None
+            else {
+                "useMode": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["sched", "override", "manual"],
+                }
+            },
+            {"useMode": value},
+        )
+        return device, client
+
+    def sensor(self, device, **kwargs):
+        """Wrap the existing register with its original identifier."""
+        return attach_platform(
+            ThermostatUseModeSensor(device, **kwargs),
+            "en",
+            "sensor",
+        )
+
+    async def test_translated_view_is_native_enum_with_distinct_stable_identity(self):
+        """Use lowercase HA states with a separate identity for presentation."""
+        device, client = self.device()
+        sensor = self.sensor(device)
+        self.assertEqual(sensor.unique_id, "43_42_useMode_enum")
+        self.assertEqual(sensor.device_class, SensorDeviceClass.ENUM)
+        self.assertEqual(sensor.options, ["sched", "override", "manual"])
+        self.assertEqual(sensor.capability_attributes["options"], sensor.options)
+        self.assertEqual(sensor.native_value, "sched")
+        self.assertEqual(sensor.state, "sched")
+        self.assertIsNone(sensor.native_unit_of_measurement)
+        self.assertIsNone(sensor.state_class)
+        self.assertIsNone(sensor.entity_category)
+        client.put_devices_data.assert_not_called()
+
+    async def test_climate_discovery_adds_one_translated_view_without_duplicates(self):
+        """Inventory discovery still produces only one sensor for useMode."""
+        device, client = self.device()
+        climate = HaClimate(device, None)
+        sensors = [
+            s for s in climate.get_sensors() if isinstance(s, ThermostatUseModeSensor)
+        ]
+        self.assertEqual(len(sensors), 1)
+        self.assertEqual(sensors[0].device_class, SensorDeviceClass.ENUM)
+        self.assertEqual(sensors[0].unique_id, "43_42_useMode_enum")
+        self.assertFalse(
+            any(
+                getattr(s, "_attribute", None) == "useMode"
+                for s in climate.get_sensors()
+            )
+        )
+        client.put_devices_data.assert_not_called()
+
+    async def test_all_three_reported_values_are_normalised_only_in_new_sensor(self):
+        """The new Enum uses lowercase keys required by HA translations."""
+        device, _ = self.device()
+        sensor = self.sensor(device)
+        for value in ("SCHED", "OVERRIDE", "MANUAL"):
+            device.useMode = value
+            self.assertEqual(sensor.native_value, value.lower())
+            self.assertEqual(sensor.state, value.lower())
+
+    async def test_metadata_options_are_not_replaced_by_generic_defaults(self):
+        """Respect a register that advertises a different subset or order."""
+        device, _ = self.device(
+            metadata={"useMode": {"enum_values": ["MANUAL", "SCHED", "SCHED"]}}
+        )
+        sensor = self.sensor(device)
+        self.assertEqual(sensor.options, ["manual", "sched"])
+        device._metadata["useMode"]["enum_values"] = ["SCHED", "MANUAL", "OVERRIDE"]
+        self.assertEqual(sensor.options, ["sched", "manual", "override"])
+
+    async def test_missing_or_malformed_metadata_uses_safe_defaults(self):
+        """A late or sparse metadata response must not hide a reported state."""
+        for metadata in (
+            {},
+            {"useMode": None},
+            {"useMode": {"enum_values": "SCHED"}},
+            {"useMode": {"enum_values": [None, 1, ""]}},
+        ):
+            device, _ = self.device(metadata=metadata)
+            sensor = self.sensor(device)
+            self.assertEqual(sensor.options, ["sched", "override", "manual"])
+            self.assertEqual(sensor.state, "sched")
+
+    async def test_future_reported_value_remains_visible_without_validation_error(self):
+        """Tolerate new firmware values without relabelling them as another mode."""
+        device, _ = self.device(value="NEW_FIRMWARE_MODE")
+        sensor = self.sensor(device)
+        self.assertIn("new_firmware_mode", sensor.options)
+        self.assertEqual(sensor.state, "new_firmware_mode")
+        device.useMode = "MANUAL"
+        self.assertNotIn("new_firmware_mode", sensor.options)
+        self.assertEqual(sensor.state, "manual")
+
+    async def test_unavailable_or_malformed_value_does_not_invent_a_mode(self):
+        """Missing or non-string feedback is unknown, not schedule or manual."""
+        device, _ = self.device()
+        sensor = self.sensor(device)
+        for value in (None, "", False, 1, [], {}):
+            device.useMode = value
+            self.assertIsNone(sensor.native_value)
+            self.assertIsNone(sensor.state)
+
+    async def test_enum_register_never_exposes_numeric_unit(self):
+        """Ignore a generic NA unit for this non-numeric register."""
+        device, _ = self.device(
+            metadata={"useMode": {"enum_values": ["SCHED"], "unit": "NA"}}
+        )
+        sensor = attach_platform(
+            ThermostatUseModeSensor(device),
+            "en",
+            "sensor",
+        )
+        self.assertEqual(sensor.device_class, SensorDeviceClass.ENUM)
+        self.assertIsNone(sensor.native_unit_of_measurement)
+        self.assertIsNone(sensor.unit_of_measurement)
+        self.assertEqual(sensor.state, "sched")
+
+    async def test_labels_exist_for_all_ten_languages(self):
+        """Native HA naming and all three state labels use the existing key."""
+        device, _ = self.device()
+        for language in (*LANGUAGES, "cs", "nb"):
+            data = json.loads(
+                (TRANSLATIONS / f"{language}.json").read_text(encoding="utf-8")
+            )
+            entry = data["entity"]["sensor"]["thermostat_use_mode"]
+            sensor = attach_platform(self.sensor(device), language, "sensor")
+            self.assertEqual(sensor.name, entry["name"])
+            self.assertEqual(sensor.translation_key, "thermostat_use_mode")
+            self.assertEqual(set(entry["state"]), {"sched", "override", "manual"})
+            self.assertTrue(all(label.strip() for label in entry["state"].values()))
+            self.assertEqual(sensor.state, "sched")
+        french = json.loads((TRANSLATIONS / "fr.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            french["entity"]["sensor"]["thermostat_use_mode"]["state"],
+            {"sched": "Programmation", "override": "Dérogation", "manual": "Manuel"},
+        )
+
+    async def test_other_generic_attributes_keep_their_capabilities(self):
+        """A string register unrelated to useMode must not become an Enum."""
+        device, _ = self.device()
+        device.hvacMode = "NORMAL"
+        sensor = attach_platform(
+            GenericSensor(device, None, None, "hvacMode", "hvacMode", None),
+            "en",
+            "sensor",
+        )
+        self.assertNotEqual(sensor.device_class, SensorDeviceClass.ENUM)
+        self.assertIsNone(sensor.options)
+        self.assertEqual(sensor.state, "NORMAL")
+
+    async def test_source_controller_sensor_keeps_its_registration_target(self):
+        """Area-proxy grouping must retain the existing sensor's physical owner."""
+        device, _ = self.device()
+        sensor = self.sensor(
+            device,
+            registry_device_id="controller",
+            registry_device_name="Controller",
+            unique_id_suffix="_area",
+        )
+        self.assertEqual(sensor.unique_id, "43_42_useMode_area_enum")
+        self.assertEqual(
+            sensor.device_info["identifiers"], {("deltadore_tydom", "controller")}
+        )
+        self.assertEqual(sensor.state, "sched")
+
+    async def test_push_updates_refresh_enum_without_writing_to_thermostat(self):
+        """Each real device push refreshes state and unloading removes the callback."""
+        device, client = self.device()
+        sensor = self.sensor(device)
+        sensor.async_write_ha_state = Mock()
+        await sensor.async_added_to_hass()
+        device.useMode = "OVERRIDE"
+        await device.publish_updates()
+        sensor.async_write_ha_state.assert_called_once()
+        self.assertEqual(sensor.state, "override")
+        client.put_devices_data.assert_not_called()
+        await sensor.async_will_remove_from_hass()
+        self.assertNotIn(sensor.async_write_ha_state, device._callbacks)
+
+    async def test_metadata_without_reported_value_does_not_create_fake_sensor(self):
+        """Advertised capabilities alone must not create a fabricated state."""
+        device, client = self.device(value=None)
+        climate = HaClimate(device, None)
+        self.assertFalse(
+            any(
+                getattr(s, "_attribute", None) == "useMode"
+                for s in climate.get_sensors()
+            )
+        )
+        client.put_devices_data.assert_not_called()
+
+    async def test_existing_raw_sensor_and_register_are_unchanged(self):
+        """Keep old state-based automations intact alongside the translated view."""
+        device, client = self.device()
+        climate = HaClimate(device, None)
+        sensors = climate.get_sensors()
+        raw = next(s for s in sensors if s.unique_id == "43_42_useMode")
+        translated = next(s for s in sensors if isinstance(s, ThermostatUseModeSensor))
+        attach_platform(raw, "en", "sensor")
+        attach_platform(translated, "en", "sensor")
+        self.assertNotEqual(raw.device_class, SensorDeviceClass.ENUM)
+        for value in ("SCHED", "OVERRIDE", "MANUAL"):
+            device.useMode = value
+            self.assertEqual(raw.state, value)
+            self.assertEqual(translated.state, value.lower())
+            self.assertEqual(device.useMode, value)
+        self.assertEqual(raw.translation_key, "usemode")
+        self.assertEqual(raw.name, "Operating mode")
+        client.put_devices_data.assert_not_called()
 
 
 class EntityNameTests(TestCase):
@@ -289,6 +527,85 @@ class EntityNameTests(TestCase):
                     self.assertEqual(sensor.unique_id, f"43_42_{attribute}")
                 self.assertEqual(len(names), len(set(names)))
 
+    def test_weather_sensor_names_use_native_keys_in_all_ten_languages(self):
+        """Preserve translated weather labels after merging capability names."""
+        languages = (*LANGUAGES, "cs", "nb")
+        for language in languages:
+            document = json.loads(
+                (TRANSLATIONS / f"{language}.json").read_text(encoding="utf-8")
+            )
+            for attribute in (
+                "outTemperature",
+                "dailyPower",
+                "currentPower",
+                "maxDailyOutTemp",
+                "weather",
+            ):
+                with self.subTest(language=language, attribute=attribute):
+                    device = self.device()
+                    setattr(device, attribute, 12)
+                    sensor = attach_platform(
+                        GenericSensor(
+                            device,
+                            None,
+                            None,
+                            attribute,
+                            attribute,
+                            None,
+                            registry_translation_key="tywell_weather",
+                        ),
+                        language,
+                        "sensor",
+                    )
+                    key = GenericSensor.TRANSLATION_KEYS[attribute]
+                    self.assertEqual(sensor.translation_key, key)
+                    self.assertEqual(
+                        sensor.name, document["entity"]["sensor"][key]["name"]
+                    )
+                    self.assertEqual(sensor.unique_id, f"43_42_{attribute}")
+                    self.assertEqual(sensor._attribute, attribute)
+                    self.assertEqual(sensor.native_value, 12)
+                    self.assertNotIn("_attr_name", sensor.__dict__)
+
+    def test_other_families_keep_normal_outdoor_temperature_name(self):
+        """A thermostat's outdoor value must not acquire a weather-only key."""
+        device = self.device()
+        device.outTemperature = 12
+        sensor = attach_platform(
+            GenericSensor(device, None, None, "outTemperature", "outTemperature", None),
+            "fr",
+            "sensor",
+        )
+        self.assertEqual(sensor.translation_key, "outtemperature")
+        self.assertEqual(sensor.unique_id, "43_42_outTemperature")
+        self.assertEqual(sensor.native_value, 12)
+
+    def test_single_controller_weather_keeps_its_translated_name(self):
+        """Weather also uses its dedicated labels without a shared-device override."""
+        from custom_components.deltadore_tydom.tydom.tydom_devices import TydomWeather
+
+        device = TydomWeather(
+            None,
+            "43_42",
+            "42",
+            "Weather",
+            "weather",
+            "43",
+            {},
+            {"dailyPower": 12},
+        )
+        sensor = attach_platform(
+            GenericSensor(device, None, None, "dailyPower", "dailyPower", None),
+            "cs",
+            "sensor",
+        )
+        expected = json.loads((TRANSLATIONS / "cs.json").read_text(encoding="utf-8"))[
+            "entity"
+        ]["sensor"]["tywell_weather_daily_power"]["name"]
+        self.assertEqual(sensor.translation_key, "tywell_weather_daily_power")
+        self.assertEqual(sensor.name, expected)
+        self.assertEqual(sensor.unique_id, "43_42_dailyPower")
+
     def test_catalogue_and_placeholder_coverage_is_consistent(self):
         """Every catalogue label and placeholder must exist in all eight languages."""
         english = json.loads((TRANSLATIONS / "en.json").read_text(encoding="utf-8"))[
@@ -342,6 +659,135 @@ class EntityNameTests(TestCase):
                         self.assertIn(key.value.lower(), ENTITY_NAMES, key.value)
 
 
+class DiagnosticSensorTests(TestCase):
+    """Keep secondary API readings available in HA's diagnostic section."""
+
+    technical_values = {
+        "activationCpt": 42,
+        "activationIndex": 3,
+        "area_id": "7",
+        "uid": "device-identifier",
+        "jobs": [1, 2],
+        "jobsMP": [1],
+        "jobsRM": [2],
+        "indexTimeOn": 5,
+        "timeOnCpt": 12,
+        "loadSheddingOn": False,
+        "maintenanceNeeded": True,
+    }
+
+    def test_technical_sensors_keep_identity_values_and_enabled_default(self):
+        """Categorisation must not remove or disable existing readings."""
+        device = SimpleNamespace(
+            device_id="43_42", _metadata={}, **self.technical_values
+        )
+        for attribute, value in self.technical_values.items():
+            with self.subTest(attribute=attribute):
+                sensor = GenericSensor(device, None, None, attribute, attribute, None)
+                self.assertEqual(sensor.entity_category, EntityCategory.DIAGNOSTIC)
+                self.assertEqual(sensor.unique_id, f"43_42_{attribute}")
+                self.assertEqual(sensor.native_value, value)
+                self.assertTrue(sensor.entity_registry_enabled_default)
+
+    def test_binary_technical_sensors_are_also_diagnostic(self):
+        """Boolean metadata must not leave the same reading in the main section."""
+        device = SimpleNamespace(device_id="43_42", _metadata={})
+        for attribute in self.technical_values:
+            with self.subTest(attribute=attribute):
+                setattr(device, attribute, True)
+                sensor = GenericBinarySensor(device, None, attribute, attribute)
+                self.assertEqual(sensor.entity_category, EntityCategory.DIAGNOSTIC)
+                self.assertEqual(sensor.unique_id, f"43_42_{attribute}")
+                self.assertTrue(sensor.is_on)
+                self.assertTrue(sensor.entity_registry_enabled_default)
+
+    def test_category_uses_api_attribute_instead_of_display_name(self):
+        """A custom presentation label must not determine the API classification."""
+        device = SimpleNamespace(
+            device_id="43_42", _metadata={}, activationCpt=42, maintenanceNeeded=True
+        )
+        scalar = GenericSensor(
+            device, None, None, "Friendly counter", "activationCpt", None
+        )
+        binary = GenericBinarySensor(
+            device, None, "Friendly maintenance label", "maintenanceNeeded"
+        )
+        self.assertEqual(scalar.entity_category, EntityCategory.DIAGNOSTIC)
+        self.assertEqual(binary.entity_category, EntityCategory.DIAGNOSTIC)
+        self.assertEqual(scalar.unique_id, "43_42_Friendly counter")
+        self.assertEqual(binary.unique_id, "43_42_Friendly maintenance label")
+
+    def test_functional_readings_remain_primary(self):
+        """Keep measurements, setpoints and operating settings in the main view."""
+        device = SimpleNamespace(device_id="43_42", _metadata={})
+        for attribute in (
+            "temperature",
+            "hygroIn",
+            "setpoint",
+            "localMode",
+            "useMode",
+            "authorization",
+            "minHeatSetpoint",
+            "maxHeatSetpoint",
+            "anticpCoeff",
+            "antiSeizurePeriod",
+            "newReading",
+        ):
+            with self.subTest(attribute=attribute):
+                sensor = GenericSensor(device, None, None, attribute, attribute, None)
+                self.assertIsNone(sensor.entity_category)
+                self.assertTrue(sensor.entity_registry_enabled_default)
+        for attribute in ("openingDetected", "techSmokeDefect", "techWaterDefect"):
+            with self.subTest(attribute=attribute):
+                sensor = GenericBinarySensor(device, None, attribute, attribute)
+                self.assertIsNone(sensor.entity_category)
+
+    def test_existing_firmware_and_problem_diagnostics_are_preserved(self):
+        """Retain the existing gateway and fault categorisation."""
+        device = SimpleNamespace(device_id="43_42", _metadata={})
+        for attribute in ("config", "jobsMP", "mainVersionHW", "softVersion"):
+            sensor = GenericSensor(device, None, None, attribute, attribute, None)
+            self.assertEqual(sensor.entity_category, EntityCategory.DIAGNOSTIC)
+        for device_class in (
+            BinarySensorDeviceClass.PROBLEM,
+            BinarySensorDeviceClass.UPDATE,
+        ):
+            sensor = GenericBinarySensor(device, device_class, "newFault", "newFault")
+            self.assertEqual(sensor.entity_category, EntityCategory.DIAGNOSTIC)
+
+    def test_discovery_keeps_every_technical_entity_and_late_updates(self):
+        """Classify both discovered platforms without filtering API attributes."""
+        device = SimpleNamespace(
+            device_id="43_42",
+            _metadata={},
+            temperature=21.5,
+            hygroIn=56.5,
+            **self.technical_values,
+        )
+        wrapper = HAEntity()
+        wrapper._device = device
+        wrapper._registered_sensors = []
+        wrapper.filtered_attrs = ["device_id"]
+        sensors = wrapper.get_sensors()
+        by_attribute = {sensor._attribute: sensor for sensor in sensors}
+        self.assertEqual(
+            set(by_attribute), {*self.technical_values, "temperature", "hygroIn"}
+        )
+        for attribute in self.technical_values:
+            self.assertEqual(
+                by_attribute[attribute].entity_category, EntityCategory.DIAGNOSTIC
+            )
+        self.assertIsInstance(by_attribute["activationCpt"], GenericSensor)
+        self.assertIsInstance(by_attribute["loadSheddingOn"], GenericBinarySensor)
+        self.assertIsNone(by_attribute["temperature"].entity_category)
+        self.assertIsNone(by_attribute["hygroIn"].entity_category)
+        self.assertEqual(wrapper.get_sensors(), [])
+        device.activationCpt = 43
+        device.loadSheddingOn = True
+        self.assertEqual(by_attribute["activationCpt"].native_value, 43)
+        self.assertTrue(by_attribute["loadSheddingOn"].is_on)
+
+
 class EntityDiscoveryNameTests(IsolatedAsyncioTestCase):
     """Exercise discovery with native translated HA sensor objects."""
 
@@ -369,6 +815,46 @@ class EntityDiscoveryNameTests(IsolatedAsyncioTestCase):
 
 class EntityRegistryNameTests(IsolatedAsyncioTestCase):
     """Confirm language changes do not rename IDs or erase user customisations."""
+
+    async def test_diagnostic_category_preserves_registry_choices(self):
+        """Moving technical entities keeps IDs, custom names and disabled choices."""
+        with TemporaryDirectory() as config_dir:
+            hass = HomeAssistant(config_dir)
+            dr.async_setup(hass)
+            await dr.async_load(hass)
+            registry = er.async_get(hass)
+            await registry.async_load()
+            for domain, attribute in (
+                ("sensor", "activationCpt"),
+                ("binary_sensor", "maintenanceNeeded"),
+            ):
+                for disabled_by in (None, er.RegistryEntryDisabler.USER):
+                    with self.subTest(domain=domain, disabled_by=disabled_by):
+                        unique_id = f"43_42_{attribute}_{disabled_by}"
+                        original = registry.async_get_or_create(
+                            domain,
+                            "deltadore_tydom",
+                            unique_id,
+                            suggested_object_id=f"tybox_{attribute}_{disabled_by}",
+                            entity_category=None,
+                            disabled_by=disabled_by,
+                        )
+                        registry.async_update_entity(
+                            original.entity_id, name="My technical reading"
+                        )
+                        updated = registry.async_get_or_create(
+                            domain,
+                            "deltadore_tydom",
+                            unique_id,
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                        )
+                        self.assertEqual(updated.entity_id, original.entity_id)
+                        self.assertEqual(updated.name, "My technical reading")
+                        self.assertEqual(updated.disabled_by, disabled_by)
+                        self.assertEqual(
+                            updated.entity_category, EntityCategory.DIAGNOSTIC
+                        )
+            await hass.async_stop()
 
     async def test_existing_registry_entry_and_custom_name_survive(self):
         """Reuse the existing registry ID after translating its original name."""

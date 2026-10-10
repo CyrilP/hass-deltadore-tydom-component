@@ -1605,6 +1605,29 @@
             },
             "zones": {
                 "name": "Alarmzonen"
+            },
+            "tywell_weather_power": {
+                "name": "Leistung"
+            },
+            "tywell_weather_condition": {
+                "name": "Wetter"
+            },
+            "tywell_weather_outdoor_temperature": {
+                "name": "Außentemperatur"
+            },
+            "tywell_weather_daily_power": {
+                "name": "Tägliche Leistung"
+            },
+            "tywell_weather_max_daily_outdoor_temperature": {
+                "name": "Tägliche maximale Außentemperatur"
+            },
+            "thermostat_use_mode": {
+                "name": "Thermostatmodus",
+                "state": {
+                    "sched": "Zeitprogramm",
+                    "override": "Übersteuerung",
+                    "manual": "Manuell"
+                }
             }
         },
         "binary_sensor": {
@@ -3898,6 +3921,11 @@
         },
         "target_temperature_out_of_range": {
             "message": "Die angeforderte Temperatur {temperature} liegt außerhalb der Gerätegrenzen ({minimum} bis {maximum})."
+        }
+    },
+    "device": {
+        "tywell_weather": {
+            "name": "Wetter"
         }
     }
 }
