@@ -4199,6 +4199,8 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         """Return whether an actor event describes the current HA alarm state."""
         if target == "disarmed":
             return state == AlarmControlPanelState.DISARMED
+        if target == "armed_away":
+            return state == AlarmControlPanelState.ARMED_AWAY
         return target == "armed" and state in {
             AlarmControlPanelState.ARMED_AWAY,
             AlarmControlPanelState.ARMED_HOME,
