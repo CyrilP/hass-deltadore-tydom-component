@@ -336,7 +336,11 @@
         "alarm_control_panel": {},
         "lock": {},
         "weather": {},
-        "update": {},
+        "update": {
+            "firmware": {
+                "name": "Fastvare"
+            }
+        },
         "sensor": {
             "tywell_weather_condition": {"name": "Vær"},
             "tywell_weather_outdoor_temperature": {"name": "Utetemperatur"},
@@ -366,6 +370,9 @@
             },
             "tywatt_energy_index_elec_other": {
                 "name": "Electricity index - Other"
+            },
+            "tywatt_energy_index_elec_outlet": {
+                "name": "Strømforbruksindeks – stikkontakter"
             },
             "tywatt_energy_index_elec_total": {
                 "name": "Electricity index - Total"

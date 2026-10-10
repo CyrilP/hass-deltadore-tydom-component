@@ -610,6 +610,359 @@ class AbsencePresetTests(IsolatedAsyncioTestCase):
         client.put_devices_data.assert_not_awaited()
 
 
+class LocalModeZoneTests(IsolatedAsyncioTestCase):
+    """X3D heating zones that carry their state in `localMode`.
+
+    Metadata captured from a TYDOM HOME gateway.  `authorization` is read-only
+    and `comfortMode` write-only, both limited to the installation-wide season
+    [STOP, HEATING]; the zone's own order lives in the read/write `localMode`
+    register.  ANTI_FROST is what the app's on/off button writes when a zone is
+    switched off.
+    """
+
+    @staticmethod
+    def _zone(*, local_mode="ANTI_FROST"):
+        return _thermostat(
+            metadata={
+                "authorization": {
+                    "type": "string",
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "comfortMode": {
+                    "type": "string",
+                    "permission": "w",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "thermicLevel": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["STOP", "ANTI_FROST"],
+                },
+                "localMode": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+                },
+                "heatSetpoint": {
+                    "type": "numeric",
+                    "permission": "rw",
+                    "min": 1.0,
+                    "max": 50.0,
+                },
+            },
+            data={
+                "authorization": "HEATING",
+                "thermicLevel": "ANTI_FROST" if local_mode == "ANTI_FROST" else None,
+                "localMode": local_mode,
+                "heatSetpoint": None,
+                "ambientTemperature": 22.41,
+            },
+        )
+
+    def test_detected_and_offers_only_off_and_heat(self) -> None:
+        """A localMode zone is not pilot-wire and has no AUTO mode."""
+        entity, _client = self._zone()
+
+        self.assertTrue(entity._uses_local_mode)
+        self.assertFalse(entity._is_filpilote)
+        self.assertEqual(entity._attr_hvac_modes, [HVACMode.OFF, HVACMode.HEAT])
+
+    def test_area_device_keeps_its_area_derived_modes(self) -> None:
+        """`localMode` is not unique to these zones.
+
+        Area attributes use the same register name with LOCAL_SETPOINT for
+        temporary overrides.  An area-derived entity builds its mode list from
+        area_hvac_modes(), which can include COOL, so this branch must not
+        reduce it to [off, heat].
+        """
+        entity, _client = self._zone()
+        setattr(entity._device, "area_id", 1234)
+        rebuilt = HaClimate(entity._device, hass=MagicMock())
+
+        self.assertFalse(rebuilt._uses_local_mode)
+
+    def test_register_without_anti_frost_is_not_treated_as_a_heating_zone(
+        self,
+    ) -> None:
+        """Requires the heating-zone shape, not merely the word NORMAL."""
+        entity, _client = _thermostat(
+            metadata={
+                "localMode": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["NORMAL", "LOCAL_SETPOINT"],
+                },
+                "setpoint": {
+                    "type": "numeric",
+                    "permission": "rw",
+                    "min": 10,
+                    "max": 30,
+                },
+            },
+            data={"localMode": "NORMAL", "setpoint": 20.0},
+        )
+
+        self.assertFalse(entity._uses_local_mode)
+
+    def test_reversible_zone_keeps_cooling_and_the_away_preset(self) -> None:
+        """A cool+heat zone must not be collapsed to [off, heat].
+
+        Frost protection is a preset on reversible zones, not an off state
+        (#453 / #455).  Were this branch to claim them it would drop cooling.
+        """
+        entity, _client = _thermostat(
+            metadata={
+                "authorization": {
+                    "type": "string",
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING", "COOLING"],
+                },
+                "comfortMode": {
+                    "type": "string",
+                    "permission": "w",
+                    "enum_values": ["STOP", "HEATING", "COOLING"],
+                },
+                "thermicLevel": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["STOP", "ANTI_FROST"],
+                },
+                "localMode": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+                },
+                "setpoint": {
+                    "type": "numeric",
+                    "permission": "rw",
+                    "min": 10,
+                    "max": 30,
+                },
+            },
+            data={
+                "authorization": "COOLING",
+                "thermicLevel": "ANTI_FROST",
+                "localMode": "ANTI_FROST",
+                "setpoint": None,
+            },
+        )
+
+        self.assertFalse(entity._uses_local_mode)
+        self.assertIn(HVACMode.COOL, entity._attr_hvac_modes)
+        self.assertEqual(entity.preset_mode, entities_module.PRESET_AWAY)
+
+    def test_zone_without_setpoint_metadata_is_not_pilot_wire(self) -> None:
+        """A localMode zone must never also take the fil-pilote path.
+
+        Without setpoint metadata or a live setpoint such a zone satisfies the
+        pilot-wire test too, and most properties check _is_filpilote first —
+        they would read and write thermicLevel, bypassing localMode entirely.
+        """
+        entity, _client = _thermostat(
+            metadata={
+                "authorization": {
+                    "type": "string",
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "thermicLevel": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["STOP", "ANTI_FROST"],
+                },
+                "localMode": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+                },
+            },
+            data={
+                "authorization": "HEATING",
+                "thermicLevel": "ANTI_FROST",
+                "localMode": "ANTI_FROST",
+                "ambientTemperature": 22.41,
+            },
+        )
+
+        self.assertTrue(entity._uses_local_mode)
+        self.assertFalse(entity._is_filpilote)
+        self.assertEqual(entity._attr_hvac_modes, [HVACMode.OFF, HVACMode.HEAT])
+        self.assertEqual(
+            entity._attr_preset_modes,
+            [entities_module.PRESET_NONE, entities_module.PRESET_AWAY],
+        )
+        self.assertEqual(entity.hvac_mode, HVACMode.OFF)
+        self.assertEqual(entity.hvac_action, entities_module.HVACAction.OFF)
+        self.assertEqual(entity.preset_mode, entities_module.PRESET_NONE)
+
+    async def test_zone_without_setpoint_metadata_writes_local_mode(self) -> None:
+        """The same zone must drive localMode, not the pilot-wire register."""
+        entity, client = _thermostat(
+            metadata={
+                "authorization": {
+                    "type": "string",
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "thermicLevel": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["STOP", "ANTI_FROST"],
+                },
+                "localMode": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+                },
+            },
+            data={
+                "authorization": "HEATING",
+                "thermicLevel": "ANTI_FROST",
+                "localMode": "ANTI_FROST",
+            },
+        )
+
+        await entity.async_set_hvac_mode(HVACMode.HEAT)
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "localMode", "NORMAL"
+        )
+
+    def test_write_only_local_mode_is_not_used(self) -> None:
+        """The register is read to report state, so write-only will not do."""
+        entity, _client = _thermostat(
+            metadata={
+                "localMode": {
+                    "type": "string",
+                    "permission": "w",
+                    "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+                },
+                "heatSetpoint": {
+                    "type": "numeric",
+                    "permission": "rw",
+                    "min": 1.0,
+                    "max": 50.0,
+                },
+            },
+            data={"localMode": "ANTI_FROST", "heatSetpoint": None},
+        )
+
+        self.assertFalse(entity._uses_local_mode)
+
+    def test_anti_frost_reads_as_off(self) -> None:
+        """Frost protection is what the app calls off."""
+        entity, _client = self._zone(local_mode="ANTI_FROST")
+
+        self.assertEqual(entity.hvac_mode, HVACMode.OFF)
+        self.assertEqual(entity.hvac_action, entities_module.HVACAction.OFF)
+
+    def test_stop_reads_as_off(self) -> None:
+        """A fully stopped zone is off too."""
+        entity, _client = self._zone(local_mode="STOP")
+
+        self.assertEqual(entity.hvac_mode, HVACMode.OFF)
+        self.assertEqual(entity.hvac_action, entities_module.HVACAction.OFF)
+
+    def test_normal_reads_as_heat(self) -> None:
+        """A running zone reads as heat even though no setpoint is readable."""
+        entity, _client = self._zone(local_mode="NORMAL")
+
+        self.assertEqual(entity.hvac_mode, HVACMode.HEAT)
+
+    def test_season_register_does_not_decide_the_mode(self) -> None:
+        """The season register stays HEATING while the zone is off; it must not win."""
+        entity, _client = self._zone(local_mode="ANTI_FROST")
+
+        self.assertEqual(getattr(entity._device, "authorization"), "HEATING")
+        self.assertEqual(entity.hvac_mode, HVACMode.OFF)
+
+    def test_presets_are_the_ones_the_zone_actually_has(self) -> None:
+        """The hardcoded NORMAL/ECO/COMFORT fallback is not implemented here."""
+        entity, _client = self._zone()
+
+        self.assertEqual(
+            entity._attr_preset_modes,
+            [entities_module.PRESET_NONE, entities_module.PRESET_AWAY],
+        )
+
+    def test_absence_reads_as_away(self) -> None:
+        """ABSENCE is the zone's away order."""
+        entity, _client = self._zone(local_mode="ABSENCE")
+
+        self.assertEqual(entity.preset_mode, entities_module.PRESET_AWAY)
+        self.assertEqual(entity.hvac_mode, HVACMode.HEAT)
+
+    def test_running_zone_has_no_preset(self) -> None:
+        """A NORMAL zone reports none rather than a phantom preset."""
+        entity, _client = self._zone(local_mode="NORMAL")
+
+        self.assertEqual(entity.preset_mode, entities_module.PRESET_NONE)
+
+    async def test_away_writes_absence(self) -> None:
+        """Selecting away drives localMode ABSENCE."""
+        entity, client = self._zone(local_mode="NORMAL")
+
+        await entity.async_set_preset_mode(entities_module.PRESET_AWAY)
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "localMode", "ABSENCE"
+        )
+
+    async def test_clearing_the_preset_does_not_switch_an_off_zone_on(self) -> None:
+        """Clearing a preset on an off zone must leave it off.
+
+        ANTI_FROST and STOP both read as off, so writing NORMAL there would
+        turn heating on as a side effect of clearing a preset.
+        """
+        for off_mode in ("ANTI_FROST", "STOP"):
+            with self.subTest(local_mode=off_mode):
+                entity, client = self._zone(local_mode=off_mode)
+
+                await entity.async_set_preset_mode(entities_module.PRESET_NONE)
+
+                client.put_devices_data.assert_not_awaited()
+                self.assertEqual(entity.hvac_mode, HVACMode.OFF)
+
+    async def test_clearing_the_preset_on_a_running_zone_writes_nothing(self) -> None:
+        """A NORMAL zone has no preset to clear, so there is nothing to write."""
+        entity, client = self._zone(local_mode="NORMAL")
+
+        await entity.async_set_preset_mode(entities_module.PRESET_NONE)
+
+        client.put_devices_data.assert_not_awaited()
+
+    async def test_preset_none_returns_the_zone_to_normal(self) -> None:
+        """Clearing the preset lifts ABSENCE rather than doing nothing."""
+        entity, client = self._zone(local_mode="ABSENCE")
+
+        await entity.async_set_preset_mode(entities_module.PRESET_NONE)
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "localMode", "NORMAL"
+        )
+
+    async def test_turning_off_writes_anti_frost_to_local_mode(self) -> None:
+        """Off drives the register the app drives, not comfortMode STOP."""
+        entity, client = self._zone(local_mode="NORMAL")
+
+        await entity.async_set_hvac_mode(HVACMode.OFF)
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "localMode", "ANTI_FROST"
+        )
+
+    async def test_turning_on_writes_normal_to_local_mode(self) -> None:
+        """Heat restores the NORMAL order."""
+        entity, client = self._zone(local_mode="ANTI_FROST")
+
+        await entity.async_set_hvac_mode(HVACMode.HEAT)
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "localMode", "NORMAL"
+        )
+
+
 class PresetNoneSendsAutoTests(IsolatedAsyncioTestCase):
     """Ensure selecting the `None` preset drives thermicLevel AUTO when supported.
 

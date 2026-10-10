@@ -70,6 +70,7 @@ class LocalModePresetModesTests(TestCase):
     def test_profile_is_detected(self) -> None:
         entity, _client = _pac_boiler()
         self.assertTrue(entity._uses_local_mode_presets)
+        self.assertFalse(entity._uses_local_mode)
         self.assertFalse(entity._is_filpilote)
 
     def test_preset_modes_are_away_frost_and_none(self) -> None:
@@ -99,6 +100,8 @@ class LocalModePresetStateTests(TestCase):
         entity, _client = _pac_boiler(local_mode="STOP")
         self.assertEqual(entity.preset_mode, PRESET_NONE)
         self.assertIn(entity.preset_mode, entity.preset_modes)
+        self.assertEqual(entity.hvac_mode, entities_module.HVACMode.OFF)
+        self.assertEqual(entity.hvac_action, entities_module.HVACAction.OFF)
 
     def test_anti_frost_reports_frost_protection(self) -> None:
         entity, _client = _pac_boiler(local_mode="ANTI_FROST")
@@ -179,6 +182,42 @@ class NoRegulAndPresetNoneTests(TestCase):
         entity, _client = self._zone(thermic_level="NO_REGUL")
         self.assertEqual(entity.preset_mode, PRESET_NONE)
         self.assertIn(entity.preset_mode, entity.preset_modes)
+
+
+class ReversibleLocalModePresetTests(TestCase):
+    """Existing reversible devices keep their established frost preset."""
+
+    def test_anti_frost_remains_away_on_reversible_zone(self) -> None:
+        entity, _client = _thermostat(
+            metadata={
+                "authorization": {
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING", "COOLING"],
+                },
+                "comfortMode": {
+                    "permission": "w",
+                    "enum_values": ["STOP", "HEATING", "COOLING"],
+                },
+                "thermicLevel": {
+                    "permission": "rw",
+                    "enum_values": ["STOP", "ANTI_FROST"],
+                },
+                "localMode": {
+                    "permission": "rw",
+                    "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+                },
+                "setpoint": {"permission": "rw", "min": 10.0, "max": 30.0},
+            },
+            data={
+                "authorization": "COOLING",
+                "thermicLevel": "ANTI_FROST",
+                "localMode": "ANTI_FROST",
+            },
+        )
+
+        self.assertFalse(entity._uses_local_mode_presets)
+        self.assertIn(entities_module.HVACMode.COOL, entity.hvac_modes)
+        self.assertEqual(entity.preset_mode, PRESET_AWAY)
 
 
 if __name__ == "__main__":

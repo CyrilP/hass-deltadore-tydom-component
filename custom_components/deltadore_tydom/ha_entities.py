@@ -626,6 +626,7 @@ class GenericSensor(SensorEntity):
         "energyIndex_ELEC_HEATING": "tywatt_energy_index_elec_heating",
         "energyIndex_ELEC_HOTWATER": "tywatt_energy_index_elec_hotwater",
         "energyIndex_ELEC_OTHER": "tywatt_energy_index_elec_other",
+        "energyIndex_ELEC_OUTLET": "tywatt_energy_index_elec_outlet",
         "energyIndex_ELEC_TOTAL": "tywatt_energy_index_elec_total",
         "outTemperature": "tywell_weather_outdoor_temperature",
         "dailyPower": "tywell_weather_daily_power",
@@ -733,7 +734,14 @@ class GenericSensor(SensorEntity):
         self._attr_device_class = device_class
         self._attr_state_class = state_class
         self._attr_native_unit_of_measurement = unit_of_measurement
-        if attribute in self.diagnostic_attrs:
+        # Every generic value exposed by the TYDOM gateway itself (firmware and
+        # library versions, site identifier, internal counters, ...) is
+        # diagnostic metadata rather than a user-facing measurement. Categorise
+        # the gateway's generic sensors wholesale so firmware fields that are not
+        # individually listed in ``diagnostic_attrs`` (e.g. ``libwebsocketsVersion``,
+        # ``LwIPVersion``, ``MbedTLSVersion``, ``siteId``) are not surfaced as
+        # regular sensors.
+        if attribute in self.diagnostic_attrs or isinstance(device, Tydom):
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
         # Weather-specific labels must survive generic capability naming.
@@ -1219,10 +1227,16 @@ class GenericBinarySensor(BinarySensorBase):
         )
         self.entity_description = entity_description
         self._attr_device_class = device_class
-        # Apply the same raw-attribute category for scalar and binary readings.
-        if attribute in GenericSensor.diagnostic_attrs or device_class in (
-            BinarySensorDeviceClass.PROBLEM,
-            BinarySensorDeviceClass.UPDATE,
+        # Apply the same raw-attribute category for scalar and binary readings,
+        # and treat every generic reading of the gateway itself as diagnostic.
+        if (
+            attribute in GenericSensor.diagnostic_attrs
+            or isinstance(device, Tydom)
+            or device_class
+            in (
+                BinarySensorDeviceClass.PROBLEM,
+                BinarySensorDeviceClass.UPDATE,
+            )
         ):
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -1668,8 +1682,14 @@ class HATydom(UpdateEntity, HAEntity):
     _attr_title = "Tydom"
 
     _ha_device = None
-    _attr_has_entity_name = False
-    _attr_entity_category = None
+    # Show the entity as "Firmware" (via translation_key) prefixed by the device
+    # name, like ZHA. has_entity_name keeps the already-registered entity_id
+    # stable for existing installs.
+    _attr_has_entity_name = True
+    _attr_translation_key = "firmware"
+    # Place the firmware "Up-to-date" entity in the Configuration section of the
+    # device page (like ZHA/Zigbee) instead of Controls.
+    _attr_entity_category = EntityCategory.CONFIG
     entity_description: str
 
     _attr_should_poll = False
@@ -1723,7 +1743,6 @@ class HATydom(UpdateEntity, HAEntity):
         self._attr_supported_features = UpdateEntityFeature.INSTALL
         self._attr_device_class = UpdateDeviceClass.FIRMWARE
         self._attr_unique_id = f"{self._device.device_id}"
-        self._attr_name = self._device.device_name
         self._registered_sensors = []
         # Track which protocol/geoloc/clock sensors have been created to avoid duplicates
         self._created_protocol_sensors: set[str] = set()
@@ -2867,8 +2886,53 @@ class HaClimate(ClimateEntity, HAEntity):
         has_pilot_wire_command = hasattr(self._device, "hvacMode") or hasattr(
             self._device, "authorization"
         )
+        # X3D heating zones behind a TYDOM HOME carry their whole state in one
+        # read/write `localMode` register (NORMAL | ANTI_FROST | STOP |
+        # ABSENCE).  `authorization` and `comfortMode` only carry the
+        # installation-wide season (STOP/HEATING) and stay HEATING while a zone
+        # is switched off, so neither can yield the zone's own mode.  Frost
+        # protection is the order the app sends when a zone is switched off: it
+        # is armed permanently and cannot be lifted, so it reads as off here.
+        #
+        # Both permissions are required: the register is written to drive the
+        # zone and read back to report its state, so a write-only register
+        # cannot serve here.
+        local_mode_meta = (metadata or {}).get("localMode")
+        local_mode_permission = (
+            local_mode_meta.get("permission", "")
+            if isinstance(local_mode_meta, dict)
+            else ""
+        )
+        self._local_mode_values = (
+            list(local_mode_meta.get("enum_values") or [])
+            if isinstance(local_mode_meta, dict)
+            and "r" in local_mode_permission
+            and "w" in local_mode_permission
+            else []
+        )
+        self._uses_local_mode = (
+            "NORMAL" in self._local_mode_values
+            and "ANTI_FROST" in self._local_mode_values
+            # `localMode` is not unique to these zones: area attributes use the
+            # same name with LOCAL_SETPOINT for temporary overrides on
+            # TRV-backed areas and Typass ATL zones. Area-derived entities
+            # build their mode list from area_hvac_modes() above, which can
+            # include COOL, so they must keep it.
+            and not hasattr(self._device, "area_id")
+            # Reversible zones (heat pump / AC) reach [off, heat, cool] above
+            # from their own enum metadata.  Frost protection is a preset on
+            # those, not an off state, and collapsing them here would drop
+            # cooling altogether — see #453 / #455.
+            and HVACMode.COOL not in self._attr_hvac_modes
+        )
+        # A zone that carries localMode is driven through it exclusively.  It
+        # would otherwise also satisfy the pilot-wire test when it exposes no
+        # setpoint, and the two paths disagree: most properties check
+        # _is_filpilote first and would read and write thermicLevel, bypassing
+        # localMode entirely.
         self._is_filpilote = (
-            has_pilot_wire_command
+            not self._uses_local_mode
+            and has_pilot_wire_command
             and has_thermic_level
             and not has_setpoint_meta
             and not has_live_setpoint
@@ -2887,6 +2951,20 @@ class HaClimate(ClimateEntity, HAEntity):
             # No setpoint on these zones: drop TARGET_TEMPERATURE so HA does not
             # show a temperature control that would write a phantom setpoint.
             self._attr_supported_features &= ~ClimateEntityFeature.TARGET_TEMPERATURE
+
+        if self._uses_local_mode:
+            self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
+            # Replace any presets derived above.  These zones have no comfort
+            # or eco order: comfortMode is the write-only season register, so
+            # the generic extraction finds nothing usable and falls back to a
+            # hardcoded [NORMAL, ECO, COMFORT] the hardware does not implement.
+            # ABSENCE is the one real preset they do have.
+            if "ABSENCE" in self._local_mode_values:
+                self._attr_preset_modes = [PRESET_NONE, PRESET_AWAY]
+                self._attr_supported_features |= ClimateEntityFeature.PRESET_MODE
+            else:
+                self._attr_preset_modes = []
+                self._attr_supported_features &= ~ClimateEntityFeature.PRESET_MODE
 
         # Fan speed (Naviclim X3D reversible AC). Naviclim zones expose a numeric
         # `speed` (1..3) for manual speeds and a `speedString` ["AUTO"] register
@@ -2922,9 +3000,13 @@ class HaClimate(ClimateEntity, HAEntity):
         # issue #505). Scoped to this profile to avoid regressing fil-pilote and
         # zone thermostats.
         local_mode_meta = (self._device._metadata or {}).get("localMode", {})
+        use_mode_meta = (self._device._metadata or {}).get("useMode", {})
         self._uses_local_mode_presets = (
             not self._is_filpilote
+            and not self._uses_local_mode
             and not self._device.is_area_trv
+            and isinstance(use_mode_meta, dict)
+            and "SCHED" in use_mode_meta.get("enum_values", [])
             and isinstance(local_mode_meta, dict)
             and "w" in local_mode_meta.get("permission", "")
             and "ABSENCE" in local_mode_meta.get("enum_values", [])
@@ -3069,10 +3151,23 @@ class HaClimate(ClimateEntity, HAEntity):
                 return step
         return super().target_temperature_step
 
+    OFF_LOCAL_MODES = ("ANTI_FROST", "STOP")
+
     def _resolve_hvac_mode(self) -> HVACMode:
         """Derive HA HVAC mode from Tydom thermostat registers."""
         if self._device.is_area_trv:
             return HVACMode.HEAT
+
+        if getattr(self, "_uses_local_mode_presets", False):
+            if getattr(self._device, "localMode", None) == "STOP":
+                return HVACMode.OFF
+
+        if self._uses_local_mode:
+            local_mode = getattr(self._device, "localMode", None)
+            if local_mode in self.OFF_LOCAL_MODES:
+                return HVACMode.OFF
+            if local_mode is not None:
+                return HVACMode.HEAT
 
         if getattr(self, "_is_filpilote", False):
             # Derive from thermicLevel (the live pilot-wire order), not hvacMode:
@@ -3131,6 +3226,23 @@ class HaClimate(ClimateEntity, HAEntity):
             # from idle: report OFF when the order is STOP, HEATING otherwise.
             level = getattr(self._device, "thermicLevel", None)
             return HVACAction.OFF if level == "STOP" else HVACAction.HEATING
+
+        if (
+            getattr(self, "_uses_local_mode_presets", False)
+            and getattr(self._device, "localMode", None) == "STOP"
+        ):
+            return HVACAction.OFF
+
+        if self._uses_local_mode:
+            local_mode = getattr(self._device, "localMode", None)
+            if local_mode in self.OFF_LOCAL_MODES:
+                return HVACAction.OFF
+            # A running zone falls through to the setpoint comparison below.
+            # These zones populate no setpoint while following their schedule,
+            # so target_temperature is None and heat delivery cannot be
+            # inferred: HEATING is reported for the whole time the zone is on.
+            # The gateway exposes nothing else to distinguish it from idle.
+            # ABSENCE does report a setpoint, and resolves correctly.
 
         authorization = getattr(self._device, "authorization", None)
         thermic_level = getattr(self._device, "thermicLevel", None)
@@ -3250,6 +3362,14 @@ class HaClimate(ClimateEntity, HAEntity):
             elif getattr(self._device, "thermicLevel", None) in (None, "STOP"):
                 await self._device.set_thermic_level("COMFORT")
             return
+        if self._uses_local_mode and hvac_mode in (HVACMode.OFF, HVACMode.HEAT):
+            # Drive the same register the app does.  Writing comfortMode STOP
+            # instead would stop the zone through the season register, which is
+            # not the state the app's on/off button produces.
+            await self._device.set_local_mode(
+                "ANTI_FROST" if hvac_mode == HVACMode.OFF else "NORMAL"
+            )
+            return
         await self._device.set_hvac_mode(self.dict_modes_ha_to_dd[hvac_mode])
 
     @property
@@ -3274,6 +3394,12 @@ class HaClimate(ClimateEntity, HAEntity):
                 return PRESET_FROST_PROTECTION
             # NORMAL = normal regulation, STOP = HVAC OFF -> no active preset.
             return PRESET_NONE
+        if self._uses_local_mode:
+            local_mode = getattr(self._device, "localMode", None)
+            if local_mode == "ABSENCE":
+                return PRESET_AWAY
+            return PRESET_NONE if self._attr_preset_modes else None
+
         if (
             not self._device.is_area_trv
             and getattr(self._device, "localMode", None) == "ABSENCE"
@@ -3295,6 +3421,18 @@ class HaClimate(ClimateEntity, HAEntity):
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new target preset mode."""
+        if self._uses_local_mode:
+            if preset_mode == PRESET_AWAY:
+                await self._device.set_local_mode("ABSENCE")
+            elif (
+                preset_mode == PRESET_NONE
+                and getattr(self._device, "localMode", None) == "ABSENCE"
+            ):
+                # Clearing the preset lifts ABSENCE only.  A zone parked at
+                # ANTI_FROST or STOP is off, and writing NORMAL there would
+                # switch heating on as a side effect of clearing a preset.
+                await self._device.set_local_mode("NORMAL")
+            return
         if getattr(self, "_is_filpilote", False):
             # Drive the pilot-wire order register directly (as the app does).
             if preset_mode == PRESET_COMFORT:

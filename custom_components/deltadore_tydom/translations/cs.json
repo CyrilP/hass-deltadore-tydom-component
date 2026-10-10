@@ -336,7 +336,11 @@
         "alarm_control_panel": {},
         "lock": {},
         "weather": {},
-        "update": {},
+        "update": {
+            "firmware": {
+                "name": "Firmware"
+            }
+        },
         "sensor": {
             "tywell_weather_condition": {"name": "Počasí"},
             "tywell_weather_outdoor_temperature": {"name": "Venkovní teplota"},
@@ -366,6 +370,9 @@
             },
             "tywatt_energy_index_elec_other": {
                 "name": "Electricity index - Other"
+            },
+            "tywatt_energy_index_elec_outlet": {
+                "name": "Index spotřeby elektřiny – zásuvky"
             },
             "tywatt_energy_index_elec_total": {
                 "name": "Electricity index - Total"
