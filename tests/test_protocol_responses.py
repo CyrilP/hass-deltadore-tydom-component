@@ -865,6 +865,35 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         self.assertEqual(handler.get_reply("request-1")["events"], [])
         logger.warning.assert_not_called()
 
+    async def test_cdata_poll_waits_for_eor_after_empty_http_ack(self) -> None:
+        """An empty HTTP ack must not finish a cdata stream before its EOR."""
+        handler = MessageHandler(MagicMock(), b"")
+        handler.get_type_from_id = MagicMock(return_value="conso")
+        handler.get_name_from_id = MagicMock(return_value="Tywatt")
+        completion_event = handler.register_cdata_poll("request-1")
+
+        await handler.route_response(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Uri-Origin: /devices/20/endpoints/10/cdata?name=energyIndex\r\n"
+            b"Content-Type: application/json\r\n"
+            b"Content-Length: 0\r\n"
+            b"Transac-Id: request-1\r\n\r\n"
+        )
+        self.assertFalse(completion_event.is_set())
+
+        await handler.parse_devices_cdata(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [{"id": 10, "error": 0, "cdata": [{"EOR": True}]}],
+                }
+            ],
+            "request-1",
+        )
+
+        self.assertTrue(completion_event.is_set())
+        self.assertNotIn("request-1", handler._cdata_poll_events)
+
     async def test_empty_devices_response_is_a_valid_inventory(self) -> None:
         """An empty TYDOM inventory must not be reported as an unknown message."""
         logger.reset_mock()

@@ -571,6 +571,7 @@ class MessageHandler:
         self.cmd_prefix = cmd_prefix
         self._cdata_replies: list[Reply] = []
         self._end_reply_events: dict[str, asyncio.Event] = {}
+        self._cdata_poll_events: dict[str, asyncio.Event] = {}
         self._reply_errors: dict[str, str] = {}
         self._alarm_command_waiters: dict[
             tuple[str, str, str], list[asyncio.Future[dict[str, Any]]]
@@ -668,6 +669,21 @@ class MessageHandler:
         """Return and forget a protocol error for one pending request."""
         return self._reply_errors.pop(transaction_id, None)
 
+    def register_cdata_poll(self, transaction_id: str) -> asyncio.Event:
+        """Register a waiter completed by the cdata stream's EOR marker."""
+        event = asyncio.Event()
+        self._cdata_poll_events[transaction_id] = event
+        return event
+
+    def complete_cdata_poll(self, transaction_id: str) -> None:
+        """Complete a pending cdata poll after its stream has ended."""
+        if event := self._cdata_poll_events.pop(transaction_id, None):
+            event.set()
+
+    def remove_cdata_poll(self, transaction_id: str) -> None:
+        """Remove a cdata poll waiter after completion or timeout."""
+        self._cdata_poll_events.pop(transaction_id, None)
+
     def create_alarm_command_waiter(
         self, device_id: str, endpoint_id: str, command: str
     ) -> asyncio.Future[dict[str, Any]]:
@@ -758,6 +774,8 @@ class MessageHandler:
             transaction_id = parsed_message.headers.get("Transac-Id")
 
             if status is not None and status >= 400:
+                if transaction_id:
+                    self.complete_cdata_poll(transaction_id)
                 if status == 404 and uri_origin in _OPTIONAL_PATHS:
                     self.tydom_client.mark_optional_path_unsupported(uri_origin)
                     LOGGER.debug(
@@ -2122,9 +2140,14 @@ class MessageHandler:
         """Parse devices cdata."""
         LOGGER.debug("parse_devices_cdata : %s", parsed)
         devices = []
+        cdata_poll_complete = False
 
         for i in parsed:
             for endpoint in i["endpoints"]:
+                if endpoint["error"] != 0:
+                    cdata_poll_complete = True
+                    continue
+
                 if endpoint["error"] == 0 and len(endpoint["cdata"]) > 0:
                     try:
                         device_id = i["id"]
@@ -2136,6 +2159,9 @@ class MessageHandler:
                         data = {}
 
                         for elem in endpoint["cdata"]:
+                            if elem.get("EOR", False):
+                                cdata_poll_complete = True
+
                             if type_of_id == "alarm":
                                 self._resolve_alarm_command_waiter(
                                     device_id, endpoint_id, elem
@@ -2253,6 +2279,10 @@ class MessageHandler:
                                 )
                     except Exception as e:
                         LOGGER.exception("Error when parsing msg_cdata", exc_info=e)
+
+        if transaction_id and cdata_poll_complete:
+            self.complete_cdata_poll(transaction_id)
+
         return devices
 
     async def parse_scenarios_file(self, parsed, transaction_id):
