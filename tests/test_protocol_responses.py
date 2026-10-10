@@ -328,8 +328,33 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
 
         self.assertEqual(stored.latest_alarm_actor, "TL 2000 Sandra")
         self.assertEqual(stored.latest_alarm_actor_type, "product")
-        self.assertEqual(stored.latest_alarm_event_target, "armed")
+        self.assertEqual(stored.latest_alarm_event_target, "armed_away")
         self.assertEqual(stored.alarm_event_sequence, 1)
+
+    async def test_zone_arm_event_keeps_generic_armed_target(self) -> None:
+        """A zone-arm event must not be mistaken for total arming."""
+        client = MagicMock()
+        stored = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+        incoming = TydomAlarm(
+            client,
+            "10_20",
+            "20",
+            "Alarm",
+            "alarm",
+            "10",
+            {},
+            {
+                "eventAlarm": {
+                    "name": "marcheZone",
+                    "accessCode": {"nameCustom": "Sandra"},
+                }
+            },
+        )
+
+        await stored.update_device(incoming)
+
+        self.assertEqual(stored.latest_alarm_event_target, "armed")
+        self.assertEqual(stored.latest_alarm_actor, "Sandra")
 
     async def test_non_state_alarm_event_does_not_replace_actor(self) -> None:
         """Intrusion and diagnostic events must not become changed_by actors."""
