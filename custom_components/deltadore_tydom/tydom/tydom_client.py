@@ -1480,6 +1480,18 @@ class TydomClient:
         req = "GET"
         await self.send_message(method=req, msg=msg_type)
 
+    async def get_moments_file_document(self) -> dict[str, object]:
+        """Read a fresh, complete gateway programme without changing it.
+
+        Unlike background polling, an explicit read retries a previously missing
+        optional endpoint. A missing file must not masquerade as an empty plan.
+        Preserve the original schema and shared routine references.
+        """
+        return self._file_reply_document(
+            await self.get_reply_to_request("GET", "/moments/file"),
+            "/moments/file",
+        )
+
     async def suspend_moment(self, moment_id: str | int, suspend_to: int = -1) -> None:
         """Suspend or resume a moment/program.
 

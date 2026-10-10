@@ -224,6 +224,16 @@
         }
     },
     "services": {
+        "get_schedule": {
+            "name": "Lire la programmation TYDOM (lecture seule)",
+            "description": "Lecture expérimentale du document complet de programmation de la passerelle, y compris les routines partagées. Renvoie les données d'origine sans les convertir en planning hebdomadaire propre à un thermostat ni rien modifier. Nécessite une variable de réponse.",
+            "fields": {
+                "config_entry_id": {
+                    "name": "Entrée de l'intégration TYDOM",
+                    "description": "Passerelle dont le document de programmation doit être lu."
+                }
+            }
+        },
         "set_mode_using_stored_pin": {
             "name": "Régler l'alarme avec le PIN mémorisé",
             "description": "Armer ou désarmer avec le PIN enregistré dans les paramètres de l'intégration TYDOM de cette alarme. Les utilisateurs autorisés à appeler cette action n'ont pas à le ressaisir. La demande de code du panneau et les vérifications d'armement normal restent inchangées.",

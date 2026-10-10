@@ -30,6 +30,7 @@ passerelle Delta Dore peut être détectée par découverte DHCP.
 - [Guides d'association illustrés](#guides-dassociation-illustrés)
 - [Capturer les données d'un appareil non pris en charge](#capturer-les-données-dun-appareil-non-pris-en-charge)
 - [Gestion à distance TYXAL+](#gestion-à-distance-tyxal)
+- [Lecture de la programmation TYDOM — expérimentale](#lecture-de-la-programmation-tydom--expérimentale)
 - [Limites connues](#limites-connues)
 - [Sécurité](#sécurité)
 - [Contribuer](#contribuer)
@@ -813,6 +814,43 @@ Lorsque TYDOM transmet l'auteur d'une transition d'alarme, l'entité d'alarme
 expose `changed_by`, contenant le nom du code utilisateur ou du produit, ainsi
 que `changed_by_type`, dont la valeur est `access_code` ou `product`. Ces
 attributs décrivent la dernière transition d'armement ou de désarmement reçue.
+
+## Lecture de la programmation TYDOM — expérimentale
+
+L'action `deltadore_tydom.get_schedule` lit le document complet de programmation
+sur la route `/moments/file` de la passerelle choisie. Il s'agit de la première
+étape, en lecture seule, de [#490](https://github.com/CyrilP/hass-deltadore-tydom-component/issues/490),
+à valider sur des programmations TYDOM réelles. Elle ne modifie ni le planning,
+ni la consigne, ni le mode de fonctionnement. Aucune action `set_schedule`
+n'est proposée à ce stade.
+
+Dans **Outils de développement > Actions**, choisissez **Lire la programmation
+TYDOM (lecture seule)**, puis l'entrée de votre intégration. Une variable de
+réponse est obligatoire, même dans les Outils de développement. Utilisez le
+mode YAML de cet écran, ou un script ou une automatisation :
+
+```yaml
+action: deltadore_tydom.get_schedule
+data:
+  config_entry_id: ID_DE_VOTRE_ENTREE_TYDOM
+response_variable: programmation_tydom
+```
+
+La réponse contient `config_entry_id`, `scope: gateway`, `source: /moments/file`
+et `schedule`. Ce dernier champ contient le document JSON d'origine, y compris
+les routines partagées et les éventuelles références aux appareils, groupes,
+zones, scénarios et règles de récurrence. Ce n'est **pas** un dictionnaire
+hebdomadaire propre à un thermostat : la structure peut varier selon la
+passerelle. Pour exporter le JSON, utilisez
+`{{ programmation_tydom.schedule | to_json }}` dans une étape suivante du script.
+
+Chaque appel explicite interroge de nouveau la passerelle, même si une lecture
+automatique précédente avait reçu un `404`. Un fichier absent, une requête
+refusée ou un délai dépassé produit une erreur, pas un planning vide ; l'action
+ne crée jamais de fichier. Un `404` seul ne permet pas de conclure qu'un
+thermostat n'a pas sa propre programmation. Avant de partager le résultat,
+masquez les noms privés, identifiants et données de localisation avec des
+remplacements cohérents, afin que les références restent compréhensibles.
 
 ## Limites connues
 

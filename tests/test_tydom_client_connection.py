@@ -884,6 +884,88 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
         client.send_bytes.assert_awaited_once()
 
 
+class TestProgrammeDocumentRead(IsolatedAsyncioTestCase):
+    """Preserve complete programme snapshots without issuing writes."""
+
+    async def test_preserves_modern_shared_programme_and_copies_it(self) -> None:
+        """The modern schema and all shared references survive unchanged."""
+        document = {
+            "apiVersion": "1.0",
+            "rdv": [{"id": 1, "h": "06:30", "rRule": "FREQ=WEEKLY"}],
+            "prog": [{"id": 2, "rdvId": 1}],
+            "mom": [{"id": 3, "grpAct": [{"id": 4}], "scnAct": [{"id": 5}]}],
+            "event": [{"momId": 3, "progId": 2}],
+        }
+        client = object.__new__(TydomClient)
+        client.get_reply_to_request = AsyncMock(return_value=[document])
+
+        result = await client.get_moments_file_document()
+
+        self.assertEqual(result, document)
+        result["mom"][0]["grpAct"][0]["id"] = 999
+        self.assertEqual(document["mom"][0]["grpAct"][0]["id"], 4)
+        client.get_reply_to_request.assert_awaited_once_with("GET", "/moments/file")
+
+    async def test_preserves_legacy_programme(self) -> None:
+        """Legacy moments are also returned without conversion or filtering."""
+        document = {"moments": [{"id": 7, "name": "Morning", "actions": []}]}
+        client = object.__new__(TydomClient)
+        client.get_reply_to_request = AsyncMock(return_value=[document])
+
+        self.assertEqual(await client.get_moments_file_document(), document)
+
+    async def test_retries_cached_missing_endpoint_and_reads_fresh_data(self) -> None:
+        """Explicit reads bypass the polling cache without changing that cache."""
+        client = object.__new__(TydomClient)
+        client._unsupported_optional_paths = {"/moments/file"}
+        client.get_reply_to_request = AsyncMock(
+            side_effect=[[{"mom": []}], [{"mom": [{"id": 8}]}]]
+        )
+
+        self.assertEqual(await client.get_moments_file_document(), {"mom": []})
+        self.assertEqual(await client.get_moments_file_document(), {"mom": [{"id": 8}]})
+        self.assertEqual(client._unsupported_optional_paths, {"/moments/file"})
+        self.assertEqual(
+            client.get_reply_to_request.await_args_list,
+            [call("GET", "/moments/file"), call("GET", "/moments/file")],
+        )
+
+    async def test_missing_or_non_document_reply_is_not_an_empty_plan(self) -> None:
+        """Missing or unexpected responses must fail rather than look valid."""
+        for reply in (None, [], [None], [[{"id": 1}]], ["invalid"]):
+            with self.subTest(reply=reply):
+                client = object.__new__(TydomClient)
+                client.get_reply_to_request = AsyncMock(return_value=reply)
+                with self.assertRaises(TydomClientApiClientCommunicationError):
+                    await client.get_moments_file_document()
+
+    async def test_http_errors_and_timeouts_do_not_trigger_fallback_or_writes(
+        self,
+    ) -> None:
+        """Neither a rejection nor a timeout justifies a destructive retry."""
+        for error in ("HTTP 404: Not Found", "HTTP 403: Forbidden", "Timeout"):
+            with self.subTest(error=error):
+                client = object.__new__(TydomClient)
+                client.get_reply_to_request = AsyncMock(
+                    side_effect=TydomClientApiClientCommunicationError(error)
+                )
+                with self.assertRaises(TydomClientApiClientCommunicationError):
+                    await client.get_moments_file_document()
+                client.get_reply_to_request.assert_awaited_once_with(
+                    "GET", "/moments/file"
+                )
+
+    async def test_background_polling_still_skips_known_missing_file(self) -> None:
+        """The explicit action must not reintroduce background 404 noise."""
+        client = object.__new__(TydomClient)
+        client._unsupported_optional_paths = {"/moments/file"}
+        client.send_message = AsyncMock()
+
+        await client.get_moments()
+
+        client.send_message.assert_not_awaited()
+
+
 class TestDevicePolling(IsolatedAsyncioTestCase):
     """Exercise adaptive polling URL construction."""
 

@@ -223,6 +223,16 @@
         }
     },
     "services": {
+        "get_schedule": {
+            "name": "Get TYDOM programme (read-only)",
+            "description": "Experimental read-only snapshot of the complete gateway programming document, including shared routines. Returns the original data without converting it to a thermostat-specific weekly plan or modifying anything. Requires a response variable.",
+            "fields": {
+                "config_entry_id": {
+                    "name": "TYDOM integration entry",
+                    "description": "Gateway whose programming document should be read."
+                }
+            }
+        },
         "set_mode_using_stored_pin": {
             "name": "Set alarm mode using the stored PIN",
             "description": "Arm or disarm using the PIN saved in this alarm's TYDOM integration settings. Authorised callers do not need to enter it again. The alarm panel's code request and normal arming checks remain unchanged.",
