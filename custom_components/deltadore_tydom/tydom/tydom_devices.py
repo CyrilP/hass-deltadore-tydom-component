@@ -1447,10 +1447,12 @@ class TydomAlarm(TydomDevice):
 
     @staticmethod
     def _alarm_event_target(event: dict[str, Any]) -> str | None:
-        """Return the state family reached by a completed alarm event."""
+        """Return the state targeted by a completed alarm event."""
         name = str(event.get("name") or "").strip().casefold()
         if name == "arret":
             return "disarmed"
+        if name == "marchetotale":
+            return "armed_away"
         if name.startswith("marche"):
             return "armed"
         return None
@@ -1472,7 +1474,7 @@ class TydomAlarm(TydomDevice):
 
     @property
     def latest_alarm_event_target(self) -> str | None:
-        """Return whether the newest actor event armed or disarmed the alarm."""
+        """Return the alarm state targeted by the newest actor event."""
         return self._latest_alarm_event_target
 
     async def update_device(self, device) -> None:
