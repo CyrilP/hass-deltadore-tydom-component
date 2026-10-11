@@ -1,5 +1,10 @@
 {
     "entity": {
+        "update": {
+            "firmware": {
+                "name": "Firmware"
+            }
+        },
         "sensor": {
             "absence": {
                 "name": "Modo ausência"
@@ -1488,6 +1493,9 @@
             },
             "tywatt_energy_index_elec_other": {
                 "name": "Índice de eletricidade - Outros"
+            },
+            "tywatt_energy_index_elec_outlet": {
+                "name": "Índice de eletricidade - Tomadas"
             },
             "tywatt_energy_index_elec_total": {
                 "name": "Índice de eletricidade - Total"

@@ -328,8 +328,33 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
 
         self.assertEqual(stored.latest_alarm_actor, "TL 2000 Sandra")
         self.assertEqual(stored.latest_alarm_actor_type, "product")
-        self.assertEqual(stored.latest_alarm_event_target, "armed")
+        self.assertEqual(stored.latest_alarm_event_target, "armed_away")
         self.assertEqual(stored.alarm_event_sequence, 1)
+
+    async def test_zone_arm_event_keeps_generic_armed_target(self) -> None:
+        """A zone-arm event must not be mistaken for total arming."""
+        client = MagicMock()
+        stored = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+        incoming = TydomAlarm(
+            client,
+            "10_20",
+            "20",
+            "Alarm",
+            "alarm",
+            "10",
+            {},
+            {
+                "eventAlarm": {
+                    "name": "marcheZone",
+                    "accessCode": {"nameCustom": "Sandra"},
+                }
+            },
+        )
+
+        await stored.update_device(incoming)
+
+        self.assertEqual(stored.latest_alarm_event_target, "armed")
+        self.assertEqual(stored.latest_alarm_actor, "Sandra")
 
     async def test_non_state_alarm_event_does_not_replace_actor(self) -> None:
         """Intrusion and diagnostic events must not become changed_by actors."""
@@ -1061,6 +1086,32 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
 
         self.assertIsNone(devices)
         client.receive_pong.assert_called_once_with()
+
+    async def test_modern_programme_reply_preserves_raw_document(self) -> None:
+        """A shared programme completes its request even without legacy moments."""
+        handler = MessageHandler(MagicMock(), b"")
+        reply_event = asyncio.Event()
+        handler._end_reply_events["schedule-1"] = reply_event
+        body = (
+            b'{"apiVersion":"1","rdv":[{"id":1,"rRule":"FREQ=WEEKLY"}],'
+            b'"prog":[],"mom":[{"id":2,"areaAct":[{"id":3}]}],"event":[]}'
+        )
+
+        await handler.route_response(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Uri-Origin: /moments/file\r\n"
+            b"Content-Type: application/json\r\n"
+            b"Transac-Id: schedule-1\r\n"
+            + f"Content-Length: {len(body)}\r\n\r\n".encode()
+            + body
+        )
+
+        self.assertTrue(reply_event.is_set())
+        reply = handler.get_reply("schedule-1")
+        self.assertEqual(reply["events"][0]["mom"][0]["areaAct"], [{"id": 3}])
+        self.assertEqual(reply["events"][0]["rdv"][0]["rRule"], "FREQ=WEEKLY")
+        self.assertIn("prog", reply["events"][0])
+        self.assertNotIn("moments", reply["events"][0])
 
     async def test_nested_event_refreshes_devices(self) -> None:
         """A specialised event URI must use the generic event handler."""

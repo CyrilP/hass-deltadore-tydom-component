@@ -1,3 +1,14 @@
+get_schedule:
+  name: Get TYDOM programme (read-only)
+  description: Experimental read-only snapshot of the complete gateway programming document. Returns the original data, including shared routines, without converting it to a thermostat-specific weekly plan or modifying anything. Requires a response variable.
+  fields:
+    config_entry_id:
+      name: TYDOM integration entry
+      description: Gateway whose programming document should be read.
+      required: true
+      selector:
+        config_entry:
+          integration: deltadore_tydom
 acknowledge_events:
   name: Acknowledge alarm events
   description: Acknowledge all unacknowledged alarm events.

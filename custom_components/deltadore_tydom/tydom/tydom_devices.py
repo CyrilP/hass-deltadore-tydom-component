@@ -1082,6 +1082,12 @@ class TydomBoiler(TydomDevice):
             self._id, self._endpoint, "thermicLevel", level
         )
 
+    async def set_local_mode(self, mode):
+        """Set a zone's localMode order (NORMAL/ANTI_FROST/STOP/ABSENCE)."""
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "localMode", mode
+        )
+
     async def set_fan_speed(self, speed) -> None:
         """Set a manual fan speed on a Naviclim (X3D) HVAC zone.
 
@@ -1480,10 +1486,12 @@ class TydomAlarm(TydomDevice):
 
     @staticmethod
     def _alarm_event_target(event: dict[str, Any]) -> str | None:
-        """Return the state family reached by a completed alarm event."""
+        """Return the state targeted by a completed alarm event."""
         name = str(event.get("name") or "").strip().casefold()
         if name == "arret":
             return "disarmed"
+        if name == "marchetotale":
+            return "armed_away"
         if name.startswith("marche"):
             return "armed"
         return None
@@ -1505,7 +1513,7 @@ class TydomAlarm(TydomDevice):
 
     @property
     def latest_alarm_event_target(self) -> str | None:
-        """Return whether the newest actor event armed or disarmed the alarm."""
+        """Return the alarm state targeted by the newest actor event."""
         return self._latest_alarm_event_target
 
     async def update_device(self, device) -> None:

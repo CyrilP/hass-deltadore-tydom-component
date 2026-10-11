@@ -52,12 +52,16 @@ def _load_generic_sensor_classes():
     class EntityCategory:
         DIAGNOSTIC = "diagnostic"
 
+    class Tydom:
+        """Stand-in for the TYDOM gateway device class."""
+
     namespace = {
         "SensorEntity": SensorEntity,
         "BinarySensorEntity": BinarySensorEntity,
         "SensorDeviceClass": SensorDeviceClass,
         "BinarySensorDeviceClass": BinarySensorDeviceClass,
         "EntityCategory": EntityCategory,
+        "Tydom": Tydom,
         "SensorEntityDescription": lambda **kwargs: SimpleNamespace(**kwargs),
         "BinarySensorEntityDescription": lambda **kwargs: SimpleNamespace(**kwargs),
         "PERCENTAGE": "%",
@@ -71,10 +75,13 @@ def _load_generic_sensor_classes():
         namespace["GenericSensor"],
         namespace["GenericBinarySensor"],
         EntityCategory,
+        Tydom,
     )
 
 
-GenericSensor, GenericBinarySensor, EntityCategory = _load_generic_sensor_classes()
+GenericSensor, GenericBinarySensor, EntityCategory, Tydom = (
+    _load_generic_sensor_classes()
+)
 
 
 class TydomGatewayDiagnosticCategoryTests(TestCase):
@@ -91,6 +98,16 @@ class TydomGatewayDiagnosticCategoryTests(TestCase):
         "zigbeeVersionSW",
     )
     BINARY_SENSOR_ATTRIBUTES = ("apiMode", "pltRegistered", "updateAvailable")
+
+    # Firmware/library versions and identifiers reported by the gateway that are
+    # not individually listed in ``diagnostic_attrs`` but must still be grouped
+    # as diagnostics rather than surfaced as regular sensors.
+    UNLISTED_GATEWAY_ATTRIBUTES = (
+        "libwebsocketsVersion",
+        "LwIPVersion",
+        "MbedTLSVersion",
+        "siteId",
+    )
 
     def test_technical_gateway_sensors_keep_identity_and_value(self) -> None:
         """Moving gateway metadata must not change IDs or reported values."""
@@ -134,6 +151,41 @@ class TydomGatewayDiagnosticCategoryTests(TestCase):
                 )
                 self.assertEqual(entity._attr_unique_id, f"gateway_072a1f_{attribute}")
                 self.assertTrue(entity.is_on)
+
+    def test_unlisted_gateway_sensors_are_diagnostic(self) -> None:
+        """Gateway firmware fields absent from the list are still diagnostic."""
+        for attribute in self.UNLISTED_GATEWAY_ATTRIBUTES:
+            with self.subTest(attribute=attribute):
+                self.assertNotIn(attribute, GenericSensor.diagnostic_attrs)
+                value = f"value-{attribute}"
+                device = Tydom()
+                device.device_id = "gateway_072a1f"
+                setattr(device, attribute, value)
+
+                entity = GenericSensor(
+                    device,
+                    None,
+                    None,
+                    attribute,
+                    attribute,
+                    None,
+                )
+
+                self.assertEqual(
+                    entity._attr_entity_category, EntityCategory.DIAGNOSTIC
+                )
+                self.assertEqual(entity.native_value, value)
+
+    def test_non_gateway_generic_sensor_is_not_diagnostic(self) -> None:
+        """Ordinary device readings keep their default (non-diagnostic) category."""
+        attribute = "libwebsocketsVersion"
+        self.assertNotIn(attribute, GenericSensor.diagnostic_attrs)
+        device = SimpleNamespace(device_id="shutter_0a1b2c")
+        setattr(device, attribute, "irrelevant")
+
+        entity = GenericSensor(device, None, None, attribute, attribute, None)
+
+        self.assertIsNone(getattr(entity, "_attr_entity_category", None))
 
 
 if __name__ == "__main__":
