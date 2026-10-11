@@ -300,8 +300,34 @@
                 "name": "Refresh energy data"
             }
         },
-        "number": {},
-        "select": {},
+        "number": {
+            "absmaxcoolsetpoint": {
+                "name": "Maximální žádaná teplota chlazení (limit zařízení)"
+            },
+            "absmaxheatsetpoint": {
+                "name": "Maximální žádaná teplota vytápění (limit zařízení)"
+            },
+            "absmincoolsetpoint": {
+                "name": "Minimální žádaná teplota chlazení (limit zařízení)"
+            },
+            "absminheatsetpoint": {
+                "name": "Minimální žádaná teplota vytápění (limit zařízení)"
+            }
+        },
+        "select": {
+            "absmaxcoolsetpoint": {
+                "name": "Maximální žádaná teplota chlazení (limit zařízení)"
+            },
+            "absmaxheatsetpoint": {
+                "name": "Maximální žádaná teplota vytápění (limit zařízení)"
+            },
+            "absmincoolsetpoint": {
+                "name": "Minimální žádaná teplota chlazení (limit zařízení)"
+            },
+            "absminheatsetpoint": {
+                "name": "Minimální žádaná teplota vytápění (limit zařízení)"
+            }
+        },
         "event": {
             "remote_button": {
                 "name": "Button {button_number}"
@@ -461,6 +487,18 @@
                     "override": "Dočasná změna",
                     "manual": "Ručně"
                 }
+            },
+            "absmaxcoolsetpoint": {
+                "name": "Maximální žádaná teplota chlazení (limit zařízení)"
+            },
+            "absmaxheatsetpoint": {
+                "name": "Maximální žádaná teplota vytápění (limit zařízení)"
+            },
+            "absmincoolsetpoint": {
+                "name": "Minimální žádaná teplota chlazení (limit zařízení)"
+            },
+            "absminheatsetpoint": {
+                "name": "Minimální žádaná teplota vytápění (limit zařízení)"
             }
         },
         "binary_sensor": {
@@ -532,6 +570,18 @@
             },
             "maintenance": {
                 "name": "Maintenance"
+            },
+            "absmaxcoolsetpoint": {
+                "name": "Maximální žádaná teplota chlazení (limit zařízení)"
+            },
+            "absmaxheatsetpoint": {
+                "name": "Maximální žádaná teplota vytápění (limit zařízení)"
+            },
+            "absmincoolsetpoint": {
+                "name": "Minimální žádaná teplota chlazení (limit zařízení)"
+            },
+            "absminheatsetpoint": {
+                "name": "Minimální žádaná teplota vytápění (limit zařízení)"
             }
         },
         "group": {},
