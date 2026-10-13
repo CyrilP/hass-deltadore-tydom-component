@@ -1809,6 +1809,25 @@ class MessageHandler:
                         for elem in endpoint.get("data", [])
                         if elem.get("validity") == "upToDate"
                     ]
+                    # Gateway firmware quirk (issue #507): a periodic full
+                    # refresh can report the frost-protection sub-block before
+                    # it is populated — antiFrostSetpoint comes back null while
+                    # antiFrostWhenOff defaults to false, both flagged
+                    # "upToDate". A correcting frame restores the real values a
+                    # few seconds later. Applying the transient false makes the
+                    # "Frost protection" binary sensor flap, so drop
+                    # antiFrostWhenOff whenever it arrives with a null
+                    # antiFrostSetpoint in the same frame.
+                    if any(
+                        elem.get("name") == "antiFrostSetpoint"
+                        and elem.get("value") is None
+                        for elem in valid_data
+                    ):
+                        valid_data = [
+                            elem
+                            for elem in valid_data
+                            if elem.get("name") != "antiFrostWhenOff"
+                        ]
                     has_valid_data = bool(valid_data)
 
                     # Some TYWATT/Calybox gateways advertise phantom consumption
