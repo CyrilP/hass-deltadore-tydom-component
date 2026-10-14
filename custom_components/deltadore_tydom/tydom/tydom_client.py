@@ -109,6 +109,8 @@ proxy = None
 _LOCAL_PASSWORD_URI = "/configs/gateway/password"
 _LOCAL_PASSWORD_MAX_MESSAGES = 5
 _LOCAL_PASSWORD_MAX_RESPONSE_BYTES = 64 * 1024
+# Live gateways can take about 45 seconds to start a cdata response.
+_CDATA_POLL_RESPONSE_TIMEOUT = 90.0
 
 # DEBUG ONLY — replaces websocket with a local trace file
 file_mode = False
@@ -149,6 +151,7 @@ class TydomClient:
         self._connection: ClientWebSocketResponse | None = None
         self._connection_ready = False
         self._connection_lock = asyncio.Lock()
+        self._cdata_poll_lock = asyncio.Lock()
         self._initialising_task: asyncio.Task | None = None
         self._shutdown_event = asyncio.Event()
         self.event_callback = event_callback
@@ -1332,11 +1335,12 @@ class TydomClient:
             prefix = f"/devices/{device_id}/endpoints/{endpoint_id}/"
             urls = [url for url in urls if url.startswith(prefix)]
 
-        for url in urls:
-            try:
-                await self.get_poll_device_data(url)
-            except Exception:
-                LOGGER.exception("Error polling cdata endpoint %s", url)
+        async with self._cdata_poll_lock:
+            for url in urls:
+                try:
+                    await self.get_poll_device_data(url)
+                except Exception:
+                    LOGGER.exception("Error polling cdata endpoint %s", url)
 
     async def get_configs_file(self):
         """List the devices to get the endpoint id."""
@@ -1436,10 +1440,32 @@ class TydomClient:
             await self.send_bytes(a_bytes)
 
     async def get_poll_device_data(self, url):
-        """Poll a device."""
-        msg_type = url
-        req = "GET"
-        await self.send_message(method=req, msg=msg_type)
+        """Poll a device and wait for cdata streams to finish before continuing."""
+        if not url.split("?", 1)[0].endswith("/cdata"):
+            await self.send_message(method="GET", msg=url)
+            return
+
+        headers = {
+            "Content-Length": "0",
+            "Content-Type": "application/json; charset=UTF-8",
+        }
+        transaction_id, request = self._message_handler.prepare_request(
+            "GET", url, headers=headers
+        )
+        completion_event = self._message_handler.register_cdata_poll(transaction_id)
+        try:
+            await self.send_bytes(request)
+            try:
+                await asyncio.wait_for(
+                    completion_event.wait(), timeout=_CDATA_POLL_RESPONSE_TIMEOUT
+                )
+            except TimeoutError:
+                LOGGER.debug(
+                    "Timed out waiting for cdata response to %s",
+                    sanitize_log_message(url),
+                )
+        finally:
+            self._message_handler.remove_cdata_poll(transaction_id)
 
     async def poll_device_data(self, device_id, endpoint_id=None):
         """Poll data for a single device.
