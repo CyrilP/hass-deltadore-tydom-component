@@ -64,6 +64,16 @@ def sanitize_error_message(
     return sanitise_text(message, (password, email))
 
 
+def validate_mac(mac: str) -> str:
+    """Valider le format de l'adresse MAC de la passerelle (12 caractères hexadécimaux)."""
+    if not re.fullmatch(r"[0-9A-Fa-f]{12}", mac):
+        raise argparse.ArgumentTypeError(
+            f"adresse MAC invalide: {mac!r} "
+            "(attendu: 12 caractères hexadécimaux, ex: 001A25123456)"
+        )
+    return mac
+
+
 DELTADORE_AUTH_GRANT_TYPE = "password"
 DELTADORE_AUTH_CLIENTID = "8782839f-3264-472a-ab87-4d4e23524da4"
 DELTADORE_AUTH_SCOPE = "openid profile offline_access https://deltadoreadb2ciot.onmicrosoft.com/iotapi/video_config https://deltadoreadb2ciot.onmicrosoft.com/iotapi/video_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/sites_management_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/sites_management_gateway_credentials https://deltadoreadb2ciot.onmicrosoft.com/iotapi/sites_management_camera_credentials https://deltadoreadb2ciot.onmicrosoft.com/iotapi/comptage_europe_collect_reader https://deltadoreadb2ciot.onmicrosoft.com/iotapi/comptage_europe_site_config_contributor https://deltadoreadb2ciot.onmicrosoft.com/iotapi/pilotage_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/consent_mgt_contributor https://deltadoreadb2ciot.onmicrosoft.com/iotapi/b2caccountprovider_manage_account https://deltadoreadb2ciot.onmicrosoft.com/iotapi/b2caccountprovider_allow_view_account https://deltadoreadb2ciot.onmicrosoft.com/iotapi/tydom_backend_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/websocket_remote_access https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_device https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_view https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_space https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_connector https://deltadoreadb2ciot.onmicrosoft.com/iotapi/orkestrator_endpoint https://deltadoreadb2ciot.onmicrosoft.com/iotapi/rule_management_allowed https://deltadoreadb2ciot.onmicrosoft.com/iotapi/collect_read_datas"
@@ -334,7 +344,7 @@ async def main():
     """Run the command-line capture client."""
     parser = argparse.ArgumentParser(description="Capture simple des messages Tydom")
     parser.add_argument("--host", required=True)
-    parser.add_argument("--mac", required=True)
+    parser.add_argument("--mac", required=True, type=validate_mac)
     parser.add_argument("--password")
     parser.add_argument("--email")
     parser.add_argument("--delta-password")
