@@ -27,6 +27,9 @@
       },
       "protocol_zigbee": {
         "default": "mdi:radio-tower"
+      },
+      "climate_command_pending": {
+        "default": "mdi:timer-sand"
       }
     },
     "button": {
