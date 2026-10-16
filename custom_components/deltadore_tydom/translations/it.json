@@ -3909,6 +3909,15 @@
         "climate": {
             "thermostat": {
                 "name": "Termostato"
+            },
+            "tydom_climate": {
+                "state_attributes": {
+                    "preset_mode": {
+                        "state": {
+                            "frost_protection": "Protezione antigelo"
+                        }
+                    }
+                }
             }
         },
         "cover": {
