@@ -366,6 +366,21 @@ class TestDeviceModelApplication(IsolatedAsyncioTestCase):
         self.assertIsNotNone(device)
         self.assertEqual(device.productName, "Reported model")
 
+    async def test_horizontal_garage_door_usage_is_recognized_as_garage(self) -> None:
+        """TYDOM reports some garage openers with a distinct usage string.
+
+        A horizontal/sliding motor is reported as ``garage_door_horizontal``
+        rather than ``garage_door``, but advertises the same ``level`` and
+        ``levelCmd`` capabilities, so it must resolve to the same TydomGarage
+        cover instead of falling back to a generic device.
+        """
+        device = await MessageHandler.get_device(
+            MagicMock(), "garage_door_horizontal", "41_40", "40", "Garage", "41"
+        )
+
+        self.assertIsNotNone(device)
+        self.assertIsInstance(device, devices_module.TydomGarage)
+
     async def test_separately_paired_tyxia_2600_is_identified(self) -> None:
         """The observed two-record pairing retains its physical model."""
         device_id = 30
