@@ -745,5 +745,13 @@
         },
         "group": {},
         "moment": {}
+    },
+    "exceptions": {
+        "stored_alarm_pin_missing": {
+            "message": "Před použitím této akce uložte PIN alarmu v nastavení této integrace TYDOM."
+        },
+        "unsupported_stored_pin_alarm_mode": {
+            "message": "Pro akci s uloženým PINem vyberte režim Pryč, Doma, Noc nebo Odjistit."
+        }
     }
 }

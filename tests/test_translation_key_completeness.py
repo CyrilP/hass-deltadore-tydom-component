@@ -39,8 +39,37 @@ def _sensor_names(path: Path) -> dict[str, dict]:
     return data.get("entity", {}).get("sensor", {})
 
 
+def _unique_object(pairs):
+    """Reject duplicate JSON keys instead of silently discarding earlier values."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate translation key: {key}")
+        result[key] = value
+    return result
+
+
 class TranslationKeyCompletenessTests(TestCase):
     """Guard key entity names across all supported locales."""
+
+    def test_stored_pin_exceptions_are_unique_and_translated_everywhere(self):
+        """Stored-PIN errors must be reachable in every locale JSON file."""
+        required_keys = (
+            "stored_alarm_pin_missing",
+            "unsupported_stored_pin_alarm_mode",
+        )
+
+        for locale in sorted(TRANSLATIONS.glob("*.json")):
+            with self.subTest(locale=locale.name):
+                translated = json.loads(
+                    locale.read_text(encoding="utf-8"),
+                    object_pairs_hook=_unique_object,
+                )
+                exceptions = translated.get("exceptions", {})
+                for key in required_keys:
+                    with self.subTest(key=key):
+                        self.assertIn(key, exceptions)
+                        self.assertTrue(exceptions[key]["message"].strip())
 
     def test_tywatt_energy_keys_present_in_every_locale(self):
         """Every ``tywatt_energy_*`` key in en.json must exist in all locales."""
@@ -79,7 +108,9 @@ class TranslationKeyCompletenessTests(TestCase):
                 and key.rsplit("_", 1)[-1] in ENERGY_INDEX_SHARE_CATEGORIES
             )
         } | set(ENERGY_INDEX_SHARE_EXTRA_KEYS)
-        self.assertTrue(reference_keys, "no energydistrib/energyindex keys found in en.json")
+        self.assertTrue(
+            reference_keys, "no energydistrib/energyindex keys found in en.json"
+        )
 
         for locale in sorted(TRANSLATIONS.glob("*.json")):
             if locale.name == REFERENCE:

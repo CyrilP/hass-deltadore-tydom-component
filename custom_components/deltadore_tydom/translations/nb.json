@@ -745,5 +745,13 @@
         },
         "group": {},
         "moment": {}
+    },
+    "exceptions": {
+        "stored_alarm_pin_missing": {
+            "message": "Lagre en alarm-PIN i innstillingene for denne TYDOM-integrasjonen før du bruker denne handlingen."
+        },
+        "unsupported_stored_pin_alarm_mode": {
+            "message": "Velg Borte, Hjemme, Natt eller Deaktivert for handlingen med lagret PIN."
+        }
     }
 }

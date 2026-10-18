@@ -3929,6 +3929,12 @@
         },
         "target_temperature_out_of_range": {
             "message": "La temperatura solicitada {temperature} está fuera de los límites del dispositivo ({minimum} a {maximum})."
+        },
+        "stored_alarm_pin_missing": {
+            "message": "Guarda un PIN de alarma en los ajustes de esta integración de TYDOM antes de usar esta acción."
+        },
+        "unsupported_stored_pin_alarm_mode": {
+            "message": "Elige Ausente, En casa, Noche o Desarmar para la acción con PIN guardado."
         }
     },
     "device": {
