@@ -11,6 +11,20 @@ ROOT = Path(__file__).parents[1]
 TRANSLATIONS = ROOT / "custom_components" / "deltadore_tydom" / "translations"
 REFERENCE = "en.json"
 PREFIX = "tywatt_energy_"
+ENERGY_INDEX_SHARE_CATEGORIES = (
+    "cooling",
+    "heating",
+    "hotwater",
+    "other",
+    "outlet",
+    "total",
+)
+ENERGY_INDEX_SHARE_PREFIXES = ("energydistrib", "energyindex")
+ENERGY_INDEX_SHARE_EXTRA_KEYS = (
+    "energyindexheatgas",
+    "energyindexti1",
+    "energytotindexwatt",
+)
 SETPOINT_DOMAINS = ("sensor", "binary_sensor", "number", "select")
 ABSOLUTE_SETPOINTS = {
     "absmaxcoolsetpoint": "maxcoolsetpoint",
@@ -47,6 +61,36 @@ class TranslationKeyCompletenessTests(TestCase):
                     missing,
                     [],
                     f"{locale.name} is missing TYWATT energy names: {missing}",
+                )
+                for key in reference_keys:
+                    with self.subTest(key=key):
+                        self.assertIn("name", names[key])
+                        self.assertTrue(names[key]["name"].strip())
+
+    def test_energy_index_share_keys_present_in_every_locale(self):
+        """TYWATT energy index/share labels (PR #517) must exist in all locales."""
+        reference = _sensor_names(TRANSLATIONS / REFERENCE)
+        reference_keys = {
+            key
+            for key in reference
+            if key in ENERGY_INDEX_SHARE_PREFIXES
+            or (
+                key.startswith(ENERGY_INDEX_SHARE_PREFIXES)
+                and key.rsplit("_", 1)[-1] in ENERGY_INDEX_SHARE_CATEGORIES
+            )
+        } | set(ENERGY_INDEX_SHARE_EXTRA_KEYS)
+        self.assertTrue(reference_keys, "no energydistrib/energyindex keys found in en.json")
+
+        for locale in sorted(TRANSLATIONS.glob("*.json")):
+            if locale.name == REFERENCE:
+                continue
+            with self.subTest(locale=locale.name):
+                names = _sensor_names(locale)
+                missing = sorted(key for key in reference_keys if key not in names)
+                self.assertEqual(
+                    missing,
+                    [],
+                    f"{locale.name} is missing energy index/share names: {missing}",
                 )
                 for key in reference_keys:
                     with self.subTest(key=key):

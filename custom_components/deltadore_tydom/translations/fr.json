@@ -2098,28 +2098,28 @@
                 "name": "Énergie"
             },
             "energydistrib": {
-                "name": "Répartition de consommation"
+                "name": "Part"
             },
             "energydistrib_elec_a": {
                 "name": "Courant (Électricité)"
             },
             "energydistrib_elec_cooling": {
-                "name": "Répartition de consommation (Électricité, Refroidissement)"
+                "name": "Part refroidissement élec."
             },
             "energydistrib_elec_heating": {
-                "name": "Répartition de consommation (Électricité, Chauffage)"
+                "name": "Part chauffage élec."
             },
             "energydistrib_elec_hotwater": {
-                "name": "Répartition de consommation (Électricité, Eau chaude)"
+                "name": "Part eau chaude élec."
             },
             "energydistrib_elec_other": {
-                "name": "Répartition de consommation (Électricité, Autres)"
+                "name": "Part autres élec."
             },
             "energydistrib_elec_outlet": {
-                "name": "Répartition de consommation (Électricité, Prises)"
+                "name": "Part prises élec."
             },
             "energydistrib_elec_total": {
-                "name": "Répartition de consommation (Électricité, Total)"
+                "name": "Part total élec."
             },
             "energydistrib_elec_w": {
                 "name": "Puissance (Électricité)"
@@ -2128,22 +2128,22 @@
                 "name": "Courant (Gaz)"
             },
             "energydistrib_gas_cooling": {
-                "name": "Répartition de consommation (Gaz, Refroidissement)"
+                "name": "Part refroidissement gaz"
             },
             "energydistrib_gas_heating": {
-                "name": "Répartition de consommation (Gaz, Chauffage)"
+                "name": "Part chauffage gaz"
             },
             "energydistrib_gas_hotwater": {
-                "name": "Répartition de consommation (Gaz, Eau chaude)"
+                "name": "Part eau chaude gaz"
             },
             "energydistrib_gas_other": {
-                "name": "Répartition de consommation (Gaz, Autres)"
+                "name": "Part autres gaz"
             },
             "energydistrib_gas_outlet": {
-                "name": "Répartition de consommation (Gaz, Prises)"
+                "name": "Part prises gaz"
             },
             "energydistrib_gas_total": {
-                "name": "Répartition de consommation (Gaz, Total)"
+                "name": "Part total gaz"
             },
             "energydistrib_gas_w": {
                 "name": "Puissance (Gaz)"
@@ -2152,22 +2152,22 @@
                 "name": "Courant (Gaz)"
             },
             "energydistrib_gaz_cooling": {
-                "name": "Répartition de consommation (Gaz, Refroidissement)"
+                "name": "Part refroidissement gaz"
             },
             "energydistrib_gaz_heating": {
-                "name": "Répartition de consommation (Gaz, Chauffage)"
+                "name": "Part chauffage gaz"
             },
             "energydistrib_gaz_hotwater": {
-                "name": "Répartition de consommation (Gaz, Eau chaude)"
+                "name": "Part eau chaude gaz"
             },
             "energydistrib_gaz_other": {
-                "name": "Répartition de consommation (Gaz, Autres)"
+                "name": "Part autres gaz"
             },
             "energydistrib_gaz_outlet": {
-                "name": "Répartition de consommation (Gaz, Prises)"
+                "name": "Part prises gaz"
             },
             "energydistrib_gaz_total": {
-                "name": "Répartition de consommation (Gaz, Total)"
+                "name": "Part total gaz"
             },
             "energydistrib_gaz_w": {
                 "name": "Puissance (Gaz)"
@@ -2176,22 +2176,22 @@
                 "name": "Courant (Eau)"
             },
             "energydistrib_water_cooling": {
-                "name": "Répartition de consommation (Eau, Refroidissement)"
+                "name": "Part refroidissement eau"
             },
             "energydistrib_water_heating": {
-                "name": "Répartition de consommation (Eau, Chauffage)"
+                "name": "Part chauffage eau"
             },
             "energydistrib_water_hotwater": {
-                "name": "Répartition de consommation (Eau, Eau chaude)"
+                "name": "Part eau chaude eau"
             },
             "energydistrib_water_other": {
-                "name": "Répartition de consommation (Eau, Autres)"
+                "name": "Part autres eau"
             },
             "energydistrib_water_outlet": {
-                "name": "Répartition de consommation (Eau, Prises)"
+                "name": "Part prises eau"
             },
             "energydistrib_water_total": {
-                "name": "Répartition de consommation (Eau, Total)"
+                "name": "Part total eau"
             },
             "energydistrib_water_w": {
                 "name": "Puissance (Eau)"
@@ -2296,28 +2296,28 @@
                 "name": "Puissance (Eau)"
             },
             "energyindex": {
-                "name": "Index de consommation"
+                "name": "Index"
             },
             "energyindex_elec_a": {
                 "name": "Courant (Électricité)"
             },
             "energyindex_elec_cooling": {
-                "name": "Index de consommation (Électricité, Refroidissement)"
+                "name": "Index refroidissement élec."
             },
             "energyindex_elec_heating": {
-                "name": "Index de consommation (Électricité, Chauffage)"
+                "name": "Index chauffage élec."
             },
             "energyindex_elec_hotwater": {
-                "name": "Index de consommation (Électricité, Eau chaude)"
+                "name": "Index eau chaude élec."
             },
             "energyindex_elec_other": {
-                "name": "Index de consommation (Électricité, Autres)"
+                "name": "Index autres élec."
             },
             "energyindex_elec_outlet": {
-                "name": "Index de consommation (Électricité, Prises)"
+                "name": "Index prises élec."
             },
             "energyindex_elec_total": {
-                "name": "Index de consommation (Électricité, Total)"
+                "name": "Index total élec."
             },
             "energyindex_elec_w": {
                 "name": "Puissance (Électricité)"
@@ -2326,22 +2326,22 @@
                 "name": "Courant (Gaz)"
             },
             "energyindex_gas_cooling": {
-                "name": "Index de consommation (Gaz, Refroidissement)"
+                "name": "Index refroidissement gaz"
             },
             "energyindex_gas_heating": {
-                "name": "Index de consommation (Gaz, Chauffage)"
+                "name": "Index chauffage gaz"
             },
             "energyindex_gas_hotwater": {
-                "name": "Index de consommation (Gaz, Eau chaude)"
+                "name": "Index eau chaude gaz"
             },
             "energyindex_gas_other": {
-                "name": "Index de consommation (Gaz, Autres)"
+                "name": "Index autres gaz"
             },
             "energyindex_gas_outlet": {
-                "name": "Index de consommation (Gaz, Prises)"
+                "name": "Index prises gaz"
             },
             "energyindex_gas_total": {
-                "name": "Index de consommation (Gaz, Total)"
+                "name": "Index total gaz"
             },
             "energyindex_gas_w": {
                 "name": "Puissance (Gaz)"
@@ -2350,22 +2350,22 @@
                 "name": "Courant (Gaz)"
             },
             "energyindex_gaz_cooling": {
-                "name": "Index de consommation (Gaz, Refroidissement)"
+                "name": "Index refroidissement gaz"
             },
             "energyindex_gaz_heating": {
-                "name": "Index de consommation (Gaz, Chauffage)"
+                "name": "Index chauffage gaz"
             },
             "energyindex_gaz_hotwater": {
-                "name": "Index de consommation (Gaz, Eau chaude)"
+                "name": "Index eau chaude gaz"
             },
             "energyindex_gaz_other": {
-                "name": "Index de consommation (Gaz, Autres)"
+                "name": "Index autres gaz"
             },
             "energyindex_gaz_outlet": {
-                "name": "Index de consommation (Gaz, Prises)"
+                "name": "Index prises gaz"
             },
             "energyindex_gaz_total": {
-                "name": "Index de consommation (Gaz, Total)"
+                "name": "Index total gaz"
             },
             "energyindex_gaz_w": {
                 "name": "Puissance (Gaz)"
@@ -2374,22 +2374,22 @@
                 "name": "Courant (Eau)"
             },
             "energyindex_water_cooling": {
-                "name": "Index de consommation (Eau, Refroidissement)"
+                "name": "Index refroidissement eau"
             },
             "energyindex_water_heating": {
-                "name": "Index de consommation (Eau, Chauffage)"
+                "name": "Index chauffage eau"
             },
             "energyindex_water_hotwater": {
-                "name": "Index de consommation (Eau, Eau chaude)"
+                "name": "Index eau chaude eau"
             },
             "energyindex_water_other": {
-                "name": "Index de consommation (Eau, Autres)"
+                "name": "Index autres eau"
             },
             "energyindex_water_outlet": {
-                "name": "Index de consommation (Eau, Prises)"
+                "name": "Index prises eau"
             },
             "energyindex_water_total": {
-                "name": "Index de consommation (Eau, Total)"
+                "name": "Index total eau"
             },
             "energyindex_water_w": {
                 "name": "Puissance (Eau)"
@@ -2404,13 +2404,13 @@
                 "name": "Énergie (Eau chaude)"
             },
             "energyindexheatgas": {
-                "name": "Index de consommation (Gaz, Chauffage)"
+                "name": "Index chauffage gaz"
             },
             "energyindexheatwatt": {
                 "name": "Énergie (Chauffage)"
             },
             "energyindexti1": {
-                "name": "Index de consommation (TI1)"
+                "name": "Index TI1"
             },
             "energyindexti1watt": {
                 "name": "Énergie (TI1)"
@@ -2968,7 +2968,7 @@
                 "name": "Échelle — Puissance (Électricité) (minimum)"
             },
             "energytotindexwatt": {
-                "name": "Index de consommation (Électricité)"
+                "name": "Index élec."
             },
             "gsmlevel": {
                 "name": "Niveau du signal mobile"

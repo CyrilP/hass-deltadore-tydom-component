@@ -187,28 +187,28 @@
                 "name": "Energie"
             },
             "energydistrib": {
-                "name": "Verbrauchsanteil"
+                "name": "Anteil"
             },
             "energydistrib_elec_a": {
                 "name": "Stromstärke (Strom)"
             },
             "energydistrib_elec_cooling": {
-                "name": "Verbrauchsanteil (Strom, Kühlung)"
+                "name": "Strom-Kühlung-Anteil"
             },
             "energydistrib_elec_heating": {
-                "name": "Verbrauchsanteil (Strom, Heizung)"
+                "name": "Strom-Heizung-Anteil"
             },
             "energydistrib_elec_hotwater": {
-                "name": "Verbrauchsanteil (Strom, Warmwasser)"
+                "name": "Strom-Warmwasser-Anteil"
             },
             "energydistrib_elec_other": {
-                "name": "Verbrauchsanteil (Strom, Sonstiges)"
+                "name": "Strom-Sonstiges-Anteil"
             },
             "energydistrib_elec_outlet": {
-                "name": "Verbrauchsanteil (Strom, Steckdosen)"
+                "name": "Strom-Steckdosen-Anteil"
             },
             "energydistrib_elec_total": {
-                "name": "Verbrauchsanteil (Strom, Gesamt)"
+                "name": "Strom-Gesamt-Anteil"
             },
             "energydistrib_elec_w": {
                 "name": "Leistung (Strom)"
@@ -217,22 +217,22 @@
                 "name": "Stromstärke (Gas)"
             },
             "energydistrib_gas_cooling": {
-                "name": "Verbrauchsanteil (Gas, Kühlung)"
+                "name": "Gas-Kühlung-Anteil"
             },
             "energydistrib_gas_heating": {
-                "name": "Verbrauchsanteil (Gas, Heizung)"
+                "name": "Gas-Heizung-Anteil"
             },
             "energydistrib_gas_hotwater": {
-                "name": "Verbrauchsanteil (Gas, Warmwasser)"
+                "name": "Gas-Warmwasser-Anteil"
             },
             "energydistrib_gas_other": {
-                "name": "Verbrauchsanteil (Gas, Sonstiges)"
+                "name": "Gas-Sonstiges-Anteil"
             },
             "energydistrib_gas_outlet": {
-                "name": "Verbrauchsanteil (Gas, Steckdosen)"
+                "name": "Gas-Steckdosen-Anteil"
             },
             "energydistrib_gas_total": {
-                "name": "Verbrauchsanteil (Gas, Gesamt)"
+                "name": "Gas-Gesamt-Anteil"
             },
             "energydistrib_gas_w": {
                 "name": "Leistung (Gas)"
@@ -241,22 +241,22 @@
                 "name": "Stromstärke (Gas)"
             },
             "energydistrib_gaz_cooling": {
-                "name": "Verbrauchsanteil (Gas, Kühlung)"
+                "name": "Gas-Kühlung-Anteil"
             },
             "energydistrib_gaz_heating": {
-                "name": "Verbrauchsanteil (Gas, Heizung)"
+                "name": "Gas-Heizung-Anteil"
             },
             "energydistrib_gaz_hotwater": {
-                "name": "Verbrauchsanteil (Gas, Warmwasser)"
+                "name": "Gas-Warmwasser-Anteil"
             },
             "energydistrib_gaz_other": {
-                "name": "Verbrauchsanteil (Gas, Sonstiges)"
+                "name": "Gas-Sonstiges-Anteil"
             },
             "energydistrib_gaz_outlet": {
-                "name": "Verbrauchsanteil (Gas, Steckdosen)"
+                "name": "Gas-Steckdosen-Anteil"
             },
             "energydistrib_gaz_total": {
-                "name": "Verbrauchsanteil (Gas, Gesamt)"
+                "name": "Gas-Gesamt-Anteil"
             },
             "energydistrib_gaz_w": {
                 "name": "Leistung (Gas)"
@@ -265,22 +265,22 @@
                 "name": "Stromstärke (Wasser)"
             },
             "energydistrib_water_cooling": {
-                "name": "Verbrauchsanteil (Wasser, Kühlung)"
+                "name": "Wasser-Kühlung-Anteil"
             },
             "energydistrib_water_heating": {
-                "name": "Verbrauchsanteil (Wasser, Heizung)"
+                "name": "Wasser-Heizung-Anteil"
             },
             "energydistrib_water_hotwater": {
-                "name": "Verbrauchsanteil (Wasser, Warmwasser)"
+                "name": "Wasser-Warmwasser-Anteil"
             },
             "energydistrib_water_other": {
-                "name": "Verbrauchsanteil (Wasser, Sonstiges)"
+                "name": "Wasser-Sonstiges-Anteil"
             },
             "energydistrib_water_outlet": {
-                "name": "Verbrauchsanteil (Wasser, Steckdosen)"
+                "name": "Wasser-Steckdosen-Anteil"
             },
             "energydistrib_water_total": {
-                "name": "Verbrauchsanteil (Wasser, Gesamt)"
+                "name": "Wasser-Gesamt-Anteil"
             },
             "energydistrib_water_w": {
                 "name": "Leistung (Wasser)"
@@ -385,28 +385,28 @@
                 "name": "Leistung (Wasser)"
             },
             "energyindex": {
-                "name": "Verbrauchszählerstand"
+                "name": "Index"
             },
             "energyindex_elec_a": {
                 "name": "Stromstärke (Strom)"
             },
             "energyindex_elec_cooling": {
-                "name": "Verbrauchszählerstand (Strom, Kühlung)"
+                "name": "Strom-Kühlung-Index"
             },
             "energyindex_elec_heating": {
-                "name": "Verbrauchszählerstand (Strom, Heizung)"
+                "name": "Strom-Heizung-Index"
             },
             "energyindex_elec_hotwater": {
-                "name": "Verbrauchszählerstand (Strom, Warmwasser)"
+                "name": "Strom-Warmwasser-Index"
             },
             "energyindex_elec_other": {
-                "name": "Verbrauchszählerstand (Strom, Sonstiges)"
+                "name": "Strom-Sonstiges-Index"
             },
             "energyindex_elec_outlet": {
-                "name": "Verbrauchszählerstand (Strom, Steckdosen)"
+                "name": "Strom-Steckdosen-Index"
             },
             "energyindex_elec_total": {
-                "name": "Verbrauchszählerstand (Strom, Gesamt)"
+                "name": "Strom-Gesamt-Index"
             },
             "energyindex_elec_w": {
                 "name": "Leistung (Strom)"
@@ -415,22 +415,22 @@
                 "name": "Stromstärke (Gas)"
             },
             "energyindex_gas_cooling": {
-                "name": "Verbrauchszählerstand (Gas, Kühlung)"
+                "name": "Gas-Kühlung-Index"
             },
             "energyindex_gas_heating": {
-                "name": "Verbrauchszählerstand (Gas, Heizung)"
+                "name": "Gas-Heizung-Index"
             },
             "energyindex_gas_hotwater": {
-                "name": "Verbrauchszählerstand (Gas, Warmwasser)"
+                "name": "Gas-Warmwasser-Index"
             },
             "energyindex_gas_other": {
-                "name": "Verbrauchszählerstand (Gas, Sonstiges)"
+                "name": "Gas-Sonstiges-Index"
             },
             "energyindex_gas_outlet": {
-                "name": "Verbrauchszählerstand (Gas, Steckdosen)"
+                "name": "Gas-Steckdosen-Index"
             },
             "energyindex_gas_total": {
-                "name": "Verbrauchszählerstand (Gas, Gesamt)"
+                "name": "Gas-Gesamt-Index"
             },
             "energyindex_gas_w": {
                 "name": "Leistung (Gas)"
@@ -439,22 +439,22 @@
                 "name": "Stromstärke (Gas)"
             },
             "energyindex_gaz_cooling": {
-                "name": "Verbrauchszählerstand (Gas, Kühlung)"
+                "name": "Gas-Kühlung-Index"
             },
             "energyindex_gaz_heating": {
-                "name": "Verbrauchszählerstand (Gas, Heizung)"
+                "name": "Gas-Heizung-Index"
             },
             "energyindex_gaz_hotwater": {
-                "name": "Verbrauchszählerstand (Gas, Warmwasser)"
+                "name": "Gas-Warmwasser-Index"
             },
             "energyindex_gaz_other": {
-                "name": "Verbrauchszählerstand (Gas, Sonstiges)"
+                "name": "Gas-Sonstiges-Index"
             },
             "energyindex_gaz_outlet": {
-                "name": "Verbrauchszählerstand (Gas, Steckdosen)"
+                "name": "Gas-Steckdosen-Index"
             },
             "energyindex_gaz_total": {
-                "name": "Verbrauchszählerstand (Gas, Gesamt)"
+                "name": "Gas-Gesamt-Index"
             },
             "energyindex_gaz_w": {
                 "name": "Leistung (Gas)"
@@ -463,22 +463,22 @@
                 "name": "Stromstärke (Wasser)"
             },
             "energyindex_water_cooling": {
-                "name": "Verbrauchszählerstand (Wasser, Kühlung)"
+                "name": "Wasser-Kühlung-Index"
             },
             "energyindex_water_heating": {
-                "name": "Verbrauchszählerstand (Wasser, Heizung)"
+                "name": "Wasser-Heizung-Index"
             },
             "energyindex_water_hotwater": {
-                "name": "Verbrauchszählerstand (Wasser, Warmwasser)"
+                "name": "Wasser-Warmwasser-Index"
             },
             "energyindex_water_other": {
-                "name": "Verbrauchszählerstand (Wasser, Sonstiges)"
+                "name": "Wasser-Sonstiges-Index"
             },
             "energyindex_water_outlet": {
-                "name": "Verbrauchszählerstand (Wasser, Steckdosen)"
+                "name": "Wasser-Steckdosen-Index"
             },
             "energyindex_water_total": {
-                "name": "Verbrauchszählerstand (Wasser, Gesamt)"
+                "name": "Wasser-Gesamt-Index"
             },
             "energyindex_water_w": {
                 "name": "Leistung (Wasser)"
@@ -493,13 +493,13 @@
                 "name": "Energie (Warmwasser)"
             },
             "energyindexheatgas": {
-                "name": "Verbrauchszählerstand (Gas, Heizung)"
+                "name": "Gas-Heizung-Index"
             },
             "energyindexheatwatt": {
                 "name": "Energie (Heizung)"
             },
             "energyindexti1": {
-                "name": "Verbrauchszählerstand (TI1)"
+                "name": "Index TI1"
             },
             "energyindexti1watt": {
                 "name": "Energie (TI1)"
@@ -1057,7 +1057,7 @@
                 "name": "Skala — Leistung (Strom) (Minimum)"
             },
             "energytotindexwatt": {
-                "name": "Verbrauchszählerstand (Strom)"
+                "name": "Strom-Index"
             },
             "gsmlevel": {
                 "name": "Mobilfunksignalstärke"

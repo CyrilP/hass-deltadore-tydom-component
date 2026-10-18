@@ -417,6 +417,165 @@
             "energy": {
                 "name": "Energy"
             },
+            "energydistrib": {
+                "name": "Andel"
+            },
+            "energyindex": {
+                "name": "Indeks"
+            },
+            "energydistrib_elec_cooling": {
+                "name": "Andel kjøling strøm"
+            },
+            "energydistrib_elec_heating": {
+                "name": "Andel oppvarming strøm"
+            },
+            "energydistrib_elec_hotwater": {
+                "name": "Andel varmtvann strøm"
+            },
+            "energydistrib_elec_other": {
+                "name": "Andel annet strøm"
+            },
+            "energydistrib_elec_outlet": {
+                "name": "Andel stikkontakter strøm"
+            },
+            "energydistrib_elec_total": {
+                "name": "Andel totalt strøm"
+            },
+            "energydistrib_gas_cooling": {
+                "name": "Andel kjøling gass"
+            },
+            "energydistrib_gas_heating": {
+                "name": "Andel oppvarming gass"
+            },
+            "energydistrib_gas_hotwater": {
+                "name": "Andel varmtvann gass"
+            },
+            "energydistrib_gas_other": {
+                "name": "Andel annet gass"
+            },
+            "energydistrib_gas_outlet": {
+                "name": "Andel stikkontakter gass"
+            },
+            "energydistrib_gas_total": {
+                "name": "Andel totalt gass"
+            },
+            "energydistrib_gaz_cooling": {
+                "name": "Andel kjøling gass"
+            },
+            "energydistrib_gaz_heating": {
+                "name": "Andel oppvarming gass"
+            },
+            "energydistrib_gaz_hotwater": {
+                "name": "Andel varmtvann gass"
+            },
+            "energydistrib_gaz_other": {
+                "name": "Andel annet gass"
+            },
+            "energydistrib_gaz_outlet": {
+                "name": "Andel stikkontakter gass"
+            },
+            "energydistrib_gaz_total": {
+                "name": "Andel totalt gass"
+            },
+            "energydistrib_water_cooling": {
+                "name": "Andel kjøling vann"
+            },
+            "energydistrib_water_heating": {
+                "name": "Andel oppvarming vann"
+            },
+            "energydistrib_water_hotwater": {
+                "name": "Andel varmtvann vann"
+            },
+            "energydistrib_water_other": {
+                "name": "Andel annet vann"
+            },
+            "energydistrib_water_outlet": {
+                "name": "Andel stikkontakter vann"
+            },
+            "energydistrib_water_total": {
+                "name": "Andel totalt vann"
+            },
+            "energyindex_elec_cooling": {
+                "name": "Indeks kjøling strøm"
+            },
+            "energyindex_elec_heating": {
+                "name": "Indeks oppvarming strøm"
+            },
+            "energyindex_elec_hotwater": {
+                "name": "Indeks varmtvann strøm"
+            },
+            "energyindex_elec_other": {
+                "name": "Indeks annet strøm"
+            },
+            "energyindex_elec_outlet": {
+                "name": "Indeks stikkontakter strøm"
+            },
+            "energyindex_elec_total": {
+                "name": "Indeks totalt strøm"
+            },
+            "energyindex_gas_cooling": {
+                "name": "Indeks kjøling gass"
+            },
+            "energyindex_gas_heating": {
+                "name": "Indeks oppvarming gass"
+            },
+            "energyindex_gas_hotwater": {
+                "name": "Indeks varmtvann gass"
+            },
+            "energyindex_gas_other": {
+                "name": "Indeks annet gass"
+            },
+            "energyindex_gas_outlet": {
+                "name": "Indeks stikkontakter gass"
+            },
+            "energyindex_gas_total": {
+                "name": "Indeks totalt gass"
+            },
+            "energyindex_gaz_cooling": {
+                "name": "Indeks kjøling gass"
+            },
+            "energyindex_gaz_heating": {
+                "name": "Indeks oppvarming gass"
+            },
+            "energyindex_gaz_hotwater": {
+                "name": "Indeks varmtvann gass"
+            },
+            "energyindex_gaz_other": {
+                "name": "Indeks annet gass"
+            },
+            "energyindex_gaz_outlet": {
+                "name": "Indeks stikkontakter gass"
+            },
+            "energyindex_gaz_total": {
+                "name": "Indeks totalt gass"
+            },
+            "energyindex_water_cooling": {
+                "name": "Indeks kjøling vann"
+            },
+            "energyindex_water_heating": {
+                "name": "Indeks oppvarming vann"
+            },
+            "energyindex_water_hotwater": {
+                "name": "Indeks varmtvann vann"
+            },
+            "energyindex_water_other": {
+                "name": "Indeks annet vann"
+            },
+            "energyindex_water_outlet": {
+                "name": "Indeks stikkontakter vann"
+            },
+            "energyindex_water_total": {
+                "name": "Indeks totalt vann"
+            },
+            "energyindexheatgas": {
+                "name": "Indeks oppvarming gass"
+            },
+            "energyindexti1": {
+                "name": "Indeks TI1"
+            },
+            "energytotindexwatt": {
+                "name": "Indeks strøm"
+            },
             "power": {
                 "name": "Power"
             },
