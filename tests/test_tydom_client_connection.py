@@ -274,6 +274,44 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
                 )
                 self.assertTrue(session.ws_connect.await_args.kwargs["autoping"])
 
+    async def test_local_idle_websocket_receive_timeout_is_not_logged_as_an_error(
+        self,
+    ) -> None:
+        """A quiet local websocket uses /ping for liveness checks."""
+        client = self._client()
+        connection = _websocket()
+        connection.receive = AsyncMock(side_effect=asyncio.TimeoutError)
+        client._connection = connection
+        client._connection_ready = True
+        logger.reset_mock()
+
+        self.assertIsNone(await client.consume_messages())
+
+        logger.exception.assert_not_called()
+        self.assertIs(client._connection, connection)
+        self.assertTrue(client._connection_ready)
+
+    async def test_remote_websocket_receive_timeout_is_still_reported(self) -> None:
+        """Keep reporting a remote timeout, whose heartbeat remains enabled."""
+        client = TydomClient(
+            None,
+            "test",
+            "001122334455",
+            "password",
+            host="mediation.tydom.com",
+        )
+        connection = _websocket()
+        connection.receive = AsyncMock(side_effect=asyncio.TimeoutError)
+        client._connection = connection
+        client._connection_ready = True
+        logger.reset_mock()
+
+        self.assertIsNone(await client.consume_messages())
+
+        logger.exception.assert_called_once_with("Unable to handle message")
+        self.assertIs(client._connection, connection)
+        self.assertTrue(client._connection_ready)
+
     async def test_legacy_alarm_disarm_uses_global_alarm_command(self) -> None:
         """A zone-capable legacy alarm must not drop a global disarm."""
         client = self._client()

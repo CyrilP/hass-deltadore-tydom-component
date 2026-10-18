@@ -827,7 +827,14 @@ class TydomClient:
                 await self._reconnect_with_backoff()
                 return None
 
-            msg = await connection.receive()
+            try:
+                msg = await connection.receive()
+            except asyncio.TimeoutError:
+                if not self._remote_mode:
+                    # The local socket can be idle between gateway events;
+                    # its connection health is monitored separately through /ping.
+                    return None
+                raise
             # Masquer les informations sensibles dans les messages entrants
             msg_data_str = (
                 msg.data.decode("utf-8", errors="replace")
