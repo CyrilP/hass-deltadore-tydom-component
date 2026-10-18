@@ -30,20 +30,23 @@ class IconTranslationTests(TestCase):
                         self.assertIn("default", icon_config)
                         self.assertTrue(icon_config["default"].startswith("mdi:"))
 
-    def test_number_entities_all_have_icons(self):
-        """Every translated number entity should have a dedicated icon.
+    def test_translated_entities_all_have_icons(self):
+        """Every translated entity should have a dedicated icon.
 
-        The `number` platform has no device-class-based default icon in
-        Home Assistant, so a missing entry here falls back to the generic
-        visibility icon in the UI (see issue #529).
+        Platforms like `number`, `select` or `binary_sensor` have no
+        device-class-based default icon in Home Assistant, so a missing
+        entry here falls back to the generic visibility icon in the UI
+        (see issue #529).
         """
         icons = json.loads((INTEGRATION / "icons.json").read_text(encoding="utf-8"))
         translations = json.loads(
             (INTEGRATION / "translations" / "en.json").read_text(encoding="utf-8")
         )
 
-        translated_numbers = translations["entity"]["number"]
-        icon_numbers = icons["entity"].get("number", {})
-
-        missing = sorted(set(translated_numbers) - set(icon_numbers))
-        self.assertEqual(missing, [], f"Missing icons for number entities: {missing}")
+        for domain, translated_entities in translations["entity"].items():
+            with self.subTest(domain=domain):
+                icon_entities = icons["entity"].get(domain, {})
+                missing = sorted(set(translated_entities) - set(icon_entities))
+                self.assertEqual(
+                    missing, [], f"Missing icons for {domain} entities: {missing}"
+                )
