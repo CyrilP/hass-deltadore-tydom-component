@@ -187,28 +187,28 @@
                 "name": "Energia"
             },
             "energydistrib": {
-                "name": "Distribuição de consumo"
+                "name": "Distribuição"
             },
             "energydistrib_elec_a": {
                 "name": "Corrente (Electricidade)"
             },
             "energydistrib_elec_cooling": {
-                "name": "Distribuição de consumo (Electricidade, Arrefecimento)"
+                "name": "Distribuição arrefecimento elect."
             },
             "energydistrib_elec_heating": {
-                "name": "Distribuição de consumo (Electricidade, Aquecimento)"
+                "name": "Distribuição aquecimento elect."
             },
             "energydistrib_elec_hotwater": {
-                "name": "Distribuição de consumo (Electricidade, Água quente)"
+                "name": "Distribuição água quente elect."
             },
             "energydistrib_elec_other": {
-                "name": "Distribuição de consumo (Electricidade, Outros)"
+                "name": "Distribuição outros elect."
             },
             "energydistrib_elec_outlet": {
-                "name": "Distribuição de consumo (Electricidade, Tomadas)"
+                "name": "Distribuição tomadas elect."
             },
             "energydistrib_elec_total": {
-                "name": "Distribuição de consumo (Electricidade, Total)"
+                "name": "Distribuição total elect."
             },
             "energydistrib_elec_w": {
                 "name": "Potência (Electricidade)"
@@ -217,22 +217,22 @@
                 "name": "Corrente (Gás)"
             },
             "energydistrib_gas_cooling": {
-                "name": "Distribuição de consumo (Gás, Arrefecimento)"
+                "name": "Distribuição arrefecimento gás"
             },
             "energydistrib_gas_heating": {
-                "name": "Distribuição de consumo (Gás, Aquecimento)"
+                "name": "Distribuição aquecimento gás"
             },
             "energydistrib_gas_hotwater": {
-                "name": "Distribuição de consumo (Gás, Água quente)"
+                "name": "Distribuição água quente gás"
             },
             "energydistrib_gas_other": {
-                "name": "Distribuição de consumo (Gás, Outros)"
+                "name": "Distribuição outros gás"
             },
             "energydistrib_gas_outlet": {
-                "name": "Distribuição de consumo (Gás, Tomadas)"
+                "name": "Distribuição tomadas gás"
             },
             "energydistrib_gas_total": {
-                "name": "Distribuição de consumo (Gás, Total)"
+                "name": "Distribuição total gás"
             },
             "energydistrib_gas_w": {
                 "name": "Potência (Gás)"
@@ -241,22 +241,22 @@
                 "name": "Corrente (Gás)"
             },
             "energydistrib_gaz_cooling": {
-                "name": "Distribuição de consumo (Gás, Arrefecimento)"
+                "name": "Distribuição arrefecimento gás"
             },
             "energydistrib_gaz_heating": {
-                "name": "Distribuição de consumo (Gás, Aquecimento)"
+                "name": "Distribuição aquecimento gás"
             },
             "energydistrib_gaz_hotwater": {
-                "name": "Distribuição de consumo (Gás, Água quente)"
+                "name": "Distribuição água quente gás"
             },
             "energydistrib_gaz_other": {
-                "name": "Distribuição de consumo (Gás, Outros)"
+                "name": "Distribuição outros gás"
             },
             "energydistrib_gaz_outlet": {
-                "name": "Distribuição de consumo (Gás, Tomadas)"
+                "name": "Distribuição tomadas gás"
             },
             "energydistrib_gaz_total": {
-                "name": "Distribuição de consumo (Gás, Total)"
+                "name": "Distribuição total gás"
             },
             "energydistrib_gaz_w": {
                 "name": "Potência (Gás)"
@@ -265,22 +265,22 @@
                 "name": "Corrente (Água)"
             },
             "energydistrib_water_cooling": {
-                "name": "Distribuição de consumo (Água, Arrefecimento)"
+                "name": "Distribuição arrefecimento água"
             },
             "energydistrib_water_heating": {
-                "name": "Distribuição de consumo (Água, Aquecimento)"
+                "name": "Distribuição aquecimento água"
             },
             "energydistrib_water_hotwater": {
-                "name": "Distribuição de consumo (Água, Água quente)"
+                "name": "Distribuição água quente água"
             },
             "energydistrib_water_other": {
-                "name": "Distribuição de consumo (Água, Outros)"
+                "name": "Distribuição outros água"
             },
             "energydistrib_water_outlet": {
-                "name": "Distribuição de consumo (Água, Tomadas)"
+                "name": "Distribuição tomadas água"
             },
             "energydistrib_water_total": {
-                "name": "Distribuição de consumo (Água, Total)"
+                "name": "Distribuição total água"
             },
             "energydistrib_water_w": {
                 "name": "Potência (Água)"
@@ -385,28 +385,28 @@
                 "name": "Potência (Água)"
             },
             "energyindex": {
-                "name": "Índice de consumo"
+                "name": "Índice"
             },
             "energyindex_elec_a": {
                 "name": "Corrente (Electricidade)"
             },
             "energyindex_elec_cooling": {
-                "name": "Índice de consumo (Electricidade, Arrefecimento)"
+                "name": "Índice arrefecimento elect."
             },
             "energyindex_elec_heating": {
-                "name": "Índice de consumo (Electricidade, Aquecimento)"
+                "name": "Índice aquecimento elect."
             },
             "energyindex_elec_hotwater": {
-                "name": "Índice de consumo (Electricidade, Água quente)"
+                "name": "Índice água quente elect."
             },
             "energyindex_elec_other": {
-                "name": "Índice de consumo (Electricidade, Outros)"
+                "name": "Índice outros elect."
             },
             "energyindex_elec_outlet": {
-                "name": "Índice de consumo (Electricidade, Tomadas)"
+                "name": "Índice tomadas elect."
             },
             "energyindex_elec_total": {
-                "name": "Índice de consumo (Electricidade, Total)"
+                "name": "Índice total elect."
             },
             "energyindex_elec_w": {
                 "name": "Potência (Electricidade)"
@@ -415,22 +415,22 @@
                 "name": "Corrente (Gás)"
             },
             "energyindex_gas_cooling": {
-                "name": "Índice de consumo (Gás, Arrefecimento)"
+                "name": "Índice arrefecimento gás"
             },
             "energyindex_gas_heating": {
-                "name": "Índice de consumo (Gás, Aquecimento)"
+                "name": "Índice aquecimento gás"
             },
             "energyindex_gas_hotwater": {
-                "name": "Índice de consumo (Gás, Água quente)"
+                "name": "Índice água quente gás"
             },
             "energyindex_gas_other": {
-                "name": "Índice de consumo (Gás, Outros)"
+                "name": "Índice outros gás"
             },
             "energyindex_gas_outlet": {
-                "name": "Índice de consumo (Gás, Tomadas)"
+                "name": "Índice tomadas gás"
             },
             "energyindex_gas_total": {
-                "name": "Índice de consumo (Gás, Total)"
+                "name": "Índice total gás"
             },
             "energyindex_gas_w": {
                 "name": "Potência (Gás)"
@@ -439,22 +439,22 @@
                 "name": "Corrente (Gás)"
             },
             "energyindex_gaz_cooling": {
-                "name": "Índice de consumo (Gás, Arrefecimento)"
+                "name": "Índice arrefecimento gás"
             },
             "energyindex_gaz_heating": {
-                "name": "Índice de consumo (Gás, Aquecimento)"
+                "name": "Índice aquecimento gás"
             },
             "energyindex_gaz_hotwater": {
-                "name": "Índice de consumo (Gás, Água quente)"
+                "name": "Índice água quente gás"
             },
             "energyindex_gaz_other": {
-                "name": "Índice de consumo (Gás, Outros)"
+                "name": "Índice outros gás"
             },
             "energyindex_gaz_outlet": {
-                "name": "Índice de consumo (Gás, Tomadas)"
+                "name": "Índice tomadas gás"
             },
             "energyindex_gaz_total": {
-                "name": "Índice de consumo (Gás, Total)"
+                "name": "Índice total gás"
             },
             "energyindex_gaz_w": {
                 "name": "Potência (Gás)"
@@ -463,22 +463,22 @@
                 "name": "Corrente (Água)"
             },
             "energyindex_water_cooling": {
-                "name": "Índice de consumo (Água, Arrefecimento)"
+                "name": "Índice arrefecimento água"
             },
             "energyindex_water_heating": {
-                "name": "Índice de consumo (Água, Aquecimento)"
+                "name": "Índice aquecimento água"
             },
             "energyindex_water_hotwater": {
-                "name": "Índice de consumo (Água, Água quente)"
+                "name": "Índice água quente água"
             },
             "energyindex_water_other": {
-                "name": "Índice de consumo (Água, Outros)"
+                "name": "Índice outros água"
             },
             "energyindex_water_outlet": {
-                "name": "Índice de consumo (Água, Tomadas)"
+                "name": "Índice tomadas água"
             },
             "energyindex_water_total": {
-                "name": "Índice de consumo (Água, Total)"
+                "name": "Índice total água"
             },
             "energyindex_water_w": {
                 "name": "Potência (Água)"
@@ -493,13 +493,13 @@
                 "name": "Energia (Água quente)"
             },
             "energyindexheatgas": {
-                "name": "Índice de consumo (Gás, Aquecimento)"
+                "name": "Índice aquecimento gás"
             },
             "energyindexheatwatt": {
                 "name": "Energia (Aquecimento)"
             },
             "energyindexti1": {
-                "name": "Índice de consumo (TI1)"
+                "name": "Índice TI1"
             },
             "energyindexti1watt": {
                 "name": "Energia (TI1)"
@@ -1057,7 +1057,7 @@
                 "name": "Escala — Potência (Electricidade) (mínimo)"
             },
             "energytotindexwatt": {
-                "name": "Índice de consumo (Electricidade)"
+                "name": "Índice elect."
             },
             "gsmlevel": {
                 "name": "Nível do sinal móvel"
