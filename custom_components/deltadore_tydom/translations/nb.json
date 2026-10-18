@@ -300,8 +300,34 @@
                 "name": "Refresh energy data"
             }
         },
-        "number": {},
-        "select": {},
+        "number": {
+            "absmaxcoolsetpoint": {
+                "name": "Maksimalt settpunkt for kjøling (enhetsgrense)"
+            },
+            "absmaxheatsetpoint": {
+                "name": "Maksimalt settpunkt for oppvarming (enhetsgrense)"
+            },
+            "absmincoolsetpoint": {
+                "name": "Minimalt settpunkt for kjøling (enhetsgrense)"
+            },
+            "absminheatsetpoint": {
+                "name": "Minimalt settpunkt for oppvarming (enhetsgrense)"
+            }
+        },
+        "select": {
+            "absmaxcoolsetpoint": {
+                "name": "Maksimalt settpunkt for kjøling (enhetsgrense)"
+            },
+            "absmaxheatsetpoint": {
+                "name": "Maksimalt settpunkt for oppvarming (enhetsgrense)"
+            },
+            "absmincoolsetpoint": {
+                "name": "Minimalt settpunkt for kjøling (enhetsgrense)"
+            },
+            "absminheatsetpoint": {
+                "name": "Minimalt settpunkt for oppvarming (enhetsgrense)"
+            }
+        },
         "event": {
             "remote_button": {
                 "name": "Button {button_number}"
@@ -461,6 +487,18 @@
                     "override": "Overstyring",
                     "manual": "Manuell"
                 }
+            },
+            "absmaxcoolsetpoint": {
+                "name": "Maksimalt settpunkt for kjøling (enhetsgrense)"
+            },
+            "absmaxheatsetpoint": {
+                "name": "Maksimalt settpunkt for oppvarming (enhetsgrense)"
+            },
+            "absmincoolsetpoint": {
+                "name": "Minimalt settpunkt for kjøling (enhetsgrense)"
+            },
+            "absminheatsetpoint": {
+                "name": "Minimalt settpunkt for oppvarming (enhetsgrense)"
             }
         },
         "binary_sensor": {
@@ -532,6 +570,18 @@
             },
             "maintenance": {
                 "name": "Maintenance"
+            },
+            "absmaxcoolsetpoint": {
+                "name": "Maksimalt settpunkt for kjøling (enhetsgrense)"
+            },
+            "absmaxheatsetpoint": {
+                "name": "Maksimalt settpunkt for oppvarming (enhetsgrense)"
+            },
+            "absmincoolsetpoint": {
+                "name": "Minimalt settpunkt for kjøling (enhetsgrense)"
+            },
+            "absminheatsetpoint": {
+                "name": "Minimalt settpunkt for oppvarming (enhetsgrense)"
             }
         },
         "group": {},

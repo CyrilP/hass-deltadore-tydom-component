@@ -13,16 +13,16 @@
                 "name": "Temperatura de ausencia"
             },
             "absmaxcoolsetpoint": {
-                "name": "Consigna máxima de refrigeración"
+                "name": "Consigna máxima de refrigeración (límite del dispositivo)"
             },
             "absmaxheatsetpoint": {
-                "name": "Consigna máxima de calefacción"
+                "name": "Consigna máxima de calefacción (límite del dispositivo)"
             },
             "absmincoolsetpoint": {
-                "name": "Consigna mínima de refrigeración"
+                "name": "Consigna mínima de refrigeración (límite del dispositivo)"
             },
             "absminheatsetpoint": {
-                "name": "Consigna mínima de calefacción"
+                "name": "Consigna mínima de calefacción (límite del dispositivo)"
             },
             "ackeventcmd": {
                 "name": "Comando de confirmación de eventos"
@@ -1646,16 +1646,16 @@
                 "name": "Temperatura de ausencia"
             },
             "absmaxcoolsetpoint": {
-                "name": "Consigna máxima de refrigeración"
+                "name": "Consigna máxima de refrigeración (límite del dispositivo)"
             },
             "absmaxheatsetpoint": {
-                "name": "Consigna máxima de calefacción"
+                "name": "Consigna máxima de calefacción (límite del dispositivo)"
             },
             "absmincoolsetpoint": {
-                "name": "Consigna mínima de refrigeración"
+                "name": "Consigna mínima de refrigeración (límite del dispositivo)"
             },
             "absminheatsetpoint": {
-                "name": "Consigna mínima de calefacción"
+                "name": "Consigna mínima de calefacción (límite del dispositivo)"
             },
             "ackeventcmd": {
                 "name": "Comando de confirmación de eventos"
@@ -2370,6 +2370,9 @@
             },
             "zones": {
                 "name": "Zonas de alarma"
+            },
+            "climate_command_pending": {
+                "name": "Orden pendiente"
             }
         },
         "number": {
@@ -2380,16 +2383,16 @@
                 "name": "Temperatura de ausencia"
             },
             "absmaxcoolsetpoint": {
-                "name": "Consigna máxima de refrigeración"
+                "name": "Consigna máxima de refrigeración (límite del dispositivo)"
             },
             "absmaxheatsetpoint": {
-                "name": "Consigna máxima de calefacción"
+                "name": "Consigna máxima de calefacción (límite del dispositivo)"
             },
             "absmincoolsetpoint": {
-                "name": "Consigna mínima de refrigeración"
+                "name": "Consigna mínima de refrigeración (límite del dispositivo)"
             },
             "absminheatsetpoint": {
-                "name": "Consigna mínima de calefacción"
+                "name": "Consigna mínima de calefacción (límite del dispositivo)"
             },
             "ackeventcmd": {
                 "name": "Comando de confirmación de eventos"
@@ -3087,16 +3090,16 @@
                 "name": "Temperatura de ausencia"
             },
             "absmaxcoolsetpoint": {
-                "name": "Consigna máxima de refrigeración"
+                "name": "Consigna máxima de refrigeración (límite del dispositivo)"
             },
             "absmaxheatsetpoint": {
-                "name": "Consigna máxima de calefacción"
+                "name": "Consigna máxima de calefacción (límite del dispositivo)"
             },
             "absmincoolsetpoint": {
-                "name": "Consigna mínima de refrigeración"
+                "name": "Consigna mínima de refrigeración (límite del dispositivo)"
             },
             "absminheatsetpoint": {
-                "name": "Consigna mínima de calefacción"
+                "name": "Consigna mínima de calefacción (límite del dispositivo)"
             },
             "ackeventcmd": {
                 "name": "Comando de confirmación de eventos"
@@ -3918,6 +3921,14 @@
             "tywell_shutters_night": {
                 "name": "Persianas de noche"
             }
+        }
+    },
+    "exceptions": {
+        "invalid_target_temperature": {
+            "message": "La temperatura de consigna debe ser un número finito."
+        },
+        "target_temperature_out_of_range": {
+            "message": "La temperatura solicitada {temperature} está fuera de los límites del dispositivo ({minimum} a {maximum})."
         }
     },
     "device": {

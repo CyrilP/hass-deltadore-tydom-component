@@ -14,6 +14,7 @@ from typing import Any
 from homeassistant.helpers.entity import EntityDescription
 
 ENTITY_NAMES: dict[str, str] = {
+    "climate_command_pending": "Command pending",
     "tywell_weather_condition": "Weather",
     "tywell_weather_daily_power": "Daily power",
     "tywell_weather_max_daily_outdoor_temperature": "Daily maximum outdoor temperature",
@@ -21,10 +22,10 @@ ENTITY_NAMES: dict[str, str] = {
     "tywell_weather_power": "Power",
     "absence": "Away mode",
     "absencesetpoint": "Away temperature",
-    "absmaxcoolsetpoint": "Maximum cooling setpoint",
-    "absmaxheatsetpoint": "Maximum heating setpoint",
-    "absmincoolsetpoint": "Minimum cooling setpoint",
-    "absminheatsetpoint": "Minimum heating setpoint",
+    "absmaxcoolsetpoint": "Maximum cooling setpoint (device limit)",
+    "absmaxheatsetpoint": "Maximum heating setpoint (device limit)",
+    "absmincoolsetpoint": "Minimum cooling setpoint (device limit)",
+    "absminheatsetpoint": "Minimum heating setpoint (device limit)",
     "ackeventcmd": "Event acknowledgement command",
     "acknowledge_events": "Acknowledge events",
     "activationcpt": "Activation count",

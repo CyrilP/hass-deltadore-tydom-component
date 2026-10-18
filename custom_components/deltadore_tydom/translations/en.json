@@ -440,16 +440,16 @@
                 "name": "Away temperature"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximum cooling setpoint"
+                "name": "Maximum cooling setpoint (device limit)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximum heating setpoint"
+                "name": "Maximum heating setpoint (device limit)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimum cooling setpoint"
+                "name": "Minimum cooling setpoint (device limit)"
             },
             "absminheatsetpoint": {
-                "name": "Minimum heating setpoint"
+                "name": "Minimum heating setpoint (device limit)"
             },
             "ackeventcmd": {
                 "name": "Event acknowledgement command"
@@ -1147,16 +1147,16 @@
                 "name": "Away temperature"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximum cooling setpoint"
+                "name": "Maximum cooling setpoint (device limit)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximum heating setpoint"
+                "name": "Maximum heating setpoint (device limit)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimum cooling setpoint"
+                "name": "Minimum cooling setpoint (device limit)"
             },
             "absminheatsetpoint": {
-                "name": "Minimum heating setpoint"
+                "name": "Minimum heating setpoint (device limit)"
             },
             "ackeventcmd": {
                 "name": "Event acknowledgement command"
@@ -1923,16 +1923,16 @@
                 "name": "Away temperature"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximum cooling setpoint"
+                "name": "Maximum cooling setpoint (device limit)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximum heating setpoint"
+                "name": "Maximum heating setpoint (device limit)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimum cooling setpoint"
+                "name": "Minimum cooling setpoint (device limit)"
             },
             "absminheatsetpoint": {
-                "name": "Minimum heating setpoint"
+                "name": "Minimum heating setpoint (device limit)"
             },
             "ackeventcmd": {
                 "name": "Event acknowledgement command"
@@ -3556,16 +3556,16 @@
                 "name": "Away temperature"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximum cooling setpoint"
+                "name": "Maximum cooling setpoint (device limit)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximum heating setpoint"
+                "name": "Maximum heating setpoint (device limit)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimum cooling setpoint"
+                "name": "Minimum cooling setpoint (device limit)"
             },
             "absminheatsetpoint": {
-                "name": "Minimum heating setpoint"
+                "name": "Minimum heating setpoint (device limit)"
             },
             "ackeventcmd": {
                 "name": "Event acknowledgement command"
@@ -4280,6 +4280,9 @@
             },
             "zones": {
                 "name": "Alarm zones"
+            },
+            "climate_command_pending": {
+                "name": "Command pending"
             }
         },
         "group": {},
@@ -4288,6 +4291,14 @@
             "association_name": {
                 "name": "Device name (optional)"
             }
+        }
+    },
+    "exceptions": {
+        "invalid_target_temperature": {
+            "message": "The target temperature must be a finite number."
+        },
+        "target_temperature_out_of_range": {
+            "message": "The requested temperature {temperature} is outside the device limits ({minimum} to {maximum})."
         }
     },
     "device": {

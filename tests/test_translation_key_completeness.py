@@ -1,4 +1,4 @@
-"""Ensure TYWATT energy sensor names are translated in every locale."""
+"""Ensure key entity names are translated in every locale."""
 
 from __future__ import annotations
 
@@ -11,6 +11,13 @@ ROOT = Path(__file__).parents[1]
 TRANSLATIONS = ROOT / "custom_components" / "deltadore_tydom" / "translations"
 REFERENCE = "en.json"
 PREFIX = "tywatt_energy_"
+SETPOINT_DOMAINS = ("sensor", "binary_sensor", "number", "select")
+ABSOLUTE_SETPOINTS = {
+    "absmaxcoolsetpoint": "maxcoolsetpoint",
+    "absmaxheatsetpoint": "maxheatsetpoint",
+    "absmincoolsetpoint": "mincoolsetpoint",
+    "absminheatsetpoint": "minheatsetpoint",
+}
 
 
 def _sensor_names(path: Path) -> dict[str, dict]:
@@ -19,7 +26,7 @@ def _sensor_names(path: Path) -> dict[str, dict]:
 
 
 class TranslationKeyCompletenessTests(TestCase):
-    """Guard against a locale missing a TYWATT energy entity name."""
+    """Guard key entity names across all supported locales."""
 
     def test_tywatt_energy_keys_present_in_every_locale(self):
         """Every ``tywatt_energy_*`` key in en.json must exist in all locales."""
@@ -45,3 +52,25 @@ class TranslationKeyCompletenessTests(TestCase):
                     with self.subTest(key=key):
                         self.assertIn("name", names[key])
                         self.assertTrue(names[key]["name"].strip())
+
+    def test_absolute_setpoint_names_are_distinct_in_every_locale(self):
+        """Device limits must be distinguishable from configured limits."""
+        english = json.loads((TRANSLATIONS / REFERENCE).read_text(encoding="utf-8"))
+
+        for locale in sorted(TRANSLATIONS.glob("*.json")):
+            translated = json.loads(locale.read_text(encoding="utf-8"))
+            for domain in SETPOINT_DOMAINS:
+                names = translated.get("entity", {}).get(domain, {})
+                english_names = english.get("entity", {}).get(domain, {})
+                for absolute_key, configured_key in ABSOLUTE_SETPOINTS.items():
+                    with self.subTest(
+                        locale=locale.name,
+                        domain=domain,
+                        key=absolute_key,
+                    ):
+                        absolute_name = names.get(absolute_key, {}).get("name")
+                        configured_name = names.get(configured_key, {}).get(
+                            "name", english_names[configured_key]["name"]
+                        )
+                        self.assertTrue(absolute_name)
+                        self.assertNotEqual(absolute_name, configured_name)

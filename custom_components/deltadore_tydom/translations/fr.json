@@ -441,16 +441,16 @@
                 "name": "Température d’absence"
             },
             "absmaxcoolsetpoint": {
-                "name": "Consigne maximale de refroidissement"
+                "name": "Consigne maximale de refroidissement (limite matérielle)"
             },
             "absmaxheatsetpoint": {
-                "name": "Consigne maximale de chauffage"
+                "name": "Consigne maximale de chauffage (limite matérielle)"
             },
             "absmincoolsetpoint": {
-                "name": "Consigne minimale de refroidissement"
+                "name": "Consigne minimale de refroidissement (limite matérielle)"
             },
             "absminheatsetpoint": {
-                "name": "Consigne minimale de chauffage"
+                "name": "Consigne minimale de chauffage (limite matérielle)"
             },
             "ackeventcmd": {
                 "name": "Commande d’acquittement des événements"
@@ -1148,16 +1148,16 @@
                 "name": "Température d’absence"
             },
             "absmaxcoolsetpoint": {
-                "name": "Consigne maximale de refroidissement"
+                "name": "Consigne maximale de refroidissement (limite matérielle)"
             },
             "absmaxheatsetpoint": {
-                "name": "Consigne maximale de chauffage"
+                "name": "Consigne maximale de chauffage (limite matérielle)"
             },
             "absmincoolsetpoint": {
-                "name": "Consigne minimale de refroidissement"
+                "name": "Consigne minimale de refroidissement (limite matérielle)"
             },
             "absminheatsetpoint": {
-                "name": "Consigne minimale de chauffage"
+                "name": "Consigne minimale de chauffage (limite matérielle)"
             },
             "ackeventcmd": {
                 "name": "Commande d’acquittement des événements"
@@ -1924,16 +1924,16 @@
                 "name": "Température d’absence"
             },
             "absmaxcoolsetpoint": {
-                "name": "Consigne maximale de refroidissement"
+                "name": "Consigne maximale de refroidissement (limite matérielle)"
             },
             "absmaxheatsetpoint": {
-                "name": "Consigne maximale de chauffage"
+                "name": "Consigne maximale de chauffage (limite matérielle)"
             },
             "absmincoolsetpoint": {
-                "name": "Consigne minimale de refroidissement"
+                "name": "Consigne minimale de refroidissement (limite matérielle)"
             },
             "absminheatsetpoint": {
-                "name": "Consigne minimale de chauffage"
+                "name": "Consigne minimale de chauffage (limite matérielle)"
             },
             "ackeventcmd": {
                 "name": "Commande d’acquittement des événements"
@@ -3557,16 +3557,16 @@
                 "name": "Température d’absence"
             },
             "absmaxcoolsetpoint": {
-                "name": "Consigne maximale de refroidissement"
+                "name": "Consigne maximale de refroidissement (limite matérielle)"
             },
             "absmaxheatsetpoint": {
-                "name": "Consigne maximale de chauffage"
+                "name": "Consigne maximale de chauffage (limite matérielle)"
             },
             "absmincoolsetpoint": {
-                "name": "Consigne minimale de refroidissement"
+                "name": "Consigne minimale de refroidissement (limite matérielle)"
             },
             "absminheatsetpoint": {
-                "name": "Consigne minimale de chauffage"
+                "name": "Consigne minimale de chauffage (limite matérielle)"
             },
             "ackeventcmd": {
                 "name": "Commande d’acquittement des événements"
@@ -4281,6 +4281,9 @@
             },
             "zones": {
                 "name": "Zones d’alarme"
+            },
+            "climate_command_pending": {
+                "name": "Commande en attente"
             }
         },
         "group": {},
@@ -4289,6 +4292,14 @@
             "association_name": {
                 "name": "Nom de l’appareil (facultatif)"
             }
+        }
+    },
+    "exceptions": {
+        "invalid_target_temperature": {
+            "message": "La température de consigne doit être un nombre fini."
+        },
+        "target_temperature_out_of_range": {
+            "message": "La température demandée {temperature} est hors des limites de l’appareil ({minimum} à {maximum})."
         }
     },
     "device": {

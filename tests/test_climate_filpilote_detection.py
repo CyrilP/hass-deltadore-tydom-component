@@ -257,6 +257,8 @@ devices_module = _load(
 )
 TydomBoiler = devices_module.TydomBoiler
 
+_load("custom_components.deltadore_tydom.climate_commands", "climate_commands.py")
+
 entities_module = _load(
     "custom_components.deltadore_tydom.ha_entities", "ha_entities.py"
 )
@@ -960,6 +962,45 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
 
         client.put_devices_data.assert_awaited_once_with(
             "20", "10", "localMode", "NORMAL"
+        )
+
+    async def test_local_mode_commands_are_tracked_until_device_feedback(self) -> None:
+        """Mode and preset writes wait for matching localMode feedback."""
+        entity, client = self._zone(local_mode="ANTI_FROST")
+        entity.async_write_ha_state = MagicMock()
+        self.addCleanup(entity._get_command_tracker().close)
+
+        await entity.async_set_hvac_mode(HVACMode.HEAT)
+        self.assertTrue(entity.extra_state_attributes["command_pending"])
+        entity._device.localMode = "NORMAL"
+        entity._handle_climate_update()
+        self.assertFalse(entity.extra_state_attributes["command_pending"])
+
+        await entity.async_set_preset_mode(entities_module.PRESET_AWAY)
+        self.assertTrue(entity.extra_state_attributes["command_pending"])
+        entity._device.localMode = "ABSENCE"
+        entity._handle_climate_update()
+        self.assertFalse(entity.extra_state_attributes["command_pending"])
+
+        await entity.async_set_preset_mode(entities_module.PRESET_NONE)
+        self.assertTrue(entity.extra_state_attributes["command_pending"])
+        entity._device.localMode = "NORMAL"
+        entity._handle_climate_update()
+        self.assertFalse(entity.extra_state_attributes["command_pending"])
+
+        await entity.async_set_hvac_mode(HVACMode.OFF)
+        self.assertTrue(entity.extra_state_attributes["command_pending"])
+        entity._device.localMode = "ANTI_FROST"
+        entity._handle_climate_update()
+        self.assertFalse(entity.extra_state_attributes["command_pending"])
+
+        client.put_devices_data.assert_has_awaits(
+            [
+                call("20", "10", "localMode", "NORMAL"),
+                call("20", "10", "localMode", "ABSENCE"),
+                call("20", "10", "localMode", "NORMAL"),
+                call("20", "10", "localMode", "ANTI_FROST"),
+            ]
         )
 
 

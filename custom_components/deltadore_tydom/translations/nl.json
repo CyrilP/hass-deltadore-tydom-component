@@ -13,16 +13,16 @@
                 "name": "Afwezigheidstemperatuur"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximale insteltemperatuur koeling"
+                "name": "Maximale insteltemperatuur voor koeling (apparaatlimiet)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximale insteltemperatuur verwarming"
+                "name": "Maximale insteltemperatuur voor verwarming (apparaatlimiet)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimale insteltemperatuur koeling"
+                "name": "Minimale insteltemperatuur voor koeling (apparaatlimiet)"
             },
             "absminheatsetpoint": {
-                "name": "Minimale insteltemperatuur verwarming"
+                "name": "Minimale insteltemperatuur voor verwarming (apparaatlimiet)"
             },
             "ackeventcmd": {
                 "name": "Gebeurtenissen bevestigen"
@@ -1646,16 +1646,16 @@
                 "name": "Afwezigheidstemperatuur"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximale insteltemperatuur koeling"
+                "name": "Maximale insteltemperatuur voor koeling (apparaatlimiet)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximale insteltemperatuur verwarming"
+                "name": "Maximale insteltemperatuur voor verwarming (apparaatlimiet)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimale insteltemperatuur koeling"
+                "name": "Minimale insteltemperatuur voor koeling (apparaatlimiet)"
             },
             "absminheatsetpoint": {
-                "name": "Minimale insteltemperatuur verwarming"
+                "name": "Minimale insteltemperatuur voor verwarming (apparaatlimiet)"
             },
             "ackeventcmd": {
                 "name": "Gebeurtenissen bevestigen"
@@ -2370,6 +2370,9 @@
             },
             "zones": {
                 "name": "Alarmzones"
+            },
+            "climate_command_pending": {
+                "name": "Opdracht in behandeling"
             }
         },
         "number": {
@@ -2380,16 +2383,16 @@
                 "name": "Afwezigheidstemperatuur"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximale insteltemperatuur koeling"
+                "name": "Maximale insteltemperatuur voor koeling (apparaatlimiet)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximale insteltemperatuur verwarming"
+                "name": "Maximale insteltemperatuur voor verwarming (apparaatlimiet)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimale insteltemperatuur koeling"
+                "name": "Minimale insteltemperatuur voor koeling (apparaatlimiet)"
             },
             "absminheatsetpoint": {
-                "name": "Minimale insteltemperatuur verwarming"
+                "name": "Minimale insteltemperatuur voor verwarming (apparaatlimiet)"
             },
             "ackeventcmd": {
                 "name": "Gebeurtenissen bevestigen"
@@ -3087,16 +3090,16 @@
                 "name": "Afwezigheidstemperatuur"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximale insteltemperatuur koeling"
+                "name": "Maximale insteltemperatuur voor koeling (apparaatlimiet)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximale insteltemperatuur verwarming"
+                "name": "Maximale insteltemperatuur voor verwarming (apparaatlimiet)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimale insteltemperatuur koeling"
+                "name": "Minimale insteltemperatuur voor koeling (apparaatlimiet)"
             },
             "absminheatsetpoint": {
-                "name": "Minimale insteltemperatuur verwarming"
+                "name": "Minimale insteltemperatuur voor verwarming (apparaatlimiet)"
             },
             "ackeventcmd": {
                 "name": "Gebeurtenissen bevestigen"
@@ -3918,6 +3921,14 @@
             "tywell_shutters_night": {
                 "name": "Rolluiken nacht"
             }
+        }
+    },
+    "exceptions": {
+        "invalid_target_temperature": {
+            "message": "De gewenste temperatuur moet een eindig getal zijn."
+        },
+        "target_temperature_out_of_range": {
+            "message": "De gevraagde temperatuur {temperature} valt buiten de apparaatgrenzen ({minimum} tot {maximum})."
         }
     },
     "device": {

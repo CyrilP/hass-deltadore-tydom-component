@@ -13,16 +13,16 @@
                 "name": "Temperatura in assenza"
             },
             "absmaxcoolsetpoint": {
-                "name": "Temperatura massima di raffrescamento"
+                "name": "Temperatura massima di raffrescamento (limite del dispositivo)"
             },
             "absmaxheatsetpoint": {
-                "name": "Temperatura massima di riscaldamento"
+                "name": "Temperatura massima di riscaldamento (limite del dispositivo)"
             },
             "absmincoolsetpoint": {
-                "name": "Temperatura minima di raffrescamento"
+                "name": "Temperatura minima di raffrescamento (limite del dispositivo)"
             },
             "absminheatsetpoint": {
-                "name": "Temperatura minima di riscaldamento"
+                "name": "Temperatura minima di riscaldamento (limite del dispositivo)"
             },
             "ackeventcmd": {
                 "name": "Comando di conferma eventi"
@@ -1646,16 +1646,16 @@
                 "name": "Temperatura in assenza"
             },
             "absmaxcoolsetpoint": {
-                "name": "Temperatura massima di raffrescamento"
+                "name": "Temperatura massima di raffrescamento (limite del dispositivo)"
             },
             "absmaxheatsetpoint": {
-                "name": "Temperatura massima di riscaldamento"
+                "name": "Temperatura massima di riscaldamento (limite del dispositivo)"
             },
             "absmincoolsetpoint": {
-                "name": "Temperatura minima di raffrescamento"
+                "name": "Temperatura minima di raffrescamento (limite del dispositivo)"
             },
             "absminheatsetpoint": {
-                "name": "Temperatura minima di riscaldamento"
+                "name": "Temperatura minima di riscaldamento (limite del dispositivo)"
             },
             "ackeventcmd": {
                 "name": "Comando di conferma eventi"
@@ -2370,6 +2370,9 @@
             },
             "zones": {
                 "name": "Zone di allarme"
+            },
+            "climate_command_pending": {
+                "name": "Comando in attesa"
             }
         },
         "number": {
@@ -2380,16 +2383,16 @@
                 "name": "Temperatura in assenza"
             },
             "absmaxcoolsetpoint": {
-                "name": "Temperatura massima di raffrescamento"
+                "name": "Temperatura massima di raffrescamento (limite del dispositivo)"
             },
             "absmaxheatsetpoint": {
-                "name": "Temperatura massima di riscaldamento"
+                "name": "Temperatura massima di riscaldamento (limite del dispositivo)"
             },
             "absmincoolsetpoint": {
-                "name": "Temperatura minima di raffrescamento"
+                "name": "Temperatura minima di raffrescamento (limite del dispositivo)"
             },
             "absminheatsetpoint": {
-                "name": "Temperatura minima di riscaldamento"
+                "name": "Temperatura minima di riscaldamento (limite del dispositivo)"
             },
             "ackeventcmd": {
                 "name": "Comando di conferma eventi"
@@ -3087,16 +3090,16 @@
                 "name": "Temperatura in assenza"
             },
             "absmaxcoolsetpoint": {
-                "name": "Temperatura massima di raffrescamento"
+                "name": "Temperatura massima di raffrescamento (limite del dispositivo)"
             },
             "absmaxheatsetpoint": {
-                "name": "Temperatura massima di riscaldamento"
+                "name": "Temperatura massima di riscaldamento (limite del dispositivo)"
             },
             "absmincoolsetpoint": {
-                "name": "Temperatura minima di raffrescamento"
+                "name": "Temperatura minima di raffrescamento (limite del dispositivo)"
             },
             "absminheatsetpoint": {
-                "name": "Temperatura minima di riscaldamento"
+                "name": "Temperatura minima di riscaldamento (limite del dispositivo)"
             },
             "ackeventcmd": {
                 "name": "Comando di conferma eventi"
@@ -3918,6 +3921,14 @@
             "tywell_shutters_night": {
                 "name": "Tapparelle notte"
             }
+        }
+    },
+    "exceptions": {
+        "invalid_target_temperature": {
+            "message": "La temperatura impostata deve essere un numero finito."
+        },
+        "target_temperature_out_of_range": {
+            "message": "La temperatura richiesta {temperature} è fuori dai limiti del dispositivo (da {minimum} a {maximum})."
         }
     },
     "device": {

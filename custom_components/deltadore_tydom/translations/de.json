@@ -13,16 +13,16 @@
                 "name": "Abwesenheitstemperatur"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximaler Kühlsollwert"
+                "name": "Maximaler Kühl-Sollwert (Gerätegrenze)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximaler Heizsollwert"
+                "name": "Maximaler Heiz-Sollwert (Gerätegrenze)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimaler Kühlsollwert"
+                "name": "Minimaler Kühl-Sollwert (Gerätegrenze)"
             },
             "absminheatsetpoint": {
-                "name": "Minimaler Heizsollwert"
+                "name": "Minimaler Heiz-Sollwert (Gerätegrenze)"
             },
             "ackeventcmd": {
                 "name": "Ereignisquittierung"
@@ -1646,16 +1646,16 @@
                 "name": "Abwesenheitstemperatur"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximaler Kühlsollwert"
+                "name": "Maximaler Kühl-Sollwert (Gerätegrenze)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximaler Heizsollwert"
+                "name": "Maximaler Heiz-Sollwert (Gerätegrenze)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimaler Kühlsollwert"
+                "name": "Minimaler Kühl-Sollwert (Gerätegrenze)"
             },
             "absminheatsetpoint": {
-                "name": "Minimaler Heizsollwert"
+                "name": "Minimaler Heiz-Sollwert (Gerätegrenze)"
             },
             "ackeventcmd": {
                 "name": "Ereignisquittierung"
@@ -2370,6 +2370,9 @@
             },
             "zones": {
                 "name": "Alarmzonen"
+            },
+            "climate_command_pending": {
+                "name": "Befehl ausstehend"
             }
         },
         "number": {
@@ -2380,16 +2383,16 @@
                 "name": "Abwesenheitstemperatur"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximaler Kühlsollwert"
+                "name": "Maximaler Kühl-Sollwert (Gerätegrenze)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximaler Heizsollwert"
+                "name": "Maximaler Heiz-Sollwert (Gerätegrenze)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimaler Kühlsollwert"
+                "name": "Minimaler Kühl-Sollwert (Gerätegrenze)"
             },
             "absminheatsetpoint": {
-                "name": "Minimaler Heizsollwert"
+                "name": "Minimaler Heiz-Sollwert (Gerätegrenze)"
             },
             "ackeventcmd": {
                 "name": "Ereignisquittierung"
@@ -3087,16 +3090,16 @@
                 "name": "Abwesenheitstemperatur"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximaler Kühlsollwert"
+                "name": "Maximaler Kühl-Sollwert (Gerätegrenze)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximaler Heizsollwert"
+                "name": "Maximaler Heiz-Sollwert (Gerätegrenze)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimaler Kühlsollwert"
+                "name": "Minimaler Kühl-Sollwert (Gerätegrenze)"
             },
             "absminheatsetpoint": {
-                "name": "Minimaler Heizsollwert"
+                "name": "Minimaler Heiz-Sollwert (Gerätegrenze)"
             },
             "ackeventcmd": {
                 "name": "Ereignisquittierung"
@@ -3918,6 +3921,14 @@
             "tywell_shutters_night": {
                 "name": "Rollläden Nacht"
             }
+        }
+    },
+    "exceptions": {
+        "invalid_target_temperature": {
+            "message": "Die Solltemperatur muss eine endliche Zahl sein."
+        },
+        "target_temperature_out_of_range": {
+            "message": "Die angeforderte Temperatur {temperature} liegt außerhalb der Gerätegrenzen ({minimum} bis {maximum})."
         }
     },
     "device": {
