@@ -220,6 +220,74 @@ class ReversibleLocalModePresetTests(TestCase):
         self.assertEqual(entity.preset_mode, PRESET_AWAY)
 
 
+class HeatingOnlyX3DZoneOverlapTests(TestCase):
+    """Heating-only X3D zones (PR #458) must not be claimed by this profile.
+
+    Those zones advertise the same `localMode` enum [NORMAL, STOP, ANTI_FROST,
+    ABSENCE] as the Tybox Home RF 210, and can also expose a SCHED-capable
+    `useMode`, so they satisfy every other `_uses_local_mode_presets` check.
+    The `not self._uses_local_mode` guard is what keeps them on their existing
+    ANTI_FROST -> off / ABSENCE -> away behaviour instead of gaining a
+    frost_protection preset (reported against PR #506 while #458 was also
+    open; see PR #506 review comments).
+    """
+
+    @staticmethod
+    def _heating_only_zone(*, local_mode="NORMAL"):
+        return _thermostat(
+            metadata={
+                "authorization": {
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "comfortMode": {
+                    "permission": "w",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "thermicLevel": {
+                    "permission": "rw",
+                    "enum_values": ["STOP", "ANTI_FROST"],
+                },
+                "localMode": {
+                    "permission": "rw",
+                    "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+                },
+                "heatSetpoint": {"permission": "rw", "min": 1.0, "max": 50.0},
+                "useMode": {
+                    "permission": "rw",
+                    "enum_values": ["SCHED", "MANUAL"],
+                },
+            },
+            data={
+                "authorization": "HEATING",
+                "thermicLevel": "ANTI_FROST" if local_mode == "ANTI_FROST" else None,
+                "localMode": local_mode,
+                "heatSetpoint": None,
+            },
+        )
+
+    def test_does_not_switch_to_the_local_mode_presets_profile(self) -> None:
+        entity, _client = self._heating_only_zone()
+        self.assertTrue(entity._uses_local_mode)
+        self.assertFalse(entity._uses_local_mode_presets)
+
+    def test_keeps_the_legacy_two_preset_list(self) -> None:
+        """No distinct frost_protection preset leaks in from the new profile."""
+        entity, _client = self._heating_only_zone()
+        self.assertEqual(entity.preset_modes, [PRESET_NONE, PRESET_AWAY])
+        self.assertNotIn(PRESET_FROST_PROTECTION, entity.preset_modes)
+
+    def test_anti_frost_still_reads_as_off_not_a_preset(self) -> None:
+        """Frost protection stays the zone's off order, not a selectable preset."""
+        entity, _client = self._heating_only_zone(local_mode="ANTI_FROST")
+        self.assertEqual(entity.hvac_mode, entities_module.HVACMode.OFF)
+        self.assertEqual(entity.preset_mode, PRESET_NONE)
+
+    def test_absence_still_reads_as_the_shared_away_preset(self) -> None:
+        entity, _client = self._heating_only_zone(local_mode="ABSENCE")
+        self.assertEqual(entity.preset_mode, PRESET_AWAY)
+
+
 if __name__ == "__main__":
     import unittest
 
