@@ -29,3 +29,21 @@ class IconTranslationTests(TestCase):
                         self.assertIn(translation_key, translated_entities)
                         self.assertIn("default", icon_config)
                         self.assertTrue(icon_config["default"].startswith("mdi:"))
+
+    def test_number_entities_all_have_icons(self):
+        """Every translated number entity should have a dedicated icon.
+
+        The `number` platform has no device-class-based default icon in
+        Home Assistant, so a missing entry here falls back to the generic
+        visibility icon in the UI (see issue #529).
+        """
+        icons = json.loads((INTEGRATION / "icons.json").read_text(encoding="utf-8"))
+        translations = json.loads(
+            (INTEGRATION / "translations" / "en.json").read_text(encoding="utf-8")
+        )
+
+        translated_numbers = translations["entity"]["number"]
+        icon_numbers = icons["entity"].get("number", {})
+
+        missing = sorted(set(translated_numbers) - set(icon_numbers))
+        self.assertEqual(missing, [], f"Missing icons for number entities: {missing}")

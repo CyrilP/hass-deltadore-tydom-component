@@ -202,6 +202,713 @@
       "association_name": {
         "default": "mdi:form-textbox"
       }
+    },
+    "number": {
+      "absence": {
+        "default": "mdi:home-export-outline"
+      },
+      "absencesetpoint": {
+        "default": "mdi:thermometer"
+      },
+      "absmaxcoolsetpoint": {
+        "default": "mdi:thermometer-chevron-up"
+      },
+      "absmaxheatsetpoint": {
+        "default": "mdi:thermometer-chevron-up"
+      },
+      "absmincoolsetpoint": {
+        "default": "mdi:thermometer-chevron-down"
+      },
+      "absminheatsetpoint": {
+        "default": "mdi:thermometer-chevron-down"
+      },
+      "ackeventcmd": {
+        "default": "mdi:notification-clear-all"
+      },
+      "activationcpt": {
+        "default": "mdi:counter"
+      },
+      "activationindex": {
+        "default": "mdi:counter"
+      },
+      "alarmcmd": {
+        "default": "mdi:shield-alert-outline"
+      },
+      "alarmintrusion": {
+        "default": "mdi:motion-sensor"
+      },
+      "alarmmode": {
+        "default": "mdi:shield-home"
+      },
+      "alarmsos": {
+        "default": "mdi:alarm-light-outline"
+      },
+      "alarmstate": {
+        "default": "mdi:shield-home"
+      },
+      "alarmtechnical": {
+        "default": "mdi:shield-alert-outline"
+      },
+      "ambienttemperature": {
+        "default": "mdi:thermometer"
+      },
+      "anticipcoeff": {
+        "default": "mdi:chart-timeline-variant"
+      },
+      "anticpcoeff": {
+        "default": "mdi:chart-timeline-variant"
+      },
+      "antifroston": {
+        "default": "mdi:snowflake-thermometer"
+      },
+      "antifrostsetpoint": {
+        "default": "mdi:snowflake-thermometer"
+      },
+      "antifrostwhenoff": {
+        "default": "mdi:snowflake-thermometer"
+      },
+      "antiseizurecmd": {
+        "default": "mdi:cog-refresh-outline"
+      },
+      "antiseizureperiod": {
+        "default": "mdi:timer-cog-outline"
+      },
+      "api_mode": {
+        "default": "mdi:api"
+      },
+      "area_id": {
+        "default": "mdi:floor-plan"
+      },
+      "authorization": {
+        "default": "mdi:lock-check-outline"
+      },
+      "batt_defect": {
+        "default": "mdi:battery-alert-variant-outline"
+      },
+      "battdefect": {
+        "default": "mdi:battery-alert-variant-outline"
+      },
+      "batterycmddefect": {
+        "default": "mdi:battery-alert-variant-outline"
+      },
+      "battlevel": {
+        "default": "mdi:battery"
+      },
+      "bdd_empty": {
+        "default": "mdi:database-off-outline"
+      },
+      "bdd_status": {
+        "default": "mdi:database-check-outline"
+      },
+      "boost": {
+        "default": "mdi:rocket-launch-outline"
+      },
+      "booston": {
+        "default": "mdi:rocket-launch-outline"
+      },
+      "bootreference": {
+        "default": "mdi:barcode"
+      },
+      "bootversion": {
+        "default": "mdi:chip"
+      },
+      "brightness": {
+        "default": "mdi:brightness-6"
+      },
+      "calibrationdefect": {
+        "default": "mdi:alert-circle-outline"
+      },
+      "clock": {
+        "default": "mdi:clock-outline"
+      },
+      "clock_source": {
+        "default": "mdi:clock-check-outline"
+      },
+      "cmddefect": {
+        "default": "mdi:alert-circle-outline"
+      },
+      "comfortmode": {
+        "default": "mdi:sofa-outline"
+      },
+      "config": {
+        "default": "mdi:cog-outline"
+      },
+      "configsensor": {
+        "default": "mdi:cog-outline"
+      },
+      "configtemp": {
+        "default": "mdi:thermometer-lines"
+      },
+      "coolsetpoint": {
+        "default": "mdi:thermometer-chevron-down"
+      },
+      "current": {
+        "default": "mdi:current-ac"
+      },
+      "currentpower": {
+        "default": "mdi:flash"
+      },
+      "currentsetpoint": {
+        "default": "mdi:thermometer"
+      },
+      "dailypower": {
+        "default": "mdi:flash-outline"
+      },
+      "delaysetpoint": {
+        "default": "mdi:timer-cog-outline"
+      },
+      "delaythermiclevel": {
+        "default": "mdi:timer-cog-outline"
+      },
+      "device_endpoint": {
+        "default": "mdi:identifier"
+      },
+      "device_id": {
+        "default": "mdi:identifier"
+      },
+      "device_name": {
+        "default": "mdi:tag-text-outline"
+      },
+      "device_type": {
+        "default": "mdi:shape-outline"
+      },
+      "direction": {
+        "default": "mdi:arrow-left-right"
+      },
+      "down_defect": {
+        "default": "mdi:arrow-down-bold-box-outline"
+      },
+      "downdefect": {
+        "default": "mdi:arrow-down-bold-box-outline"
+      },
+      "energy": {
+        "default": "mdi:lightning-bolt"
+      },
+      "gsmlevel": {
+        "default": "mdi:signal-cellular-3"
+      },
+      "heatsetpoint": {
+        "default": "mdi:thermometer-chevron-up"
+      },
+      "histo": {
+        "default": "mdi:history"
+      },
+      "hvacmode": {
+        "default": "mdi:thermostat-auto"
+      },
+      "hygroin": {
+        "default": "mdi:water-percent"
+      },
+      "inactiveproduct": {
+        "default": "mdi:power-plug-off-outline"
+      },
+      "index": {
+        "default": "mdi:counter"
+      },
+      "indexstart": {
+        "default": "mdi:counter"
+      },
+      "indextimeon": {
+        "default": "mdi:timer-outline"
+      },
+      "intrusion": {
+        "default": "mdi:motion-sensor"
+      },
+      "intrusiondetect": {
+        "default": "mdi:motion-sensor"
+      },
+      "irv1state": {
+        "default": "mdi:fan"
+      },
+      "irv2state": {
+        "default": "mdi:fan"
+      },
+      "irv3state": {
+        "default": "mdi:fan"
+      },
+      "irv4state": {
+        "default": "mdi:fan"
+      },
+      "irv5state": {
+        "default": "mdi:fan"
+      },
+      "irv6state": {
+        "default": "mdi:fan"
+      },
+      "irv7state": {
+        "default": "mdi:fan"
+      },
+      "irv8state": {
+        "default": "mdi:fan"
+      },
+      "irvcmd": {
+        "default": "mdi:fan-auto"
+      },
+      "irvid": {
+        "default": "mdi:identifier"
+      },
+      "isreference": {
+        "default": "mdi:star-check-outline"
+      },
+      "jobs": {
+        "default": "mdi:cog-sync-outline"
+      },
+      "jobsmp": {
+        "default": "mdi:cog-sync-outline"
+      },
+      "jobsrm": {
+        "default": "mdi:cog-sync-outline"
+      },
+      "kerneldownloadforced": {
+        "default": "mdi:download-circle-outline"
+      },
+      "kerneluptodate": {
+        "default": "mdi:update"
+      },
+      "keyreference": {
+        "default": "mdi:barcode"
+      },
+      "keyversionhw": {
+        "default": "mdi:chip"
+      },
+      "keyversionstack": {
+        "default": "mdi:chip"
+      },
+      "keyversionsw": {
+        "default": "mdi:application-cog-outline"
+      },
+      "label": {
+        "default": "mdi:label-outline"
+      },
+      "last_usage": {
+        "default": "mdi:gesture-tap"
+      },
+      "latitude": {
+        "default": "mdi:latitude"
+      },
+      "level": {
+        "default": "mdi:tune-vertical"
+      },
+      "levelcmd": {
+        "default": "mdi:tune-vertical"
+      },
+      "lightpower": {
+        "default": "mdi:weather-sunny"
+      },
+      "livecheckrunning": {
+        "default": "mdi:progress-check"
+      },
+      "loaddefect": {
+        "default": "mdi:alert-circle-outline"
+      },
+      "loadsheddingon": {
+        "default": "mdi:power-plug-off"
+      },
+      "localisation": {
+        "default": "mdi:map-marker-outline"
+      },
+      "localmode": {
+        "default": "mdi:format-list-bulleted-type"
+      },
+      "localsetpoint": {
+        "default": "mdi:thermometer"
+      },
+      "localsetpremainingtimestr": {
+        "default": "mdi:timer-sand"
+      },
+      "longitude": {
+        "default": "mdi:longitude"
+      },
+      "mac": {
+        "default": "mdi:network-outline"
+      },
+      "mainid": {
+        "default": "mdi:identifier"
+      },
+      "mainreference": {
+        "default": "mdi:barcode"
+      },
+      "maintenance": {
+        "default": "mdi:wrench-outline"
+      },
+      "maintenanceneeded": {
+        "default": "mdi:wrench-outline"
+      },
+      "mainversionhw": {
+        "default": "mdi:chip"
+      },
+      "mainversionsw": {
+        "default": "mdi:application-cog-outline"
+      },
+      "manufacturer": {
+        "default": "mdi:factory"
+      },
+      "maxcoolsetpoint": {
+        "default": "mdi:thermometer-chevron-up"
+      },
+      "maxdailyouttemp": {
+        "default": "mdi:thermometer-high"
+      },
+      "maxheatsetpoint": {
+        "default": "mdi:thermometer-chevron-up"
+      },
+      "maxsetpoint": {
+        "default": "mdi:thermometer-chevron-up"
+      },
+      "mincoolsetpoint": {
+        "default": "mdi:thermometer-chevron-down"
+      },
+      "minheatsetpoint": {
+        "default": "mdi:thermometer-chevron-down"
+      },
+      "minsetpoint": {
+        "default": "mdi:thermometer-chevron-down"
+      },
+      "modeasso": {
+        "default": "mdi:link-variant-plus"
+      },
+      "modelidentifier": {
+        "default": "mdi:barcode"
+      },
+      "nbelem": {
+        "default": "mdi:counter"
+      },
+      "nbrfactuators": {
+        "default": "mdi:radio-tower"
+      },
+      "networkdefect": {
+        "default": "mdi:lan-disconnect"
+      },
+      "obstacle_defect": {
+        "default": "mdi:alert-octagon-outline"
+      },
+      "obstacledefect": {
+        "default": "mdi:alert-octagon-outline"
+      },
+      "ondusk": {
+        "default": "mdi:weather-sunset"
+      },
+      "onfavpos": {
+        "default": "mdi:star-outline"
+      },
+      "onpresencedetected": {
+        "default": "mdi:motion-sensor"
+      },
+      "openingdetected": {
+        "default": "mdi:door-open"
+      },
+      "openstate": {
+        "default": "mdi:door"
+      },
+      "outtemperature": {
+        "default": "mdi:thermometer"
+      },
+      "overrideremainingtime": {
+        "default": "mdi:timer-sand"
+      },
+      "overridesetpoint": {
+        "default": "mdi:thermometer"
+      },
+      "part": {
+        "default": "mdi:shield-home-outline"
+      },
+      "part1state": {
+        "default": "mdi:shield-outline"
+      },
+      "part2state": {
+        "default": "mdi:shield-outline"
+      },
+      "part3state": {
+        "default": "mdi:shield-outline"
+      },
+      "part4state": {
+        "default": "mdi:shield-outline"
+      },
+      "part5state": {
+        "default": "mdi:shield-outline"
+      },
+      "part6state": {
+        "default": "mdi:shield-outline"
+      },
+      "part7state": {
+        "default": "mdi:shield-outline"
+      },
+      "part8state": {
+        "default": "mdi:shield-outline"
+      },
+      "partcmd": {
+        "default": "mdi:shield-sync-outline"
+      },
+      "password_empty": {
+        "default": "mdi:lock-alert-outline"
+      },
+      "period": {
+        "default": "mdi:calendar-range-outline"
+      },
+      "periodoffset": {
+        "default": "mdi:calendar-range-outline"
+      },
+      "permissions": {
+        "default": "mdi:lock-outline"
+      },
+      "plt_registered": {
+        "default": "mdi:check-decagram-outline"
+      },
+      "position": {
+        "default": "mdi:arrow-up-down"
+      },
+      "positioncmd": {
+        "default": "mdi:arrow-up-down"
+      },
+      "power": {
+        "default": "mdi:flash"
+      },
+      "prealarm": {
+        "default": "mdi:alert-outline"
+      },
+      "presencedetected": {
+        "default": "mdi:motion-sensor"
+      },
+      "productconf": {
+        "default": "mdi:cog-outline"
+      },
+      "productiondefect": {
+        "default": "mdi:alert-circle-outline"
+      },
+      "productname": {
+        "default": "mdi:tag-outline"
+      },
+      "readable": {
+        "default": "mdi:eye-outline"
+      },
+      "recfav": {
+        "default": "mdi:star-plus-outline"
+      },
+      "regtemperature": {
+        "default": "mdi:thermometer"
+      },
+      "remotesurveydefect": {
+        "default": "mdi:eye-off-outline"
+      },
+      "reset": {
+        "default": "mdi:restart"
+      },
+      "selectedprog": {
+        "default": "mdi:calendar-text-outline"
+      },
+      "sendasso": {
+        "default": "mdi:link-plus"
+      },
+      "sendnetremoteassomode": {
+        "default": "mdi:remote"
+      },
+      "setpoint": {
+        "default": "mdi:thermometer"
+      },
+      "shuttercmd": {
+        "default": "mdi:window-shutter-cog"
+      },
+      "simdefect": {
+        "default": "mdi:sim-alert-outline"
+      },
+      "slope": {
+        "default": "mdi:trending-up"
+      },
+      "softplan": {
+        "default": "mdi:package-variant-closed"
+      },
+      "softplan0": {
+        "default": "mdi:package-variant-closed"
+      },
+      "softplan1": {
+        "default": "mdi:package-variant-closed"
+      },
+      "softplan2": {
+        "default": "mdi:package-variant-closed"
+      },
+      "softplan3": {
+        "default": "mdi:package-variant-closed"
+      },
+      "softversion": {
+        "default": "mdi:application-cog-outline"
+      },
+      "softversion0": {
+        "default": "mdi:application-cog-outline"
+      },
+      "softversion1": {
+        "default": "mdi:application-cog-outline"
+      },
+      "softversion2": {
+        "default": "mdi:application-cog-outline"
+      },
+      "softversion3": {
+        "default": "mdi:application-cog-outline"
+      },
+      "speed": {
+        "default": "mdi:fan"
+      },
+      "speedstring": {
+        "default": "mdi:fan"
+      },
+      "state": {
+        "default": "mdi:information-outline"
+      },
+      "summer_offset": {
+        "default": "mdi:clock-time-four-outline"
+      },
+      "summeroffset": {
+        "default": "mdi:clock-time-four-outline"
+      },
+      "supervisionmode": {
+        "default": "mdi:eye-outline"
+      },
+      "synchropps": {
+        "default": "mdi:sync"
+      },
+      "synchroradio": {
+        "default": "mdi:sync"
+      },
+      "systalarmdefect": {
+        "default": "mdi:shield-alert-outline"
+      },
+      "systautoprotect": {
+        "default": "mdi:shield-lock-outline"
+      },
+      "systbatterydefect": {
+        "default": "mdi:battery-alert-variant-outline"
+      },
+      "systopenissue": {
+        "default": "mdi:shield-off-outline"
+      },
+      "systsectordefect": {
+        "default": "mdi:power-plug-off-outline"
+      },
+      "systsupervisiondefect": {
+        "default": "mdi:eye-off-outline"
+      },
+      "systtechnicaldefect": {
+        "default": "mdi:alert-circle-outline"
+      },
+      "techsmokedefect": {
+        "default": "mdi:smoke-detector-variant-alert"
+      },
+      "techwaterdefect": {
+        "default": "mdi:water-alert-outline"
+      },
+      "temperature": {
+        "default": "mdi:thermometer"
+      },
+      "tempoon": {
+        "default": "mdi:timer-outline"
+      },
+      "tempsensordefect": {
+        "default": "mdi:thermometer-alert"
+      },
+      "tempsensoropencirc": {
+        "default": "mdi:thermometer-alert"
+      },
+      "tempsensorshortcut": {
+        "default": "mdi:thermometer-alert"
+      },
+      "thermic_defect": {
+        "default": "mdi:fire-alert"
+      },
+      "thermicdefect": {
+        "default": "mdi:fire-alert"
+      },
+      "thermiclevel": {
+        "default": "mdi:radiator"
+      },
+      "timedelay": {
+        "default": "mdi:timer-outline"
+      },
+      "timeoncpt": {
+        "default": "mdi:timer-outline"
+      },
+      "timezone": {
+        "default": "mdi:map-clock-outline"
+      },
+      "total": {
+        "default": "mdi:sigma"
+      },
+      "uid": {
+        "default": "mdi:identifier"
+      },
+      "unackedevent": {
+        "default": "mdi:alert-circle-outline"
+      },
+      "unitautoprotect": {
+        "default": "mdi:shield-lock-outline"
+      },
+      "unitbatterydefect": {
+        "default": "mdi:battery-alert-variant-outline"
+      },
+      "unitinternaldefect": {
+        "default": "mdi:alert-circle-outline"
+      },
+      "up_defect": {
+        "default": "mdi:arrow-up-bold-box-outline"
+      },
+      "update_available": {
+        "default": "mdi:update"
+      },
+      "updefect": {
+        "default": "mdi:arrow-up-bold-box-outline"
+      },
+      "usage": {
+        "default": "mdi:gesture-tap-outline"
+      },
+      "usemode": {
+        "default": "mdi:format-list-bulleted-type"
+      },
+      "value": {
+        "default": "mdi:numeric"
+      },
+      "videolinkdefect": {
+        "default": "mdi:cctv-off"
+      },
+      "waterflowreq": {
+        "default": "mdi:water-pump"
+      },
+      "weather": {
+        "default": "mdi:weather-partly-cloudy"
+      },
+      "writable": {
+        "default": "mdi:pencil-outline"
+      },
+      "zclversion": {
+        "default": "mdi:chip"
+      },
+      "zone1state": {
+        "default": "mdi:shield-outline"
+      },
+      "zone2state": {
+        "default": "mdi:shield-outline"
+      },
+      "zone3state": {
+        "default": "mdi:shield-outline"
+      },
+      "zone4state": {
+        "default": "mdi:shield-outline"
+      },
+      "zone5state": {
+        "default": "mdi:shield-outline"
+      },
+      "zone6state": {
+        "default": "mdi:shield-outline"
+      },
+      "zone7state": {
+        "default": "mdi:shield-outline"
+      },
+      "zone8state": {
+        "default": "mdi:shield-outline"
+      },
+      "zonecmd": {
+        "default": "mdi:shield-sync-outline"
+      },
+      "zones": {
+        "default": "mdi:shield-outline"
+      }
     }
   }
 }
