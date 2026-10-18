@@ -1121,7 +1121,7 @@ class MessageHandler:
                     device_metadata.get(uid),
                     data,
                 )
-            case "garage_door":
+            case "garage_door" | "garage_door_horizontal":
                 return TydomGarage(
                     tydom_client,
                     uid,
