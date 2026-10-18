@@ -829,7 +829,7 @@ class TydomClient:
 
             try:
                 msg = await connection.receive()
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 if not self._remote_mode:
                     # The local socket can be idle between gateway events;
                     # its connection health is monitored separately through /ping.
