@@ -657,7 +657,6 @@ class GenericSensor(SensorEntity):
         "jobsRM",
         "indexTimeOn",
         "timeOnCpt",
-        "loadSheddingOn",
         "maintenanceNeeded",
         # TYDOM gateway firmware, protocol and registration telemetry.
         "apiMode",
@@ -2916,6 +2915,23 @@ class HaClimate(ClimateEntity, HAEntity):
             # cooling altogether — see #453 / #455.
             and HVACMode.COOL not in self._attr_hvac_modes
         )
+        use_mode_meta = (metadata or {}).get("useMode")
+        use_mode_permission = (
+            use_mode_meta.get("permission", "")
+            if isinstance(use_mode_meta, dict)
+            else ""
+        )
+        use_mode_values = (
+            set(use_mode_meta.get("enum_values") or [])
+            if isinstance(use_mode_meta, dict)
+            else set()
+        )
+        self._uses_scheduled_local_mode = (
+            self._uses_local_mode
+            and {"STOP", "ABSENCE"}.issubset(self._local_mode_values)
+            and {"r", "w"}.issubset(use_mode_permission)
+            and {"SCHED", "MANUAL"}.issubset(use_mode_values)
+        )
         # A zone that carries localMode is driven through it exclusively.  It
         # would otherwise also satisfy the pilot-wire test when it exposes no
         # setpoint, and the two paths disagree: most properties check
@@ -2945,6 +2961,8 @@ class HaClimate(ClimateEntity, HAEntity):
 
         if self._uses_local_mode:
             self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
+            if self._uses_scheduled_local_mode:
+                self._attr_hvac_modes.append(HVACMode.AUTO)
             # Replace any presets derived above.  These zones have no comfort
             # or eco order: comfortMode is the write-only season register, so
             # the generic extraction finds nothing usable and falls back to a
@@ -2996,6 +3014,8 @@ class HaClimate(ClimateEntity, HAEntity):
         """
         features = self._attr_supported_features
         if not self._device.is_area_trv:
+            if self._uses_scheduled_local_mode and self.hvac_mode == HVACMode.AUTO:
+                return features & ~ClimateEntityFeature.TARGET_TEMPERATURE
             return features
 
         return (features | ClimateEntityFeature.TARGET_TEMPERATURE) & ~(
@@ -3153,9 +3173,16 @@ class HaClimate(ClimateEntity, HAEntity):
 
         if self._uses_local_mode:
             local_mode = getattr(self._device, "localMode", None)
-            if local_mode in self.OFF_LOCAL_MODES:
+            if local_mode == "STOP" or (
+                local_mode == "ANTI_FROST" and not self._uses_scheduled_local_mode
+            ):
                 return HVACMode.OFF
             if local_mode is not None:
+                if (
+                    self._uses_scheduled_local_mode
+                    and getattr(self._device, "useMode", None) == "SCHED"
+                ):
+                    return HVACMode.AUTO
                 return HVACMode.HEAT
 
         if getattr(self, "_is_filpilote", False):
@@ -3218,14 +3245,22 @@ class HaClimate(ClimateEntity, HAEntity):
 
         if self._uses_local_mode:
             local_mode = getattr(self._device, "localMode", None)
-            if local_mode in self.OFF_LOCAL_MODES:
+            if local_mode == "STOP" or (
+                local_mode == "ANTI_FROST" and not self._uses_scheduled_local_mode
+            ):
                 return HVACAction.OFF
-            # A running zone falls through to the setpoint comparison below.
-            # These zones populate no setpoint while following their schedule,
-            # so target_temperature is None and heat delivery cannot be
-            # inferred: HEATING is reported for the whole time the zone is on.
-            # The gateway exposes nothing else to distinguish it from idle.
-            # ABSENCE does report a setpoint, and resolves correctly.
+            if self._uses_scheduled_local_mode:
+                if getattr(self._device, "loadSheddingOn", False) is True:
+                    return HVACAction.IDLE
+                if (
+                    getattr(self._device, "openingDetected", False) is True
+                    and getattr(self._device, "antiFrostWhenOff", None) is False
+                ):
+                    return HVACAction.IDLE
+            # Fall through to a setpoint comparison where this profile
+            # exposes one. Older localMode zones without an active setpoint
+            # cannot report actuator state and retain the existing HEATING
+            # fallback while enabled.
 
         authorization = getattr(self._device, "authorization", None)
         thermic_level = getattr(self._device, "thermicLevel", None)
@@ -3281,6 +3316,13 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature currently set to be reached."""
+        if self._uses_local_mode:
+            local_mode_setpoint = self._device._active_local_mode_setpoint()
+            if local_mode_setpoint is not None:
+                setpoint = getattr(self._device, local_mode_setpoint, None)
+                if setpoint is not None:
+                    return float(setpoint)
+
         if hasattr(self._device, "area_id"):
             setpoint = getattr(
                 self._device, self._device.area_setpoint_attribute(), None
@@ -3349,10 +3391,30 @@ class HaClimate(ClimateEntity, HAEntity):
                     "hvac_mode", hvac_mode, self._device.set_thermic_level("COMFORT")
                 )
             return
+        if self._uses_scheduled_local_mode and hvac_mode in (
+            HVACMode.OFF,
+            HVACMode.HEAT,
+            HVACMode.AUTO,
+        ):
+
+            async def set_scheduled_zone_mode() -> None:
+                if hvac_mode == HVACMode.OFF:
+                    await self._device.set_local_mode("STOP")
+                    return
+
+                if getattr(self._device, "localMode", None) != "NORMAL":
+                    await self._device.set_local_mode("NORMAL")
+                use_mode = "SCHED" if hvac_mode == HVACMode.AUTO else "MANUAL"
+                if getattr(self._device, "useMode", None) != use_mode:
+                    await self._device.set_use_mode(use_mode)
+
+            await self._async_track_command(
+                "hvac_mode", hvac_mode, set_scheduled_zone_mode()
+            )
+            return
         if self._uses_local_mode and hvac_mode in (HVACMode.OFF, HVACMode.HEAT):
-            # Drive the same register the app does.  Writing comfortMode STOP
-            # instead would stop the zone through the season register, which is
-            # not the state the app's on/off button produces.
+            # Keep the established app-compatible behaviour for localMode
+            # zones that do not advertise the separate schedule/manual register.
             await self._async_track_command(
                 "hvac_mode",
                 hvac_mode,
@@ -3524,6 +3586,11 @@ class HaClimate(ClimateEntity, HAEntity):
 
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
+        if self._uses_scheduled_local_mode and self.hvac_mode == HVACMode.AUTO:
+            raise HomeAssistantError(
+                "Switch to Heat mode before changing a temperature while following the schedule."
+            )
+
         temperature = kwargs.get(ATTR_TEMPERATURE)
         self._device.validate_temperature(temperature)
         if self._device.is_area_trv:

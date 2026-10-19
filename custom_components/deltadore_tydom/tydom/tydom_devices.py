@@ -737,6 +737,16 @@ class TydomBoiler(TydomDevice):
                 else None,
             )
 
+        if (local_mode_setpoint := self._active_local_mode_setpoint()) is not None:
+            setpoint_metadata = (self._metadata or {}).get(local_mode_setpoint, {})
+            minimum = setpoint_metadata.get("min")
+            maximum = setpoint_metadata.get("max")
+            if minimum is not None or maximum is not None:
+                return (
+                    float(minimum) if minimum is not None else None,
+                    float(maximum) if maximum is not None else None,
+                )
+
         authorization = getattr(self, "authorization", None) or getattr(
             self, "hvacMode", None
         )
@@ -859,8 +869,26 @@ class TydomBoiler(TydomDevice):
             and value in command.get("enum_values", [])
         )
 
+    def _active_local_mode_setpoint(self) -> str | None:
+        """Return the writable setpoint for an active absence/frost mode."""
+        local_mode = getattr(self, "localMode", None)
+        if local_mode == "ABSENCE":
+            name = "absenceSetpoint"
+        elif local_mode == "ANTI_FROST" or (
+            getattr(self, "openingDetected", False) is True
+            and getattr(self, "antiFrostWhenOff", None) is True
+        ):
+            name = "antiFrostSetpoint"
+        else:
+            return None
+
+        return name if self._is_writable(name) else None
+
     def _temperature_command_name(self) -> str:
         """Select the writable setpoint register for the current HVAC direction."""
+        if (local_mode_setpoint := self._active_local_mode_setpoint()) is not None:
+            return local_mode_setpoint
+
         if self._uses_zone_authorization():
             if getattr(self, "authorization", None) == "COOLING" and self._is_writable(
                 "coolSetpoint"
@@ -1119,6 +1147,15 @@ class TydomBoiler(TydomDevice):
         """Set a zone's localMode order (NORMAL/ANTI_FROST/STOP/ABSENCE)."""
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "localMode", mode
+        )
+
+    async def set_use_mode(self, mode):
+        """Set the thermostat schedule/manual mode when TYDOM allows it."""
+        if not self._supports_command_value("useMode", mode):
+            LOGGER.error("Unsupported useMode %s for %s", mode, self.device_id)
+            return
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "useMode", mode
         )
 
     async def set_fan_speed(self, speed) -> None:

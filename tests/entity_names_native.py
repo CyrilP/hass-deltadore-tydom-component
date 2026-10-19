@@ -672,7 +672,6 @@ class DiagnosticSensorTests(TestCase):
         "jobsRM": [2],
         "indexTimeOn": 5,
         "timeOnCpt": 12,
-        "loadSheddingOn": False,
         "maintenanceNeeded": True,
     }
 
@@ -731,16 +730,32 @@ class DiagnosticSensorTests(TestCase):
             "maxHeatSetpoint",
             "anticpCoeff",
             "antiSeizurePeriod",
+            "loadSheddingOn",
             "newReading",
         ):
             with self.subTest(attribute=attribute):
                 sensor = GenericSensor(device, None, None, attribute, attribute, None)
                 self.assertIsNone(sensor.entity_category)
                 self.assertTrue(sensor.entity_registry_enabled_default)
-        for attribute in ("openingDetected", "techSmokeDefect", "techWaterDefect"):
+        for attribute in (
+            "openingDetected",
+            "loadSheddingOn",
+            "techSmokeDefect",
+            "techWaterDefect",
+        ):
             with self.subTest(attribute=attribute):
                 sensor = GenericBinarySensor(device, None, attribute, attribute)
                 self.assertIsNone(sensor.entity_category)
+
+    def test_load_shedding_is_available_as_an_operational_binary_sensor(self):
+        """Load shedding changes heater operation and is not diagnostic data."""
+        device = SimpleNamespace(device_id="43_42", _metadata={}, loadSheddingOn=True)
+
+        sensor = GenericBinarySensor(device, None, "loadSheddingOn", "loadSheddingOn")
+
+        self.assertIsNone(sensor.entity_category)
+        self.assertTrue(sensor.is_on)
+        self.assertTrue(sensor.entity_registry_enabled_default)
 
     def test_existing_firmware_and_problem_diagnostics_are_preserved(self):
         """Retain the existing gateway and fault categorisation."""
