@@ -533,12 +533,19 @@ class TydomClient:
                     )
                 }
 
+            # The local gateway is already monitored by the application-level
+            # /ping exchange. Its WebSocket control-PONG response can be
+            # delayed or missed even while that exchange remains healthy, so
+            # do not let aiohttp's one-second heartbeat deadline close the
+            # persistent local connection. autoping still replies to PINGs
+            # sent by the gateway.
+            heartbeat = 2.0 if self._host == MEDIATION_URL else None
             connection = await session.ws_connect(
                 method="GET",
                 url=f"wss://{self._host}:443/mediation/client?mac={self._mac}&appli=1",
                 headers=ws_headers,
                 autoping=True,
-                heartbeat=2.0,
+                heartbeat=heartbeat,
                 timeout=TIMEOUT_WEBSOCKET_CONNECT,  # type: ignore[arg-type]
                 receive_timeout=TIMEOUT_WEBSOCKET_RECEIVE,
                 autoclose=True,
@@ -820,7 +827,14 @@ class TydomClient:
                 await self._reconnect_with_backoff()
                 return None
 
-            msg = await connection.receive()
+            try:
+                msg = await connection.receive()
+            except TimeoutError:
+                if not self._remote_mode:
+                    # The local socket can be idle between gateway events;
+                    # its connection health is monitored separately through /ping.
+                    return None
+                raise
             # Masquer les informations sensibles dans les messages entrants
             msg_data_str = (
                 msg.data.decode("utf-8", errors="replace")
