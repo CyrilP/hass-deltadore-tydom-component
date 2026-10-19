@@ -7566,6 +7566,25 @@ class HAButton(ButtonEntity, HAEntity):
             )
 
 
+class HACoverFavouriteButton(HAButton):
+    """Button to recall one gateway-advertised cover favourite position."""
+
+    def __init__(self, device: TydomShutter, hass, number: int) -> None:
+        """Initialise the favourite-position button."""
+        self._favourite_number = number
+        super().__init__(
+            device,
+            hass,
+            f"favourite_position_{number}",
+            "recall_favourite_position",
+            icon="mdi:star" if number == 1 else "mdi:star-outline",
+        )
+
+    async def async_press(self) -> None:
+        """Recall this favourite position."""
+        await self._device.recall_favourite_position(self._favourite_number)
+
+
 ASSOCIATION_COMMAND = "modeAsso"
 IDENTIFY_COMMAND = "localisation"
 _COMMAND_START_VALUE = "START"

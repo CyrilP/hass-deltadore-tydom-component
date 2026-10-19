@@ -450,6 +450,39 @@ class TydomShutter(TydomDevice):
     """Represents a shutter."""
 
     @property
+    def position_commands(self) -> frozenset[str]:
+        """Return writable position commands advertised by the gateway."""
+        if not isinstance(self._metadata, dict):
+            return frozenset()
+
+        metadata = self._metadata.get("positionCmd")
+        if not isinstance(metadata, dict):
+            return frozenset()
+        if "w" not in str(metadata.get("permission", "")).lower():
+            return frozenset()
+
+        values = metadata.get("enum_values")
+        if not isinstance(values, (list, tuple, set)):
+            return frozenset()
+        return frozenset(str(value) for value in values)
+
+    @property
+    def favourite_commands(self) -> frozenset[str]:
+        """Return advertised favourite-position recall commands."""
+        return self.position_commands.intersection({"FAVORIT1", "FAVORIT2"})
+
+    async def recall_favourite_position(self, number: int) -> None:
+        """Recall one supported favourite position."""
+        command = {1: "FAVORIT1", 2: "FAVORIT2"}.get(number)
+        if command is None or command not in self.favourite_commands:
+            raise ValueError(
+                f"Device {self.device_id} does not support favourite position {number}"
+            )
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "positionCmd", command
+        )
+
+    @property
     def is_awning(self) -> bool:
         """Return whether Delta Dore identifies this cover as an awning."""
         return self._type == "awning"

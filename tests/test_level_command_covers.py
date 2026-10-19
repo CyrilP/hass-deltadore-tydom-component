@@ -254,6 +254,69 @@ class LevelCommandCoverTests(IsolatedAsyncioTestCase):
         )
 
 
+class ShutterFavouritePositionTests(IsolatedAsyncioTestCase):
+    """Exercise TYDOM favourite-position commands."""
+
+    async def test_recall_uses_only_advertised_favourite_commands(self) -> None:
+        """Both favourite slots are sent through positionCmd."""
+        client = MagicMock()
+        client.put_devices_data = AsyncMock()
+        device = TydomShutter(
+            client,
+            "10_20",
+            "20",
+            "Cover",
+            "shutter",
+            "10",
+            {
+                "positionCmd": {
+                    "permission": "w",
+                    "enum_values": ["DOWN", "UP", "FAVORIT1", "FAVORIT2"],
+                }
+            },
+            {"position": 50},
+        )
+
+        self.assertEqual(device.favourite_commands, frozenset({"FAVORIT1", "FAVORIT2"}))
+        await device.recall_favourite_position(1)
+        await device.recall_favourite_position(2)
+
+        self.assertEqual(
+            client.put_devices_data.await_args_list,
+            [
+                call("20", "10", "positionCmd", "FAVORIT1"),
+                call("20", "10", "positionCmd", "FAVORIT2"),
+            ],
+        )
+
+    async def test_recall_rejects_unadvertised_or_read_only_commands(self) -> None:
+        """Unsupported slots are never sent to the gateway."""
+        client = MagicMock()
+        client.put_devices_data = AsyncMock()
+        device = TydomShutter(
+            client,
+            "10_20",
+            "20",
+            "Cover",
+            "shutter",
+            "10",
+            {
+                "positionCmd": {
+                    "permission": "r",
+                    "enum_values": ["FAVORIT1", "FAVORIT2"],
+                }
+            },
+            {"position": 50},
+        )
+
+        self.assertEqual(device.favourite_commands, frozenset())
+        with self.assertRaisesRegex(ValueError, "does not support favourite position"):
+            await device.recall_favourite_position(1)
+        with self.assertRaisesRegex(ValueError, "does not support favourite position"):
+            await device.recall_favourite_position(3)
+        client.put_devices_data.assert_not_awaited()
+
+
 if __name__ == "__main__":
     import unittest
 

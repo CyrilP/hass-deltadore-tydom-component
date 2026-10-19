@@ -410,6 +410,12 @@
             "identify_device": {
                 "name": "Identify device"
             },
+            "favourite_position_1": {
+                "name": "Recall favourite position 1"
+            },
+            "favourite_position_2": {
+                "name": "Recall favourite position 2"
+            },
             "refresh_energy": {
                 "name": "Refresh energy data"
             },

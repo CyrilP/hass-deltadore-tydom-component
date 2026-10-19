@@ -411,6 +411,12 @@
             "identify_device": {
                 "name": "Identifier l’appareil"
             },
+            "favourite_position_1": {
+                "name": "Rappeler la position favorite 1"
+            },
+            "favourite_position_2": {
+                "name": "Rappeler la position favorite 2"
+            },
             "refresh_energy": {
                 "name": "Actualiser les données d’énergie"
             },
