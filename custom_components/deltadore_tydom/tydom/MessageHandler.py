@@ -1091,7 +1091,14 @@ class MessageHandler:
         match last_usage:
             case "shutter" | "klineShutter" | "awning" | "swingShutter":
                 return TydomShutter(
-                    tydom_client, uid, device_id, name, last_usage, endpoint, None, data
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata.get(uid),
+                    data,
                 )
             case (
                 "window"

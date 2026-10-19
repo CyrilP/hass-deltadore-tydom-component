@@ -3879,6 +3879,12 @@
             "identify_device": {
                 "name": "Identifica dispositivo"
             },
+            "favourite_position_1": {
+                "name": "Richiama la posizione preferita 1"
+            },
+            "favourite_position_2": {
+                "name": "Richiama la posizione preferita 2"
+            },
             "refresh_energy": {
                 "name": "Aggiorna dati energetici"
             },

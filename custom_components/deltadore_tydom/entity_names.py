@@ -380,6 +380,8 @@ ENTITY_NAMES: dict[str, str] = {
     "energyscaletotelecp_max": "Scale — Power (Electricity) (maximum)",
     "energyscaletotelecp_min": "Scale — Power (Electricity) (minimum)",
     "energytotindexwatt": "Elec. index",
+    "favourite_position_1": "Recall favourite position 1",
+    "favourite_position_2": "Recall favourite position 2",
     "finalize_association": "Configure {channel} as {usage}",
     "finalize_keypad": "Configure {channel} as a keypad",
     "finalize_remote": "Configure {channel} as a remote control",

@@ -68,6 +68,7 @@ from .ha_entities import (
     HATwcShutterCover,
     HASwitch,
     HAButton,
+    HACoverFavouriteButton,
     HADeviceAssociationButton,
     HADeviceRemovalButton,
     HAGroupableProductFinalizeAssociationButton,
@@ -2006,6 +2007,7 @@ class Hub:
         self._pending_standalone_auto_finalize_failed = False
         self._refresh_energy_buttons_created: set[str] = set()
         self._device_association_buttons_created: set[tuple[str, str]] = set()
+        self._cover_favourite_buttons_created: set[tuple[str, str]] = set()
         self._remote_battery_entities: dict[str, HARemoteBattery] = {}
         self._interrupter_battery_entities: dict[str, HAInterrupterBattery] = {}
         self._twc_scene_sets: dict[str, dict[str, HAScene]] = {}
@@ -3361,6 +3363,8 @@ class Hub:
         if self.add_button_callback is None:
             return
 
+        self._maybe_create_cover_favourite_buttons(device)
+
         # Scenarios, moments and groups are configuration objects, not radio
         # products. In particular, TWC_UP/DOWN/STOP are three scenarios that
         # form one virtual shutter cover. Giving each of them product-removal
@@ -3515,6 +3519,27 @@ class Hub:
 
         if buttons:
             self._enable_existing_removal_buttons(buttons)
+            self.add_button_callback(buttons)
+
+    def _maybe_create_cover_favourite_buttons(self, device: TydomDevice) -> None:
+        """Expose favourite recall buttons only when TYDOM advertises support."""
+        if not isinstance(device, TydomShutter) or self.add_button_callback is None:
+            return
+
+        created = getattr(self, "_cover_favourite_buttons_created", None)
+        if created is None:
+            created = set()
+            self._cover_favourite_buttons_created = created
+
+        buttons = []
+        for number, command in ((1, "FAVORIT1"), (2, "FAVORIT2")):
+            key = (device.device_id, command)
+            if command not in device.favourite_commands or key in created:
+                continue
+            buttons.append(HACoverFavouriteButton(device, self._hass, number))
+            created.add(key)
+
+        if buttons:
             self.add_button_callback(buttons)
 
     def _enable_existing_removal_buttons(self, buttons: list[object]) -> None:
@@ -3918,6 +3943,7 @@ class Hub:
         self._association_controls.clear()
         self._refresh_energy_buttons_created.clear()
         self._device_association_buttons_created.clear()
+        self._cover_favourite_buttons_created.clear()
 
         # Supprimer toutes les entités existantes via l'Entity Registry
         from homeassistant.helpers import entity_registry as er

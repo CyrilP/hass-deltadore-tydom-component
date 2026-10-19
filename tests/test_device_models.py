@@ -336,6 +336,27 @@ class TestDeviceModelApplication(IsolatedAsyncioTestCase):
         handler_module.endpoint_config.clear()
         self.handler = MessageHandler(MagicMock(), b"")
 
+    async def test_shutter_retains_gateway_metadata_for_favourite_commands(
+        self,
+    ) -> None:
+        """Shutter devices keep advertised command capabilities."""
+        uid = "20_10"
+        metadata = {
+            "positionCmd": {
+                "permission": "w",
+                "enum_values": ["DOWN", "UP", "STOP", "FAVORIT1", "FAVORIT2"],
+            }
+        }
+        handler_module.device_metadata[uid] = metadata
+
+        device = await MessageHandler.get_device(
+            MagicMock(), "shutter", uid, "10", "Cover", "20", {"position": 50}
+        )
+
+        self.assertIsInstance(device, devices_module.TydomShutter)
+        self.assertEqual(device._metadata, metadata)
+        self.assertEqual(device.favourite_commands, frozenset({"FAVORIT1", "FAVORIT2"}))
+
     async def test_resolved_model_is_added_to_device_data(self) -> None:
         """A descriptor-derived model is exposed through productName."""
         uid = "20_10"

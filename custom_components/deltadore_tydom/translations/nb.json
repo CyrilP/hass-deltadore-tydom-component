@@ -296,6 +296,12 @@
             "group_alarm": {
                 "name": "Alarm Group"
             },
+            "favourite_position_1": {
+                "name": "Hent favorittposisjon 1"
+            },
+            "favourite_position_2": {
+                "name": "Hent favorittposisjon 2"
+            },
             "refresh_energy": {
                 "name": "Refresh energy data"
             }

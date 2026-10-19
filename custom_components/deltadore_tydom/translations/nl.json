@@ -3879,6 +3879,12 @@
             "identify_device": {
                 "name": "Apparaat identificeren"
             },
+            "favourite_position_1": {
+                "name": "Favorietpositie 1 oproepen"
+            },
+            "favourite_position_2": {
+                "name": "Favorietpositie 2 oproepen"
+            },
             "refresh_energy": {
                 "name": "Energiegegevens vernieuwen"
             },
