@@ -670,9 +670,16 @@ class TydomBoiler(TydomDevice):
     """Represents a Boiler."""
 
     @property
+    def is_area_controlled(self) -> bool:
+        """Return whether thermostat commands should target its linked area."""
+        return hasattr(self, "area_id") and not getattr(
+            self, "_endpoint_controls_own_thermostat", False
+        )
+
+    @property
     def is_area_trv(self) -> bool:
         """Return whether this is a radiator thermostat linked to an area."""
-        return self._type == "sh_hvac" and hasattr(self, "area_id")
+        return self._type == "sh_hvac" and self.is_area_controlled
 
     @property
     def boost_active(self) -> bool:
@@ -720,7 +727,7 @@ class TydomBoiler(TydomDevice):
 
     def area_temperature_limits(self) -> tuple[float | None, float | None]:
         """Keep the area-only helper available for existing callers."""
-        if not hasattr(self, "area_id"):
+        if not self.is_area_controlled:
             return (None, None)
         return self.temperature_limits()
 
@@ -788,7 +795,7 @@ class TydomBoiler(TydomDevice):
 
     def area_temperature_step(self) -> float | None:
         """Return the target-temperature step advertised for this area."""
-        if not hasattr(self, "area_id"):
+        if not self.is_area_controlled:
             return None
 
         if self.is_area_trv:
@@ -816,7 +823,7 @@ class TydomBoiler(TydomDevice):
 
     def area_hvac_modes(self) -> set[str]:
         """Return the HVAC modes advertised by an area-backed thermostat."""
-        if not hasattr(self, "area_id"):
+        if not self.is_area_controlled:
             return set()
 
         if self.is_area_trv:
@@ -889,7 +896,7 @@ class TydomBoiler(TydomDevice):
                 )
             return
 
-        if hasattr(self, "area_id"):
+        if self.is_area_controlled:
             area_modes = {
                 "NORMAL": "HEATING",
                 "HEATING": "HEATING",
@@ -1056,7 +1063,7 @@ class TydomBoiler(TydomDevice):
             "localSetpoint"
             if self.is_area_trv
             else self.area_setpoint_attribute()
-            if hasattr(self, "area_id")
+            if self.is_area_controlled
             else self._temperature_command_name()
         )
         # Validate value with metadata
@@ -1086,10 +1093,10 @@ class TydomBoiler(TydomDevice):
 
         setpoint_attribute = (
             self.area_setpoint_attribute()
-            if hasattr(self, "area_id")
+            if self.is_area_controlled
             else self._temperature_command_name()
         )
-        if hasattr(self, "area_id"):
+        if self.is_area_controlled:
             await self._tydom_client.put_area_data(
                 self.area_id, setpoint_attribute, temperature
             )

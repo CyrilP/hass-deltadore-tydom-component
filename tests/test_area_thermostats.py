@@ -979,13 +979,12 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
             ],
         )
 
-    async def test_self_controlled_thermostat_is_not_area_bound(self) -> None:
+    async def test_self_controlled_thermostat_keeps_area_telemetry(self) -> None:
         """A writable-comfortMode endpoint owns its own state (#463).
 
         The Tybox Home RF 210 reports its real mode on the device endpoint while
         the area it is grouped into can hold a different/stale mode. Such an
-        endpoint must stay a standalone thermostat: no area_id, and its endpoint
-        state must not be shadowed by the area.
+        endpoint must keep its own control state while retaining area telemetry.
         """
         handler_module.device_type["10_20"] = "boiler"
         handler_module.device_metadata["10_20"] = {
@@ -1008,7 +1007,22 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
                             "name": "authorization",
                             "value": "HEATING",
                             "validity": "upToDate",
-                        }
+                        },
+                        {
+                            "name": "setpoint",
+                            "value": 18.0,
+                            "validity": "upToDate",
+                        },
+                        {
+                            "name": "hygroIn",
+                            "value": 45.0,
+                            "validity": "upToDate",
+                        },
+                        {
+                            "name": "anticipcoeff",
+                            "value": 0.6,
+                            "validity": "upToDate",
+                        },
                     ],
                 }
             ],
@@ -1029,7 +1043,12 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
                                     "name": "authorization",
                                     "value": "COOLING",
                                     "validity": "upToDate",
-                                }
+                                },
+                                {
+                                    "name": "setpoint",
+                                    "value": 21.0,
+                                    "validity": "upToDate",
+                                },
                             ],
                         }
                     ],
@@ -1039,12 +1058,17 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         )
 
         device = devices[0]
-        # Not bound to the area, and the endpoint's own COOLING state wins over
-        # the area's HEATING.
-        self.assertFalse(hasattr(device, "area_id"))
+        # Keep the area ID visible for diagnostics, but use the endpoint's own
+        # COOLING state and setpoint for control.
+        self.assertEqual(device.area_id, "7")
+        self.assertFalse(device.is_area_controlled)
         self.assertEqual(device.authorization, "COOLING")
+        self.assertEqual(device.setpoint, 21.0)
+        self.assertEqual(device.hygroIn, 45.0)
+        self.assertEqual(device.anticipcoeff, 0.6)
 
-        # A later area push must not reach the standalone thermostat.
+        # Later area pushes update read-only sensors without changing the
+        # endpoint's mode or setpoint.
         pushed = await self.handler.parse_areas_data(
             [
                 {
@@ -1054,14 +1078,44 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
                             "name": "authorization",
                             "value": "HEATING",
                             "validity": "upToDate",
-                        }
+                        },
+                        {
+                            "name": "setpoint",
+                            "value": 18.0,
+                            "validity": "upToDate",
+                        },
+                        {
+                            "name": "hygroIn",
+                            "value": 50.0,
+                            "validity": "upToDate",
+                        },
+                        {
+                            "name": "anticipcoeff",
+                            "value": 0.8,
+                            "validity": "upToDate",
+                        },
                     ],
                 }
             ],
             None,
         )
-        self.assertEqual(pushed, [])
+        self.assertEqual(len(pushed), 1)
+        self.assertFalse(hasattr(pushed[0], "area_id"))
+        self.assertFalse(hasattr(pushed[0], "authorization"))
+        self.assertFalse(hasattr(pushed[0], "setpoint"))
+
+        await device.update_device(pushed[0])
         self.assertEqual(device.authorization, "COOLING")
+        self.assertEqual(device.setpoint, 21.0)
+        self.assertEqual(device.hygroIn, 50.0)
+        self.assertEqual(device.anticipcoeff, 0.8)
+
+        self.client.put_devices_data = AsyncMock()
+        self.client.put_area_data = AsyncMock()
+        await device.set_hvac_mode("COOLING")
+        await device.set_temperature(22.0)
+        self.client.put_devices_data.assert_awaited()
+        self.client.put_area_data.assert_not_awaited()
 
     async def test_reversible_area_uses_mode_specific_setpoint(self) -> None:
         """A reversible system writes the register matching its current mode."""

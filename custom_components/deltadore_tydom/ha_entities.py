@@ -2807,7 +2807,7 @@ class HaClimate(ClimateEntity, HAEntity):
             HVACMode.AUTO,
         ]
 
-        if hasattr(self._device, "area_id"):
+        if self._device.is_area_controlled:
             area_modes = self._device.area_hvac_modes()
             self._attr_hvac_modes = [HVACMode.OFF]
             if "HEATING" in area_modes or "NORMAL" in area_modes:
@@ -2967,7 +2967,7 @@ class HaClimate(ClimateEntity, HAEntity):
             # TRV-backed areas and Typass ATL zones.  Area-derived entities
             # build their mode list from area_hvac_modes() above, which can
             # include COOL, so they must keep it.
-            and not hasattr(self._device, "area_id")
+            and not self._device.is_area_controlled
             # Reversible zones (heat pump / AC) reach [off, heat, cool] above
             # from their own enum metadata.  Frost protection is a preset on
             # those, not an off state, and collapsing them here would drop
@@ -3196,7 +3196,7 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def target_temperature_step(self) -> float | None:
         """Return the area controller's advertised temperature step."""
-        if hasattr(self._device, "area_id"):
+        if self._device.is_area_controlled:
             step = self._device.area_temperature_step()
             if step is not None:
                 return step
@@ -3325,7 +3325,10 @@ class HaClimate(ClimateEntity, HAEntity):
     def current_humidity(self) -> float | None:
         """Return the current humidity when the device advertises hygroIn."""
         metadata = getattr(self._device, "_metadata", None)
-        if metadata is None or "hygroIn" not in metadata:
+        has_area_humidity = getattr(
+            self._device, "_endpoint_controls_own_thermostat", False
+        )
+        if not has_area_humidity and (metadata is None or "hygroIn" not in metadata):
             return None
 
         humidity = getattr(self._device, "hygroIn", None)
@@ -3339,7 +3342,7 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature currently set to be reached."""
-        if hasattr(self._device, "area_id"):
+        if self._device.is_area_controlled:
             setpoint = getattr(
                 self._device, self._device.area_setpoint_attribute(), None
             )
@@ -3522,7 +3525,7 @@ class HaClimate(ClimateEntity, HAEntity):
                 and "ABSENCE" in local_mode_metadata.get("enum_values", [])
                 and "w" in local_mode_metadata.get("permission", "")
             ):
-                if hasattr(self._device, "area_id"):
+                if self._device.is_area_controlled:
                     await self._async_track_command(
                         "preset_mode",
                         preset_mode,
