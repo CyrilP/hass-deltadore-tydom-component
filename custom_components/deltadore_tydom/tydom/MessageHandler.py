@@ -369,11 +369,12 @@ def _refresh_remote_control_info() -> None:
 
 @dataclass(frozen=True)
 class AreaDeviceReference:
-    """Identify the device endpoint whose state is backed by an area."""
+    """Identify a device endpoint receiving area state or telemetry."""
 
     uid: str
     device_id: str
     endpoint_id: str
+    telemetry_only: bool = False
 
 
 _AREA_CONTROL_ATTRIBUTES = {
@@ -381,6 +382,12 @@ _AREA_CONTROL_ATTRIBUTES = {
     "setpoint",
     "heatSetpoint",
     "coolSetpoint",
+}
+
+_AREA_TELEMETRY_ATTRIBUTES = {
+    "hygroIn",
+    "anticipcoeff",
+    "anticpcoeff",
 }
 
 
@@ -1935,19 +1942,19 @@ class MessageHandler:
                     try:
                         data = {}
                         area_id = None
+                        area_telemetry_only = False
                         passive_climate_uid = None
 
                         link = endpoint.get("link")
                         # An endpoint that exposes a writable ``comfortMode``
                         # drives its own thermostat (heat/cool/stop) directly, so
                         # its ``/devices/data`` state and setpoints are
-                        # authoritative. Such a thermostat must not be bound to
-                        # the area it is merely grouped into: the area aggregates
-                        # a zone and can report a different/stale mode (e.g. a
-                        # Tybox Home RF 210 reporting COOLING on its endpoint
-                        # while the area still reads HEATING), which otherwise
-                        # shadows the real state and routes commands to the wrong
-                        # target. (#463)
+                        # authoritative. Keep its thermostat control on that
+                        # endpoint; the linked area aggregates a zone and can
+                        # report a different/stale mode (e.g. a Tybox Home RF
+                        # 210 reporting COOLING while the area still reads
+                        # HEATING). Its sensor telemetry can still be useful.
+                        # (#463)
                         endpoint_controls_own_thermostat = _has_writable_comfort_mode(
                             device_metadata.get(unique_id)
                         )
@@ -1972,10 +1979,12 @@ class MessageHandler:
                                     ).copy()
                                 )
                             elif endpoint_controls_own_thermostat:
-                                # Keep it a standalone device endpoint: drop the
-                                # area binding so reads and writes target the real
-                                # thermostat endpoint rather than the zone.
-                                area_id = None
+                                # Keep thermostat control on the physical endpoint,
+                                # while retaining the area link for its read-only
+                                # sensor data and diagnostic identifier.
+                                data["area_id"] = area_id
+                                data["_endpoint_controls_own_thermostat"] = True
+                                area_telemetry_only = True
                             else:
                                 data["area_id"] = area_id
 
@@ -1984,6 +1993,7 @@ class MessageHandler:
                                     uid=reference_uid,
                                     device_id=str(device_id),
                                     endpoint_id=str(endpoint_id),
+                                    telemetry_only=area_telemetry_only,
                                 )
                                 self._area_devices.setdefault(area_id, {})[
                                     reference_uid
@@ -2002,7 +2012,17 @@ class MessageHandler:
                             and area_id in self._area_data
                             and passive_climate_uid is None
                         ):
-                            data.update(self._area_data[area_id])
+                            if area_telemetry_only:
+                                for attribute in _AREA_TELEMETRY_ATTRIBUTES:
+                                    if (
+                                        attribute not in data
+                                        and attribute in self._area_data[area_id]
+                                    ):
+                                        data[attribute] = self._area_data[area_id][
+                                            attribute
+                                        ]
+                            else:
+                                data.update(self._area_data[area_id])
 
                         # Create the device (even without data)
                         device = await MessageHandler.get_device(
@@ -2141,6 +2161,16 @@ class MessageHandler:
             data = cached_data.copy()
 
             for reference in references.values():
+                device_data = data
+                if reference.telemetry_only:
+                    device_data = {
+                        attribute: value
+                        for attribute, value in data.items()
+                        if attribute in _AREA_TELEMETRY_ATTRIBUTES
+                    }
+                    if not device_data:
+                        continue
+
                 device = await MessageHandler.get_device(
                     self.tydom_client,
                     self.get_type_from_id(reference.uid),
@@ -2148,7 +2178,7 @@ class MessageHandler:
                     reference.device_id,
                     self.get_name_from_id(reference.uid),
                     reference.endpoint_id,
-                    data,
+                    device_data,
                 )
                 if device is not None:
                     devices.append(device)

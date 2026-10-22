@@ -23,7 +23,7 @@ def _load_ha_entity_class():
         for node in module.body
         if (
             isinstance(node, ast.FunctionDef)
-            and node.name == "_get_hub_for_tydom_device"
+            and node.name in {"_get_hub_for_tydom_device", "_get_entity_registry_api"}
         )
         or (isinstance(node, ast.ClassDef) and node.name == "HAEntity")
     ]
@@ -46,6 +46,7 @@ def _load_ha_entity_class():
 
     class GenericSensor:
         def __init__(self, *_args, **kwargs) -> None:
+            self._attribute = _args[4]
             self.registry_kwargs = kwargs
 
     class BinarySensorDeviceClass:
@@ -58,6 +59,10 @@ def _load_ha_entity_class():
         "LOGGER": MagicMock(),
         "GenericBinarySensor": GenericBinarySensor,
         "GenericSensor": GenericSensor,
+        "_get_entity_registry_api": lambda: SimpleNamespace(
+            async_get=lambda _hass: object(),
+            async_entries_for_config_entry=lambda _registry, _entry_id: [],
+        ),
         "is_binary_attribute": lambda _device, _attribute, value, _class: isinstance(
             value, bool
         ),
@@ -295,6 +300,50 @@ class EntitySensorRegistrationTests(TestCase):
 
         self.assertEqual(len(entity.get_sensors()), 1)
         self.assertEqual(entity.get_sensors(), [])
+
+    def test_registered_supported_sensor_returns_when_live_value_is_missing(
+        self,
+    ) -> None:
+        """A restart must not orphan a known humidity entity on an empty payload."""
+        entity = self._entity("boiler_1")
+        del entity._device.thermicDefect
+        entity.hass = object()
+        entity.sensor_classes = {"hygroIn": "humidity"}
+        entity.units = {"hygroIn": "%"}
+        entity._get_hub = MagicMock(
+            return_value=SimpleNamespace(_entry=SimpleNamespace(entry_id="entry-a"))
+        )
+        registry = object()
+        registry_entries = [
+            SimpleNamespace(
+                domain="sensor",
+                platform="deltadore_tydom",
+                unique_id="boiler_1_hygroIn",
+            ),
+            SimpleNamespace(
+                domain="sensor",
+                platform="deltadore_tydom",
+                unique_id="boiler_1_removedField",
+            ),
+        ]
+        registry_api = SimpleNamespace(
+            async_get=MagicMock(return_value=registry),
+            async_entries_for_config_entry=MagicMock(return_value=registry_entries),
+        )
+        namespace = HAEntity.get_sensors.__globals__
+        previous_registry_api = namespace["_get_entity_registry_api"]
+        namespace["_get_entity_registry_api"] = lambda: registry_api
+        try:
+            sensors = entity.get_sensors()
+        finally:
+            namespace["_get_entity_registry_api"] = previous_registry_api
+
+        self.assertEqual([sensor._attribute for sensor in sensors], ["hygroIn"])
+        self.assertEqual(entity._registered_sensors, ["hygroIn"])
+        registry_api.async_get.assert_called_once_with(entity.hass)
+        registry_api.async_entries_for_config_entry.assert_called_once_with(
+            registry, "entry-a"
+        )
 
     def test_shared_weather_sensor_is_registered_once_on_weather_device(self) -> None:
         """A source shared by controllers gets one sensor on one Weather device."""

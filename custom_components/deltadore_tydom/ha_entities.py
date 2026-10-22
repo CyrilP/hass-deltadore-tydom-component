@@ -247,6 +247,13 @@ def _get_hub_for_tydom_device(hass: Any, device: Any):
     return None
 
 
+def _get_entity_registry_api():
+    """Import the entity registry only when generic sensor restoration needs it."""
+    from homeassistant.helpers import entity_registry
+
+    return entity_registry
+
+
 class HAEntity:
     """Generic abstract HA entity."""
 
@@ -363,6 +370,21 @@ class HAEntity:
         if registered_sensors is None:
             return sensors
 
+        # Generic sensors are discovered from live values. A gateway may omit
+        # a value from its first /devices/data response after a Home Assistant
+        # restart even though this integration created that sensor previously.
+        # Re-add known, supported attributes from this entry's registry so the
+        # existing entity remains available to receive the next live update.
+        restored_attributes = self.__dict__.get("_restored_sensor_attributes")
+        if restored_attributes is None:
+            restored_attributes = self._get_registered_sensor_attributes()
+            if restored_attributes is not None:
+                self._restored_sensor_attributes = restored_attributes
+            else:
+                # Hub setup can call sensor discovery before the config entry is
+                # present in hass.data. Retry on the next device update.
+                restored_attributes = set()
+
         registry_targets = self.__dict__.get("_sensor_registry_targets") or ()
         registrations_by_target = self.__dict__.setdefault(
             "_registered_sensors_by_target", {}
@@ -389,8 +411,14 @@ class HAEntity:
             target_registrations = [(None, None, "", None, registered_sensors)]
 
         consumed_attrs = self._get_consumed_attrs()
-        for attribute, value in self._device.__dict__.items():
-            if attribute[:1] != "_" and value is not None:
+        device_attributes = self._device.__dict__.copy()
+        for attribute in restored_attributes:
+            device_attributes.setdefault(attribute, None)
+
+        for attribute, value in device_attributes.items():
+            if attribute[:1] != "_" and (
+                value is not None or attribute in restored_attributes
+            ):
                 alt_name = attribute.split("_")[0]
                 if attribute in self.filtered_attrs or alt_name in self.filtered_attrs:
                     continue
@@ -486,6 +514,36 @@ class HAEntity:
                     )
 
         return sensors
+
+    def _get_registered_sensor_attributes(self) -> set[str] | None:
+        """Return known generic sensor attributes missing from the live payload."""
+        if self.hass is None or self._device is None:
+            return None
+
+        hub = self._get_hub()
+        entry = getattr(hub, "_entry", None)
+        if entry is None:
+            return None
+
+        supported_attributes = (
+            set(self.sensor_classes) | set(self.state_classes) | set(self.units)
+        )
+        if not supported_attributes:
+            return set()
+
+        prefix = f"{self._device.device_id}_"
+        entity_registry = _get_entity_registry_api()
+        registry = entity_registry.async_get(self.hass)
+        return {
+            registry_entry.unique_id.removeprefix(prefix)
+            for registry_entry in entity_registry.async_entries_for_config_entry(
+                registry, entry.entry_id
+            )
+            if registry_entry.domain == "sensor"
+            and registry_entry.platform == DOMAIN
+            and registry_entry.unique_id.startswith(prefix)
+            and registry_entry.unique_id.removeprefix(prefix) in supported_attributes
+        }
 
     def _get_consumed_attrs(self) -> set[str]:
         """Return raw attributes already represented by this primary entity.
@@ -2749,7 +2807,7 @@ class HaClimate(ClimateEntity, HAEntity):
             HVACMode.AUTO,
         ]
 
-        if hasattr(self._device, "area_id"):
+        if self._device.is_area_controlled:
             area_modes = self._device.area_hvac_modes()
             self._attr_hvac_modes = [HVACMode.OFF]
             if "HEATING" in area_modes or "NORMAL" in area_modes:
@@ -2909,7 +2967,7 @@ class HaClimate(ClimateEntity, HAEntity):
             # TRV-backed areas and Typass ATL zones.  Area-derived entities
             # build their mode list from area_hvac_modes() above, which can
             # include COOL, so they must keep it.
-            and not hasattr(self._device, "area_id")
+            and not self._device.is_area_controlled
             # Reversible zones (heat pump / AC) reach [off, heat, cool] above
             # from their own enum metadata.  Frost protection is a preset on
             # those, not an off state, and collapsing them here would drop
@@ -3138,7 +3196,7 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def target_temperature_step(self) -> float | None:
         """Return the area controller's advertised temperature step."""
-        if hasattr(self._device, "area_id"):
+        if self._device.is_area_controlled:
             step = self._device.area_temperature_step()
             if step is not None:
                 return step
@@ -3267,7 +3325,10 @@ class HaClimate(ClimateEntity, HAEntity):
     def current_humidity(self) -> float | None:
         """Return the current humidity when the device advertises hygroIn."""
         metadata = getattr(self._device, "_metadata", None)
-        if metadata is None or "hygroIn" not in metadata:
+        has_area_humidity = getattr(
+            self._device, "_endpoint_controls_own_thermostat", False
+        )
+        if not has_area_humidity and (metadata is None or "hygroIn" not in metadata):
             return None
 
         humidity = getattr(self._device, "hygroIn", None)
@@ -3281,7 +3342,7 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature currently set to be reached."""
-        if hasattr(self._device, "area_id"):
+        if self._device.is_area_controlled:
             setpoint = getattr(
                 self._device, self._device.area_setpoint_attribute(), None
             )
@@ -3464,7 +3525,7 @@ class HaClimate(ClimateEntity, HAEntity):
                 and "ABSENCE" in local_mode_metadata.get("enum_values", [])
                 and "w" in local_mode_metadata.get("permission", "")
             ):
-                if hasattr(self._device, "area_id"):
+                if self._device.is_area_controlled:
                     await self._async_track_command(
                         "preset_mode",
                         preset_mode,
