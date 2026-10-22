@@ -3041,15 +3041,13 @@ class HaClimate(ClimateEntity, HAEntity):
     def _get_command_tracker(self) -> ClimateCommandTracker:
         """Create the request tracker independently of the device data."""
         if not hasattr(self, "_command_tracker"):
-            self._command_tracker = ClimateCommandTracker(self._notify_command_entities)
-            self._command_listeners: set[Callable[[], None]] = set()
+            self._command_tracker = ClimateCommandTracker(self._notify_command_sensor)
+            self._command_sensor_listeners: set[Callable[[], None]] = set()
         return self._command_tracker
 
-    def _notify_command_entities(self) -> None:
-        """Publish request status immediately without inventing thermostat state."""
-        if getattr(self, "_command_listening", False):
-            self.async_write_ha_state()
-        for listener in tuple(self._command_listeners):
+    def _notify_command_sensor(self) -> None:
+        """Publish request status without refreshing the climate entity."""
+        for listener in tuple(self._command_sensor_listeners):
             listener()
 
     def _handle_climate_update(self) -> None:
@@ -3072,28 +3070,22 @@ class HaClimate(ClimateEntity, HAEntity):
         try:
             await operation
         except asyncio.CancelledError:
-            tracker.fail(key, command, cancelled=True)
+            if tracker.fail(key, command, cancelled=True) and not tracker.pending:
+                self.async_write_ha_state()
             raise
         except Exception:
-            tracker.fail(key, command)
+            if tracker.fail(key, command) and not tracker.pending:
+                self.async_write_ha_state()
             raise
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Expose outstanding requests alongside the unchanged device state."""
-        tracker = self._get_command_tracker()
-        return {"command_pending": tracker.pending, **tracker.attributes}
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
         await super().async_added_to_hass()
-        self._command_listening = True
         self._device.register_callback(self._handle_climate_update)
         self._device._ha_device = self
 
     async def async_will_remove_from_hass(self) -> None:
         """Remove the push callback registered in async_added_to_hass."""
-        self._command_listening = False
         self._device.remove_callback(self._handle_climate_update)
         self._get_command_tracker().close()
         if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
@@ -3604,12 +3596,12 @@ class ClimateCommandPendingSensor(BinarySensorBase):
     async def async_added_to_hass(self) -> None:
         """Subscribe to request changes without replacing the primary entity."""
         await BinarySensorEntity.async_added_to_hass(self)
-        self._climate._command_listeners.add(self.async_write_ha_state)
+        self._climate._command_sensor_listeners.add(self.async_write_ha_state)
         self._device.register_callback(self.async_write_ha_state)
 
     async def async_will_remove_from_hass(self) -> None:
         """Release the status subscription when this entity is removed."""
-        self._climate._command_listeners.discard(self.async_write_ha_state)
+        self._climate._command_sensor_listeners.discard(self.async_write_ha_state)
         self._device.remove_callback(self.async_write_ha_state)
         await BinarySensorEntity.async_will_remove_from_hass(self)
 

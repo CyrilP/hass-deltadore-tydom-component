@@ -90,11 +90,11 @@ class CommandTrackerTests(IsolatedAsyncioTestCase):
         old = tracker.begin("temperature", 22)
         new = tracker.begin("temperature", 23)
         self.assertTrue(old.timeout.cancelled())
-        tracker.fail("temperature", old)
+        self.assertFalse(tracker.fail("temperature", old))
         self.assertEqual(tracker.attributes["requested_temperature"], 23)
         tracker.confirm({"temperature": 22})
         self.assertTrue(tracker.pending)
-        tracker.fail("temperature", new)
+        self.assertTrue(tracker.fail("temperature", new))
         self.assertFalse(tracker.pending)
         self.assertEqual(tracker.attributes["command_status"], "failed")
 
@@ -210,7 +210,7 @@ class ClimateControlTests(IsolatedAsyncioTestCase):
                 await climate.async_set_temperature(temperature=value)
             with self.assertRaises(HomeAssistantError):
                 await device.set_temperature(value)
-        self.assertFalse(climate.extra_state_attributes["command_pending"])
+        self.assertFalse(ClimateCommandPendingSensor(climate).is_on)
         client.put_devices_data.assert_not_awaited()
 
     async def test_invalid_temperature_rejected(self):
@@ -225,12 +225,12 @@ class ClimateControlTests(IsolatedAsyncioTestCase):
         """Sending preserves real state; an actual matching push clears pending."""
         climate, device, client = self.climate()
         sensor = ClimateCommandPendingSensor(climate)
-        climate._command_listening = True
         device.register_callback(climate._handle_climate_update)
         await climate.async_set_temperature(temperature=22)
         self.assertEqual(climate.target_temperature, 21)
         self.assertTrue(sensor.is_on)
-        self.assertEqual(climate.extra_state_attributes["requested_temperature"], 22)
+        self.assertEqual(sensor.extra_state_attributes["requested_temperature"], 22)
+        climate.async_write_ha_state.assert_not_called()
         client.put_devices_data.assert_awaited_once_with("20", "10", "setpoint", "22")
         await device.publish_updates()
         self.assertTrue(sensor.is_on)
@@ -250,39 +250,47 @@ class ClimateControlTests(IsolatedAsyncioTestCase):
             await gate.wait()
 
         client.put_devices_data.side_effect = send
+        sensor = ClimateCommandPendingSensor(climate)
+        await sensor.async_added_to_hass()
         task = asyncio.create_task(climate.async_set_temperature(temperature=22))
         await asyncio.sleep(0)
-        self.assertTrue(climate.extra_state_attributes["command_pending"])
+        self.assertTrue(sensor.is_on)
+        self.assertEqual(sensor.extra_state_attributes["requested_temperature"], 22)
         self.assertFalse(task.done())
         gate.set()
         await task
-        self.assertTrue(climate.extra_state_attributes["command_pending"])
+        self.assertTrue(sensor.is_on)
+        await sensor.async_will_remove_from_hass()
 
     async def test_failed_send_is_not_left_pending(self):
         """Propagate the transport exception and report failure."""
         climate, _, client = self.climate()
+        sensor = ClimateCommandPendingSensor(climate)
         client.put_devices_data.side_effect = RuntimeError("send failed")
         with self.assertRaisesRegex(RuntimeError, "send failed"):
             await climate.async_set_temperature(temperature=22)
-        self.assertFalse(climate.extra_state_attributes["command_pending"])
-        self.assertEqual(climate.extra_state_attributes["command_status"], "failed")
+        self.assertFalse(sensor.is_on)
+        self.assertEqual(sensor.extra_state_attributes["command_status"], "failed")
+        climate.async_write_ha_state.assert_called_once()
 
     async def test_cancelled_send_cleans_pending(self):
         """Cancellation is distinct from device confirmation."""
         climate, _, client = self.climate()
+        sensor = ClimateCommandPendingSensor(climate)
         client.put_devices_data.side_effect = asyncio.CancelledError
         with self.assertRaises(asyncio.CancelledError):
             await climate.async_set_temperature(temperature=22)
-        self.assertEqual(climate.extra_state_attributes["command_status"], "cancelled")
-        self.assertFalse(climate.extra_state_attributes["command_pending"])
+        self.assertEqual(sensor.extra_state_attributes["command_status"], "cancelled")
+        self.assertFalse(sensor.is_on)
 
     async def test_invalid_new_request_keeps_previous_request(self):
         """A refused value must not hide an earlier command still awaiting feedback."""
         climate, _, client = self.climate()
+        sensor = ClimateCommandPendingSensor(climate)
         await climate.async_set_temperature(temperature=22)
         with self.assertRaises(HomeAssistantError):
             await climate.async_set_temperature(temperature=31)
-        self.assertEqual(climate.extra_state_attributes["requested_temperature"], 22)
+        self.assertEqual(sensor.extra_state_attributes["requested_temperature"], 22)
         client.put_devices_data.assert_awaited_once()
 
     async def test_mode_and_away_are_confirmed_from_live_state(self):
@@ -293,26 +301,31 @@ class ClimateControlTests(IsolatedAsyncioTestCase):
                 "localMode": {"permission": "rw", "enum_values": ["NORMAL", "ABSENCE"]},
             }
         )
-        climate._command_listening = True
+        sensor = ClimateCommandPendingSensor(climate)
         device.register_callback(climate._handle_climate_update)
         await climate.async_set_hvac_mode(HVACMode.OFF)
         self.assertEqual(climate.hvac_mode, HVACMode.HEAT)
+        climate.async_write_ha_state.assert_not_called()
         device.hvacMode = "STOP"
         await device.publish_updates()
-        self.assertFalse(climate.extra_state_attributes["command_pending"])
+        self.assertEqual(climate.async_write_ha_state.call_count, 1)
+        self.assertFalse(sensor.is_on)
+        climate.async_write_ha_state.reset_mock()
         await climate.async_set_preset_mode(PRESET_AWAY)
-        self.assertTrue(climate.extra_state_attributes["command_pending"])
+        self.assertTrue(sensor.is_on)
+        climate.async_write_ha_state.assert_not_called()
         self.assertNotEqual(climate.preset_mode, PRESET_AWAY)
         device.localMode = "ABSENCE"
         await device.publish_updates()
-        self.assertFalse(climate.extra_state_attributes["command_pending"])
+        climate.async_write_ha_state.assert_called_once()
+        self.assertFalse(sensor.is_on)
         client.put_devices_data.assert_any_await("20", "10", "localMode", "ABSENCE")
 
     async def test_noop_preset_does_not_create_pending_request(self):
         """Existing no-op presets must not invent a command to wait for."""
         climate, _, client = self.climate()
         await climate.async_set_preset_mode(PRESET_NONE)
-        self.assertFalse(climate.extra_state_attributes["command_pending"])
+        self.assertFalse(ClimateCommandPendingSensor(climate).is_on)
         client.put_devices_data.assert_not_awaited()
 
     async def test_trv_numeric_wire_value_and_matching_feedback(self):
@@ -335,7 +348,7 @@ class ClimateControlTests(IsolatedAsyncioTestCase):
         self.assertEqual(climate.target_temperature, 21)
         device.currentSetpoint = 22
         climate._handle_climate_update()
-        self.assertFalse(climate.extra_state_attributes["command_pending"])
+        self.assertFalse(ClimateCommandPendingSensor(climate).is_on)
 
     async def test_indicator_is_diagnostic_and_translated_in_eight_languages(self):
         """The new entity has its own identifier and native translated name."""
@@ -431,7 +444,7 @@ class ClimateControlTests(IsolatedAsyncioTestCase):
         await climate.async_will_remove_from_hass()
         self.assertNotIn(climate._handle_climate_update, device._callbacks)
         self.assertTrue(command.timeout.cancelled())
-        self.assertFalse(climate.extra_state_attributes["command_pending"])
+        self.assertFalse(ClimateCommandPendingSensor(climate).is_on)
 
     async def test_exception_translations_have_matching_placeholders(self):
         """Every supported language can render the new service errors."""
