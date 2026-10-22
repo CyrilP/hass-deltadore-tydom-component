@@ -3220,12 +3220,17 @@ class HaClimate(ClimateEntity, HAEntity):
             local_mode = getattr(self._device, "localMode", None)
             if local_mode in self.OFF_LOCAL_MODES:
                 return HVACAction.OFF
-            # A running zone falls through to the setpoint comparison below.
-            # These zones populate no setpoint while following their schedule,
-            # so target_temperature is None and heat delivery cannot be
-            # inferred: HEATING is reported for the whole time the zone is on.
-            # The gateway exposes nothing else to distinguish it from idle.
-            # ABSENCE does report a setpoint, and resolves correctly.
+            # Frost protection is a switch of its own, independent of the power
+            # button that drives localMode.  While it is on the gateway reports
+            # thermicLevel ANTI_FROST and withdraws every setpoint: the zone
+            # holds its frost level instead of heating towards one, yet
+            # localMode stays NORMAL, so the mode is still heat.  Without a
+            # target the comparison below would report HEATING for as long as
+            # the switch stays on.
+            if getattr(self._device, "thermicLevel", None) == "ANTI_FROST":
+                return HVACAction.IDLE
+            # Otherwise a running zone reports its setpoint, and the
+            # comparison below separates heating from idle.
 
         authorization = getattr(self._device, "authorization", None)
         thermic_level = getattr(self._device, "thermicLevel", None)
