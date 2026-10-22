@@ -220,6 +220,12 @@
         },
         "unsupported_stored_pin_alarm_mode": {
             "message": "Choose Away, Home, Night or Disarm for the stored-PIN action."
+        },
+        "invalid_target_temperature": {
+            "message": "The target temperature must be a finite number."
+        },
+        "target_temperature_out_of_range": {
+            "message": "The requested temperature {temperature} is outside the device limits ({minimum} to {maximum})."
         }
     },
     "services": {
@@ -4297,14 +4303,6 @@
             "association_name": {
                 "name": "Device name (optional)"
             }
-        }
-    },
-    "exceptions": {
-        "invalid_target_temperature": {
-            "message": "The target temperature must be a finite number."
-        },
-        "target_temperature_out_of_range": {
-            "message": "The requested temperature {temperature} is outside the device limits ({minimum} to {maximum})."
         }
     },
     "device": {
