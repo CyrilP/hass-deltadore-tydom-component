@@ -75,13 +75,14 @@ class ClimateCommandTracker:
 
     def fail(
         self, key: str, command: PendingCommand, *, cancelled: bool = False
-    ) -> None:
+    ) -> bool:
         """Do not let failure of an older request remove a newer one."""
         if self._pending.get(key) is not command:
-            return
+            return False
         self._remove(key)
         self._last_status = "cancelled" if cancelled else "failed"
         self._notify()
+        return True
 
     def confirm(self, reported: dict[str, Any]) -> None:
         """Confirm only matching values from a real device update."""

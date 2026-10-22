@@ -971,28 +971,28 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
         self.addCleanup(entity._get_command_tracker().close)
 
         await entity.async_set_hvac_mode(HVACMode.HEAT)
-        self.assertTrue(entity.extra_state_attributes["command_pending"])
+        self.assertTrue(entity._get_command_tracker().pending)
         entity._device.localMode = "NORMAL"
         entity._handle_climate_update()
-        self.assertFalse(entity.extra_state_attributes["command_pending"])
+        self.assertFalse(entity._get_command_tracker().pending)
 
         await entity.async_set_preset_mode(entities_module.PRESET_AWAY)
-        self.assertTrue(entity.extra_state_attributes["command_pending"])
+        self.assertTrue(entity._get_command_tracker().pending)
         entity._device.localMode = "ABSENCE"
         entity._handle_climate_update()
-        self.assertFalse(entity.extra_state_attributes["command_pending"])
+        self.assertFalse(entity._get_command_tracker().pending)
 
         await entity.async_set_preset_mode(entities_module.PRESET_NONE)
-        self.assertTrue(entity.extra_state_attributes["command_pending"])
+        self.assertTrue(entity._get_command_tracker().pending)
         entity._device.localMode = "NORMAL"
         entity._handle_climate_update()
-        self.assertFalse(entity.extra_state_attributes["command_pending"])
+        self.assertFalse(entity._get_command_tracker().pending)
 
         await entity.async_set_hvac_mode(HVACMode.OFF)
-        self.assertTrue(entity.extra_state_attributes["command_pending"])
+        self.assertTrue(entity._get_command_tracker().pending)
         entity._device.localMode = "ANTI_FROST"
         entity._handle_climate_update()
-        self.assertFalse(entity.extra_state_attributes["command_pending"])
+        self.assertFalse(entity._get_command_tracker().pending)
 
         client.put_devices_data.assert_has_awaits(
             [

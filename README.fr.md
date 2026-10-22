@@ -286,7 +286,7 @@ L’entité climate utilise les limites actuelles de chauffage ou de refroidisse
 
 Le capteur binaire de diagnostic **Commande en attente** s’active lorsque Home Assistant envoie une demande de mode, de consigne ou de préréglage. L’entité climate conserve les valeurs remontées par le thermostat : la fin de l’envoi réseau ne confirme pas le changement physique. L’indicateur se désactive lorsqu’une mise à jour TYDOM rapporte la valeur demandée, ou si l’envoi échoue. Plusieurs demandes en attente sont confirmées séparément.
 
-Après deux minutes sans retour correspondant, le statut devient `unconfirmed` et l’indicateur reste actif. Cela ne prouve pas que la commande a échoué. Aucune nouvelle commande n’est envoyée automatiquement. Les valeurs demandées et `command_status` sont aussi disponibles dans les attributs climate. Les demandes en attente sont effacées au déchargement de l’intégration.
+Après deux minutes sans retour correspondant, le statut devient `unconfirmed` et l’indicateur reste actif. Cela ne prouve pas que la commande a échoué. Aucune nouvelle commande n’est envoyée automatiquement. Les valeurs demandées et `command_status` sont disponibles dans les attributs du capteur **Commande en attente**. Le suivi des demandes est publié séparément de l’état climate, afin que les commandes du tableau de bord ne reviennent pas à leur ancienne valeur pendant l’attente de confirmation. L’entité climate continue de représenter les valeurs remontées par TYDOM. Les demandes en attente sont effacées au déchargement de l’intégration.
 
 ### Entités de diagnostic
 

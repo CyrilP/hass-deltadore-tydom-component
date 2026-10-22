@@ -264,7 +264,7 @@ The climate entity uses the device's current heating or cooling setpoint limits,
 
 The diagnostic **Command pending** binary sensor switches on when Home Assistant sends a mode, temperature or preset request. The climate entity keeps showing the values reported by the thermostat; completing the network send does not confirm the physical change. The indicator switches off when a subsequent TYDOM update reports the requested value, or if sending fails. Multiple outstanding requests are confirmed separately.
 
-After two minutes without matching feedback, the status becomes `unconfirmed` and the indicator stays on. This does not prove the command failed. There is no automatic resend. The requested values and `command_status` are also available as climate attributes. Pending requests are cleared when the integration is unloaded.
+After two minutes without matching feedback, the status becomes `unconfirmed` and the indicator stays on. This does not prove the command failed. There is no automatic resend. Requested values and `command_status` are available as attributes of the **Command pending** sensor. Pending status is reported separately from climate state, so dashboard controls do not snap back to the previous value while a request awaits confirmation. The climate entity continues to represent the values reported by TYDOM. Pending requests are cleared when the integration is unloaded.
 
 ### Diagnostic entities
 
