@@ -47,6 +47,8 @@ def validate_value_with_metadata(
     attribute_name: str,
     value: float | int | str,
     metadata: dict | None = None,
+    *,
+    ignore_step: bool = False,
 ) -> tuple[bool, str | None]:
     """
     Validate a value according to device metadata.
@@ -56,6 +58,7 @@ def validate_value_with_metadata(
         attribute_name: Nom de l'attribut à valider
         value: Valeur à valider
         metadata: Métadonnées à utiliser (si None, utilise device._metadata)
+        ignore_step: Ignore the advertised step while retaining type and range checks.
 
     Returns:
         Tuple (is_valid, error_message)
@@ -118,7 +121,7 @@ def validate_value_with_metadata(
                 pass
 
         # Vérifier step si disponible
-        if "step" in attr_metadata:
+        if "step" in attr_metadata and not ignore_step:
             step = attr_metadata["step"]
             try:
                 step_val = float(step)
