@@ -2952,6 +2952,41 @@ class HaClimate(ClimateEntity, HAEntity):
             if isinstance(local_mode_meta, dict)
             else ""
         )
+        comfort_mode_meta = (metadata or {}).get("comfortMode")
+        comfort_mode_values = (
+            set(comfort_mode_meta.get("enum_values") or [])
+            if isinstance(comfort_mode_meta, dict)
+            else set()
+        )
+        thermic_level_meta = (metadata or {}).get("thermicLevel")
+        thermic_level_values = (
+            set(thermic_level_meta.get("enum_values") or [])
+            if isinstance(thermic_level_meta, dict)
+            else set()
+        )
+        # Some RF6600FP endpoints advertise the same localMode enum as X3D
+        # heating zones, but their actual pilot-wire order is thermicLevel.
+        # The RF6600 profile can be distinguished by its writable
+        # comfortMode STOP/HEATING authorization and the full pilot-wire level
+        # set. Keep this narrow so Tybox Home RF 210 (NO_REGUL, no COMFORT/ECO)
+        # remains on its localMode path.
+        self._uses_comfort_mode_pilot_wire = (
+            not self._device.is_area_controlled
+            and "r" in local_mode_permission
+            and "w" in local_mode_permission
+            and {"NORMAL", "STOP", "ANTI_FROST", "ABSENCE"}.issubset(
+                set(local_mode_meta.get("enum_values") or [])
+            )
+            and isinstance(comfort_mode_meta, dict)
+            and "w" in comfort_mode_meta.get("permission", "")
+            and {"STOP", "HEATING"}.issubset(comfort_mode_values)
+            and isinstance(thermic_level_meta, dict)
+            and {"r", "w"}.issubset(set(thermic_level_meta.get("permission", "")))
+            and {"COMFORT", "ECO", "ANTI_FROST", "STOP"}.issubset(thermic_level_values)
+            and not has_setpoint_meta
+            and not has_live_setpoint
+            and not has_cool_enum_meta
+        )
         self._local_mode_values = (
             list(local_mode_meta.get("enum_values") or [])
             if isinstance(local_mode_meta, dict)
@@ -2973,6 +3008,7 @@ class HaClimate(ClimateEntity, HAEntity):
             # those, not an off state, and collapsing them here would drop
             # cooling altogether — see #453 / #455.
             and HVACMode.COOL not in self._attr_hvac_modes
+            and not self._uses_comfort_mode_pilot_wire
         )
         # A zone that carries localMode is driven through it exclusively.  It
         # would otherwise also satisfy the pilot-wire test when it exposes no
@@ -3216,6 +3252,13 @@ class HaClimate(ClimateEntity, HAEntity):
             if local_mode is not None:
                 return HVACMode.HEAT
 
+        if self._uses_comfort_mode_pilot_wire:
+            authorization = getattr(self._device, "authorization", None)
+            if authorization == "STOP":
+                return HVACMode.OFF
+            if authorization == "HEATING":
+                return HVACMode.HEAT
+
         if getattr(self, "_is_filpilote", False):
             # Derive from thermicLevel (the live pilot-wire order), not hvacMode:
             # the app/schedule set thermicLevel while hvacMode stays NORMAL.
@@ -3398,6 +3441,32 @@ class HaClimate(ClimateEntity, HAEntity):
             return
 
         if getattr(self, "_is_filpilote", False):
+            if self._uses_comfort_mode_pilot_wire:
+                if hvac_mode == HVACMode.OFF:
+                    operation = self._device._tydom_client.put_devices_data(
+                        self._device._id,
+                        self._device._endpoint,
+                        "comfortMode",
+                        "STOP",
+                    )
+                elif getattr(self._device, "thermicLevel", None) in (None, "STOP"):
+
+                    async def enable_heating() -> None:
+                        await self._device._tydom_client.put_devices_data(
+                            self._device._id,
+                            self._device._endpoint,
+                            "comfortMode",
+                            "HEATING",
+                        )
+                        await self._device.set_thermic_level("COMFORT")
+
+                    operation = enable_heating()
+                else:
+                    return
+
+                await self._async_track_command("hvac_mode", hvac_mode, operation)
+                return
+
             # OFF -> pilot-wire STOP. HEAT -> keep the current heating order, or
             # default to Comfort when coming from STOP; the level is chosen via
             # preset_mode (comfort/eco/away).

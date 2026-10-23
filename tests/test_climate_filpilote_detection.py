@@ -337,6 +337,50 @@ def _reversible_zone(*, thermic_level="ANTI_FROST"):
     )
 
 
+def _rf6600fp(*, authorization="HEATING", thermic_level="ECO"):
+    """Create the RF6600FP profile reported in issue #505."""
+    return _thermostat(
+        metadata={
+            "authorization": {
+                "type": "string",
+                "permission": "r",
+                "enum_values": ["STOP", "HEATING"],
+            },
+            "comfortMode": {
+                "type": "string",
+                "permission": "w",
+                "enum_values": ["STOP", "HEATING"],
+            },
+            "thermicLevel": {
+                "type": "string",
+                "permission": "rw",
+                "enum_values": ["ECO", "COMFORT", "STOP", "ANTI_FROST"],
+            },
+            "overrideThermicLevel": {
+                "type": "string",
+                "permission": "rw",
+                "enum_values": ["ECO", "COMFORT", "STOP", "ANTI_FROST"],
+            },
+            "localMode": {
+                "type": "string",
+                "permission": "rw",
+                "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+            },
+            "useMode": {
+                "type": "string",
+                "permission": "rw",
+                "enum_values": ["SCHED", "OVERRIDE", "MANUAL"],
+            },
+        },
+        data={
+            "authorization": authorization,
+            "thermicLevel": thermic_level,
+            "localMode": "NORMAL",
+            "useMode": "SCHED",
+        },
+    )
+
+
 class FilPiloteDetectionTests(TestCase):
     """Ensure _is_filpilote correctly discriminates pilot-wire zones."""
 
@@ -370,6 +414,74 @@ class FilPiloteDetectionTests(TestCase):
         )
         self.assertTrue(entity._is_filpilote)
         self.assertEqual(entity._attr_hvac_modes, [HVACMode.OFF, HVACMode.HEAT])
+
+    def test_rf6600fp_local_mode_metadata_keeps_pilot_wire_presets(self) -> None:
+        """RF6600FP pilot levels take precedence over its misleading localMode."""
+        entity, _client = _rf6600fp()
+
+        self.assertFalse(entity._uses_local_mode)
+        self.assertTrue(entity._uses_comfort_mode_pilot_wire)
+        self.assertTrue(entity._is_filpilote)
+        self.assertEqual(
+            entity.preset_modes,
+            [
+                entities_module.PRESET_COMFORT,
+                entities_module.PRESET_ECO,
+                entities_module.PRESET_AWAY,
+                entities_module.PRESET_NONE,
+            ],
+        )
+
+    def test_rf6600fp_authorization_is_hvac_state(self) -> None:
+        """A STOP authorization reports OFF even if the last level is stale."""
+        entity, _client = _rf6600fp(authorization="STOP", thermic_level="COMFORT")
+
+        self.assertEqual(entity.hvac_mode, HVACMode.OFF)
+
+        entity._device.authorization = "HEATING"
+        self.assertEqual(entity.hvac_mode, HVACMode.HEAT)
+
+    def test_tybox_home_local_mode_profile_is_not_reclassified(self) -> None:
+        """The Tybox Home profile lacks the RF6600 pilot-level signature."""
+        entity, _client = _thermostat(
+            metadata={
+                "authorization": {
+                    "type": "string",
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "comfortMode": {
+                    "type": "string",
+                    "permission": "w",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "thermicLevel": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["STOP", "NO_REGUL", "ANTI_FROST"],
+                },
+                "localMode": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+                },
+                "useMode": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["SCHED", "OVERRIDE", "MANUAL"],
+                },
+            },
+            data={
+                "authorization": "HEATING",
+                "thermicLevel": "ANTI_FROST",
+                "localMode": "ANTI_FROST",
+                "useMode": "SCHED",
+            },
+        )
+
+        self.assertTrue(entity._uses_local_mode)
+        self.assertFalse(entity._uses_comfort_mode_pilot_wire)
+        self.assertFalse(entity._is_filpilote)
 
     def test_authorization_with_heat_setpoint_is_not_pilot_wire(self) -> None:
         """A conventional authorisation-based thermostat must not be misclassified.
@@ -1078,6 +1190,52 @@ class PresetNoneSendsAutoTests(IsolatedAsyncioTestCase):
         await entity.async_set_preset_mode("none")
 
         client.put_devices_data.assert_not_awaited()
+
+
+class Rf6600FilPiloteCommandTests(IsolatedAsyncioTestCase):
+    """The RF6600FP uses comfortMode for authorization and thermicLevel for orders."""
+
+    async def test_turning_off_writes_comfort_mode_stop(self) -> None:
+        """Stopping the endpoint must use its authorization register."""
+        entity, client = _rf6600fp()
+
+        await entity.async_set_hvac_mode(HVACMode.OFF)
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "comfortMode", "STOP"
+        )
+
+    async def test_turning_on_enables_heating_before_comfort_order(self) -> None:
+        """Restore authorization before sending a pilot-wire order."""
+        entity, client = _rf6600fp(authorization="STOP", thermic_level="STOP")
+
+        await entity.async_set_hvac_mode(HVACMode.HEAT)
+
+        self.assertEqual(
+            client.put_devices_data.await_args_list,
+            [
+                call("20", "10", "comfortMode", "HEATING"),
+                call("20", "10", "thermicLevel", "COMFORT"),
+            ],
+        )
+
+    async def test_turning_on_preserves_existing_pilot_order(self) -> None:
+        """Turning on while already heating must keep the selected level."""
+        entity, client = _rf6600fp(thermic_level="ECO")
+
+        await entity.async_set_hvac_mode(HVACMode.HEAT)
+
+        client.put_devices_data.assert_not_awaited()
+
+    async def test_preset_still_writes_pilot_wire_level(self) -> None:
+        """Preset selection continues to use thermicLevel."""
+        entity, client = _rf6600fp()
+
+        await entity.async_set_preset_mode(entities_module.PRESET_ECO)
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "thermicLevel", "ECO"
+        )
 
 
 if __name__ == "__main__":
