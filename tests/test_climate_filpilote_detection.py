@@ -432,6 +432,16 @@ class FilPiloteDetectionTests(TestCase):
             ],
         )
 
+    def test_area_detection_falls_back_for_v034_devices(self) -> None:
+        """Older Tydom devices identify area control by the area_id attribute."""
+        entity, _client = _rf6600fp()
+
+        entity._device = types.SimpleNamespace()
+        self.assertFalse(entity._is_area_controlled)
+
+        entity._device = types.SimpleNamespace(area_id="area-1")
+        self.assertTrue(entity._is_area_controlled)
+
     def test_rf6600fp_authorization_is_hvac_state(self) -> None:
         """A STOP authorization reports OFF even if the last level is stale."""
         entity, _client = _rf6600fp(authorization="STOP", thermic_level="COMFORT")
