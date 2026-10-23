@@ -662,6 +662,39 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
             },
         )
 
+    @staticmethod
+    def _calybox_230(*, local_mode="NORMAL", thermic_level="AUTO"):
+        """Create the mixed localMode/thermicLevel profile from issue #543."""
+        return _thermostat(
+            metadata={
+                "authorization": {
+                    "type": "string",
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "comfortMode": {
+                    "type": "string",
+                    "permission": "w",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "thermicLevel": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["ECO", "COMFORT", "STOP", "ANTI_FROST", "AUTO"],
+                },
+                "localMode": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+                },
+            },
+            data={
+                "authorization": "HEATING",
+                "thermicLevel": thermic_level,
+                "localMode": local_mode,
+            },
+        )
+
     def test_detected_and_offers_only_off_and_heat(self) -> None:
         """A localMode zone is not pilot-wire and has no AUTO mode."""
         entity, _client = self._zone()
@@ -901,6 +934,68 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
 
         self.assertEqual(entity.preset_mode, entities_module.PRESET_NONE)
 
+    def test_calybox_230_keeps_local_mode_and_exposes_real_thermic_presets(
+        self,
+    ) -> None:
+        """Issue #543 exposes real Eco/Comfort levels alongside localMode."""
+        entity, _client = self._calybox_230()
+
+        self.assertTrue(entity._uses_local_mode)
+        self.assertFalse(entity._is_filpilote)
+        self.assertEqual(entity._attr_hvac_modes, [HVACMode.OFF, HVACMode.HEAT])
+        self.assertEqual(
+            entity.preset_modes,
+            [
+                entities_module.PRESET_ECO,
+                entities_module.PRESET_COMFORT,
+                entities_module.PRESET_NONE,
+                entities_module.PRESET_AWAY,
+            ],
+        )
+        self.assertEqual(entity.preset_mode, entities_module.PRESET_NONE)
+
+        entity._device.thermicLevel = "ECO"
+        self.assertEqual(entity.preset_mode, entities_module.PRESET_ECO)
+        entity._device.thermicLevel = "COMFORT"
+        self.assertEqual(entity.preset_mode, entities_module.PRESET_COMFORT)
+        entity._device.localMode = "ABSENCE"
+        entity._device.thermicLevel = "ANTI_FROST"
+        self.assertEqual(entity.preset_mode, entities_module.PRESET_AWAY)
+
+    def test_local_mode_without_auto_keeps_its_existing_preset_profile(self) -> None:
+        """Do not infer the Calybox mixed profile from Eco/Comfort alone."""
+        entity, _client = _thermostat(
+            metadata={
+                "authorization": {
+                    "type": "string",
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "thermicLevel": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["ECO", "COMFORT", "STOP", "ANTI_FROST"],
+                },
+                "localMode": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+                },
+            },
+            data={
+                "authorization": "HEATING",
+                "thermicLevel": "ECO",
+                "localMode": "NORMAL",
+            },
+        )
+
+        self.assertTrue(entity._uses_local_mode)
+        self.assertFalse(entity._uses_local_mode_thermic_presets)
+        self.assertEqual(
+            entity._attr_preset_modes,
+            [entities_module.PRESET_NONE, entities_module.PRESET_AWAY],
+        )
+
     async def test_away_writes_absence(self) -> None:
         """Selecting away drives localMode ABSENCE."""
         entity, client = self._zone(local_mode="NORMAL")
@@ -909,6 +1004,37 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
 
         client.put_devices_data.assert_awaited_once_with(
             "20", "10", "localMode", "ABSENCE"
+        )
+
+    async def test_calybox_eco_and_comfort_write_thermic_level(self) -> None:
+        """Eco and Comfort use the advertised register, not localMode."""
+        entity, client = self._calybox_230()
+
+        await entity.async_set_preset_mode(entities_module.PRESET_ECO)
+        await entity.async_set_preset_mode(entities_module.PRESET_COMFORT)
+        await entity.async_set_preset_mode(entities_module.PRESET_AWAY)
+
+        client.put_devices_data.assert_has_awaits(
+            [
+                call("20", "10", "thermicLevel", "ECO"),
+                call("20", "10", "thermicLevel", "COMFORT"),
+                call("20", "10", "localMode", "ABSENCE"),
+            ]
+        )
+
+    async def test_calybox_none_returns_to_auto(self) -> None:
+        """None is the advertised Auto level, including when leaving Away."""
+        entity, client = self._calybox_230(
+            local_mode="ABSENCE", thermic_level="ANTI_FROST"
+        )
+
+        await entity.async_set_preset_mode(entities_module.PRESET_NONE)
+
+        client.put_devices_data.assert_has_awaits(
+            [
+                call("20", "10", "thermicLevel", "AUTO"),
+                call("20", "10", "localMode", "NORMAL"),
+            ]
         )
 
     async def test_clearing_the_preset_does_not_switch_an_off_zone_on(self) -> None:
