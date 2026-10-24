@@ -65,6 +65,11 @@ _TYWELL_CONTROL_SENSOR_ATTRIBUTES = {
 }
 
 
+def is_tywell_control_type(device_type: str | None) -> bool:
+    """Return whether the endpoint is one of TYDOM's RE2020 controllers."""
+    return str(device_type or "").strip().casefold() in _TYWELL_CONTROL_TYPES
+
+
 def is_physical_tywell_control_profile(
     tutorial_id: str | None,
     device_type: str | None,
@@ -688,6 +693,13 @@ class TydomBoiler(TydomDevice):
         )
 
     @property
+    def uses_area_local_mode(self) -> bool:
+        """Return whether zone commands belong to a RE2020 controller's area."""
+        return self.is_area_controlled and (
+            self.is_derived_area_climate or is_tywell_control_type(self.device_type)
+        )
+
+    @property
     def is_area_trv(self) -> bool:
         """Return whether this is a radiator thermostat linked to an area."""
         return self._type == "sh_hvac" and self.is_area_controlled
@@ -914,6 +926,10 @@ class TydomBoiler(TydomDevice):
                 )
             return
 
+        if self.uses_area_local_mode and mode in ("NORMAL", "HEATING", "STOP"):
+            await self.set_local_mode("STOP" if mode == "STOP" else "NORMAL")
+            return
+
         if self.is_area_controlled:
             area_modes = {
                 "NORMAL": "HEATING",
@@ -1080,6 +1096,8 @@ class TydomBoiler(TydomDevice):
         setpoint_attribute = (
             "localSetpoint"
             if self.is_area_trv
+            else "setpoint"
+            if self.uses_area_local_mode
             else self.area_setpoint_attribute()
             if self.is_area_controlled
             else self._temperature_command_name()
@@ -1110,7 +1128,9 @@ class TydomBoiler(TydomDevice):
             return
 
         setpoint_attribute = (
-            self.area_setpoint_attribute()
+            "setpoint"
+            if self.uses_area_local_mode
+            else self.area_setpoint_attribute()
             if self.is_area_controlled
             else self._temperature_command_name()
         )
@@ -1142,6 +1162,9 @@ class TydomBoiler(TydomDevice):
 
     async def set_local_mode(self, mode):
         """Set a zone's localMode order (NORMAL/ANTI_FROST/STOP/ABSENCE)."""
+        if self.uses_area_local_mode:
+            await self._tydom_client.put_area_data(self.area_id, "localMode", mode)
+            return
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "localMode", mode
         )

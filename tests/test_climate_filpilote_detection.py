@@ -686,6 +686,71 @@ class AbsencePresetTests(IsolatedAsyncioTestCase):
         client.put_devices_data.assert_not_awaited()
 
 
+class TywellAreaModeTests(IsolatedAsyncioTestCase):
+    """Match the zone-level STOP/NORMAL sequence captured from the official app."""
+
+    @staticmethod
+    def _zone(*, local_mode="NORMAL", authorization="HEATING"):
+        entity, client = _thermostat(
+            device_type="re2020ControlBoiler",
+            metadata={
+                "authorization": {"enum_values": ["STOP", "HEATING", "COOLING"]},
+                "heatSetpoint": {"permission": "r", "min": 10, "max": 30},
+            },
+            data={
+                "area_id": "7",
+                "authorization": authorization,
+                "localMode": local_mode,
+                "thermicLevel": "ANTI_FROST" if local_mode == "STOP" else None,
+                "heatSetpoint": None if local_mode == "STOP" else 23.5,
+            },
+        )
+        client.put_area_data = AsyncMock()
+        return entity, client
+
+    async def test_off_heat_commands_use_the_area_local_mode(self) -> None:
+        """Zone switching does not write the endpoint or seasonal authorization."""
+        entity, client = self._zone()
+        self.addCleanup(entity._get_command_tracker().close)
+        await entity.async_set_hvac_mode(HVACMode.OFF)
+        await entity.async_set_hvac_mode(HVACMode.HEAT)
+        self.assertEqual(
+            client.put_area_data.await_args_list,
+            [
+                call("7", "localMode", "STOP"),
+                call("7", "localMode", "NORMAL"),
+            ],
+        )
+        client.put_devices_data.assert_not_awaited()
+
+    def test_zone_off_feedback_wins_over_heating_authorization(self) -> None:
+        """A stopped zone is off while the installation's season stays heating."""
+        entity, _ = self._zone(local_mode="STOP")
+        self.assertFalse(entity._is_filpilote)
+        self.assertEqual(entity.hvac_mode, HVACMode.OFF)
+        self.assertEqual(entity.hvac_action, entities_module.HVACAction.OFF)
+        self.assertEqual(entity.preset_mode, entities_module.PRESET_NONE)
+
+    def test_zone_cooling_and_absence_are_preserved(self) -> None:
+        """Local zone control retains cooling and the actual absence preset."""
+        entity, _ = self._zone(authorization="COOLING")
+        self.assertIn(HVACMode.COOL, entity.hvac_modes)
+        self.assertEqual(entity.hvac_mode, HVACMode.COOL)
+        entity._device.localMode = "ABSENCE"
+        self.assertEqual(entity.preset_mode, entities_module.PRESET_AWAY)
+
+    async def test_pending_off_clears_on_local_mode_feedback(self) -> None:
+        """STOP feedback confirms Off even if authorization remains HEATING."""
+        entity, _ = self._zone()
+        entity.async_write_ha_state = MagicMock()
+        self.addCleanup(entity._get_command_tracker().close)
+        await entity.async_set_hvac_mode(HVACMode.OFF)
+        self.assertTrue(entity.extra_state_attributes["command_pending"])
+        entity._device.localMode = "STOP"
+        entity._handle_climate_update()
+        self.assertFalse(entity.extra_state_attributes["command_pending"])
+
+
 class LocalModeZoneTests(IsolatedAsyncioTestCase):
     """X3D heating zones that carry their state in `localMode`.
 

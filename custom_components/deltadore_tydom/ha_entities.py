@@ -2971,9 +2971,12 @@ class HaClimate(ClimateEntity, HAEntity):
         )
         self._local_mode_off_value = (
             "STOP"
-            if isinstance(local_mode_meta, dict)
-            and "STOP" in local_mode_meta.get("enum_values", [])
-            and "w" in setpoint_permission
+            if self._device.uses_area_local_mode
+            or (
+                isinstance(local_mode_meta, dict)
+                and "STOP" in local_mode_meta.get("enum_values", [])
+                and "w" in setpoint_permission
+            )
             else "ANTI_FROST"
         )
         self._local_mode_values = (
@@ -2983,7 +2986,7 @@ class HaClimate(ClimateEntity, HAEntity):
             and "w" in local_mode_permission
             else []
         )
-        self._uses_local_mode = (
+        self._uses_local_mode = self._device.uses_area_local_mode or (
             "NORMAL" in self._local_mode_values
             and "ANTI_FROST" in self._local_mode_values
             # `localMode` is not unique to these zones: area attributes use the
@@ -3027,13 +3030,19 @@ class HaClimate(ClimateEntity, HAEntity):
             self._attr_supported_features &= ~ClimateEntityFeature.TARGET_TEMPERATURE
 
         if self._uses_local_mode:
-            self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
+            # RE2020 area controllers retain their advertised heating/cooling
+            # modes; only the legacy heating-only zones reduce this list.
+            if not self._device.uses_area_local_mode:
+                self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
             # Replace any presets derived above.  These zones have no comfort
             # or eco order: comfortMode is the write-only season register, so
             # the generic extraction finds nothing usable and falls back to a
             # hardcoded [NORMAL, ECO, COMFORT] the hardware does not implement.
             # ABSENCE is the one real preset they do have.
-            if "ABSENCE" in self._local_mode_values:
+            if (
+                self._device.uses_area_local_mode
+                or "ABSENCE" in self._local_mode_values
+            ):
                 self._attr_preset_modes = [PRESET_NONE, PRESET_AWAY]
                 self._attr_supported_features |= ClimateEntityFeature.PRESET_MODE
             else:
@@ -3239,6 +3248,12 @@ class HaClimate(ClimateEntity, HAEntity):
             if local_mode in self.OFF_LOCAL_MODES:
                 return HVACMode.OFF
             if local_mode is not None:
+                if self._device.uses_area_local_mode:
+                    authorization = getattr(self._device, "authorization", None)
+                    if authorization == "STOP":
+                        return HVACMode.OFF
+                    if authorization == "COOLING":
+                        return HVACMode.COOL
                 return HVACMode.HEAT
 
         if getattr(self, "_is_filpilote", False):
