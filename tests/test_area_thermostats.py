@@ -994,6 +994,25 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
             ],
         )
 
+    async def test_manual_area_uses_its_writable_override_setpoint(self) -> None:
+        """Manual mode does not write the scheduled/display setpoint register."""
+        device = await self._discover()
+        device.authorization = "HEATING"
+        device.useMode = "MANUAL"
+        device._metadata = {
+            "setpoint": {"permission": "rw", "min": 10, "max": 30},
+            "overrideSetpoint": {"permission": "rw", "min": 10, "max": 30},
+        }
+        self.client.put_area_data = AsyncMock()
+        await device.set_temperature("21.5")
+        self.client.put_area_data.assert_awaited_once_with(
+            "7", "overrideSetpoint", "21.5"
+        )
+        self.client.put_area_data.reset_mock()
+        device.useMode = "SCHED"
+        await device.set_temperature("22")
+        self.client.put_area_data.assert_awaited_once_with("7", "setpoint", "22")
+
     async def test_re2020_comfort_mode_does_not_override_area_ownership(self) -> None:
         """RE2020 controllers keep area control despite endpoint comfortMode."""
         handler_module.device_metadata["10_20"] = {

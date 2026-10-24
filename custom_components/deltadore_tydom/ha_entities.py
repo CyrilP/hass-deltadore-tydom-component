@@ -3248,12 +3248,11 @@ class HaClimate(ClimateEntity, HAEntity):
             if local_mode in self.OFF_LOCAL_MODES:
                 return HVACMode.OFF
             if local_mode is not None:
-                if self._device.uses_area_local_mode:
-                    authorization = getattr(self._device, "authorization", None)
-                    if authorization == "STOP":
-                        return HVACMode.OFF
-                    if authorization == "COOLING":
-                        return HVACMode.COOL
+                authorization = getattr(self._device, "authorization", None)
+                if authorization == "STOP":
+                    return HVACMode.OFF
+                if self._device.uses_area_local_mode and authorization == "COOLING":
+                    return HVACMode.COOL
                 return HVACMode.HEAT
 
         if getattr(self, "_is_filpilote", False):
@@ -3382,6 +3381,21 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature currently set to be reached."""
+        if self._device.uses_area_local_mode and (
+            getattr(self._device, "localMode", None) in self.OFF_LOCAL_MODES
+            or getattr(self._device, "authorization", None) == "STOP"
+        ):
+            # TYDOM can report an unrelated setpoint while the zone is in frost
+            # protection, then restore its heating target on NORMAL. There is
+            # no active heating target to present while the climate is Off.
+            return None
+        if not self._device.is_area_trv and getattr(self._device, "useMode", None) in {
+            "MANUAL",
+            "OVERRIDE",
+        }:
+            override = getattr(self._device, "overrideSetpoint", None)
+            if override is not None:
+                return float(override)
         if self._device.is_area_controlled:
             setpoint = getattr(
                 self._device, self._device.area_setpoint_attribute(), None
@@ -3457,7 +3471,7 @@ class HaClimate(ClimateEntity, HAEntity):
             await self._async_track_command(
                 "hvac_mode",
                 hvac_mode,
-                self._device.set_local_mode(
+                self._device.set_local_hvac_mode(
                     self._local_mode_off_value
                     if hvac_mode == HVACMode.OFF
                     else "NORMAL"

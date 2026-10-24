@@ -898,6 +898,13 @@ class TydomBoiler(TydomDevice):
 
     def _temperature_command_name(self) -> str:
         """Select the writable setpoint register for the current HVAC direction."""
+        if self.uses_area_local_mode:
+            if getattr(self, "useMode", None) in {
+                "MANUAL",
+                "OVERRIDE",
+            } and self._is_writable("overrideSetpoint"):
+                return "overrideSetpoint"
+            return "setpoint"
         if self._uses_zone_authorization():
             if getattr(self, "authorization", None) == "COOLING" and self._is_writable(
                 "coolSetpoint"
@@ -927,7 +934,7 @@ class TydomBoiler(TydomDevice):
             return
 
         if self.uses_area_local_mode and mode in ("NORMAL", "HEATING", "STOP"):
-            await self.set_local_mode("STOP" if mode == "STOP" else "NORMAL")
+            await self.set_local_hvac_mode("STOP" if mode == "STOP" else "NORMAL")
             return
 
         if self.is_area_controlled:
@@ -1096,7 +1103,7 @@ class TydomBoiler(TydomDevice):
         setpoint_attribute = (
             "localSetpoint"
             if self.is_area_trv
-            else "setpoint"
+            else self._temperature_command_name()
             if self.uses_area_local_mode
             else self.area_setpoint_attribute()
             if self.is_area_controlled
@@ -1128,7 +1135,7 @@ class TydomBoiler(TydomDevice):
             return
 
         setpoint_attribute = (
-            "setpoint"
+            self._temperature_command_name()
             if self.uses_area_local_mode
             else self.area_setpoint_attribute()
             if self.is_area_controlled
@@ -1159,6 +1166,21 @@ class TydomBoiler(TydomDevice):
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "thermicLevel", level
         )
+
+    async def set_local_hvac_mode(self, mode: str) -> None:
+        """Resume the heating season when Heat is requested from seasonal Stop.
+
+        A local NORMAL order alone cannot start a zone while authorization is
+        STOP. Preset changes use set_local_mode directly and do not restart the
+        installation as a side effect of clearing Absence.
+        """
+        if (
+            mode == "NORMAL"
+            and getattr(self, "area_id", None) is not None
+            and getattr(self, "authorization", None) == "STOP"
+        ):
+            await self._tydom_client.put_home_hvac_mode("HEATING")
+        await self.set_local_mode(mode)
 
     async def set_local_mode(self, mode):
         """Set a zone's localMode order (NORMAL/ANTI_FROST/STOP/ABSENCE)."""

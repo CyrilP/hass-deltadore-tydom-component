@@ -739,6 +739,52 @@ class TywellAreaModeTests(IsolatedAsyncioTestCase):
         entity._device.localMode = "ABSENCE"
         self.assertEqual(entity.preset_mode, entities_module.PRESET_AWAY)
 
+    def test_off_has_no_active_target_and_normal_restores_it(self) -> None:
+        """Do not present the gateway's frost-protection value as a heating target."""
+        entity, _ = self._zone(local_mode="STOP")
+        entity._device.heatSetpoint = 30.0
+        entity._device.setpoint = 30.0
+        self.assertIsNone(entity.target_temperature)
+        entity._device.localMode = "NORMAL"
+        entity._device.heatSetpoint = 20.0
+        entity._device.setpoint = 20.0
+        self.assertEqual(entity.target_temperature, 20.0)
+
+    def test_manual_target_uses_override_feedback(self) -> None:
+        """A manual target must not bounce back to an unrelated scheduled value."""
+        entity, _ = self._zone()
+        entity._device.useMode = "MANUAL"
+        entity._device.heatSetpoint = 30.0
+        entity._device.overrideSetpoint = 22.5
+        self.assertEqual(entity.target_temperature, 22.5)
+
+    async def test_heat_restores_season_before_starting_a_zone(self) -> None:
+        """NORMAL alone is insufficient while seasonal authorization is STOP."""
+        entity, client = self._zone(authorization="STOP")
+        client.put_home_hvac_mode = AsyncMock()
+        writes = MagicMock()
+        writes.attach_mock(client.put_home_hvac_mode, "home")
+        writes.attach_mock(client.put_area_data, "area")
+        self.addCleanup(entity._get_command_tracker().close)
+        self.assertEqual(entity.hvac_mode, HVACMode.OFF)
+        await entity.async_set_hvac_mode(HVACMode.HEAT)
+        self.assertEqual(
+            writes.mock_calls,
+            [
+                call.home("HEATING"),
+                call.area("7", "localMode", "NORMAL"),
+            ],
+        )
+
+    async def test_clearing_absence_does_not_restart_a_stopped_season(self) -> None:
+        """Clearing a preset changes only the zone order, never the home season."""
+        entity, client = self._zone(local_mode="ABSENCE", authorization="STOP")
+        client.put_home_hvac_mode = AsyncMock()
+        self.addCleanup(entity._get_command_tracker().close)
+        await entity.async_set_preset_mode(entities_module.PRESET_NONE)
+        client.put_home_hvac_mode.assert_not_awaited()
+        client.put_area_data.assert_awaited_once_with("7", "localMode", "NORMAL")
+
     async def test_pending_off_clears_on_local_mode_feedback(self) -> None:
         """STOP feedback confirms Off even if authorization remains HEATING."""
         entity, _ = self._zone()
@@ -1018,6 +1064,24 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
         entity, _client = self._zone(local_mode="NORMAL")
 
         self.assertEqual(entity.hvac_mode, HVACMode.HEAT)
+
+    async def test_unlinked_zone_does_not_change_the_home_season(self) -> None:
+        """The seasonal restart is limited to explicitly area-linked thermostats."""
+        entity, client = self._zone(local_mode="NORMAL")
+        entity._device.authorization = "STOP"
+        client.put_home_hvac_mode = AsyncMock()
+        self.addCleanup(entity._get_command_tracker().close)
+        await entity.async_set_hvac_mode(HVACMode.HEAT)
+        client.put_home_hvac_mode.assert_not_awaited()
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "localMode", "NORMAL"
+        )
+
+    def test_stopped_season_keeps_a_normal_zone_off(self) -> None:
+        """A local NORMAL order cannot override the installation's seasonal Stop."""
+        entity, _ = self._zone(local_mode="NORMAL")
+        entity._device.authorization = "STOP"
+        self.assertEqual(entity.hvac_mode, HVACMode.OFF)
 
     def test_season_register_does_not_decide_the_mode(self) -> None:
         """The season register stays HEATING while the zone is off; it must not win."""
