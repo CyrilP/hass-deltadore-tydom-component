@@ -438,6 +438,36 @@ class FilPiloteDetectionTests(TestCase):
             entity.supported_features & ClimateEntityFeature.TARGET_TEMPERATURE
         )
 
+    def test_live_setpoint_bounds_without_current_value_are_not_pilot_wire(self) -> None:
+        """Advertised live limits keep an idle Tybox climate temperature-capable."""
+        entity, _client = _thermostat(
+            metadata={
+                "authorization": {
+                    "type": "string",
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "thermicLevel": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["ECO", "COMFORT", "STOP", "ANTI_FROST"],
+                },
+            },
+            data={
+                "authorization": "STOP",
+                "thermicLevel": "STOP",
+                "setpoint": None,
+                "heatSetpoint": None,
+                "minHeatSetpoint": 10.0,
+                "maxHeatSetpoint": 30.0,
+            },
+        )
+
+        self.assertFalse(entity._is_filpilote)
+        self.assertTrue(
+            entity.supported_features & ClimateEntityFeature.TARGET_TEMPERATURE
+        )
+
     def test_authorization_with_cool_setpoint_is_not_pilot_wire(self) -> None:
         """Same guard, using `coolSetpoint` instead of `heatSetpoint`."""
         entity, _client = _thermostat(

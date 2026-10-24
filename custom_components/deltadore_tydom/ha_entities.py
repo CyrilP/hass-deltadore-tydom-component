@@ -2920,6 +2920,17 @@ class HaClimate(ClimateEntity, HAEntity):
             getattr(self._device, attribute, None) is not None
             for attribute in ("setpoint", "heatSetpoint", "coolSetpoint")
         )
+        has_live_setpoint_bounds = any(
+            getattr(self._device, attribute, None) is not None
+            for attribute in (
+                "minSetpoint",
+                "maxSetpoint",
+                "minHeatSetpoint",
+                "maxHeatSetpoint",
+                "minCoolSetpoint",
+                "maxCoolSetpoint",
+            )
+        )
         has_cool_enum_meta = metadata is not None and any(
             isinstance(metadata.get(attr), dict)
             and "COOLING" in metadata[attr].get("enum_values", [])
@@ -2985,6 +2996,7 @@ class HaClimate(ClimateEntity, HAEntity):
             and has_thermic_level
             and not has_setpoint_meta
             and not has_live_setpoint
+            and not has_live_setpoint_bounds
             and not has_cool_enum_meta
         )
 
