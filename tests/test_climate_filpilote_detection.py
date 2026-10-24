@@ -438,6 +438,38 @@ class FilPiloteDetectionTests(TestCase):
             entity.supported_features & ClimateEntityFeature.TARGET_TEMPERATURE
         )
 
+    def test_live_setpoint_bounds_without_current_value_are_not_pilot_wire(
+        self,
+    ) -> None:
+        """Advertised live limits keep an idle Tybox climate temperature-capable."""
+        entity, _client = _thermostat(
+            metadata={
+                "authorization": {
+                    "type": "string",
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "thermicLevel": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["ECO", "COMFORT", "STOP", "ANTI_FROST"],
+                },
+            },
+            data={
+                "authorization": "STOP",
+                "thermicLevel": "STOP",
+                "setpoint": None,
+                "heatSetpoint": None,
+                "minHeatSetpoint": 10.0,
+                "maxHeatSetpoint": 30.0,
+            },
+        )
+
+        self.assertFalse(entity._is_filpilote)
+        self.assertTrue(
+            entity.supported_features & ClimateEntityFeature.TARGET_TEMPERATURE
+        )
+
     def test_authorization_with_cool_setpoint_is_not_pilot_wire(self) -> None:
         """Same guard, using `coolSetpoint` instead of `heatSetpoint`."""
         entity, _client = _thermostat(
@@ -466,6 +498,48 @@ class FilPiloteDetectionTests(TestCase):
             },
         )
         self.assertFalse(entity._is_filpilote)
+
+
+class TyboxThermostatModeTests(IsolatedAsyncioTestCase):
+    """Keep an idle, bounded Tybox as a regular heat/off thermostat."""
+
+    async def test_switching_from_stop_to_heat_writes_heating_command(self) -> None:
+        """A live bounds-only Tybox still sends its HEATING register."""
+        entity, client = _thermostat(
+            metadata={
+                "authorization": {
+                    "type": "string",
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "comfortMode": {
+                    "type": "string",
+                    "permission": "w",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "thermicLevel": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["STOP", "COMFORT", "ECO"],
+                },
+            },
+            data={
+                "authorization": "STOP",
+                "thermicLevel": "STOP",
+                "setpoint": None,
+                "heatSetpoint": None,
+                "minHeatSetpoint": 10.0,
+                "maxHeatSetpoint": 30.0,
+            },
+        )
+        self.addCleanup(entity._get_command_tracker().close)
+
+        self.assertFalse(entity._is_filpilote)
+        await entity.async_set_hvac_mode(HVACMode.HEAT)
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "comfortMode", "HEATING"
+        )
 
 
 class ClimateSensorMetadataTests(TestCase):
@@ -618,41 +692,49 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
     Metadata captured from a TYDOM HOME gateway.  `authorization` is read-only
     and `comfortMode` write-only, both limited to the installation-wide season
     [STOP, HEATING]; the zone's own order lives in the read/write `localMode`
-    register.  ANTI_FROST is what the app's on/off button writes when a zone is
-    switched off.
+    register. Schedule-driven zones use ANTI_FROST for Off; profiles with a
+    writable generic setpoint use STOP when their metadata advertises it.
     """
 
     @staticmethod
-    def _zone(*, local_mode="ANTI_FROST"):
-        return _thermostat(
-            metadata={
-                "authorization": {
-                    "type": "string",
-                    "permission": "r",
-                    "enum_values": ["STOP", "HEATING"],
-                },
-                "comfortMode": {
-                    "type": "string",
-                    "permission": "w",
-                    "enum_values": ["STOP", "HEATING"],
-                },
-                "thermicLevel": {
-                    "type": "string",
-                    "permission": "rw",
-                    "enum_values": ["STOP", "ANTI_FROST"],
-                },
-                "localMode": {
-                    "type": "string",
-                    "permission": "rw",
-                    "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
-                },
-                "heatSetpoint": {
-                    "type": "numeric",
-                    "permission": "rw",
-                    "min": 1.0,
-                    "max": 50.0,
-                },
+    def _zone(*, local_mode="ANTI_FROST", generic_setpoint=False):
+        metadata = {
+            "authorization": {
+                "type": "string",
+                "permission": "r",
+                "enum_values": ["STOP", "HEATING"],
             },
+            "comfortMode": {
+                "type": "string",
+                "permission": "w",
+                "enum_values": ["STOP", "HEATING"],
+            },
+            "thermicLevel": {
+                "type": "string",
+                "permission": "rw",
+                "enum_values": ["STOP", "ANTI_FROST"],
+            },
+            "localMode": {
+                "type": "string",
+                "permission": "rw",
+                "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+            },
+            "heatSetpoint": {
+                "type": "numeric",
+                "permission": "rw",
+                "min": 1.0,
+                "max": 50.0,
+            },
+        }
+        if generic_setpoint:
+            metadata["setpoint"] = {
+                "type": "numeric",
+                "permission": "rw",
+                "min": 10,
+                "max": 30,
+            }
+        return _thermostat(
+            metadata=metadata,
             data={
                 "authorization": "HEATING",
                 "thermicLevel": "ANTI_FROST" if local_mode == "ANTI_FROST" else None,
@@ -945,13 +1027,25 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
         )
 
     async def test_turning_off_writes_anti_frost_to_local_mode(self) -> None:
-        """Off drives the register the app drives, not comfortMode STOP."""
+        """Schedule-driven zones mirror the app's ANTI_FROST off order."""
         entity, client = self._zone(local_mode="NORMAL")
 
         await entity.async_set_hvac_mode(HVACMode.OFF)
 
         client.put_devices_data.assert_awaited_once_with(
             "20", "10", "localMode", "ANTI_FROST"
+        )
+
+    async def test_turning_off_setpoint_thermostat_writes_stop_to_local_mode(
+        self,
+    ) -> None:
+        """A writable generic setpoint profile uses STOP for OFF."""
+        entity, client = self._zone(local_mode="NORMAL", generic_setpoint=True)
+
+        await entity.async_set_hvac_mode(HVACMode.OFF)
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "localMode", "STOP"
         )
 
     async def test_turning_on_writes_normal_to_local_mode(self) -> None:

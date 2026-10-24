@@ -67,9 +67,7 @@ is_trv_1_profile = devices_module.is_trv_1_profile
 is_tymoov_profile = devices_module.is_tymoov_profile
 is_tybox_1137_profile = devices_module.is_tybox_1137_profile
 is_tyxia_dimmer_profile = devices_module.is_tyxia_dimmer_profile
-is_physical_tywell_control_profile = (
-    devices_module.is_physical_tywell_control_profile
-)
+is_physical_tywell_control_profile = devices_module.is_physical_tywell_control_profile
 resolve_device_model = devices_module.resolve_device_model
 MessageHandler = handler_module.MessageHandler
 
@@ -134,6 +132,18 @@ class TestDeviceModels(TestCase):
                 None,
                 "re2020ControlPassive",
                 {"hygroIn": {"permission": "r"}},
+            )
+        )
+        self.assertTrue(
+            is_physical_tywell_control_profile(
+                None,
+                "re2020Controller",
+            )
+        )
+        self.assertTrue(
+            is_physical_tywell_control_profile(
+                "tywell_control",
+                "unknown-controller-profile",
             )
         )
         self.assertFalse(

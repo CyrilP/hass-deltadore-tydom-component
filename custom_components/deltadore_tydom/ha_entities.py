@@ -2920,6 +2920,17 @@ class HaClimate(ClimateEntity, HAEntity):
             getattr(self._device, attribute, None) is not None
             for attribute in ("setpoint", "heatSetpoint", "coolSetpoint")
         )
+        has_live_setpoint_bounds = any(
+            getattr(self._device, attribute, None) is not None
+            for attribute in (
+                "minSetpoint",
+                "maxSetpoint",
+                "minHeatSetpoint",
+                "maxHeatSetpoint",
+                "minCoolSetpoint",
+                "maxCoolSetpoint",
+            )
+        )
         has_cool_enum_meta = metadata is not None and any(
             isinstance(metadata.get(attr), dict)
             and "COOLING" in metadata[attr].get("enum_values", [])
@@ -2951,6 +2962,19 @@ class HaClimate(ClimateEntity, HAEntity):
             local_mode_meta.get("permission", "")
             if isinstance(local_mode_meta, dict)
             else ""
+        )
+        setpoint_meta = (metadata or {}).get("setpoint")
+        setpoint_permission = (
+            setpoint_meta.get("permission", "")
+            if isinstance(setpoint_meta, dict)
+            else ""
+        )
+        self._local_mode_off_value = (
+            "STOP"
+            if isinstance(local_mode_meta, dict)
+            and "STOP" in local_mode_meta.get("enum_values", [])
+            and "w" in setpoint_permission
+            else "ANTI_FROST"
         )
         self._local_mode_values = (
             list(local_mode_meta.get("enum_values") or [])
@@ -2985,6 +3009,7 @@ class HaClimate(ClimateEntity, HAEntity):
             and has_thermic_level
             and not has_setpoint_meta
             and not has_live_setpoint
+            and not has_live_setpoint_bounds
             and not has_cool_enum_meta
         )
 
@@ -3162,10 +3187,10 @@ class HaClimate(ClimateEntity, HAEntity):
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
         device_info = self._get_device_info()
-        registry_device_id = str(self._device.source_device_id)
+        registry_device_id = str(self._device.registry_device_id)
         infos: DeviceInfo = {
             "identifiers": {(DOMAIN, registry_device_id)},
-            "name": str(device_name.get(registry_device_id, self._device.device_name)),
+            "name": str(self._device.registry_device_name),
             "manufacturer": device_info["manufacturer"],
         }
         if "model" in device_info:
@@ -3418,7 +3443,9 @@ class HaClimate(ClimateEntity, HAEntity):
                 "hvac_mode",
                 hvac_mode,
                 self._device.set_local_mode(
-                    "ANTI_FROST" if hvac_mode == HVACMode.OFF else "NORMAL"
+                    self._local_mode_off_value
+                    if hvac_mode == HVACMode.OFF
+                    else "NORMAL"
                 ),
             )
             return
@@ -5610,53 +5637,54 @@ class HAScene(Scene, HAEntity):
             # Use the affected device IDs method
             affected_device_ids = self._get_affected_device_ids()
 
-            # Search for Tywell Control in affected devices
+            # Search for Tywell Control in affected devices. Area climates
+            # are synthetic proxies; resolve them to their physical endpoint
+            # before checking the controller profile or zone.
             tywell_keywords = ["TYWELL", "CONTROL", "TYWELL CONTROL"]
 
-            for device_id in affected_device_ids:
-                if device_id in hub_instance.devices:
-                    device = hub_instance.devices[device_id]
-
-                    # Check device name
-                    device_name_attr = (
-                        getattr(device, "device_name", "") or ""
-                    ).upper()
-                    # Check product name
-                    product_name = (getattr(device, "productName", "") or "").upper()
-                    # Check device type
-                    device_type_attr = (
-                        getattr(device, "device_type", "") or ""
-                    ).upper()
-
-                    # Check if it's a Tywell Control
-                    is_tywell = any(
-                        keyword in product_name
-                        or keyword in device_name_attr
-                        or keyword in device_type_attr
-                        for keyword in tywell_keywords
+            for affected_device_id in affected_device_ids:
+                device_id = affected_device_id
+                device = hub_instance.devices.get(device_id)
+                if device is None:
+                    continue
+                if getattr(device, "is_derived_area_climate", False):
+                    device_id = str(
+                        getattr(device, "source_device_id", affected_device_id)
                     )
+                    device = hub_instance.devices.get(device_id)
+                    if device is None:
+                        continue
 
-                    if is_tywell:
-                        # If zone filter is specified, verify device matches zone
-                        if zone:
-                            device_zone = self._get_zone_from_device(device)
-                            if device_zone != zone:
-                                LOGGER.debug(
-                                    "Tywell device %s zone (%s) doesn't match requested zone (%s)",
-                                    device_id,
-                                    device_zone,
-                                    zone,
-                                )
-                                continue
+                device_name_attr = (getattr(device, "device_name", "") or "").upper()
+                product_name = (getattr(device, "productName", "") or "").upper()
+                device_type_attr = (getattr(device, "device_type", "") or "").upper()
+                is_tywell = any(
+                    keyword in product_name
+                    or keyword in device_name_attr
+                    or keyword in device_type_attr
+                    for keyword in tywell_keywords
+                )
+                if not is_tywell:
+                    continue
 
-                        # Cache result
-                        self._cached_tywell_device_id = device_id
+                if zone:
+                    device_zone = self._get_zone_from_device(device)
+                    if device_zone != zone:
                         LOGGER.debug(
-                            "Found Tywell Control device %s for scene %s",
+                            "Tywell device %s zone (%s) doesn't match requested zone (%s)",
                             device_id,
-                            self._device.device_id,
+                            device_zone,
+                            zone,
                         )
-                        return device_id
+                        continue
+
+                self._cached_tywell_device_id = device_id
+                LOGGER.debug(
+                    "Found Tywell Control device %s for scene %s",
+                    device_id,
+                    self._device.device_id,
+                )
+                return device_id
 
             # TWC_UP/DOWN/STOP scenes generally target shutter groups, not the
             # controller endpoint itself. In that case grpAct/epAct cannot lead
@@ -5667,6 +5695,7 @@ class HAScene(Scene, HAEntity):
                 (device_id, device)
                 for device_id, device in hub_instance.devices.items()
                 if getattr(device, "is_physical_tywell_control", False)
+                and not getattr(device, "is_derived_area_climate", False)
             ]
 
             if zone:
@@ -6525,6 +6554,7 @@ class HATwcShutterCover(CoverEntity, HAEntity):
         self._scenes = scenes
         self._representative_scene = representative_scene
         self._device = representative_scene._device
+        self._zone_key = zone_key
         stable_key = grouping_key.replace(":", "_")
         self._attr_unique_id = f"{stable_key}_twc_shutter_cover"
         self._attr_translation_key = (
@@ -6567,8 +6597,39 @@ class HATwcShutterCover(CoverEntity, HAEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
-        """Attach the cover to the same Tywell device as its scenarios."""
-        return self._representative_scene.device_info
+        """Attach the cover to its resolved physical Tywell controller."""
+        scene = self._representative_scene
+        find_controller = getattr(scene, "_find_tywell_device", None)
+        if callable(find_controller):
+            zone = self._zone_key
+            if zone is None:
+                get_zone = getattr(scene, "_get_zone_from_scene", None)
+                if callable(get_zone):
+                    zone = get_zone()
+            controller_id = find_controller(zone)
+            if controller_id is not None:
+                hub = self._get_hub()
+                ha_devices = getattr(hub, "ha_devices", {})
+                controller_entity = ha_devices.get(controller_id)
+                if controller_entity is None:
+                    controller_entity = next(
+                        (
+                            entity
+                            for entity in ha_devices.values()
+                            if getattr(
+                                getattr(entity, "_device", None),
+                                "source_device_id",
+                                None,
+                            )
+                            == controller_id
+                        ),
+                        None,
+                    )
+                if controller_entity is not None:
+                    controller_info = getattr(controller_entity, "device_info", None)
+                    if controller_info is not None:
+                        return controller_info
+        return scene.device_info
 
     def _target_device_ids(self) -> set[str]:
         """Return targets shared by the Open and Close scenarios."""
@@ -7601,9 +7662,15 @@ class HAButton(ButtonEntity, HAEntity):
     def device_info(self) -> DeviceInfo:
         """Return information to link this entity with the correct device."""
         device_info = self._get_device_info()
+        registry_device_id = str(
+            getattr(self._device, "registry_device_id", self._device.device_id)
+        )
+        registry_device_name = str(
+            getattr(self._device, "registry_device_name", self._device.device_name)
+        )
         info: DeviceInfo = {
-            "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self._device.device_name,
+            "identifiers": {(DOMAIN, registry_device_id)},
+            "name": registry_device_name,
             "manufacturer": device_info["manufacturer"],
         }
         if "model" in device_info:

@@ -104,10 +104,17 @@ class SceneEntity:
         """Initialise one scenario and its resolved shutter targets."""
         self._device = ProtocolScene(scene_id)
         self._targets = targets
+        self._controller_id = None
         self.device_info = {"identifiers": {("deltadore_tydom", "controller")}}
 
     def _get_affected_device_ids(self) -> set[str]:
         return set(self._targets)
+
+    def _get_zone_from_scene(self) -> str | None:
+        return None
+
+    def _find_tywell_device(self, zone: str | None = None) -> str | None:
+        return self._controller_id
 
 
 class TargetDevice:
@@ -198,6 +205,20 @@ class TwcShutterCoverTests(IsolatedAsyncioTestCase):
             | CoverEntityFeature.STOP,
         )
         self.assertTrue(entity.available)
+
+    def test_cover_uses_resolved_physical_controller_device_info(self) -> None:
+        """Keep the scenario-backed shutter under its owning Tywell Control."""
+        entity, scenes, _ = self._entity()
+        scenes["open"]._controller_id = "physical-controller"
+        controller_info = {
+            "identifiers": {("deltadore_tydom", "physical-controller")},
+            "name": "Tywell Ctrl RdC",
+        }
+        entity._get_hub().ha_devices["physical-controller"] = SimpleNamespace(
+            device_info=controller_info
+        )
+
+        self.assertEqual(entity.device_info, controller_info)
 
     def test_cover_aggregates_only_complete_consistent_feedback(self) -> None:
         """Do not invent a state when targets differ or lack feedback."""

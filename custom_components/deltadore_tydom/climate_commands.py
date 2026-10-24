@@ -32,19 +32,15 @@ class ClimateCommandTracker:
 
     @property
     def pending(self) -> bool:
-        """Return whether at least one request lacks device confirmation."""
-        return bool(self._pending)
+        """Return whether a request is still within its confirmation window."""
+        return any(not command.overdue for command in self._pending.values())
 
     @property
     def attributes(self) -> dict[str, Any]:
         """Return requested values without replacing the actual climate state."""
         status = self._last_status
         if self._pending:
-            status = (
-                "unconfirmed"
-                if any(command.overdue for command in self._pending.values())
-                else "pending"
-            )
+            status = "pending" if self.pending else "unconfirmed"
         return {
             "command_status": status,
             **{

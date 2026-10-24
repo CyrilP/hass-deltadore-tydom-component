@@ -42,8 +42,9 @@ _TUTORIAL_PREFIX_MODELS = {
 }
 
 _TYWELL_CONTROL_TYPES = {
-    "re2020ControlBoiler",
-    "re2020ControlPassive",
+    "re2020controlboiler",
+    "re2020controlpassive",
+    "re2020controller",
 }
 
 _TYWELL_CONTROL_MODELS = {
@@ -72,23 +73,23 @@ def is_physical_tywell_control_profile(
 ) -> bool:
     """Return whether descriptors identify a physical Tywell wall controller.
 
-    A controller may be advertised as either a passive endpoint or an unlinked
-    boiler endpoint depending on how it is associated with the heating system.
-    Prefer Delta Dore's explicit tutorial identifier and retain the established
-    capability fallback for older configurations.
+    TYDOM may describe the same wall controller with different endpoint types
+    depending on its configuration. Prefer explicit Delta Dore model metadata,
+    then retain the capability fallback for older installations.
     """
-    if device_type not in _TYWELL_CONTROL_TYPES:
-        return False
-
-    if device_type == "re2020ControlPassive":
-        return True
-
     tutorial = str(tutorial_id or "").strip().casefold()
     if tutorial in _TYWELL_CONTROL_TUTORIALS:
         return True
 
     product_name = str((data or {}).get("productName", "")).strip().casefold()
     if product_name in _TYWELL_CONTROL_MODELS:
+        return True
+
+    normalized_type = str(device_type or "").strip().casefold()
+    if normalized_type not in _TYWELL_CONTROL_TYPES:
+        return False
+
+    if normalized_type in {"re2020controlpassive", "re2020controller"}:
         return True
 
     attributes = set(metadata or {}) | set(data or {})
@@ -349,14 +350,24 @@ class TydomDevice:
         return self._endpoint
 
     @property
+    def source_device_id(self) -> str:
+        """Return the physical device identifier represented by this endpoint."""
+        return self.device_id
+
+    @property
+    def source_device_name(self) -> str:
+        """Return the physical device name represented by this endpoint."""
+        return self.device_name
+
+    @property
     def registry_device_id(self) -> str:
         """Return the physical device identifier used by Home Assistant."""
-        return str(getattr(self, "_registry_device_id", self._uid))
+        return str(getattr(self, "_registry_device_id", self.source_device_id))
 
     @property
     def registry_device_name(self) -> str:
         """Return the physical device name used by Home Assistant."""
-        return str(getattr(self, "_registry_device_name", self._name))
+        return str(getattr(self, "_registry_device_name", self.source_device_name))
 
     @property
     def registry_device_targets(self) -> tuple[tuple[str, str], ...]:
@@ -697,6 +708,13 @@ class TydomBoiler(TydomDevice):
         if self.is_derived_area_climate:
             return self.device_id.removesuffix("_area_climate")
         return self.device_id
+
+    @property
+    def source_device_name(self) -> str:
+        """Return the physical device name represented by this climate."""
+        if self.is_derived_area_climate:
+            return self.device_name.removesuffix(" Thermostat")
+        return self.device_name
 
     def area_setpoint_attribute(self) -> str:
         """Return the setpoint register advertised for the current area mode."""

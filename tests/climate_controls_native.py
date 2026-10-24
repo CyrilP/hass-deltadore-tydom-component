@@ -104,8 +104,9 @@ class CommandTrackerTests(IsolatedAsyncioTestCase):
         command = tracker.begin("temperature", 22)
         command.timeout.cancel()
         tracker._mark_unconfirmed("temperature", command)
-        self.assertTrue(tracker.pending)
+        self.assertFalse(tracker.pending)
         self.assertEqual(tracker.attributes["command_status"], "unconfirmed")
+        self.assertEqual(tracker.attributes["requested_temperature"], 22)
         tracker.confirm({"temperature": 22})
         self.assertFalse(tracker.pending)
 
