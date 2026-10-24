@@ -6,7 +6,7 @@ import sys
 import types
 from pathlib import Path
 from unittest import IsolatedAsyncioTestCase, TestCase
-from unittest.mock import AsyncMock, MagicMock, call
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 _MISSING = object()
 _original_modules: dict[str, object] = {}
@@ -750,6 +750,25 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
         self.assertEqual(
             entity._attr_preset_modes,
             [entities_module.PRESET_NONE, entities_module.PRESET_AWAY],
+        )
+
+    def test_scheduled_target_is_available_as_read_only_sensor(self) -> None:
+        """Keep the scheduled target visible separately from climate controls."""
+        entity, _client = self._rf7110_zone()
+
+        with patch.object(entities_module, "is_binary_attribute", return_value=False):
+            sensors = entity.get_sensors()
+
+        sensor = next(
+            sensor
+            for sensor in sensors
+            if getattr(sensor, "_attribute", None) == "heatSetpoint"
+        )
+        self.assertEqual(sensor.native_value, 19.5)
+        self.assertEqual(sensor._attr_unique_id, "10_20_heatSetpoint")
+        self.assertFalse(hasattr(sensor, "async_set_temperature"))
+        self.assertFalse(
+            entity.supported_features & ClimateEntityFeature.TARGET_TEMPERATURE
         )
 
     async def test_scheduled_zone_modes_use_the_matching_tydom_registers(self) -> None:
