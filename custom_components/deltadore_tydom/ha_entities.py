@@ -2959,6 +2959,23 @@ class HaClimate(ClimateEntity, HAEntity):
             and "w" in local_mode_permission
             else []
         )
+        setpoint_meta = (metadata or {}).get("setpoint")
+        setpoint_permission = (
+            setpoint_meta.get("permission", "")
+            if isinstance(setpoint_meta, dict)
+            else ""
+        )
+        # Two TYDOM HOME localMode profiles expose the same enum but use
+        # different OFF orders. Schedule-driven zones without a writable
+        # generic setpoint use ANTI_FROST (verified on hardware). Thermostats
+        # with a writable generic setpoint use STOP, matching the app state
+        # captured in issue #542. Base this on metadata so it remains stable
+        # after the live setpoint becomes null while the device is off.
+        self._local_mode_off_value = (
+            "STOP"
+            if "STOP" in self._local_mode_values and "w" in setpoint_permission
+            else "ANTI_FROST"
+        )
         self._uses_local_mode = (
             "NORMAL" in self._local_mode_values
             and "ANTI_FROST" in self._local_mode_values
@@ -3418,7 +3435,9 @@ class HaClimate(ClimateEntity, HAEntity):
                 "hvac_mode",
                 hvac_mode,
                 self._device.set_local_mode(
-                    "ANTI_FROST" if hvac_mode == HVACMode.OFF else "NORMAL"
+                    self._local_mode_off_value
+                    if hvac_mode == HVACMode.OFF
+                    else "NORMAL"
                 ),
             )
             return
