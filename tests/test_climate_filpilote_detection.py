@@ -623,8 +623,8 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
     """
 
     @staticmethod
-    def _zone(*, local_mode="ANTI_FROST"):
-        return _thermostat(
+    def _zone(*, local_mode="ANTI_FROST", generic_setpoint=False):
+        entity, client = _thermostat(
             metadata={
                 "authorization": {
                     "type": "string",
@@ -661,6 +661,15 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
                 "ambientTemperature": 22.41,
             },
         )
+        if generic_setpoint:
+            entity._device._metadata["setpoint"] = {
+                "type": "numeric",
+                "permission": "rw",
+                "min": 10,
+                "max": 30,
+            }
+            entity = HaClimate(entity._device, hass=MagicMock())
+        return entity, client
 
     def test_detected_and_offers_only_off_and_heat(self) -> None:
         """A localMode zone is not pilot-wire and has no AUTO mode."""
@@ -944,14 +953,28 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
             "20", "10", "localMode", "NORMAL"
         )
 
-    async def test_turning_off_writes_anti_frost_to_local_mode(self) -> None:
-        """Off drives the register the app drives, not comfortMode STOP."""
+    async def test_turning_off_schedule_zone_writes_anti_frost_to_local_mode(self) -> None:
+        """Schedule-driven zones mirror the app's ANTI_FROST off order."""
         entity, client = self._zone(local_mode="NORMAL")
 
         await entity.async_set_hvac_mode(HVACMode.OFF)
 
         client.put_devices_data.assert_awaited_once_with(
             "20", "10", "localMode", "ANTI_FROST"
+        )
+
+    async def test_turning_off_setpoint_thermostat_writes_stop_to_local_mode(
+        self,
+    ) -> None:
+        """A writable generic setpoint profile uses STOP, as in issue #542."""
+        entity, client = self._zone(
+            local_mode="NORMAL", generic_setpoint=True
+        )
+
+        await entity.async_set_hvac_mode(HVACMode.OFF)
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "localMode", "STOP"
         )
 
     async def test_turning_on_writes_normal_to_local_mode(self) -> None:
