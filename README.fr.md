@@ -284,9 +284,9 @@ jusqu’à l’ajout d’un libellé adapté.
 
 L’entité climate utilise les limites actuelles de chauffage ou de refroidissement de l’appareil, y compris les limites installateur remontées par TYDOM. Les températures hors limites sont refusées avant l’envoi d’une commande.
 
-Le capteur binaire de diagnostic **Commande en attente** s’active lorsque Home Assistant envoie une demande de mode, de consigne ou de préréglage. L’entité climate conserve les valeurs remontées par le thermostat : la fin de l’envoi réseau ne confirme pas le changement physique. L’indicateur se désactive lorsqu’une mise à jour TYDOM rapporte la valeur demandée, ou si l’envoi échoue. Plusieurs demandes en attente sont confirmées séparément.
+Le capteur binaire de diagnostic **Commande en attente** s’active lorsque Home Assistant envoie une demande de mode, de consigne ou de préréglage. Pour toutes les entités climate, chauffage et climatisation compris, la consigne demandée s’affiche immédiatement pendant l’attente de confirmation. La consigne réelle reste accessible dans l’attribut climate `reported_temperature` : la fin de l’envoi réseau ne confirme pas le changement physique. L’indicateur se désactive lorsqu’une mise à jour TYDOM rapporte la valeur demandée, ou si l’envoi échoue. Plusieurs demandes en attente sont confirmées séparément.
 
-Après deux minutes sans retour correspondant, le statut devient `unconfirmed` et l’indicateur reste actif. Cela ne prouve pas que la commande a échoué. Aucune nouvelle commande n’est envoyée automatiquement. Les valeurs demandées et `command_status` sont aussi disponibles dans les attributs climate. Les demandes en attente sont effacées au déchargement de l’intégration.
+Si l’envoi échoue, la consigne affichée revient à la dernière valeur remontée par TYDOM. Après deux minutes sans retour correspondant, le statut devient `unconfirmed`, l’indicateur se désactive et la consigne affichée revient à la valeur remontée. Cela ne prouve pas que la commande a échoué ; un retour ultérieur peut encore la confirmer. Aucune nouvelle commande n’est envoyée automatiquement. Les valeurs demandées et `command_status` sont aussi disponibles dans les attributs climate. Les demandes en attente sont effacées au déchargement de l’intégration.
 
 ### Entités de diagnostic
 

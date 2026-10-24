@@ -35,6 +35,13 @@ class ClimateCommandTracker:
         """Return whether a request is still within its confirmation window."""
         return any(not command.overdue for command in self._pending.values())
 
+    def requested_value(self, key: str) -> Any:
+        """Return the latest request only while awaiting its confirmation."""
+        command = self._pending.get(key)
+        if command is None or command.overdue:
+            return None
+        return command.value
+
     @property
     def attributes(self) -> dict[str, Any]:
         """Return requested values without replacing the actual climate state."""

@@ -223,13 +223,14 @@ class ClimateControlTests(IsolatedAsyncioTestCase):
         client.put_devices_data.assert_not_awaited()
 
     async def test_pending_until_matching_device_update(self):
-        """Sending preserves real state; an actual matching push clears pending."""
+        """Display the request while only matching real feedback clears pending."""
         climate, device, client = self.climate()
         sensor = ClimateCommandPendingSensor(climate)
         climate._command_listening = True
         device.register_callback(climate._handle_climate_update)
         await climate.async_set_temperature(temperature=22)
-        self.assertEqual(climate.target_temperature, 21)
+        self.assertEqual(climate.target_temperature, 22)
+        self.assertEqual(climate.reported_target_temperature, 21)
         self.assertTrue(sensor.is_on)
         self.assertEqual(climate.extra_state_attributes["requested_temperature"], 22)
         client.put_devices_data.assert_awaited_once_with("20", "10", "setpoint", "22")
@@ -333,7 +334,8 @@ class ClimateControlTests(IsolatedAsyncioTestCase):
                 "localMode": "LOCAL_SETPOINT",
             },
         )
-        self.assertEqual(climate.target_temperature, 21)
+        self.assertEqual(climate.target_temperature, 22)
+        self.assertEqual(climate.reported_target_temperature, 21)
         device.currentSetpoint = 22
         climate._handle_climate_update()
         self.assertFalse(climate.extra_state_attributes["command_pending"])

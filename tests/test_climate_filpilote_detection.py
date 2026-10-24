@@ -597,6 +597,139 @@ class AreaTrvClimateTests(IsolatedAsyncioTestCase):
         )
 
 
+class RequestedClimateTargetTests(IsolatedAsyncioTestCase):
+    """Apply the same pending-target display rule to every climate profile."""
+
+    def climate(self, *, data=None, device_type="boiler", area=False):
+        """Create a climate with real tracking and mocked protocol transport."""
+        entity, client = _thermostat(
+            metadata={
+                "setpoint": {
+                    "type": "numeric",
+                    "permission": "rw",
+                    "min": 5,
+                    "max": 30,
+                },
+                "hvacMode": {
+                    "permission": "rw",
+                    "enum_values": ["STOP", "NORMAL", "COOLING"],
+                },
+            },
+            data=data or {"hvacMode": "NORMAL", "setpoint": 21},
+            device_type=device_type,
+        )
+        if area:
+            entity._device.area_id = "7"
+        client.put_area_data = AsyncMock()
+        client.put_area_data_attributes = AsyncMock()
+        entity.async_write_ha_state = MagicMock()
+        entity._command_listening = True
+        self.addCleanup(entity._get_command_tracker().close)
+        return entity, client
+
+    async def test_all_climate_profiles_display_request_without_self_confirmation(self):
+        """Heat, cool, Naviclim, Tywell and TRV targets share one behaviour."""
+        profiles = [
+            ("boiler", {"hvacMode": "NORMAL", "setpoint": 21}, False, "setpoint"),
+            (
+                "boiler",
+                {"authorization": "COOLING", "coolSetpoint": 21},
+                False,
+                "coolSetpoint",
+            ),
+            ("naviclim", {"hvacMode": "COOLING", "setpoint": 21}, False, "setpoint"),
+            (
+                "re2020Controller",
+                {"authorization": "HEATING", "localMode": "NORMAL", "setpoint": 21},
+                True,
+                "setpoint",
+            ),
+            ("sh_hvac", {"currentSetpoint": 21}, True, "currentSetpoint"),
+        ]
+        for device_type, data, area, register in profiles:
+            with self.subTest(device_type=device_type, data=data):
+                entity, _ = self.climate(data=data, device_type=device_type, area=area)
+                await entity.async_set_temperature(temperature=22)
+                self.assertEqual(entity.target_temperature, 22)
+                self.assertEqual(entity.reported_target_temperature, 21)
+                self.assertEqual(
+                    entity.extra_state_attributes["reported_temperature"], 21
+                )
+                self.assertTrue(entity.extra_state_attributes["command_pending"])
+                # A stale/irrelevant push must neither reset the dial nor confirm it.
+                entity._handle_climate_update()
+                self.assertEqual(entity.target_temperature, 22)
+                self.assertTrue(entity.extra_state_attributes["command_pending"])
+                setattr(entity._device, register, 22)
+                entity._handle_climate_update()
+                self.assertEqual(entity.target_temperature, 22)
+                self.assertFalse(entity.extra_state_attributes["command_pending"])
+                self.assertEqual(
+                    entity.extra_state_attributes["command_status"], "confirmed"
+                )
+
+    async def test_expiry_returns_to_latest_report_without_resending(self):
+        """An unconfirmed target expires even while another command is pending."""
+        entity, client = self.climate()
+        await entity.async_set_temperature(temperature=22)
+        entity._device.setpoint = 20
+        tracker = entity._get_command_tracker()
+        tracker.begin("hvac_mode", HVACMode.OFF)
+        command = tracker._pending["temperature"]
+        command.timeout.cancel()
+        tracker._mark_unconfirmed("temperature", command)
+        self.assertTrue(tracker.pending)
+        self.assertEqual(entity.target_temperature, 20)
+        client.put_devices_data.assert_awaited_once()
+        # Late matching physical feedback is still a real confirmation.
+        entity._device.setpoint = 22
+        entity._handle_climate_update()
+        self.assertNotIn("requested_temperature", tracker.attributes)
+
+    async def test_failed_send_returns_to_reported_target(self):
+        """A transport failure immediately removes the requested display value."""
+        entity, client = self.climate()
+        client.put_devices_data.side_effect = RuntimeError("send failed")
+        with self.assertRaisesRegex(RuntimeError, "send failed"):
+            await entity.async_set_temperature(temperature=22)
+        self.assertEqual(entity.target_temperature, 21)
+        self.assertEqual(entity.extra_state_attributes["command_status"], "failed")
+        self.assertFalse(entity.extra_state_attributes["command_pending"])
+
+    async def test_newest_request_survives_old_feedback_and_old_failure(self):
+        """Rapid clicks keep the latest target until its own matching feedback."""
+        entity, client = self.climate()
+        await entity.async_set_temperature(temperature=22)
+        tracker = entity._get_command_tracker()
+        old = tracker._pending["temperature"]
+        await entity.async_set_temperature(temperature=23)
+        entity._device.setpoint = 22
+        entity._handle_climate_update()
+        tracker.fail("temperature", old)
+        self.assertEqual(entity.target_temperature, 23)
+        self.assertTrue(tracker.pending)
+        entity._device.setpoint = 23
+        entity._handle_climate_update()
+        self.assertFalse(tracker.pending)
+        self.assertEqual(client.put_devices_data.await_count, 2)
+
+    async def test_hvac_action_uses_reported_target(self):
+        """An optimistic dial must not pretend heat/cool delivery has changed."""
+        for mode, requested in [("HEATING", 18), ("COOLING", 24)]:
+            with self.subTest(mode=mode):
+                entity, _ = self.climate(
+                    data={
+                        "authorization": mode,
+                        "setpoint": 21,
+                        "temperature": 20,
+                    }
+                )
+                action = entity.hvac_action
+                await entity.async_set_temperature(temperature=requested)
+                self.assertEqual(entity.target_temperature, requested)
+                self.assertEqual(entity.hvac_action, action)
+
+
 class ReversibleZoneAntiFrostPresetTests(IsolatedAsyncioTestCase):
     """Ensure reversible zones expose and write the frost-protection preset."""
 

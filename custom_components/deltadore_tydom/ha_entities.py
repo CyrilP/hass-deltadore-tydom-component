@@ -3149,7 +3149,7 @@ class HaClimate(ClimateEntity, HAEntity):
         self._get_command_tracker().confirm(
             {
                 "hvac_mode": self.hvac_mode,
-                "temperature": self.target_temperature,
+                "temperature": self.reported_target_temperature,
                 "preset_mode": self.preset_mode,
             }
         )
@@ -3172,9 +3172,13 @@ class HaClimate(ClimateEntity, HAEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Expose outstanding requests alongside the unchanged device state."""
+        """Keep the actual setpoint visible alongside the requested target."""
         tracker = self._get_command_tracker()
-        return {"command_pending": tracker.pending, **tracker.attributes}
+        return {
+            "command_pending": tracker.pending,
+            "reported_temperature": self.reported_target_temperature,
+            **tracker.attributes,
+        }
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
@@ -3330,7 +3334,7 @@ class HaClimate(ClimateEntity, HAEntity):
             return HVACAction.OFF
 
         current = self.current_temperature
-        target = self.target_temperature
+        target = self.reported_target_temperature
         if authorization == "COOLING":
             if current is not None and target is not None:
                 return HVACAction.IDLE if current < target else HVACAction.COOLING
@@ -3380,7 +3384,16 @@ class HaClimate(ClimateEntity, HAEntity):
 
     @property
     def target_temperature(self) -> float | None:
-        """Return the temperature currently set to be reached."""
+        """Show the requested target until confirmed, failed or timed out."""
+        tracker = getattr(self, "_command_tracker", None)
+        requested = tracker.requested_value("temperature") if tracker else None
+        if requested is not None:
+            return float(requested)
+        return self.reported_target_temperature
+
+    @property
+    def reported_target_temperature(self) -> float | None:
+        """Return the actual target reported by TYDOM, without pending requests."""
         if self._device.uses_area_local_mode and (
             getattr(self._device, "localMode", None) in self.OFF_LOCAL_MODES
             or getattr(self._device, "authorization", None) == "STOP"
