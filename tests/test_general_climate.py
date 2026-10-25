@@ -273,6 +273,28 @@ class GeneralClimateEntityTests(unittest.IsolatedAsyncioTestCase):
         hub.online = False
         self.assertFalse(entity.available)
 
+    async def test_companion_controls_keep_the_canonical_gateway_name(self):
+        """Late creation of a companion must not rename the gateway to its MAC."""
+        hub = types.SimpleNamespace(
+            hub_id="Tydom-ABCDEF",
+            _name="001A25ABCDEF",
+            manufacturer="Delta Dore",
+            register_association_control=Mock(),
+        )
+        controls = [
+            self.stubs.entities_module.HAGatewayGeneralClimateSelect(hub),
+            self.stubs.entities_module.HAGatewayAssociationCategorySelect(hub),
+            self.stubs.entities_module.HAReloadButton(hub, Mock()),
+        ]
+        for entity in controls:
+            with self.subTest(entity=type(entity).__name__):
+                self.assertEqual(entity._attr_device_info["name"], "Tydom-ABCDEF")
+                self.assertEqual(
+                    entity._attr_device_info["identifiers"],
+                    {("deltadore_tydom", "Tydom-ABCDEF")},
+                )
+                self.assertNotIn("name_by_user", entity._attr_device_info)
+
     async def test_polling_fallback_is_read_only(self):
         """Refresh legacy firmware without sending any heating command."""
         entity, wire, _ = self.entity()
