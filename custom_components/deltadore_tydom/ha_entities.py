@@ -3145,11 +3145,18 @@ class HaClimate(ClimateEntity, HAEntity):
         if not hasattr(self, "_command_tracker"):
             self._command_tracker = ClimateCommandTracker(self._notify_command_entities)
             self._command_listeners: set[Callable[[], None]] = set()
+            self._command_display_target = self.target_temperature
         return self._command_tracker
 
     def _notify_command_entities(self) -> None:
-        """Publish request status immediately without inventing thermostat state."""
-        if getattr(self, "_command_listening", False):
+        """Render target changes; keep mode/preset tracking on the diagnostic."""
+        target = self.target_temperature
+        target_changed = target != self._command_display_target
+        self._command_display_target = target
+        # A tracking-only write republishes the old mode/preset and resets the
+        # dashboard selector (#539/#541). Temperature display changes still
+        # need an immediate write, including a failed or expired target.
+        if target_changed and getattr(self, "_command_listening", False):
             self.async_write_ha_state()
         for listener in tuple(self._command_listeners):
             listener()
@@ -3179,7 +3186,11 @@ class HaClimate(ClimateEntity, HAEntity):
     def _handle_climate_update(self) -> None:
         """Confirm requests only when TYDOM publishes the actual device state."""
         self._remember_confirmed_target()
-        self._get_command_tracker().confirm(
+        tracker = self._get_command_tracker()
+        # This real feedback will be published below. Avoid another climate
+        # write from the tracker's confirmation notification.
+        self._command_display_target = self.target_temperature
+        tracker.confirm(
             {
                 "hvac_mode": self.hvac_mode,
                 "temperature": self.reported_target_temperature,
@@ -3197,11 +3208,24 @@ class HaClimate(ClimateEntity, HAEntity):
         try:
             await operation
         except asyncio.CancelledError:
-            tracker.fail(key, command, cancelled=True)
+            if tracker.fail(key, command, cancelled=True):
+                self._restore_failed_mode_request(key, tracker)
             raise
         except Exception:
-            tracker.fail(key, command)
+            if tracker.fail(key, command):
+                self._restore_failed_mode_request(key, tracker)
             raise
+
+    def _restore_failed_mode_request(
+        self, key: str, tracker: ClimateCommandTracker
+    ) -> None:
+        """Restore a failed selector without rolling back another pending target."""
+        if (
+            key != "temperature"
+            and not tracker.pending
+            and getattr(self, "_command_listening", False)
+        ):
+            self.async_write_ha_state()
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

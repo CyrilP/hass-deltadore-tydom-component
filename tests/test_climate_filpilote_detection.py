@@ -1,5 +1,6 @@
 """Tests for the pilot-wire (fil-pilote) discriminator in HaClimate.__init__."""
 
+import asyncio
 import enum
 import importlib.util
 import sys
@@ -1852,6 +1853,141 @@ class FrostProtectionActionTests(IsolatedAsyncioTestCase):
 
         self.assertEqual(entity.hvac_mode, HVACMode.HEAT)
         self.assertEqual(entity.hvac_action, entities_module.HVACAction.IDLE)
+
+
+class CommandNotificationTests(IsolatedAsyncioTestCase):
+    """Keep mode/preset tracking silent while rendering real target changes."""
+
+    climate = RequestedClimateTargetTests.climate
+
+    async def test_mode_request_does_not_republish_the_old_mode(self):
+        """Issue #539: pending alone must not reset the dashboard mode selector."""
+        entity, _ = self.climate()
+        diagnostic = Mock()
+        entity._command_listeners.add(diagnostic)
+        await entity.async_set_hvac_mode(HVACMode.OFF)
+        entity.async_write_ha_state.assert_not_called()
+        diagnostic.assert_called_once()
+        self.assertEqual(entity.hvac_mode, HVACMode.HEAT)
+        self.assertTrue(entity.extra_state_attributes["command_pending"])
+        entity._device.hvacMode = "STOP"
+        entity._handle_climate_update()
+        entity.async_write_ha_state.assert_called_once()
+        self.assertEqual(entity.hvac_mode, HVACMode.OFF)
+        self.assertFalse(entity.extra_state_attributes["command_pending"])
+
+    async def test_preset_request_does_not_republish_the_old_preset(self):
+        """Away requests use the diagnostic until real localMode feedback."""
+        entity, _ = LocalModeZoneTests._zone(local_mode="NORMAL")
+        entity.async_write_ha_state = Mock()
+        entity._command_listening = True
+        diagnostic = Mock()
+        entity._get_command_tracker()
+        entity._command_listeners.add(diagnostic)
+        self.addCleanup(entity._get_command_tracker().close)
+        await entity.async_set_preset_mode(entities_module.PRESET_AWAY)
+        entity.async_write_ha_state.assert_not_called()
+        diagnostic.assert_called_once()
+        self.assertEqual(entity.preset_mode, entities_module.PRESET_NONE)
+        entity._device.localMode = "ABSENCE"
+        entity._handle_climate_update()
+        entity.async_write_ha_state.assert_called_once()
+        self.assertEqual(entity.preset_mode, entities_module.PRESET_AWAY)
+        self.assertFalse(entity.extra_state_attributes["command_pending"])
+
+    async def test_target_changes_still_publish_immediately(self):
+        """Mode tracking cannot disable the requested target display from #553."""
+        entity, _ = self.climate()
+        await entity.async_set_temperature(temperature=22)
+        entity.async_write_ha_state.assert_called_once()
+        self.assertEqual(entity.target_temperature, 22)
+        entity.async_write_ha_state.reset_mock()
+        await entity.async_set_hvac_mode(HVACMode.OFF)
+        entity.async_write_ha_state.assert_not_called()
+        self.assertEqual(entity.target_temperature, 22)
+        self.assertEqual(entity.reported_target_temperature, 21)
+
+    async def test_mode_failure_and_cancellation_restore_actual_state(self):
+        """A failed mode send restores the card once no other request is pending."""
+        for failure in (RuntimeError("send failed"), asyncio.CancelledError()):
+            with self.subTest(failure=type(failure).__name__):
+                entity, client = self.climate()
+                client.put_devices_data.side_effect = failure
+                with self.assertRaises(type(failure)):
+                    await entity.async_set_hvac_mode(HVACMode.OFF)
+                entity.async_write_ha_state.assert_called_once()
+                self.assertFalse(entity.extra_state_attributes["command_pending"])
+                self.assertEqual(entity.hvac_mode, HVACMode.HEAT)
+
+    async def test_old_mode_failure_cannot_republish_over_a_newer_request(self):
+        """The guarded fail result from #541 prevents stale rollback callbacks."""
+        entity, _ = self.climate()
+        started, release = asyncio.Event(), asyncio.Event()
+
+        async def fail_later():
+            started.set()
+            await release.wait()
+            raise RuntimeError("old failure")
+
+        old = asyncio.create_task(
+            entity._async_track_command("hvac_mode", HVACMode.OFF, fail_later())
+        )
+        await started.wait()
+        await entity.async_set_hvac_mode(HVACMode.HEAT)
+        release.set()
+        with self.assertRaisesRegex(RuntimeError, "old failure"):
+            await old
+        entity.async_write_ha_state.assert_not_called()
+        self.assertEqual(
+            entity.extra_state_attributes["requested_hvac_mode"], HVACMode.HEAT
+        )
+        self.assertTrue(entity.extra_state_attributes["command_pending"])
+
+    async def test_failed_mode_does_not_reset_a_pending_target(self):
+        """An unrelated failure must keep the newest requested temperature."""
+        entity, client = self.climate()
+        await entity.async_set_temperature(temperature=22)
+        entity.async_write_ha_state.reset_mock()
+        client.put_devices_data.side_effect = RuntimeError("mode failed")
+        with self.assertRaisesRegex(RuntimeError, "mode failed"):
+            await entity.async_set_hvac_mode(HVACMode.OFF)
+        entity.async_write_ha_state.assert_not_called()
+        self.assertEqual(entity.target_temperature, 22)
+        self.assertTrue(entity.extra_state_attributes["command_pending"])
+
+    async def test_failed_target_restores_the_dial_even_with_a_pending_mode(self):
+        """Temperature failure is rendered independently from a slow mode request."""
+        entity, client = self.climate()
+        await entity.async_set_hvac_mode(HVACMode.OFF)
+        entity.async_write_ha_state.reset_mock()
+        client.put_devices_data.side_effect = RuntimeError("target failed")
+        with self.assertRaisesRegex(RuntimeError, "target failed"):
+            await entity.async_set_temperature(temperature=22)
+        self.assertEqual(entity.async_write_ha_state.call_count, 2)
+        self.assertEqual(entity.target_temperature, 21)
+        self.assertTrue(entity.extra_state_attributes["command_pending"])
+
+    async def test_mode_timeout_stays_on_diagnostic_and_target_timeout_resets_dial(
+        self,
+    ):
+        """Expiration must neither resend nor reintroduce old mode-only writes."""
+        entity, client = self.climate()
+        await entity.async_set_hvac_mode(HVACMode.OFF)
+        tracker = entity._get_command_tracker()
+        command = tracker._pending["hvac_mode"]
+        command.timeout.cancel()
+        tracker._mark_unconfirmed("hvac_mode", command)
+        entity.async_write_ha_state.assert_not_called()
+        self.assertEqual(entity.extra_state_attributes["command_status"], "unconfirmed")
+        await entity.async_set_temperature(temperature=22)
+        sent_before_expiry = client.put_devices_data.await_count
+        entity.async_write_ha_state.reset_mock()
+        command = tracker._pending["temperature"]
+        command.timeout.cancel()
+        tracker._mark_unconfirmed("temperature", command)
+        entity.async_write_ha_state.assert_called_once()
+        self.assertEqual(entity.target_temperature, 21)
+        self.assertEqual(client.put_devices_data.await_count, sent_before_expiry)
 
 
 if __name__ == "__main__":

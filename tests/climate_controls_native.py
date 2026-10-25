@@ -299,12 +299,16 @@ class ClimateControlTests(IsolatedAsyncioTestCase):
         device.register_callback(climate._handle_climate_update)
         await climate.async_set_hvac_mode(HVACMode.OFF)
         self.assertEqual(climate.hvac_mode, HVACMode.HEAT)
+        climate.async_write_ha_state.assert_not_called()
         device.hvacMode = "STOP"
         await device.publish_updates()
         self.assertFalse(climate.extra_state_attributes["command_pending"])
+        climate.async_write_ha_state.assert_called_once()
+        climate.async_write_ha_state.reset_mock()
         await climate.async_set_preset_mode(PRESET_AWAY)
         self.assertTrue(climate.extra_state_attributes["command_pending"])
         self.assertNotEqual(climate.preset_mode, PRESET_AWAY)
+        climate.async_write_ha_state.assert_not_called()
         device.localMode = "ABSENCE"
         await device.publish_updates()
         self.assertFalse(climate.extra_state_attributes["command_pending"])
