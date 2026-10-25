@@ -7904,6 +7904,62 @@ class _GatewayAssociationEntity:
         await super().async_will_remove_from_hass()
 
 
+class HAGatewayGeneralClimateSelect(_GatewayAssociationEntity, SelectEntity):
+    """Explicit general heating/air conditioning control on the gateway."""
+
+    _attr_entity_category = None
+    _attr_icon = "mdi:home-thermometer"
+    _attr_should_poll = True
+
+    def __init__(self, tydom_hub) -> None:
+        """Attach the general control to the configured gateway."""
+        super().__init__(tydom_hub)
+        self._attr_unique_id = f"{tydom_hub.hub_id}_general_climate_mode"
+        set_entity_name(self, "general_climate_mode")
+
+    @property
+    def available(self) -> bool:
+        """Return whether the gateway has advertised this optional feature."""
+        state = self._hub._tydom_client.general_climate
+        return self._hub.online and bool(state.support) and state.mode is not None
+
+    @property
+    def options(self) -> list[str]:
+        """Return only modes supported by this gateway."""
+        return self._hub._tydom_client.general_climate.options
+
+    @property
+    def current_option(self) -> str | None:
+        """Return the authoritative general mode."""
+        return self._hub._tydom_client.general_climate.current_option
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the underlying HVAC mode and absence deadline."""
+        state = self._hub._tydom_client.general_climate
+        return {"hvac_mode": state.mode, "absence_to": state.absence_to}
+
+    async def async_update(self) -> None:
+        """Refresh as a fallback when older firmware omits general-state pushes."""
+        await self._hub._tydom_client.get_home_climate_data()
+
+    async def async_select_option(self, option: str) -> None:
+        """Send the explicitly selected general command."""
+        await self._hub._tydom_client.set_general_climate_mode(option)
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to general-mode feedback."""
+        await SelectEntity.async_added_to_hass(self)
+        self._hub._tydom_client.general_climate.add_listener(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Release the general-mode subscription."""
+        self._hub._tydom_client.general_climate.remove_listener(
+            self.async_write_ha_state
+        )
+        await SelectEntity.async_will_remove_from_hass(self)
+
+
 class HAGatewayAssociationCategorySelect(_GatewayAssociationEntity, SelectEntity):
     """Choose the intended usage before choosing a product family."""
 

@@ -73,6 +73,7 @@ from .ha_entities import (
     HADeviceRemovalButton,
     HAGroupableProductFinalizeAssociationButton,
     HAGatewayAssociationCategorySelect,
+    HAGatewayGeneralClimateSelect,
     HAGatewayAssociationChannelSelect,
     HAGatewayAssociationGuideButton,
     HAGatewayAssociationNameText,
@@ -1978,6 +1979,8 @@ class Hub:
 
         self.online = True
         self._reload_button_created = False
+        self._general_climate_created = False
+        self._tydom_client.general_climate.add_listener(self._general_climate_updated)
         self._inventory_syncing = False
         self._inventory_sync_error: str | None = None
         self._association_controls_created = False
@@ -2106,6 +2109,10 @@ class Hub:
                     "Timed out closing Tydom websocket after credential test"
                 )
 
+    def _general_climate_updated(self) -> None:
+        """Create the gateway control when the optional feature is advertised."""
+        self.ready()
+
     def ready(self) -> bool:
         """Check if we're ready to work."""
         # and self.add_alarm_callback is not None
@@ -2161,6 +2168,13 @@ class Hub:
             self.add_text_callback([HAGatewayAssociationNameText(self)])
             self._association_controls_created = True
             LOGGER.debug("Gateway product-association controls created")
+        if (
+            is_ready
+            and not self._general_climate_created
+            and self._tydom_client.general_climate.support
+        ):
+            self.add_select_callback([HAGatewayGeneralClimateSelect(self)])
+            self._general_climate_created = True
         return is_ready
 
     @property

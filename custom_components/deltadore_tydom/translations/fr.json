@@ -1153,6 +1153,18 @@
             }
         },
         "select": {
+            "general_climate_mode": {
+                "name": "Mode général",
+                "state": {
+                    "off": "Arrêt",
+                    "heat": "Chauffage",
+                    "cool": "Climatisation",
+                    "away": "Absence",
+                    "fan_only": "Ventilation",
+                    "dry": "Déshumidification",
+                    "mixed": "Mixte"
+                }
+            },
             "absence": {
                 "name": "Mode absence"
             },

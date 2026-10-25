@@ -38,6 +38,7 @@ from .const import (
     DELTADORE_AUTH_URL,
     MEDIATION_URL,
 )
+from ..home_climate import HomeClimateState, HVAC_OPTIONS
 from .MessageHandler import MessageHandler
 from .tydom_devices import TydomAlarmCommandError
 
@@ -155,6 +156,7 @@ class TydomClient:
         self._initialising_task: asyncio.Task | None = None
         self._shutdown_event = asyncio.Event()
         self.event_callback = event_callback
+        self.general_climate = HomeClimateState()
         # Some devices (like Tywatt) need polling
         self.poll_device_urls_1s = []
         self.poll_device_urls_5m = []
@@ -698,6 +700,7 @@ class TydomClient:
         await self.get_devices_cmeta()
         await self.get_devices_data()
         await self.get_areas_data()
+        await self.get_home_climate_data()
         if self._shutting_down:
             return
 
@@ -1705,8 +1708,42 @@ class TydomClient:
         LOGGER.debug("Sending message to tydom (%s)", "PUT device data")
         return 0
 
+    async def get_home_climate_data(self) -> None:
+        """Read general HVAC and absence; older gateways may omit these endpoints."""
+        for path in ("/home/hvac/data", "/home/absence"):
+            if path not in self._unsupported_optional_paths:
+                await self.send_message(method="GET", msg=path)
+
+    async def put_home_absence(self, until: int) -> None:
+        """Set general absence using the official app's -1/0 convention."""
+        body = json.dumps({"to": until})
+        request = (
+            "PUT /home/absence HTTP/1.1\r\n"
+            f"Content-Length: {len(body)}\r\n"
+            "Content-Type: application/json; charset=UTF-8\r\n"
+            "Transac-Id: 0\r\n\r\n" + body + "\r\n\r\n"
+        )
+        if not file_mode:
+            await self.send_bytes(self._cmd_prefix + request.encode("ascii"))
+
+    async def set_general_climate_mode(self, option: str) -> None:
+        """Send an explicit installation-wide command, never a series of zone writes."""
+        state = self.general_climate
+        if option not in state.options:
+            raise ValueError("Unsupported general climate mode")
+        if option == "mixed":
+            return  # A reported state, not an instruction.
+        if option == "away":
+            await self.put_home_absence(-1)
+        else:
+            if state.absence_active:
+                await self.put_home_absence(0)
+            mode = next(mode for mode, value in HVAC_OPTIONS.items() if value == option)
+            await self.put_home_hvac_mode(mode)
+        await self.get_home_climate_data()
+
     async def put_home_hvac_mode(self, mode: str) -> int:
-        """Set the zone-level HVAC direction (STOP / HEATING / COOLING).
+        """Set the installation-wide HVAC direction (STOP / HEATING / COOLING).
 
         Tydom broadcasts the result to all thermostats via per-device
         authorization updates. Per-thermostat hvacMode writes are ignored.
