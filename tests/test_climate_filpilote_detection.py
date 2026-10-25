@@ -1722,6 +1722,20 @@ class FrostResumeTests(IsolatedAsyncioTestCase):
 class FrostProtectionActionTests(IsolatedAsyncioTestCase):
     """Preserve the five hardware-derived frost-switch scenarios from PR #540."""
 
+    def test_general_stop_still_wins_over_enabled_zone_frost_protection(self):
+        """The general mode must not be inferred from the zone frost switch."""
+        entity, client = self._zone(local_mode="NORMAL", thermic_level="ANTI_FROST")
+        home = types.SimpleNamespace(mode="STOP", lock_reason="off")
+        client.general_climate = home
+        self.assertEqual(entity.hvac_mode, HVACMode.OFF)
+        self.assertEqual(entity.hvac_action, entities_module.HVACAction.OFF)
+        self.assertEqual(entity.hvac_modes, [HVACMode.OFF])
+        home.mode = "HEATING"
+        home.lock_reason = None
+        self.assertEqual(entity.hvac_mode, HVACMode.HEAT)
+        self.assertEqual(entity.hvac_action, entities_module.HVACAction.IDLE)
+        self.assertIn(HVACMode.HEAT, entity.hvac_modes)
+
     @staticmethod
     def _zone(
         *,
