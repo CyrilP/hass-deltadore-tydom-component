@@ -3324,6 +3324,8 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def hvac_action(self) -> HVACAction | None:
         """Return the current running action."""
+        if self._device.general_control_lock == "off":
+            return HVACAction.OFF
         if self._device.is_area_trv:
             return (
                 HVACAction.HEATING
@@ -3404,6 +3406,8 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def target_temperature(self) -> float | None:
         """Show the requested target until confirmed, failed or timed out."""
+        if self._device.general_control_lock is not None:
+            return self.reported_target_temperature
         tracker = getattr(self, "_command_tracker", None)
         requested = tracker.requested_value("temperature") if tracker else None
         if requested is not None:
@@ -3413,6 +3417,8 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def reported_target_temperature(self) -> float | None:
         """Return the actual target reported by TYDOM, without pending requests."""
+        if self._device.general_control_lock == "off":
+            return None
         if self._uses_local_mode and self._resolve_hvac_mode() == HVACMode.OFF:
             # TYDOM can report an unrelated setpoint while the zone is in frost
             # protection, then restore its heating target on NORMAL. There is

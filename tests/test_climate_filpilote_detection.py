@@ -722,6 +722,45 @@ class RequestedClimateTargetTests(IsolatedAsyncioTestCase):
         self.assertFalse(tracker.pending)
         self.assertEqual(client.put_devices_data.await_count, 2)
 
+    async def test_general_lock_overrides_pending_target_and_restores_capabilities(
+        self,
+    ):
+        """A general Off/Away takes priority over the optimistic temperature dial."""
+        entity, client = self.climate()
+        home = types.SimpleNamespace(mode="HEATING", lock_reason=None)
+        client.general_climate = home
+        await entity.async_set_temperature(temperature=22)
+        self.assertEqual(entity.target_temperature, 22)
+        self.assertTrue(
+            entity.supported_features & ClimateEntityFeature.TARGET_TEMPERATURE
+        )
+        home.mode = "STOP"
+        home.lock_reason = "off"
+        entity._handle_climate_update()
+        self.assertEqual(entity.hvac_mode, HVACMode.OFF)
+        self.assertEqual(entity.hvac_action, entities_module.HVACAction.OFF)
+        self.assertEqual(entity.hvac_modes, [HVACMode.OFF])
+        self.assertIsNone(entity.target_temperature)
+        self.assertFalse(
+            entity.supported_features & ClimateEntityFeature.TARGET_TEMPERATURE
+        )
+        home.mode = "HEATING"
+        home.lock_reason = "absence"
+        self.assertEqual(entity.preset_mode, entities_module.PRESET_AWAY)
+        self.assertEqual(entity.target_temperature, 21)
+        with (
+            patch.dict(sys.modules, {"homeassistant.exceptions": _ha_exceptions}),
+            self.assertRaises(_HomeAssistantError) as error,
+        ):
+            await entity.async_set_temperature(temperature=23)
+        self.assertEqual(error.exception.translation_key, "general_hvac_absence")
+        client.put_devices_data.assert_awaited_once()
+        home.lock_reason = None
+        self.assertTrue(
+            entity.supported_features & ClimateEntityFeature.TARGET_TEMPERATURE
+        )
+        self.assertEqual(entity.target_temperature, 22)
+
     async def test_hvac_action_uses_reported_target(self):
         """An optimistic dial must not pretend heat/cool delivery has changed."""
         for mode, requested in [("HEATING", 18), ("COOLING", 24)]:
