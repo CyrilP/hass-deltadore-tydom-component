@@ -2703,7 +2703,9 @@ class HaClimate(ClimateEntity, HAEntity):
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_climate"
-        self._attr_name = "Thermostat" if self._device.is_derived_area_climate else None
+        # All climates are primary controls, including area-derived ones now
+        # grouped under the physical controller. HA lists primary controls first.
+        self._attr_name = None
         self._enable_turn_on_off_backwards_compatibility = False
 
         self.dict_modes_ha_to_dd = {
