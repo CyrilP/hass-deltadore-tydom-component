@@ -69,17 +69,12 @@ TydomThermo = devices_module.TydomThermo
 
 migration_name = "custom_components.deltadore_tydom.remote_registry_migration"
 migration_path = (
-    root
-    / "custom_components"
-    / "deltadore_tydom"
-    / "remote_registry_migration.py"
+    root / "custom_components" / "deltadore_tydom" / "remote_registry_migration.py"
 )
 migration_spec = importlib.util.spec_from_file_location(migration_name, migration_path)
 assert migration_spec is not None and migration_spec.loader is not None
 migration_module = importlib.util.module_from_spec(migration_spec)
-_original_modules.setdefault(
-    migration_name, sys.modules.get(migration_name, _MISSING)
-)
+_original_modules.setdefault(migration_name, sys.modules.get(migration_name, _MISSING))
 sys.modules[migration_name] = migration_module
 migration_spec.loader.exec_module(migration_module)
 remove_legacy_remote_endpoint = migration_module.remove_legacy_remote_endpoint
@@ -103,6 +98,7 @@ class TestRemoteControl(IsolatedAsyncioTestCase):
             "groups_metadata",
             "groups_data",
             "endpoint_config",
+            "removed_configured_radio_endpoint_uids",
             "remote_control_info",
             "device_endpoint",
             "device_tutorial_id",
@@ -220,7 +216,9 @@ class TestRemoteControl(IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(len(devices), 2)
-        self.assertTrue(all(isinstance(device, TydomRemoteControl) for device in devices))
+        self.assertTrue(
+            all(isinstance(device, TydomRemoteControl) for device in devices)
+        )
         self.assertEqual([device.button_number for device in devices], [1, 2])
         self.assertEqual(
             {device.physical_device_id for device in devices}, {str(device_id)}
@@ -274,7 +272,9 @@ class TestRemoteControl(IsolatedAsyncioTestCase):
         self.assertEqual(device.remote_name, f"X3D remote control {device_id}")
         self.assertEqual(device.button_number, 1)
 
-    async def test_pending_remote_button_is_restored_from_configured_sibling(self) -> None:
+    async def test_pending_remote_button_is_restored_from_configured_sibling(
+        self,
+    ) -> None:
         """A re-added remote button must not remain TYDOM's generic Produit N."""
         device_id = 1693573310
         configured_uid = f"{device_id}_{device_id}"
@@ -427,18 +427,18 @@ class TestRemoteControl(IsolatedAsyncioTestCase):
 
         self.assertEqual(
             [
-                handler_module.remote_control_info[
-                    f"{endpoint_id}_{device_id}"
-                ]["button_number"]
+                handler_module.remote_control_info[f"{endpoint_id}_{device_id}"][
+                    "button_number"
+                ]
                 for endpoint_id in endpoint_ids
             ],
             [1, 2, 3, 4],
         )
         self.assertEqual(
             {
-                handler_module.remote_control_info[
-                    f"{endpoint_id}_{device_id}"
-                ]["model"]
+                handler_module.remote_control_info[f"{endpoint_id}_{device_id}"][
+                    "model"
+                ]
                 for endpoint_id in endpoint_ids
             },
             {"TYXIA 1410"},
@@ -455,13 +455,11 @@ class TestRemoteControl(IsolatedAsyncioTestCase):
             button_count=4,
         )
 
-        configured_endpoints = handler_module.config_file_data["endpoints"][:3]
+        all_configured_endpoints = handler_module.config_file_data["endpoints"][:]
+        groups = handler_module.config_file_data["groups"]
+        configured_endpoints = all_configured_endpoints[:3]
         await self.handler.parse_config_data(
-            {
-                "endpoints": configured_endpoints,
-                "groups": handler_module.config_file_data["groups"],
-            },
-            None,
+            {"endpoints": configured_endpoints, "groups": groups}, None
         )
         for endpoint_id in endpoint_ids:
             handler_module.device_metadata[f"{endpoint_id}_{device_id}"] = {
@@ -492,7 +490,15 @@ class TestRemoteControl(IsolatedAsyncioTestCase):
         )
 
         self.assertEqual([device.button_number for device in devices], [1, 2, 3])
-        self.assertNotIn(f"{endpoint_ids[3]}_{device_id}", handler_module.device_name)
+        removed_uid = f"{endpoint_ids[3]}_{device_id}"
+        self.assertNotIn(removed_uid, handler_module.device_name)
+
+        await self.handler.parse_config_data(
+            {"endpoints": all_configured_endpoints, "groups": groups}, None
+        )
+        self.assertNotIn(
+            removed_uid, handler_module.removed_configured_radio_endpoint_uids
+        )
 
     async def test_only_fresh_non_idle_action_advances_event_sequence(self) -> None:
         """Polling without a fresh action must not repeat the previous press."""
@@ -607,15 +613,9 @@ class TestRemoteRegistryMigration(TestCase):
         device_registry = _Registry({"legacy-device": self._device()})
         entity_registry = _Registry(
             {
-                "sensor.button": self._entity(
-                    f"{self.endpoint_unique_id}_sensor"
-                ),
-                "sensor.action": self._entity(
-                    f"{self.endpoint_unique_id}_action"
-                ),
-                "sensor.battery": self._entity(
-                    f"{self.endpoint_unique_id}_battDefect"
-                ),
+                "sensor.button": self._entity(f"{self.endpoint_unique_id}_sensor"),
+                "sensor.action": self._entity(f"{self.endpoint_unique_id}_action"),
+                "sensor.battery": self._entity(f"{self.endpoint_unique_id}_battDefect"),
             }
         )
 
@@ -655,11 +655,7 @@ class TestRemoteRegistryMigration(TestCase):
     def test_keeps_device_from_another_config_entry(self) -> None:
         """Migration cannot touch another configured gateway."""
         device_registry = _Registry(
-            {
-                "legacy-device": self._device(
-                    config_entry_id="another-entry"
-                )
-            }
+            {"legacy-device": self._device(config_entry_id="another-entry")}
         )
         entity_registry = _Registry({})
 
