@@ -2707,6 +2707,7 @@ class HaClimate(ClimateEntity, HAEntity):
         # grouped under the physical controller. HA lists primary controls first.
         self._attr_name = None
         self._enable_turn_on_off_backwards_compatibility = False
+        self._last_confirmed_targets: dict[HVACMode, float] = {}
 
         self.dict_modes_ha_to_dd = {
             HVACMode.COOL: "COOLING",
@@ -3153,8 +3154,31 @@ class HaClimate(ClimateEntity, HAEntity):
         for listener in tuple(self._command_listeners):
             listener()
 
+    def _remember_confirmed_target(self) -> None:
+        """Remember real heat/cool targets, never pending or frost/absence values."""
+        if (
+            self._device.general_control_lock is not None
+            or self.preset_mode == PRESET_AWAY
+        ):
+            return
+        if getattr(self._device, "thermicLevel", None) in self.OFF_LOCAL_MODES:
+            return
+        mode = self.hvac_mode
+        if mode not in (HVACMode.HEAT, HVACMode.COOL):
+            return
+        target = self.reported_target_temperature
+        if target is None or not math.isfinite(target):
+            return
+        minimum, maximum = self._device.temperature_limits()
+        if (minimum is not None and target < minimum) or (
+            maximum is not None and target > maximum
+        ):
+            return
+        self._last_confirmed_targets[mode] = target
+
     def _handle_climate_update(self) -> None:
         """Confirm requests only when TYDOM publishes the actual device state."""
+        self._remember_confirmed_target()
         self._get_command_tracker().confirm(
             {
                 "hvac_mode": self.hvac_mode,
@@ -3193,6 +3217,7 @@ class HaClimate(ClimateEntity, HAEntity):
         """Refresh on every device push (see HACover for the MRO rationale)."""
         await super().async_added_to_hass()
         self._command_listening = True
+        self._remember_confirmed_target()
         self._device.register_callback(self._handle_climate_update)
         self._device._ha_device = self
         home = getattr(self._device._tydom_client, "general_climate", None)
@@ -3484,7 +3509,31 @@ class HaClimate(ClimateEntity, HAEntity):
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
         self._device.validate_general_hvac_mode()
+        self._remember_confirmed_target()
         if self._device.is_area_trv:
+            return
+
+        if (
+            self._uses_local_mode
+            and hvac_mode in (HVACMode.HEAT, HVACMode.COOL)
+            and getattr(self._device, "localMode", None) == "NORMAL"
+            and getattr(self._device, "thermicLevel", None) in self.OFF_LOCAL_MODES
+        ):
+            # General Heating can leave a scheduled zone in frost protection
+            # even though its local mode is already NORMAL. Re-sending NORMAL
+            # is a no-op; the app releases this state by requesting a setpoint.
+            # Reuse only an actual confirmed target for this direction.
+            target = self._last_confirmed_targets.get(hvac_mode)
+            if target is None:
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="resume_target_unknown",
+                )
+            await self._async_track_command(
+                "hvac_mode",
+                hvac_mode,
+                self.async_set_temperature(temperature=target),
+            )
             return
 
         if getattr(self, "_is_filpilote", False):

@@ -3930,6 +3930,9 @@
         }
     },
     "exceptions": {
+        "resume_target_unknown": {
+            "message": "Esta zona continua em proteção contra gelo e não é conhecida uma temperatura definida confirmada. Escolha uma temperatura com a ação climate.set_temperature para a reativar. O modo geral de aquecimento/climatização tem de estar ativado."
+        },
         "general_hvac_absence": {
             "message": "O modo de ausência geral está ativo. Desative-o no TYDOM ou através do comando geral da gateway antes de controlar esta zona."
         },

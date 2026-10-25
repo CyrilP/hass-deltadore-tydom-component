@@ -3930,6 +3930,9 @@
         }
     },
     "exceptions": {
+        "resume_target_unknown": {
+            "message": "Questa zona è ancora in protezione antigelo e non è nota una temperatura impostata confermata. Scegliere una temperatura con l’azione climate.set_temperature per riattivarla. La modalità generale di riscaldamento/climatizzazione deve essere attiva."
+        },
         "general_hvac_absence": {
             "message": "La modalità assenza generale è attiva. Disattivarla in TYDOM o con il comando generale del gateway prima di controllare questa zona."
         },

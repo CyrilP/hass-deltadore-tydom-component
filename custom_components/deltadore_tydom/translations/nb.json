@@ -753,6 +753,9 @@
         "moment": {}
     },
     "exceptions": {
+        "resume_target_unknown": {
+            "message": "Denne sonen er fortsatt i frostbeskyttelse, og ingen bekreftet måltemperatur er kjent. Velg en temperatur med handlingen climate.set_temperature for å starte den igjen. Den generelle varme-/kjølemodusen må være aktivert."
+        },
         "general_hvac_absence": {
             "message": "Den generelle bortemodusen er aktiv. Deaktiver den i TYDOM eller med gatewayens generelle kontroll før du styrer denne sonen."
         },

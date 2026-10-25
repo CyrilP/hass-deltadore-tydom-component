@@ -6,7 +6,7 @@ import sys
 import types
 from pathlib import Path
 from unittest import IsolatedAsyncioTestCase, TestCase
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, call, patch
 
 _MISSING = object()
 _original_modules: dict[str, object] = {}
@@ -1518,6 +1518,196 @@ class PresetNoneSendsAutoTests(IsolatedAsyncioTestCase):
         await entity.async_set_preset_mode("none")
 
         client.put_devices_data.assert_not_awaited()
+
+
+class FrostResumeTests(IsolatedAsyncioTestCase):
+    """Reproduce general Heating with local NORMAL but effective frost protection."""
+
+    def zone(self, *, area=False):
+        """Use the writable setpoint/local-mode capabilities captured on Site 2."""
+        entity, client = _thermostat(
+            device_type="re2020Controller" if area else "boiler",
+            metadata={
+                "authorization": {
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING", "COOLING"],
+                },
+                "setpoint": {
+                    "type": "numeric",
+                    "permission": "rw",
+                    "min": 10,
+                    "max": 30,
+                },
+                "heatSetpoint": {
+                    "type": "numeric",
+                    "permission": "rw",
+                    "min": 10,
+                    "max": 30,
+                },
+                "localMode": {
+                    "permission": "rw",
+                    "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+                },
+                "thermicLevel": {
+                    "permission": "rw",
+                    "enum_values": ["STOP", "ANTI_FROST"],
+                },
+            },
+            data={
+                "authorization": "HEATING",
+                "localMode": "NORMAL",
+                "thermicLevel": None,
+                "heatSetpoint": 19.5,
+                "setpoint": 19.5,
+                "useMode": "SCHED",
+            },
+        )
+        if area:
+            entity._device.area_id = "7"
+        client.put_area_data = AsyncMock()
+        client.put_home_hvac_mode = AsyncMock()
+        entity.async_write_ha_state = Mock()
+        self.addCleanup(entity._get_command_tracker().close)
+        return entity, client
+
+    @staticmethod
+    def freeze(entity):
+        """Match the real post-general-stop feedback, including the false 30 target."""
+        entity._device.thermicLevel = "ANTI_FROST"
+        entity._device.localMode = "NORMAL"
+        entity._device.heatSetpoint = 30
+        entity._device.setpoint = 30
+        entity._handle_climate_update()
+
+    async def test_heat_resumes_confirmed_target_on_endpoint_and_area(self):
+        """NORMAL alone cannot release this state; request the last real target."""
+        for area in (False, True):
+            with self.subTest(area=area):
+                entity, client = self.zone(area=area)
+                entity._handle_climate_update()
+                self.freeze(entity)
+                self.assertIsNone(entity.reported_target_temperature)
+                await entity.async_set_hvac_mode(HVACMode.HEAT)
+                if area:
+                    client.put_area_data.assert_awaited_once_with(
+                        "7", "setpoint", "19.5"
+                    )
+                    client.put_devices_data.assert_not_awaited()
+                else:
+                    client.put_devices_data.assert_awaited_once_with(
+                        "20", "10", "heatSetpoint", "19.5"
+                    )
+                    client.put_area_data.assert_not_awaited()
+                client.put_home_hvac_mode.assert_not_awaited()
+                self.assertEqual(entity.target_temperature, 19.5)
+                self.assertEqual(entity.hvac_mode, HVACMode.OFF)
+                self.assertTrue(entity.extra_state_attributes["command_pending"])
+                entity._device.thermicLevel = None
+                entity._device.heatSetpoint = 19.5
+                entity._device.setpoint = 19.5
+                entity._handle_climate_update()
+                self.assertEqual(entity.hvac_mode, HVACMode.HEAT)
+                self.assertFalse(entity.extra_state_attributes["command_pending"])
+
+    async def test_pending_target_is_never_used_as_a_confirmed_resume_target(self):
+        """A requested but unconfirmed temperature cannot replace the real target."""
+        entity, client = self.zone()
+        entity._handle_climate_update()
+        await entity.async_set_temperature(temperature=24)
+        entity._handle_climate_update()
+        client.put_devices_data.reset_mock()
+        self.freeze(entity)
+        await entity.async_set_hvac_mode(HVACMode.HEAT)
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "heatSetpoint", "19.5"
+        )
+
+    async def test_no_known_target_raises_without_inventing_one(self):
+        """A startup in frost requires an explicit target, never a default value."""
+        entity, client = self.zone()
+        self.freeze(entity)
+        with self.assertRaises(_HomeAssistantError) as caught:
+            await entity.async_set_hvac_mode(HVACMode.HEAT)
+        self.assertEqual(caught.exception.translation_key, "resume_target_unknown")
+        client.put_devices_data.assert_not_awaited()
+        client.put_area_data.assert_not_awaited()
+        self.assertFalse(entity.extra_state_attributes["command_pending"])
+        # The standard HA action can release the zone even without a dial target.
+        await entity.async_set_temperature(temperature=21)
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "heatSetpoint", "21"
+        )
+
+    async def test_cooling_target_is_not_reused_for_heating(self):
+        """A reversible controller must not substitute its cooling setpoint."""
+        entity, client = self.zone()
+        entity._last_confirmed_targets[HVACMode.COOL] = 25
+        self.freeze(entity)
+        with self.assertRaises(_HomeAssistantError):
+            await entity.async_set_hvac_mode(HVACMode.HEAT)
+        client.put_devices_data.assert_not_awaited()
+
+    async def test_failed_resume_does_not_claim_heat_or_confirm_temperature(self):
+        """A failed write leaves the actual zone Off and clears pending display."""
+        entity, client = self.zone()
+        entity._handle_climate_update()
+        self.freeze(entity)
+        client.put_devices_data.side_effect = RuntimeError("send failed")
+        with self.assertRaisesRegex(RuntimeError, "send failed"):
+            await entity.async_set_hvac_mode(HVACMode.HEAT)
+        self.assertEqual(entity.hvac_mode, HVACMode.OFF)
+        self.assertIsNone(entity.target_temperature)
+        self.assertFalse(entity.extra_state_attributes["command_pending"])
+
+    async def test_general_off_still_blocks_resume(self):
+        """Remembering a target never authorises restarting general heating."""
+        entity, client = self.zone()
+        entity._handle_climate_update()
+        self.freeze(entity)
+        client.general_climate = types.SimpleNamespace(mode="STOP", lock_reason="off")
+        with (
+            patch.dict(sys.modules, {"homeassistant.exceptions": _ha_exceptions}),
+            self.assertRaises(_HomeAssistantError),
+        ):
+            await entity.async_set_hvac_mode(HVACMode.HEAT)
+        client.put_devices_data.assert_not_awaited()
+        client.put_home_hvac_mode.assert_not_awaited()
+
+    async def test_normal_local_off_heat_keeps_its_original_command(self):
+        """A locally stopped zone still resumes through NORMAL without extra writes."""
+        entity, client = self.zone()
+        entity._handle_climate_update()
+        entity._device.localMode = "STOP"
+        entity._device.thermicLevel = "STOP"
+        await entity.async_set_hvac_mode(HVACMode.HEAT)
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "localMode", "NORMAL"
+        )
+
+    async def test_outdated_target_is_revalidated_against_current_limits(self):
+        """A confirmed target outside new device limits must not be resent."""
+        entity, client = self.zone()
+        entity._handle_climate_update()
+        self.freeze(entity)
+        entity._device.maxHeatSetpoint = 18
+        with (
+            patch.dict(sys.modules, {"homeassistant.exceptions": _ha_exceptions}),
+            self.assertRaises(_HomeAssistantError),
+        ):
+            await entity.async_set_hvac_mode(HVACMode.HEAT)
+        client.put_devices_data.assert_not_awaited()
+        self.assertFalse(entity.extra_state_attributes["command_pending"])
+
+    def test_away_and_frost_feedback_do_not_replace_confirmed_target(self):
+        """Absence/frost temperatures are not user heating targets."""
+        entity, _ = self.zone()
+        entity._handle_climate_update()
+        entity._device.localMode = "ABSENCE"
+        entity._device.heatSetpoint = 10
+        entity._handle_climate_update()
+        self.assertEqual(entity._last_confirmed_targets[HVACMode.HEAT], 19.5)
+        self.freeze(entity)
+        self.assertEqual(entity._last_confirmed_targets[HVACMode.HEAT], 19.5)
 
 
 if __name__ == "__main__":

@@ -3930,6 +3930,9 @@
         }
     },
     "exceptions": {
+        "resume_target_unknown": {
+            "message": "Deze zone staat nog op vorstbeveiliging en er is geen bevestigde doeltemperatuur bekend. Kies een temperatuur met de actie climate.set_temperature om de zone te hervatten. De algemene verwarmings-/koelmodus moet ingeschakeld zijn."
+        },
         "general_hvac_absence": {
             "message": "De algemene afwezigheidsmodus is actief. Schakel deze in TYDOM of via de algemene bediening van de gateway uit voordat u deze zone bedient."
         },

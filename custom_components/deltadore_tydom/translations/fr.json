@@ -216,6 +216,9 @@
         }
     },
     "exceptions": {
+        "resume_target_unknown": {
+            "message": "Cette zone reste en hors-gel et aucune consigne confirmée n’est connue. Choisissez une température avec l’action climate.set_temperature pour la relancer. Le mode général de chauffage/climatisation doit être activé."
+        },
         "general_hvac_absence": {
             "message": "Le mode Absence général est actif. Désactivez-le dans TYDOM ou avec la commande générale de la passerelle avant de piloter cette zone."
         },

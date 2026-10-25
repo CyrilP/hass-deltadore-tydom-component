@@ -3930,6 +3930,9 @@
         }
     },
     "exceptions": {
+        "resume_target_unknown": {
+            "message": "Ta strefa nadal działa w trybie ochrony przed zamarzaniem i nie jest znana potwierdzona temperatura zadana. Wybierz temperaturę za pomocą akcji climate.set_temperature, aby ją uruchomić. Ogólny tryb ogrzewania/chłodzenia musi być włączony."
+        },
         "general_hvac_absence": {
             "message": "Ogólny tryb nieobecności jest aktywny. Wyłącz go w TYDOM lub za pomocą ogólnego sterowania bramką przed sterowaniem tą strefą."
         },

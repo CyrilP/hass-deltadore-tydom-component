@@ -3930,6 +3930,9 @@
         }
     },
     "exceptions": {
+        "resume_target_unknown": {
+            "message": "Esta zona sigue en protección contra heladas y no se conoce ninguna temperatura de consigna confirmada. Elija una temperatura con la acción climate.set_temperature para reactivarla. El modo general de calefacción/climatización debe estar activado."
+        },
         "general_hvac_absence": {
             "message": "El modo de ausencia general está activo. Desactívelo en TYDOM o con el control general de la pasarela antes de controlar esta zona."
         },

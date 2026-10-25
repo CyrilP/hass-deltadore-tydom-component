@@ -3930,6 +3930,9 @@
         }
     },
     "exceptions": {
+        "resume_target_unknown": {
+            "message": "Diese Zone befindet sich noch im Frostschutz und es ist keine bestätigte Solltemperatur bekannt. Wählen Sie mit der Aktion climate.set_temperature eine Temperatur, um sie wieder zu starten. Der allgemeine Heiz-/Kühlmodus muss aktiviert sein."
+        },
         "general_hvac_absence": {
             "message": "Der allgemeine Abwesenheitsmodus ist aktiv. Beenden Sie ihn in TYDOM oder über die allgemeine Steuerung des Gateways, bevor Sie diese Zone steuern."
         },
