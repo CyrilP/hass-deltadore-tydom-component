@@ -13,16 +13,16 @@
                 "name": "Temperatura podczas nieobecności"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maksymalna temperatura zadana chłodzenia"
+                "name": "Maksymalna temperatura zadana chłodzenia (limit urządzenia)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maksymalna temperatura zadana ogrzewania"
+                "name": "Maksymalna temperatura zadana ogrzewania (limit urządzenia)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimalna temperatura zadana chłodzenia"
+                "name": "Minimalna temperatura zadana chłodzenia (limit urządzenia)"
             },
             "absminheatsetpoint": {
-                "name": "Minimalna temperatura zadana ogrzewania"
+                "name": "Minimalna temperatura zadana ogrzewania (limit urządzenia)"
             },
             "ackeventcmd": {
                 "name": "Polecenie potwierdzenia zdarzeń"
@@ -187,28 +187,28 @@
                 "name": "Energia"
             },
             "energydistrib": {
-                "name": "Udział w zużyciu"
+                "name": "Udział"
             },
             "energydistrib_elec_a": {
                 "name": "Natężenie prądu (Elektryczność)"
             },
             "energydistrib_elec_cooling": {
-                "name": "Udział w zużyciu (Elektryczność, Chłodzenie)"
+                "name": "Udział chłodzenie el."
             },
             "energydistrib_elec_heating": {
-                "name": "Udział w zużyciu (Elektryczność, Ogrzewanie)"
+                "name": "Udział ogrzewanie el."
             },
             "energydistrib_elec_hotwater": {
-                "name": "Udział w zużyciu (Elektryczność, Gorąca woda)"
+                "name": "Udział gorąca woda el."
             },
             "energydistrib_elec_other": {
-                "name": "Udział w zużyciu (Elektryczność, Pozostałe)"
+                "name": "Udział pozostałe el."
             },
             "energydistrib_elec_outlet": {
-                "name": "Udział w zużyciu (Elektryczność, Gniazda)"
+                "name": "Udział gniazda el."
             },
             "energydistrib_elec_total": {
-                "name": "Udział w zużyciu (Elektryczność, Łącznie)"
+                "name": "Udział łącznie el."
             },
             "energydistrib_elec_w": {
                 "name": "Moc (Elektryczność)"
@@ -217,22 +217,22 @@
                 "name": "Natężenie prądu (Gaz)"
             },
             "energydistrib_gas_cooling": {
-                "name": "Udział w zużyciu (Gaz, Chłodzenie)"
+                "name": "Udział chłodzenie gaz"
             },
             "energydistrib_gas_heating": {
-                "name": "Udział w zużyciu (Gaz, Ogrzewanie)"
+                "name": "Udział ogrzewanie gaz"
             },
             "energydistrib_gas_hotwater": {
-                "name": "Udział w zużyciu (Gaz, Gorąca woda)"
+                "name": "Udział gorąca woda gaz"
             },
             "energydistrib_gas_other": {
-                "name": "Udział w zużyciu (Gaz, Pozostałe)"
+                "name": "Udział pozostałe gaz"
             },
             "energydistrib_gas_outlet": {
-                "name": "Udział w zużyciu (Gaz, Gniazda)"
+                "name": "Udział gniazda gaz"
             },
             "energydistrib_gas_total": {
-                "name": "Udział w zużyciu (Gaz, Łącznie)"
+                "name": "Udział łącznie gaz"
             },
             "energydistrib_gas_w": {
                 "name": "Moc (Gaz)"
@@ -241,22 +241,22 @@
                 "name": "Natężenie prądu (Gaz)"
             },
             "energydistrib_gaz_cooling": {
-                "name": "Udział w zużyciu (Gaz, Chłodzenie)"
+                "name": "Udział chłodzenie gaz"
             },
             "energydistrib_gaz_heating": {
-                "name": "Udział w zużyciu (Gaz, Ogrzewanie)"
+                "name": "Udział ogrzewanie gaz"
             },
             "energydistrib_gaz_hotwater": {
-                "name": "Udział w zużyciu (Gaz, Gorąca woda)"
+                "name": "Udział gorąca woda gaz"
             },
             "energydistrib_gaz_other": {
-                "name": "Udział w zużyciu (Gaz, Pozostałe)"
+                "name": "Udział pozostałe gaz"
             },
             "energydistrib_gaz_outlet": {
-                "name": "Udział w zużyciu (Gaz, Gniazda)"
+                "name": "Udział gniazda gaz"
             },
             "energydistrib_gaz_total": {
-                "name": "Udział w zużyciu (Gaz, Łącznie)"
+                "name": "Udział łącznie gaz"
             },
             "energydistrib_gaz_w": {
                 "name": "Moc (Gaz)"
@@ -265,22 +265,22 @@
                 "name": "Natężenie prądu (Woda)"
             },
             "energydistrib_water_cooling": {
-                "name": "Udział w zużyciu (Woda, Chłodzenie)"
+                "name": "Udział chłodzenie woda"
             },
             "energydistrib_water_heating": {
-                "name": "Udział w zużyciu (Woda, Ogrzewanie)"
+                "name": "Udział ogrzewanie woda"
             },
             "energydistrib_water_hotwater": {
-                "name": "Udział w zużyciu (Woda, Gorąca woda)"
+                "name": "Udział gorąca woda woda"
             },
             "energydistrib_water_other": {
-                "name": "Udział w zużyciu (Woda, Pozostałe)"
+                "name": "Udział pozostałe woda"
             },
             "energydistrib_water_outlet": {
-                "name": "Udział w zużyciu (Woda, Gniazda)"
+                "name": "Udział gniazda woda"
             },
             "energydistrib_water_total": {
-                "name": "Udział w zużyciu (Woda, Łącznie)"
+                "name": "Udział łącznie woda"
             },
             "energydistrib_water_w": {
                 "name": "Moc (Woda)"
@@ -385,28 +385,28 @@
                 "name": "Moc (Woda)"
             },
             "energyindex": {
-                "name": "Wskazanie licznika zużycia"
+                "name": "Wskazanie licznika"
             },
             "energyindex_elec_a": {
                 "name": "Natężenie prądu (Elektryczność)"
             },
             "energyindex_elec_cooling": {
-                "name": "Wskazanie licznika zużycia (Elektryczność, Chłodzenie)"
+                "name": "Wskazanie licznika chłodzenie el."
             },
             "energyindex_elec_heating": {
-                "name": "Wskazanie licznika zużycia (Elektryczność, Ogrzewanie)"
+                "name": "Wskazanie licznika ogrzewanie el."
             },
             "energyindex_elec_hotwater": {
-                "name": "Wskazanie licznika zużycia (Elektryczność, Gorąca woda)"
+                "name": "Wskazanie licznika gorąca woda el."
             },
             "energyindex_elec_other": {
-                "name": "Wskazanie licznika zużycia (Elektryczność, Pozostałe)"
+                "name": "Wskazanie licznika pozostałe el."
             },
             "energyindex_elec_outlet": {
-                "name": "Wskazanie licznika zużycia (Elektryczność, Gniazda)"
+                "name": "Wskazanie licznika gniazda el."
             },
             "energyindex_elec_total": {
-                "name": "Wskazanie licznika zużycia (Elektryczność, Łącznie)"
+                "name": "Wskazanie licznika łącznie el."
             },
             "energyindex_elec_w": {
                 "name": "Moc (Elektryczność)"
@@ -415,22 +415,22 @@
                 "name": "Natężenie prądu (Gaz)"
             },
             "energyindex_gas_cooling": {
-                "name": "Wskazanie licznika zużycia (Gaz, Chłodzenie)"
+                "name": "Wskazanie licznika chłodzenie gaz"
             },
             "energyindex_gas_heating": {
-                "name": "Wskazanie licznika zużycia (Gaz, Ogrzewanie)"
+                "name": "Wskazanie licznika ogrzewanie gaz"
             },
             "energyindex_gas_hotwater": {
-                "name": "Wskazanie licznika zużycia (Gaz, Gorąca woda)"
+                "name": "Wskazanie licznika gorąca woda gaz"
             },
             "energyindex_gas_other": {
-                "name": "Wskazanie licznika zużycia (Gaz, Pozostałe)"
+                "name": "Wskazanie licznika pozostałe gaz"
             },
             "energyindex_gas_outlet": {
-                "name": "Wskazanie licznika zużycia (Gaz, Gniazda)"
+                "name": "Wskazanie licznika gniazda gaz"
             },
             "energyindex_gas_total": {
-                "name": "Wskazanie licznika zużycia (Gaz, Łącznie)"
+                "name": "Wskazanie licznika łącznie gaz"
             },
             "energyindex_gas_w": {
                 "name": "Moc (Gaz)"
@@ -439,22 +439,22 @@
                 "name": "Natężenie prądu (Gaz)"
             },
             "energyindex_gaz_cooling": {
-                "name": "Wskazanie licznika zużycia (Gaz, Chłodzenie)"
+                "name": "Wskazanie licznika chłodzenie gaz"
             },
             "energyindex_gaz_heating": {
-                "name": "Wskazanie licznika zużycia (Gaz, Ogrzewanie)"
+                "name": "Wskazanie licznika ogrzewanie gaz"
             },
             "energyindex_gaz_hotwater": {
-                "name": "Wskazanie licznika zużycia (Gaz, Gorąca woda)"
+                "name": "Wskazanie licznika gorąca woda gaz"
             },
             "energyindex_gaz_other": {
-                "name": "Wskazanie licznika zużycia (Gaz, Pozostałe)"
+                "name": "Wskazanie licznika pozostałe gaz"
             },
             "energyindex_gaz_outlet": {
-                "name": "Wskazanie licznika zużycia (Gaz, Gniazda)"
+                "name": "Wskazanie licznika gniazda gaz"
             },
             "energyindex_gaz_total": {
-                "name": "Wskazanie licznika zużycia (Gaz, Łącznie)"
+                "name": "Wskazanie licznika łącznie gaz"
             },
             "energyindex_gaz_w": {
                 "name": "Moc (Gaz)"
@@ -463,22 +463,22 @@
                 "name": "Natężenie prądu (Woda)"
             },
             "energyindex_water_cooling": {
-                "name": "Wskazanie licznika zużycia (Woda, Chłodzenie)"
+                "name": "Wskazanie licznika chłodzenie woda"
             },
             "energyindex_water_heating": {
-                "name": "Wskazanie licznika zużycia (Woda, Ogrzewanie)"
+                "name": "Wskazanie licznika ogrzewanie woda"
             },
             "energyindex_water_hotwater": {
-                "name": "Wskazanie licznika zużycia (Woda, Gorąca woda)"
+                "name": "Wskazanie licznika gorąca woda woda"
             },
             "energyindex_water_other": {
-                "name": "Wskazanie licznika zużycia (Woda, Pozostałe)"
+                "name": "Wskazanie licznika pozostałe woda"
             },
             "energyindex_water_outlet": {
-                "name": "Wskazanie licznika zużycia (Woda, Gniazda)"
+                "name": "Wskazanie licznika gniazda woda"
             },
             "energyindex_water_total": {
-                "name": "Wskazanie licznika zużycia (Woda, Łącznie)"
+                "name": "Wskazanie licznika łącznie woda"
             },
             "energyindex_water_w": {
                 "name": "Moc (Woda)"
@@ -493,13 +493,13 @@
                 "name": "Energia (Gorąca woda)"
             },
             "energyindexheatgas": {
-                "name": "Wskazanie licznika zużycia (Gaz, Ogrzewanie)"
+                "name": "Wskazanie licznika ogrzewanie gaz"
             },
             "energyindexheatwatt": {
                 "name": "Energia (Ogrzewanie)"
             },
             "energyindexti1": {
-                "name": "Wskazanie licznika zużycia (TI1)"
+                "name": "Wskazanie licznika TI1"
             },
             "energyindexti1watt": {
                 "name": "Energia (TI1)"
@@ -1057,7 +1057,7 @@
                 "name": "Skala — Moc (Elektryczność) (minimum)"
             },
             "energytotindexwatt": {
-                "name": "Wskazanie licznika zużycia (Elektryczność)"
+                "name": "Wskazanie licznika el."
             },
             "gsmlevel": {
                 "name": "Poziom sygnału sieci komórkowej"
@@ -1646,16 +1646,16 @@
                 "name": "Temperatura podczas nieobecności"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maksymalna temperatura zadana chłodzenia"
+                "name": "Maksymalna temperatura zadana chłodzenia (limit urządzenia)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maksymalna temperatura zadana ogrzewania"
+                "name": "Maksymalna temperatura zadana ogrzewania (limit urządzenia)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimalna temperatura zadana chłodzenia"
+                "name": "Minimalna temperatura zadana chłodzenia (limit urządzenia)"
             },
             "absminheatsetpoint": {
-                "name": "Minimalna temperatura zadana ogrzewania"
+                "name": "Minimalna temperatura zadana ogrzewania (limit urządzenia)"
             },
             "ackeventcmd": {
                 "name": "Polecenie potwierdzenia zdarzeń"
@@ -2370,6 +2370,9 @@
             },
             "zones": {
                 "name": "Strefy alarmu"
+            },
+            "climate_command_pending": {
+                "name": "Polecenie w toku"
             }
         },
         "number": {
@@ -2380,16 +2383,16 @@
                 "name": "Temperatura podczas nieobecności"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maksymalna temperatura zadana chłodzenia"
+                "name": "Maksymalna temperatura zadana chłodzenia (limit urządzenia)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maksymalna temperatura zadana ogrzewania"
+                "name": "Maksymalna temperatura zadana ogrzewania (limit urządzenia)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimalna temperatura zadana chłodzenia"
+                "name": "Minimalna temperatura zadana chłodzenia (limit urządzenia)"
             },
             "absminheatsetpoint": {
-                "name": "Minimalna temperatura zadana ogrzewania"
+                "name": "Minimalna temperatura zadana ogrzewania (limit urządzenia)"
             },
             "ackeventcmd": {
                 "name": "Polecenie potwierdzenia zdarzeń"
@@ -3087,16 +3090,16 @@
                 "name": "Temperatura podczas nieobecności"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maksymalna temperatura zadana chłodzenia"
+                "name": "Maksymalna temperatura zadana chłodzenia (limit urządzenia)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maksymalna temperatura zadana ogrzewania"
+                "name": "Maksymalna temperatura zadana ogrzewania (limit urządzenia)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimalna temperatura zadana chłodzenia"
+                "name": "Minimalna temperatura zadana chłodzenia (limit urządzenia)"
             },
             "absminheatsetpoint": {
-                "name": "Minimalna temperatura zadana ogrzewania"
+                "name": "Minimalna temperatura zadana ogrzewania (limit urządzenia)"
             },
             "ackeventcmd": {
                 "name": "Polecenie potwierdzenia zdarzeń"
@@ -3876,6 +3879,12 @@
             "identify_device": {
                 "name": "Zidentyfikuj urządzenie"
             },
+            "favourite_position_1": {
+                "name": "Przywołaj ulubioną pozycję 1"
+            },
+            "favourite_position_2": {
+                "name": "Przywołaj ulubioną pozycję 2"
+            },
             "refresh_energy": {
                 "name": "Odśwież dane energii"
             },
@@ -3927,6 +3936,20 @@
             "tywell_shutters_night": {
                 "name": "Rolety nocne"
             }
+        }
+    },
+    "exceptions": {
+        "invalid_target_temperature": {
+            "message": "Temperatura zadana musi być liczbą skończoną."
+        },
+        "target_temperature_out_of_range": {
+            "message": "Żądana temperatura {temperature} jest poza limitami urządzenia (od {minimum} do {maximum})."
+        },
+        "stored_alarm_pin_missing": {
+            "message": "Zapisz kod PIN alarmu w ustawieniach tej integracji TYDOM przed użyciem tej akcji."
+        },
+        "unsupported_stored_pin_alarm_mode": {
+            "message": "Wybierz tryb Poza domem, W domu, Noc lub Rozbrojony dla akcji z zapisanym kodem PIN."
         }
     },
     "device": {

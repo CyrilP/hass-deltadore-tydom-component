@@ -1,6 +1,7 @@
 """Home assistant entites."""
 
 from typing import Any
+from collections.abc import Awaitable, Callable
 import asyncio
 from contextlib import suppress
 import inspect
@@ -89,6 +90,7 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.components.text import TextEntity, TextEntityDescription, TextMode
 from homeassistant.components.event import EventDeviceClass, EventEntity
 from .entity_names import set_entity_name
+from .climate_commands import ClimateCommandTracker
 from .tydom.tydom_devices import (
     Tydom,
     TydomDevice,
@@ -250,6 +252,13 @@ def _get_hub_for_tydom_device(hass: Any, device: Any):
     return None
 
 
+def _get_entity_registry_api():
+    """Import the entity registry only when generic sensor restoration needs it."""
+    from homeassistant.helpers import entity_registry
+
+    return entity_registry
+
+
 class HAEntity:
     """Generic abstract HA entity."""
 
@@ -366,6 +375,21 @@ class HAEntity:
         if registered_sensors is None:
             return sensors
 
+        # Generic sensors are discovered from live values. A gateway may omit
+        # a value from its first /devices/data response after a Home Assistant
+        # restart even though this integration created that sensor previously.
+        # Re-add known, supported attributes from this entry's registry so the
+        # existing entity remains available to receive the next live update.
+        restored_attributes = self.__dict__.get("_restored_sensor_attributes")
+        if restored_attributes is None:
+            restored_attributes = self._get_registered_sensor_attributes()
+            if restored_attributes is not None:
+                self._restored_sensor_attributes = restored_attributes
+            else:
+                # Hub setup can call sensor discovery before the config entry is
+                # present in hass.data. Retry on the next device update.
+                restored_attributes = set()
+
         registry_targets = self.__dict__.get("_sensor_registry_targets") or ()
         registrations_by_target = self.__dict__.setdefault(
             "_registered_sensors_by_target", {}
@@ -392,8 +416,14 @@ class HAEntity:
             target_registrations = [(None, None, "", None, registered_sensors)]
 
         consumed_attrs = self._get_consumed_attrs()
-        for attribute, value in self._device.__dict__.items():
-            if attribute[:1] != "_" and value is not None:
+        device_attributes = self._device.__dict__.copy()
+        for attribute in restored_attributes:
+            device_attributes.setdefault(attribute, None)
+
+        for attribute, value in device_attributes.items():
+            if attribute[:1] != "_" and (
+                value is not None or attribute in restored_attributes
+            ):
                 alt_name = attribute.split("_")[0]
                 if attribute in self.filtered_attrs or alt_name in self.filtered_attrs:
                     continue
@@ -489,6 +519,36 @@ class HAEntity:
                     )
 
         return sensors
+
+    def _get_registered_sensor_attributes(self) -> set[str] | None:
+        """Return known generic sensor attributes missing from the live payload."""
+        if self.hass is None or self._device is None:
+            return None
+
+        hub = self._get_hub()
+        entry = getattr(hub, "_entry", None)
+        if entry is None:
+            return None
+
+        supported_attributes = (
+            set(self.sensor_classes) | set(self.state_classes) | set(self.units)
+        )
+        if not supported_attributes:
+            return set()
+
+        prefix = f"{self._device.device_id}_"
+        entity_registry = _get_entity_registry_api()
+        registry = entity_registry.async_get(self.hass)
+        return {
+            registry_entry.unique_id.removeprefix(prefix)
+            for registry_entry in entity_registry.async_entries_for_config_entry(
+                registry, entry.entry_id
+            )
+            if registry_entry.domain == "sensor"
+            and registry_entry.platform == DOMAIN
+            and registry_entry.unique_id.startswith(prefix)
+            and registry_entry.unique_id.removeprefix(prefix) in supported_attributes
+        }
 
     def _get_consumed_attrs(self) -> set[str]:
         """Return raw attributes already represented by this primary entity.
@@ -2758,7 +2818,7 @@ class HaClimate(ClimateEntity, HAEntity):
             HVACMode.AUTO,
         ]
 
-        if hasattr(self._device, "area_id"):
+        if self._device.is_area_controlled:
             area_modes = self._device.area_hvac_modes()
             self._attr_hvac_modes = [HVACMode.OFF]
             if "HEATING" in area_modes or "NORMAL" in area_modes:
@@ -2918,7 +2978,7 @@ class HaClimate(ClimateEntity, HAEntity):
             # TRV-backed areas and Typass ATL zones. Area-derived entities
             # build their mode list from area_hvac_modes() above, which can
             # include COOL, so they must keep it.
-            and not hasattr(self._device, "area_id")
+            and not self._device.is_area_controlled
             # Reversible zones (heat pump / AC) reach [off, heat, cool] above
             # from their own enum metadata.  Frost protection is a preset on
             # those, not an off state, and collapsing them here would drop
@@ -3061,9 +3121,11 @@ class HaClimate(ClimateEntity, HAEntity):
 
     def get_sensors(self):
         """Avoid duplicating the source controller's sensors on area proxies."""
-        if self._device.is_derived_area_climate:
-            return []
-        return super().get_sensors()
+        sensors = [] if self._device.is_derived_area_climate else super().get_sensors()
+        if not hasattr(self, "_command_sensor"):
+            self._command_sensor = ClimateCommandPendingSensor(self)
+            sensors.append(self._command_sensor)
+        return sensors
 
     def _supports_absence_mode(self) -> bool:
         """Return whether TYDOM has advertised or reported absence mode."""
@@ -3092,15 +3154,64 @@ class HaClimate(ClimateEntity, HAEntity):
             modes.append(PRESET_NONE)
         return modes
 
+    def _get_command_tracker(self) -> ClimateCommandTracker:
+        """Create the request tracker independently of the device data."""
+        if not hasattr(self, "_command_tracker"):
+            self._command_tracker = ClimateCommandTracker(self._notify_command_entities)
+            self._command_listeners: set[Callable[[], None]] = set()
+        return self._command_tracker
+
+    def _notify_command_entities(self) -> None:
+        """Publish request status immediately without inventing thermostat state."""
+        if getattr(self, "_command_listening", False):
+            self.async_write_ha_state()
+        for listener in tuple(self._command_listeners):
+            listener()
+
+    def _handle_climate_update(self) -> None:
+        """Confirm requests only when TYDOM publishes the actual device state."""
+        self._get_command_tracker().confirm(
+            {
+                "hvac_mode": self.hvac_mode,
+                "temperature": self.target_temperature,
+                "preset_mode": self.preset_mode,
+            }
+        )
+        self.async_write_ha_state()
+
+    async def _async_track_command(
+        self, key: str, value: Any, operation: Awaitable[Any]
+    ) -> None:
+        """Record a request before sending; a completed send is not confirmation."""
+        tracker = self._get_command_tracker()
+        command = tracker.begin(key, value)
+        try:
+            await operation
+        except asyncio.CancelledError:
+            tracker.fail(key, command, cancelled=True)
+            raise
+        except Exception:
+            tracker.fail(key, command)
+            raise
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose outstanding requests alongside the unchanged device state."""
+        tracker = self._get_command_tracker()
+        return {"command_pending": tracker.pending, **tracker.attributes}
+
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
         await super().async_added_to_hass()
-        self._device.register_callback(self.async_write_ha_state)
+        self._command_listening = True
+        self._device.register_callback(self._handle_climate_update)
         self._device._ha_device = self
 
     async def async_will_remove_from_hass(self) -> None:
         """Remove the push callback registered in async_added_to_hass."""
-        self._device.remove_callback(self.async_write_ha_state)
+        self._command_listening = False
+        self._device.remove_callback(self._handle_climate_update)
+        self._get_command_tracker().close()
         if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
             self._device._ha_device = None
         await super().async_will_remove_from_hass()
@@ -3126,26 +3237,24 @@ class HaClimate(ClimateEntity, HAEntity):
 
     @property
     def min_temp(self) -> float:
-        """Return the live minimum target temperature when area-backed."""
-        if hasattr(self._device, "area_id"):
-            minimum, _ = self._device.area_temperature_limits()
-            if minimum is not None:
-                return minimum
+        """Return the device's live minimum target temperature."""
+        minimum, _ = self._device.temperature_limits()
+        if minimum is not None:
+            return minimum
         return super().min_temp
 
     @property
     def max_temp(self) -> float:
-        """Return the live maximum target temperature when area-backed."""
-        if hasattr(self._device, "area_id"):
-            _, maximum = self._device.area_temperature_limits()
-            if maximum is not None:
-                return maximum
+        """Return the device's live maximum target temperature."""
+        _, maximum = self._device.temperature_limits()
+        if maximum is not None:
+            return maximum
         return super().max_temp
 
     @property
     def target_temperature_step(self) -> float | None:
         """Return the area controller's advertised temperature step."""
-        if hasattr(self._device, "area_id"):
+        if self._device.is_area_controlled:
             step = self._device.area_temperature_step()
             if step is not None:
                 return step
@@ -3284,7 +3393,10 @@ class HaClimate(ClimateEntity, HAEntity):
     def current_humidity(self) -> float | None:
         """Return the current humidity when the device advertises hygroIn."""
         metadata = getattr(self._device, "_metadata", None)
-        if metadata is None or "hygroIn" not in metadata:
+        has_area_humidity = getattr(
+            self._device, "_endpoint_controls_own_thermostat", False
+        )
+        if not has_area_humidity and (metadata is None or "hygroIn" not in metadata):
             return None
 
         humidity = getattr(self._device, "hygroIn", None)
@@ -3298,7 +3410,7 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature currently set to be reached."""
-        if hasattr(self._device, "area_id"):
+        if self._device.is_area_controlled:
             setpoint = getattr(
                 self._device, self._device.area_setpoint_attribute(), None
             )
@@ -3358,19 +3470,31 @@ class HaClimate(ClimateEntity, HAEntity):
             # default to Comfort when coming from STOP; the level is chosen via
             # preset_mode (comfort/eco/away).
             if hvac_mode == HVACMode.OFF:
-                await self._device.set_thermic_level("STOP")
+                await self._async_track_command(
+                    "hvac_mode", hvac_mode, self._device.set_thermic_level("STOP")
+                )
             elif getattr(self._device, "thermicLevel", None) in (None, "STOP"):
-                await self._device.set_thermic_level("COMFORT")
+                await self._async_track_command(
+                    "hvac_mode", hvac_mode, self._device.set_thermic_level("COMFORT")
+                )
             return
         if self._uses_local_mode and hvac_mode in (HVACMode.OFF, HVACMode.HEAT):
             # Drive the same register the app does.  Writing comfortMode STOP
             # instead would stop the zone through the season register, which is
             # not the state the app's on/off button produces.
-            await self._device.set_local_mode(
-                "ANTI_FROST" if hvac_mode == HVACMode.OFF else "NORMAL"
+            await self._async_track_command(
+                "hvac_mode",
+                hvac_mode,
+                self._device.set_local_mode(
+                    "ANTI_FROST" if hvac_mode == HVACMode.OFF else "NORMAL"
+                ),
             )
             return
-        await self._device.set_hvac_mode(self.dict_modes_ha_to_dd[hvac_mode])
+        await self._async_track_command(
+            "hvac_mode",
+            hvac_mode,
+            self._device.set_hvac_mode(self.dict_modes_ha_to_dd[hvac_mode]),
+        )
 
     @property
     def preset_mode(self) -> str | None:
@@ -3423,7 +3547,11 @@ class HaClimate(ClimateEntity, HAEntity):
         """Set new target preset mode."""
         if self._uses_local_mode:
             if preset_mode == PRESET_AWAY:
-                await self._device.set_local_mode("ABSENCE")
+                await self._async_track_command(
+                    "preset_mode",
+                    preset_mode,
+                    self._device.set_local_mode("ABSENCE"),
+                )
             elif (
                 preset_mode == PRESET_NONE
                 and getattr(self._device, "localMode", None) == "ABSENCE"
@@ -3431,16 +3559,30 @@ class HaClimate(ClimateEntity, HAEntity):
                 # Clearing the preset lifts ABSENCE only.  A zone parked at
                 # ANTI_FROST or STOP is off, and writing NORMAL there would
                 # switch heating on as a side effect of clearing a preset.
-                await self._device.set_local_mode("NORMAL")
+                await self._async_track_command(
+                    "preset_mode",
+                    preset_mode,
+                    self._device.set_local_mode("NORMAL"),
+                )
             return
         if getattr(self, "_is_filpilote", False):
             # Drive the pilot-wire order register directly (as the app does).
             if preset_mode == PRESET_COMFORT:
-                await self._device.set_thermic_level("COMFORT")
+                await self._async_track_command(
+                    "preset_mode",
+                    preset_mode,
+                    self._device.set_thermic_level("COMFORT"),
+                )
             elif preset_mode == PRESET_ECO:
-                await self._device.set_thermic_level("ECO")
+                await self._async_track_command(
+                    "preset_mode", preset_mode, self._device.set_thermic_level("ECO")
+                )
             elif preset_mode == PRESET_AWAY:
-                await self._device.set_thermic_level("ANTI_FROST")
+                await self._async_track_command(
+                    "preset_mode",
+                    preset_mode,
+                    self._device.set_thermic_level("ANTI_FROST"),
+                )
             elif preset_mode == PRESET_NONE and (
                 self._device._metadata is not None
                 and "thermicLevel" in self._device._metadata
@@ -3451,7 +3593,9 @@ class HaClimate(ClimateEntity, HAEntity):
                 # actually advertises it (e.g. Calybox 230). Zones whose
                 # enum doesn't include AUTO (e.g. some RF 6600 units) are
                 # left untouched, matching the previous no-op behaviour.
-                await self._device.set_thermic_level("AUTO")
+                await self._async_track_command(
+                    "preset_mode", preset_mode, self._device.set_thermic_level("AUTO")
+                )
             return
         if getattr(self, "_uses_local_mode_presets", False):
             # Drive the rw localMode register directly for PAC / boiler zones.
@@ -3489,16 +3633,24 @@ class HaClimate(ClimateEntity, HAEntity):
                 and "ABSENCE" in local_mode_metadata.get("enum_values", [])
                 and "w" in local_mode_metadata.get("permission", "")
             ):
-                if hasattr(self._device, "area_id"):
-                    await self._device._tydom_client.put_area_data(
-                        self._device.area_id, "localMode", "ABSENCE"
+                if self._device.is_area_controlled:
+                    await self._async_track_command(
+                        "preset_mode",
+                        preset_mode,
+                        self._device._tydom_client.put_area_data(
+                            self._device.area_id, "localMode", "ABSENCE"
+                        ),
                     )
                 else:
-                    await self._device._tydom_client.put_devices_data(
-                        self._device._id,
-                        self._device._endpoint,
-                        "localMode",
-                        "ABSENCE",
+                    await self._async_track_command(
+                        "preset_mode",
+                        preset_mode,
+                        self._device._tydom_client.put_devices_data(
+                            self._device._id,
+                            self._device._endpoint,
+                            "localMode",
+                            "ABSENCE",
+                        ),
                     )
             return
         if preset_mode == PRESET_NONE:
@@ -3511,8 +3663,15 @@ class HaClimate(ClimateEntity, HAEntity):
             and tydom_preset
             in self._device._metadata["comfortMode"].get("enum_values", [])
         ):
-            await self._device._tydom_client.put_devices_data(
-                self._device._id, self._device._endpoint, "comfortMode", tydom_preset
+            await self._async_track_command(
+                "preset_mode",
+                preset_mode,
+                self._device._tydom_client.put_devices_data(
+                    self._device._id,
+                    self._device._endpoint,
+                    "comfortMode",
+                    tydom_preset,
+                ),
             )
         # Otherwise try thermicLevel
         elif (
@@ -3521,20 +3680,34 @@ class HaClimate(ClimateEntity, HAEntity):
             and tydom_preset
             in self._device._metadata["thermicLevel"].get("enum_values", [])
         ):
-            await self._device._tydom_client.put_devices_data(
-                self._device._id, self._device._endpoint, "thermicLevel", tydom_preset
+            await self._async_track_command(
+                "preset_mode",
+                preset_mode,
+                self._device._tydom_client.put_devices_data(
+                    self._device._id,
+                    self._device._endpoint,
+                    "thermicLevel",
+                    tydom_preset,
+                ),
             )
 
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
         temperature = kwargs.get(ATTR_TEMPERATURE)
+        self._device.validate_temperature(temperature)
         if self._device.is_area_trv:
             # Area thermostat commands use a JSON numeric value. The physical
             # endpoint does not advertise setpoint metadata itself, so sending
             # a string here can leave a perfectly valid local override ignored.
-            await self._device.set_temperature(float(temperature))
+            await self._async_track_command(
+                "temperature",
+                temperature,
+                self._device.set_temperature(float(temperature)),
+            )
             return
-        await self._device.set_temperature(str(temperature))
+        await self._async_track_command(
+            "temperature", temperature, self._device.set_temperature(str(temperature))
+        )
 
     @property
     def fan_mode(self) -> str | None:
@@ -3561,6 +3734,53 @@ class HaClimate(ClimateEntity, HAEntity):
             LOGGER.error("Invalid fan mode requested: %s", fan_mode)
             return
         await self._device.set_fan_speed(speed)
+
+
+class ClimateCommandPendingSensor(BinarySensorBase):
+    """Show whether a climate command still lacks device confirmation."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, climate: HaClimate) -> None:
+        """Keep this status entity separate from raw TYDOM attributes."""
+        super().__init__(climate._device)
+        self._climate = climate
+        self._tracker = climate._get_command_tracker()
+        self._attr_unique_id = f"{self._device.device_id}_climate_command_pending"
+        set_entity_name(self, "climate_command_pending")
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Group area proxies with their climate's physical controller."""
+        return self._climate.device_info
+
+    @property
+    def available(self) -> bool:
+        """Follow availability of the thermostat that owns the request."""
+        return self._climate.available
+
+    @property
+    def is_on(self) -> bool:
+        """Keep the indicator on until confirmation or a failed send."""
+        return self._tracker.pending
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Distinguish waiting from a request still unconfirmed after two minutes."""
+        return self._tracker.attributes
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to request changes without replacing the primary entity."""
+        await BinarySensorEntity.async_added_to_hass(self)
+        self._climate._command_listeners.add(self.async_write_ha_state)
+        self._device.register_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Release the status subscription when this entity is removed."""
+        self._climate._command_listeners.discard(self.async_write_ha_state)
+        self._device.remove_callback(self.async_write_ha_state)
+        await BinarySensorEntity.async_will_remove_from_hass(self)
 
 
 class HaOpeningBinarySensor(BinarySensorEntity, HAEntity):
@@ -4307,6 +4527,8 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         """Return whether an actor event describes the current HA alarm state."""
         if target == "disarmed":
             return state == AlarmControlPanelState.DISARMED
+        if target == "armed_away":
+            return state == AlarmControlPanelState.ARMED_AWAY
         return target == "armed" and state in {
             AlarmControlPanelState.ARMED_AWAY,
             AlarmControlPanelState.ARMED_HOME,
@@ -7511,6 +7733,25 @@ class HAButton(ButtonEntity, HAEntity):
             await self._device._tydom_client.put_devices_data(
                 self._device._id, self._device._endpoint, self._action_method, "ON"
             )
+
+
+class HACoverFavouriteButton(HAButton):
+    """Button to recall one gateway-advertised cover favourite position."""
+
+    def __init__(self, device: TydomShutter, hass, number: int) -> None:
+        """Initialise the favourite-position button."""
+        self._favourite_number = number
+        super().__init__(
+            device,
+            hass,
+            f"favourite_position_{number}",
+            "recall_favourite_position",
+            icon="mdi:star" if number == 1 else "mdi:star-outline",
+        )
+
+    async def async_press(self) -> None:
+        """Recall this favourite position."""
+        await self._device.recall_favourite_position(self._favourite_number)
 
 
 ASSOCIATION_COMMAND = "modeAsso"

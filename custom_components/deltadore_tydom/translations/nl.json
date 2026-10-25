@@ -13,16 +13,16 @@
                 "name": "Afwezigheidstemperatuur"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximale insteltemperatuur koeling"
+                "name": "Maximale insteltemperatuur voor koeling (apparaatlimiet)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximale insteltemperatuur verwarming"
+                "name": "Maximale insteltemperatuur voor verwarming (apparaatlimiet)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimale insteltemperatuur koeling"
+                "name": "Minimale insteltemperatuur voor koeling (apparaatlimiet)"
             },
             "absminheatsetpoint": {
-                "name": "Minimale insteltemperatuur verwarming"
+                "name": "Minimale insteltemperatuur voor verwarming (apparaatlimiet)"
             },
             "ackeventcmd": {
                 "name": "Gebeurtenissen bevestigen"
@@ -187,28 +187,28 @@
                 "name": "Energie"
             },
             "energydistrib": {
-                "name": "Verbruiksverdeling"
+                "name": "Verdeling"
             },
             "energydistrib_elec_a": {
                 "name": "Stroomsterkte (Elektriciteit)"
             },
             "energydistrib_elec_cooling": {
-                "name": "Verbruiksverdeling (Elektriciteit, Koeling)"
+                "name": "Verdeling koeling elektr."
             },
             "energydistrib_elec_heating": {
-                "name": "Verbruiksverdeling (Elektriciteit, Verwarming)"
+                "name": "Verdeling verwarming elektr."
             },
             "energydistrib_elec_hotwater": {
-                "name": "Verbruiksverdeling (Elektriciteit, Warm water)"
+                "name": "Verdeling warm water elektr."
             },
             "energydistrib_elec_other": {
-                "name": "Verbruiksverdeling (Elektriciteit, Overig)"
+                "name": "Verdeling overig elektr."
             },
             "energydistrib_elec_outlet": {
-                "name": "Verbruiksverdeling (Elektriciteit, Stekkers)"
+                "name": "Verdeling stekkers elektr."
             },
             "energydistrib_elec_total": {
-                "name": "Verbruiksverdeling (Elektriciteit, Totaal)"
+                "name": "Verdeling totaal elektr."
             },
             "energydistrib_elec_w": {
                 "name": "Vermogen (Elektriciteit)"
@@ -217,22 +217,22 @@
                 "name": "Stroomsterkte (Gas)"
             },
             "energydistrib_gas_cooling": {
-                "name": "Verbruiksverdeling (Gas, Koeling)"
+                "name": "Verdeling koeling gas"
             },
             "energydistrib_gas_heating": {
-                "name": "Verbruiksverdeling (Gas, Verwarming)"
+                "name": "Verdeling verwarming gas"
             },
             "energydistrib_gas_hotwater": {
-                "name": "Verbruiksverdeling (Gas, Warm water)"
+                "name": "Verdeling warm water gas"
             },
             "energydistrib_gas_other": {
-                "name": "Verbruiksverdeling (Gas, Overig)"
+                "name": "Verdeling overig gas"
             },
             "energydistrib_gas_outlet": {
-                "name": "Verbruiksverdeling (Gas, Stekkers)"
+                "name": "Verdeling stekkers gas"
             },
             "energydistrib_gas_total": {
-                "name": "Verbruiksverdeling (Gas, Totaal)"
+                "name": "Verdeling totaal gas"
             },
             "energydistrib_gas_w": {
                 "name": "Vermogen (Gas)"
@@ -241,22 +241,22 @@
                 "name": "Stroomsterkte (Gas)"
             },
             "energydistrib_gaz_cooling": {
-                "name": "Verbruiksverdeling (Gas, Koeling)"
+                "name": "Verdeling koeling gas"
             },
             "energydistrib_gaz_heating": {
-                "name": "Verbruiksverdeling (Gas, Verwarming)"
+                "name": "Verdeling verwarming gas"
             },
             "energydistrib_gaz_hotwater": {
-                "name": "Verbruiksverdeling (Gas, Warm water)"
+                "name": "Verdeling warm water gas"
             },
             "energydistrib_gaz_other": {
-                "name": "Verbruiksverdeling (Gas, Overig)"
+                "name": "Verdeling overig gas"
             },
             "energydistrib_gaz_outlet": {
-                "name": "Verbruiksverdeling (Gas, Stekkers)"
+                "name": "Verdeling stekkers gas"
             },
             "energydistrib_gaz_total": {
-                "name": "Verbruiksverdeling (Gas, Totaal)"
+                "name": "Verdeling totaal gas"
             },
             "energydistrib_gaz_w": {
                 "name": "Vermogen (Gas)"
@@ -265,22 +265,22 @@
                 "name": "Stroomsterkte (Water)"
             },
             "energydistrib_water_cooling": {
-                "name": "Verbruiksverdeling (Water, Koeling)"
+                "name": "Verdeling koeling water"
             },
             "energydistrib_water_heating": {
-                "name": "Verbruiksverdeling (Water, Verwarming)"
+                "name": "Verdeling verwarming water"
             },
             "energydistrib_water_hotwater": {
-                "name": "Verbruiksverdeling (Water, Warm water)"
+                "name": "Verdeling warm water water"
             },
             "energydistrib_water_other": {
-                "name": "Verbruiksverdeling (Water, Overig)"
+                "name": "Verdeling overig water"
             },
             "energydistrib_water_outlet": {
-                "name": "Verbruiksverdeling (Water, Stekkers)"
+                "name": "Verdeling stekkers water"
             },
             "energydistrib_water_total": {
-                "name": "Verbruiksverdeling (Water, Totaal)"
+                "name": "Verdeling totaal water"
             },
             "energydistrib_water_w": {
                 "name": "Vermogen (Water)"
@@ -385,28 +385,28 @@
                 "name": "Vermogen (Water)"
             },
             "energyindex": {
-                "name": "Verbruikstellerstand"
+                "name": "Index"
             },
             "energyindex_elec_a": {
                 "name": "Stroomsterkte (Elektriciteit)"
             },
             "energyindex_elec_cooling": {
-                "name": "Verbruikstellerstand (Elektriciteit, Koeling)"
+                "name": "Index koeling elektr."
             },
             "energyindex_elec_heating": {
-                "name": "Verbruikstellerstand (Elektriciteit, Verwarming)"
+                "name": "Index verwarming elektr."
             },
             "energyindex_elec_hotwater": {
-                "name": "Verbruikstellerstand (Elektriciteit, Warm water)"
+                "name": "Index warm water elektr."
             },
             "energyindex_elec_other": {
-                "name": "Verbruikstellerstand (Elektriciteit, Overig)"
+                "name": "Index overig elektr."
             },
             "energyindex_elec_outlet": {
-                "name": "Verbruikstellerstand (Elektriciteit, Stekkers)"
+                "name": "Index stekkers elektr."
             },
             "energyindex_elec_total": {
-                "name": "Verbruikstellerstand (Elektriciteit, Totaal)"
+                "name": "Index totaal elektr."
             },
             "energyindex_elec_w": {
                 "name": "Vermogen (Elektriciteit)"
@@ -415,22 +415,22 @@
                 "name": "Stroomsterkte (Gas)"
             },
             "energyindex_gas_cooling": {
-                "name": "Verbruikstellerstand (Gas, Koeling)"
+                "name": "Index koeling gas"
             },
             "energyindex_gas_heating": {
-                "name": "Verbruikstellerstand (Gas, Verwarming)"
+                "name": "Index verwarming gas"
             },
             "energyindex_gas_hotwater": {
-                "name": "Verbruikstellerstand (Gas, Warm water)"
+                "name": "Index warm water gas"
             },
             "energyindex_gas_other": {
-                "name": "Verbruikstellerstand (Gas, Overig)"
+                "name": "Index overig gas"
             },
             "energyindex_gas_outlet": {
-                "name": "Verbruikstellerstand (Gas, Stekkers)"
+                "name": "Index stekkers gas"
             },
             "energyindex_gas_total": {
-                "name": "Verbruikstellerstand (Gas, Totaal)"
+                "name": "Index totaal gas"
             },
             "energyindex_gas_w": {
                 "name": "Vermogen (Gas)"
@@ -439,22 +439,22 @@
                 "name": "Stroomsterkte (Gas)"
             },
             "energyindex_gaz_cooling": {
-                "name": "Verbruikstellerstand (Gas, Koeling)"
+                "name": "Index koeling gas"
             },
             "energyindex_gaz_heating": {
-                "name": "Verbruikstellerstand (Gas, Verwarming)"
+                "name": "Index verwarming gas"
             },
             "energyindex_gaz_hotwater": {
-                "name": "Verbruikstellerstand (Gas, Warm water)"
+                "name": "Index warm water gas"
             },
             "energyindex_gaz_other": {
-                "name": "Verbruikstellerstand (Gas, Overig)"
+                "name": "Index overig gas"
             },
             "energyindex_gaz_outlet": {
-                "name": "Verbruikstellerstand (Gas, Stekkers)"
+                "name": "Index stekkers gas"
             },
             "energyindex_gaz_total": {
-                "name": "Verbruikstellerstand (Gas, Totaal)"
+                "name": "Index totaal gas"
             },
             "energyindex_gaz_w": {
                 "name": "Vermogen (Gas)"
@@ -463,22 +463,22 @@
                 "name": "Stroomsterkte (Water)"
             },
             "energyindex_water_cooling": {
-                "name": "Verbruikstellerstand (Water, Koeling)"
+                "name": "Index koeling water"
             },
             "energyindex_water_heating": {
-                "name": "Verbruikstellerstand (Water, Verwarming)"
+                "name": "Index verwarming water"
             },
             "energyindex_water_hotwater": {
-                "name": "Verbruikstellerstand (Water, Warm water)"
+                "name": "Index warm water water"
             },
             "energyindex_water_other": {
-                "name": "Verbruikstellerstand (Water, Overig)"
+                "name": "Index overig water"
             },
             "energyindex_water_outlet": {
-                "name": "Verbruikstellerstand (Water, Stekkers)"
+                "name": "Index stekkers water"
             },
             "energyindex_water_total": {
-                "name": "Verbruikstellerstand (Water, Totaal)"
+                "name": "Index totaal water"
             },
             "energyindex_water_w": {
                 "name": "Vermogen (Water)"
@@ -493,13 +493,13 @@
                 "name": "Energie (Warm water)"
             },
             "energyindexheatgas": {
-                "name": "Verbruikstellerstand (Gas, Verwarming)"
+                "name": "Index verwarming gas"
             },
             "energyindexheatwatt": {
                 "name": "Energie (Verwarming)"
             },
             "energyindexti1": {
-                "name": "Verbruikstellerstand (TI1)"
+                "name": "Index TI1"
             },
             "energyindexti1watt": {
                 "name": "Energie (TI1)"
@@ -1057,7 +1057,7 @@
                 "name": "Schaal — Vermogen (Elektriciteit) (minimum)"
             },
             "energytotindexwatt": {
-                "name": "Verbruikstellerstand (Elektriciteit)"
+                "name": "Index elektr."
             },
             "gsmlevel": {
                 "name": "Mobiele signaalsterkte"
@@ -1646,16 +1646,16 @@
                 "name": "Afwezigheidstemperatuur"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximale insteltemperatuur koeling"
+                "name": "Maximale insteltemperatuur voor koeling (apparaatlimiet)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximale insteltemperatuur verwarming"
+                "name": "Maximale insteltemperatuur voor verwarming (apparaatlimiet)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimale insteltemperatuur koeling"
+                "name": "Minimale insteltemperatuur voor koeling (apparaatlimiet)"
             },
             "absminheatsetpoint": {
-                "name": "Minimale insteltemperatuur verwarming"
+                "name": "Minimale insteltemperatuur voor verwarming (apparaatlimiet)"
             },
             "ackeventcmd": {
                 "name": "Gebeurtenissen bevestigen"
@@ -2370,6 +2370,9 @@
             },
             "zones": {
                 "name": "Alarmzones"
+            },
+            "climate_command_pending": {
+                "name": "Opdracht in behandeling"
             }
         },
         "number": {
@@ -2380,16 +2383,16 @@
                 "name": "Afwezigheidstemperatuur"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximale insteltemperatuur koeling"
+                "name": "Maximale insteltemperatuur voor koeling (apparaatlimiet)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximale insteltemperatuur verwarming"
+                "name": "Maximale insteltemperatuur voor verwarming (apparaatlimiet)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimale insteltemperatuur koeling"
+                "name": "Minimale insteltemperatuur voor koeling (apparaatlimiet)"
             },
             "absminheatsetpoint": {
-                "name": "Minimale insteltemperatuur verwarming"
+                "name": "Minimale insteltemperatuur voor verwarming (apparaatlimiet)"
             },
             "ackeventcmd": {
                 "name": "Gebeurtenissen bevestigen"
@@ -3087,16 +3090,16 @@
                 "name": "Afwezigheidstemperatuur"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximale insteltemperatuur koeling"
+                "name": "Maximale insteltemperatuur voor koeling (apparaatlimiet)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximale insteltemperatuur verwarming"
+                "name": "Maximale insteltemperatuur voor verwarming (apparaatlimiet)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimale insteltemperatuur koeling"
+                "name": "Minimale insteltemperatuur voor koeling (apparaatlimiet)"
             },
             "absminheatsetpoint": {
-                "name": "Minimale insteltemperatuur verwarming"
+                "name": "Minimale insteltemperatuur voor verwarming (apparaatlimiet)"
             },
             "ackeventcmd": {
                 "name": "Gebeurtenissen bevestigen"
@@ -3876,6 +3879,12 @@
             "identify_device": {
                 "name": "Apparaat identificeren"
             },
+            "favourite_position_1": {
+                "name": "Favorietpositie 1 oproepen"
+            },
+            "favourite_position_2": {
+                "name": "Favorietpositie 2 oproepen"
+            },
             "refresh_energy": {
                 "name": "Energiegegevens vernieuwen"
             },
@@ -3927,6 +3936,20 @@
             "tywell_shutters_night": {
                 "name": "Rolluiken nacht"
             }
+        }
+    },
+    "exceptions": {
+        "invalid_target_temperature": {
+            "message": "De gewenste temperatuur moet een eindig getal zijn."
+        },
+        "target_temperature_out_of_range": {
+            "message": "De gevraagde temperatuur {temperature} valt buiten de apparaatgrenzen ({minimum} tot {maximum})."
+        },
+        "stored_alarm_pin_missing": {
+            "message": "Sla een alarm-pincode op in de instellingen van deze TYDOM-integratie voordat je deze actie gebruikt."
+        },
+        "unsupported_stored_pin_alarm_mode": {
+            "message": "Kies Afwezig, Thuis, Nacht of Uitschakelen voor de actie met opgeslagen pincode."
         }
     },
     "device": {

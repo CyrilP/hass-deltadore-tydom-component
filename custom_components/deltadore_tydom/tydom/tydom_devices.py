@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 
 from ..const import LOGGER, validate_value_with_metadata
@@ -449,6 +450,39 @@ class TydomShutter(TydomDevice):
     """Represents a shutter."""
 
     @property
+    def position_commands(self) -> frozenset[str]:
+        """Return writable position commands advertised by the gateway."""
+        if not isinstance(self._metadata, dict):
+            return frozenset()
+
+        metadata = self._metadata.get("positionCmd")
+        if not isinstance(metadata, dict):
+            return frozenset()
+        if "w" not in str(metadata.get("permission", "")).lower():
+            return frozenset()
+
+        values = metadata.get("enum_values")
+        if not isinstance(values, (list, tuple, set)):
+            return frozenset()
+        return frozenset(str(value) for value in values)
+
+    @property
+    def favourite_commands(self) -> frozenset[str]:
+        """Return advertised favourite-position recall commands."""
+        return self.position_commands.intersection({"FAVORIT1", "FAVORIT2"})
+
+    async def recall_favourite_position(self, number: int) -> None:
+        """Recall one supported favourite position."""
+        command = {1: "FAVORIT1", 2: "FAVORIT2"}.get(number)
+        if command is None or command not in self.favourite_commands:
+            raise ValueError(
+                f"Device {self.device_id} does not support favourite position {number}"
+            )
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "positionCmd", command
+        )
+
+    @property
     def is_awning(self) -> bool:
         """Return whether Delta Dore identifies this cover as an awning."""
         return self._type == "awning"
@@ -636,9 +670,16 @@ class TydomBoiler(TydomDevice):
     """Represents a Boiler."""
 
     @property
+    def is_area_controlled(self) -> bool:
+        """Return whether thermostat commands should target its linked area."""
+        return hasattr(self, "area_id") and not getattr(
+            self, "_endpoint_controls_own_thermostat", False
+        )
+
+    @property
     def is_area_trv(self) -> bool:
         """Return whether this is a radiator thermostat linked to an area."""
-        return self._type == "sh_hvac" and hasattr(self, "area_id")
+        return self._type == "sh_hvac" and self.is_area_controlled
 
     @property
     def boost_active(self) -> bool:
@@ -685,10 +726,13 @@ class TydomBoiler(TydomDevice):
         )
 
     def area_temperature_limits(self) -> tuple[float | None, float | None]:
-        """Return live area limits, falling back to controller metadata."""
-        if not hasattr(self, "area_id"):
+        """Keep the area-only helper available for existing callers."""
+        if not self.is_area_controlled:
             return (None, None)
+        return self.temperature_limits()
 
+    def temperature_limits(self) -> tuple[float | None, float | None]:
+        """Return current setpoint limits for endpoint and area thermostats."""
         if self.is_area_trv:
             local_setpoint = (self._metadata or {}).get("localSetpoint", {})
             return (
@@ -700,14 +744,16 @@ class TydomBoiler(TydomDevice):
                 else None,
             )
 
-        authorization = getattr(self, "authorization", None)
+        authorization = getattr(self, "authorization", None) or getattr(
+            self, "hvacMode", None
+        )
         if authorization == "COOLING":
             live_names = (
                 ("minCoolSetpoint", "minSetpoint"),
                 ("maxCoolSetpoint", "maxSetpoint"),
             )
             metadata_names = ("coolSetpoint", "setpoint")
-        elif authorization == "HEATING":
+        elif authorization in ("HEATING", "NORMAL"):
             live_names = (
                 ("minHeatSetpoint", "minSetpoint"),
                 ("maxHeatSetpoint", "maxSetpoint"),
@@ -749,7 +795,7 @@ class TydomBoiler(TydomDevice):
 
     def area_temperature_step(self) -> float | None:
         """Return the target-temperature step advertised for this area."""
-        if not hasattr(self, "area_id"):
+        if not self.is_area_controlled:
             return None
 
         if self.is_area_trv:
@@ -777,7 +823,7 @@ class TydomBoiler(TydomDevice):
 
     def area_hvac_modes(self) -> set[str]:
         """Return the HVAC modes advertised by an area-backed thermostat."""
-        if not hasattr(self, "area_id"):
+        if not self.is_area_controlled:
             return set()
 
         if self.is_area_trv:
@@ -850,7 +896,7 @@ class TydomBoiler(TydomDevice):
                 )
             return
 
-        if hasattr(self, "area_id"):
+        if self.is_area_controlled:
             area_modes = {
                 "NORMAL": "HEATING",
                 "HEATING": "HEATING",
@@ -979,31 +1025,45 @@ class TydomBoiler(TydomDevice):
         else:
             LOGGER.error("Unknown hvac mode: %s", mode)
 
-    async def set_temperature(self, temperature):
-        """Set target temperature."""
-        if self.is_area_trv:
-            is_valid, error_msg = validate_value_with_metadata(
-                self, "localSetpoint", temperature
-            )
-            if not is_valid:
-                from homeassistant.exceptions import HomeAssistantError
+    def validate_temperature(self, temperature) -> None:
+        """Reject invalid or out-of-range requests before recording or sending them."""
+        try:
+            numeric_temperature = float(temperature)
+        except (TypeError, ValueError):
+            from homeassistant.exceptions import HomeAssistantError
 
-                raise HomeAssistantError(
-                    error_msg or f"Température invalide: {temperature}"
-                )
-            await self._tydom_client.put_area_data_attributes(
-                self.area_id,
-                {
-                    "localSetpoint": temperature,
-                    "localSetpRemainingTimeStr": "UNTIL_SCHED",
-                    "localMode": "LOCAL_SETPOINT",
+            raise HomeAssistantError(
+                translation_domain="deltadore_tydom",
+                translation_key="invalid_target_temperature",
+            ) from None
+        if not math.isfinite(numeric_temperature):
+            from homeassistant.exceptions import HomeAssistantError
+
+            raise HomeAssistantError(
+                translation_domain="deltadore_tydom",
+                translation_key="invalid_target_temperature",
+            )
+        minimum, maximum = self.temperature_limits()
+        if (minimum is not None and numeric_temperature < minimum) or (
+            maximum is not None and numeric_temperature > maximum
+        ):
+            from homeassistant.exceptions import HomeAssistantError
+
+            raise HomeAssistantError(
+                translation_domain="deltadore_tydom",
+                translation_key="target_temperature_out_of_range",
+                translation_placeholders={
+                    "temperature": str(numeric_temperature),
+                    "minimum": str(minimum) if minimum is not None else "-",
+                    "maximum": str(maximum) if maximum is not None else "-",
                 },
             )
-            return
 
         setpoint_attribute = (
-            self.area_setpoint_attribute()
-            if hasattr(self, "area_id")
+            "localSetpoint"
+            if self.is_area_trv
+            else self.area_setpoint_attribute()
+            if self.is_area_controlled
             else self._temperature_command_name()
         )
         # Validate value with metadata
@@ -1017,7 +1077,26 @@ class TydomBoiler(TydomDevice):
                 error_msg or f"Température invalide: {temperature}"
             )
 
-        if hasattr(self, "area_id"):
+    async def set_temperature(self, temperature):
+        """Set target temperature."""
+        self.validate_temperature(temperature)
+        if self.is_area_trv:
+            await self._tydom_client.put_area_data_attributes(
+                self.area_id,
+                {
+                    "localSetpoint": temperature,
+                    "localSetpRemainingTimeStr": "UNTIL_SCHED",
+                    "localMode": "LOCAL_SETPOINT",
+                },
+            )
+            return
+
+        setpoint_attribute = (
+            self.area_setpoint_attribute()
+            if self.is_area_controlled
+            else self._temperature_command_name()
+        )
+        if self.is_area_controlled:
             await self._tydom_client.put_area_data(
                 self.area_id, setpoint_attribute, temperature
             )
@@ -1447,10 +1526,12 @@ class TydomAlarm(TydomDevice):
 
     @staticmethod
     def _alarm_event_target(event: dict[str, Any]) -> str | None:
-        """Return the state family reached by a completed alarm event."""
+        """Return the state targeted by a completed alarm event."""
         name = str(event.get("name") or "").strip().casefold()
         if name == "arret":
             return "disarmed"
+        if name == "marchetotale":
+            return "armed_away"
         if name.startswith("marche"):
             return "armed"
         return None
@@ -1472,7 +1553,7 @@ class TydomAlarm(TydomDevice):
 
     @property
     def latest_alarm_event_target(self) -> str | None:
-        """Return whether the newest actor event armed or disarmed the alarm."""
+        """Return the alarm state targeted by the newest actor event."""
         return self._latest_alarm_event_target
 
     async def update_device(self, device) -> None:

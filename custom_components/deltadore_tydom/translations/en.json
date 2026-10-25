@@ -220,6 +220,12 @@
         },
         "unsupported_stored_pin_alarm_mode": {
             "message": "Choose Away, Home, Night or Disarm for the stored-PIN action."
+        },
+        "invalid_target_temperature": {
+            "message": "The target temperature must be a finite number."
+        },
+        "target_temperature_out_of_range": {
+            "message": "The requested temperature {temperature} is outside the device limits ({minimum} to {maximum})."
         }
     },
     "services": {
@@ -410,6 +416,12 @@
             "identify_device": {
                 "name": "Identify device"
             },
+            "favourite_position_1": {
+                "name": "Recall favourite position 1"
+            },
+            "favourite_position_2": {
+                "name": "Recall favourite position 2"
+            },
             "refresh_energy": {
                 "name": "Refresh energy data"
             },
@@ -440,16 +452,16 @@
                 "name": "Away temperature"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximum cooling setpoint"
+                "name": "Maximum cooling setpoint (device limit)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximum heating setpoint"
+                "name": "Maximum heating setpoint (device limit)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimum cooling setpoint"
+                "name": "Minimum cooling setpoint (device limit)"
             },
             "absminheatsetpoint": {
-                "name": "Minimum heating setpoint"
+                "name": "Minimum heating setpoint (device limit)"
             },
             "ackeventcmd": {
                 "name": "Event acknowledgement command"
@@ -1147,16 +1159,16 @@
                 "name": "Away temperature"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximum cooling setpoint"
+                "name": "Maximum cooling setpoint (device limit)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximum heating setpoint"
+                "name": "Maximum heating setpoint (device limit)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimum cooling setpoint"
+                "name": "Minimum cooling setpoint (device limit)"
             },
             "absminheatsetpoint": {
-                "name": "Minimum heating setpoint"
+                "name": "Minimum heating setpoint (device limit)"
             },
             "ackeventcmd": {
                 "name": "Event acknowledgement command"
@@ -1932,16 +1944,16 @@
                 "name": "Away temperature"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximum cooling setpoint"
+                "name": "Maximum cooling setpoint (device limit)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximum heating setpoint"
+                "name": "Maximum heating setpoint (device limit)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimum cooling setpoint"
+                "name": "Minimum cooling setpoint (device limit)"
             },
             "absminheatsetpoint": {
-                "name": "Minimum heating setpoint"
+                "name": "Minimum heating setpoint (device limit)"
             },
             "ackeventcmd": {
                 "name": "Event acknowledgement command"
@@ -2106,28 +2118,28 @@
                 "name": "Energy"
             },
             "energydistrib": {
-                "name": "Consumption share"
+                "name": "Share"
             },
             "energydistrib_elec_a": {
                 "name": "Current (Electricity)"
             },
             "energydistrib_elec_cooling": {
-                "name": "Consumption share (Electricity, Cooling)"
+                "name": "Elec. cooling share"
             },
             "energydistrib_elec_heating": {
-                "name": "Consumption share (Electricity, Heating)"
+                "name": "Elec. heating share"
             },
             "energydistrib_elec_hotwater": {
-                "name": "Consumption share (Electricity, Hot water)"
+                "name": "Elec. hot water share"
             },
             "energydistrib_elec_other": {
-                "name": "Consumption share (Electricity, Other)"
+                "name": "Elec. other share"
             },
             "energydistrib_elec_outlet": {
-                "name": "Consumption share (Electricity, Outlets)"
+                "name": "Elec. outlets share"
             },
             "energydistrib_elec_total": {
-                "name": "Consumption share (Electricity, Total)"
+                "name": "Elec. total share"
             },
             "energydistrib_elec_w": {
                 "name": "Power (Electricity)"
@@ -2136,22 +2148,22 @@
                 "name": "Current (Gas)"
             },
             "energydistrib_gas_cooling": {
-                "name": "Consumption share (Gas, Cooling)"
+                "name": "Gas cooling share"
             },
             "energydistrib_gas_heating": {
-                "name": "Consumption share (Gas, Heating)"
+                "name": "Gas heating share"
             },
             "energydistrib_gas_hotwater": {
-                "name": "Consumption share (Gas, Hot water)"
+                "name": "Gas hot water share"
             },
             "energydistrib_gas_other": {
-                "name": "Consumption share (Gas, Other)"
+                "name": "Gas other share"
             },
             "energydistrib_gas_outlet": {
-                "name": "Consumption share (Gas, Outlets)"
+                "name": "Gas outlets share"
             },
             "energydistrib_gas_total": {
-                "name": "Consumption share (Gas, Total)"
+                "name": "Gas total share"
             },
             "energydistrib_gas_w": {
                 "name": "Power (Gas)"
@@ -2160,22 +2172,22 @@
                 "name": "Current (Gas)"
             },
             "energydistrib_gaz_cooling": {
-                "name": "Consumption share (Gas, Cooling)"
+                "name": "Gas cooling share"
             },
             "energydistrib_gaz_heating": {
-                "name": "Consumption share (Gas, Heating)"
+                "name": "Gas heating share"
             },
             "energydistrib_gaz_hotwater": {
-                "name": "Consumption share (Gas, Hot water)"
+                "name": "Gas hot water share"
             },
             "energydistrib_gaz_other": {
-                "name": "Consumption share (Gas, Other)"
+                "name": "Gas other share"
             },
             "energydistrib_gaz_outlet": {
-                "name": "Consumption share (Gas, Outlets)"
+                "name": "Gas outlets share"
             },
             "energydistrib_gaz_total": {
-                "name": "Consumption share (Gas, Total)"
+                "name": "Gas total share"
             },
             "energydistrib_gaz_w": {
                 "name": "Power (Gas)"
@@ -2184,22 +2196,22 @@
                 "name": "Current (Water)"
             },
             "energydistrib_water_cooling": {
-                "name": "Consumption share (Water, Cooling)"
+                "name": "Water cooling share"
             },
             "energydistrib_water_heating": {
-                "name": "Consumption share (Water, Heating)"
+                "name": "Water heating share"
             },
             "energydistrib_water_hotwater": {
-                "name": "Consumption share (Water, Hot water)"
+                "name": "Water hot water share"
             },
             "energydistrib_water_other": {
-                "name": "Consumption share (Water, Other)"
+                "name": "Water other share"
             },
             "energydistrib_water_outlet": {
-                "name": "Consumption share (Water, Outlets)"
+                "name": "Water outlets share"
             },
             "energydistrib_water_total": {
-                "name": "Consumption share (Water, Total)"
+                "name": "Water total share"
             },
             "energydistrib_water_w": {
                 "name": "Power (Water)"
@@ -2304,28 +2316,28 @@
                 "name": "Power (Water)"
             },
             "energyindex": {
-                "name": "Consumption index"
+                "name": "Index"
             },
             "energyindex_elec_a": {
                 "name": "Current (Electricity)"
             },
             "energyindex_elec_cooling": {
-                "name": "Consumption index (Electricity, Cooling)"
+                "name": "Elec. cooling index"
             },
             "energyindex_elec_heating": {
-                "name": "Consumption index (Electricity, Heating)"
+                "name": "Elec. heating index"
             },
             "energyindex_elec_hotwater": {
-                "name": "Consumption index (Electricity, Hot water)"
+                "name": "Elec. hot water index"
             },
             "energyindex_elec_other": {
-                "name": "Consumption index (Electricity, Other)"
+                "name": "Elec. other index"
             },
             "energyindex_elec_outlet": {
-                "name": "Consumption index (Electricity, Outlets)"
+                "name": "Elec. outlets index"
             },
             "energyindex_elec_total": {
-                "name": "Consumption index (Electricity, Total)"
+                "name": "Elec. total index"
             },
             "energyindex_elec_w": {
                 "name": "Power (Electricity)"
@@ -2334,22 +2346,22 @@
                 "name": "Current (Gas)"
             },
             "energyindex_gas_cooling": {
-                "name": "Consumption index (Gas, Cooling)"
+                "name": "Gas cooling index"
             },
             "energyindex_gas_heating": {
-                "name": "Consumption index (Gas, Heating)"
+                "name": "Gas heating index"
             },
             "energyindex_gas_hotwater": {
-                "name": "Consumption index (Gas, Hot water)"
+                "name": "Gas hot water index"
             },
             "energyindex_gas_other": {
-                "name": "Consumption index (Gas, Other)"
+                "name": "Gas other index"
             },
             "energyindex_gas_outlet": {
-                "name": "Consumption index (Gas, Outlets)"
+                "name": "Gas outlets index"
             },
             "energyindex_gas_total": {
-                "name": "Consumption index (Gas, Total)"
+                "name": "Gas total index"
             },
             "energyindex_gas_w": {
                 "name": "Power (Gas)"
@@ -2358,22 +2370,22 @@
                 "name": "Current (Gas)"
             },
             "energyindex_gaz_cooling": {
-                "name": "Consumption index (Gas, Cooling)"
+                "name": "Gas cooling index"
             },
             "energyindex_gaz_heating": {
-                "name": "Consumption index (Gas, Heating)"
+                "name": "Gas heating index"
             },
             "energyindex_gaz_hotwater": {
-                "name": "Consumption index (Gas, Hot water)"
+                "name": "Gas hot water index"
             },
             "energyindex_gaz_other": {
-                "name": "Consumption index (Gas, Other)"
+                "name": "Gas other index"
             },
             "energyindex_gaz_outlet": {
-                "name": "Consumption index (Gas, Outlets)"
+                "name": "Gas outlets index"
             },
             "energyindex_gaz_total": {
-                "name": "Consumption index (Gas, Total)"
+                "name": "Gas total index"
             },
             "energyindex_gaz_w": {
                 "name": "Power (Gas)"
@@ -2382,22 +2394,22 @@
                 "name": "Current (Water)"
             },
             "energyindex_water_cooling": {
-                "name": "Consumption index (Water, Cooling)"
+                "name": "Water cooling index"
             },
             "energyindex_water_heating": {
-                "name": "Consumption index (Water, Heating)"
+                "name": "Water heating index"
             },
             "energyindex_water_hotwater": {
-                "name": "Consumption index (Water, Hot water)"
+                "name": "Water hot water index"
             },
             "energyindex_water_other": {
-                "name": "Consumption index (Water, Other)"
+                "name": "Water other index"
             },
             "energyindex_water_outlet": {
-                "name": "Consumption index (Water, Outlets)"
+                "name": "Water outlets index"
             },
             "energyindex_water_total": {
-                "name": "Consumption index (Water, Total)"
+                "name": "Water total index"
             },
             "energyindex_water_w": {
                 "name": "Power (Water)"
@@ -2412,13 +2424,13 @@
                 "name": "Energy (Hot water)"
             },
             "energyindexheatgas": {
-                "name": "Consumption index (Gas, Heating)"
+                "name": "Gas heating index"
             },
             "energyindexheatwatt": {
                 "name": "Energy (Heating)"
             },
             "energyindexti1": {
-                "name": "Consumption index (TI1)"
+                "name": "TI1 index"
             },
             "energyindexti1watt": {
                 "name": "Energy (TI1)"
@@ -2976,7 +2988,7 @@
                 "name": "Scale — Power (Electricity) (minimum)"
             },
             "energytotindexwatt": {
-                "name": "Consumption index (Electricity)"
+                "name": "Elec. index"
             },
             "gsmlevel": {
                 "name": "Mobile signal level"
@@ -3565,16 +3577,16 @@
                 "name": "Away temperature"
             },
             "absmaxcoolsetpoint": {
-                "name": "Maximum cooling setpoint"
+                "name": "Maximum cooling setpoint (device limit)"
             },
             "absmaxheatsetpoint": {
-                "name": "Maximum heating setpoint"
+                "name": "Maximum heating setpoint (device limit)"
             },
             "absmincoolsetpoint": {
-                "name": "Minimum cooling setpoint"
+                "name": "Minimum cooling setpoint (device limit)"
             },
             "absminheatsetpoint": {
-                "name": "Minimum heating setpoint"
+                "name": "Minimum heating setpoint (device limit)"
             },
             "ackeventcmd": {
                 "name": "Event acknowledgement command"
@@ -4289,6 +4301,9 @@
             },
             "zones": {
                 "name": "Alarm zones"
+            },
+            "climate_command_pending": {
+                "name": "Command pending"
             }
         },
         "group": {},

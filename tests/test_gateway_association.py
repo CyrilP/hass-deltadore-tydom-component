@@ -22,9 +22,10 @@ from custom_components.deltadore_tydom.hub import (
 )
 from custom_components.deltadore_tydom.hub import Hub
 from custom_components.deltadore_tydom.ha_entities import (
+    HACoverFavouriteButton,
+    HADeviceRemovalButton,
     HAGatewayAssociationGuideButton,
     HAGatewayAssociationNameText,
-    HADeviceRemovalButton,
 )
 from custom_components.deltadore_tydom.official_association_tutorials import (
     OFFICIAL_ASSOCIATION_TUTORIALS,
@@ -45,6 +46,7 @@ from custom_components.deltadore_tydom.tydom.tydom_devices import (
     TydomDevice,
     TydomRemoteControl,
     TydomScene,
+    TydomShutter,
 )
 
 
@@ -1964,3 +1966,66 @@ class GatewayAssociationTests(IsolatedAsyncioTestCase):
         tydom_hub._maybe_create_device_association_buttons(object.__new__(TydomScene))
 
         tydom_hub.add_button_callback.assert_not_called()
+
+
+class CoverFavouriteButtonTests(IsolatedAsyncioTestCase):
+    """Expose only favourite slots advertised by a cover endpoint."""
+
+    def _hub(self) -> Hub:
+        hub = object.__new__(Hub)
+        hub._hass = None
+        hub.add_button_callback = MagicMock()
+        hub._cover_favourite_buttons_created = set()
+        return hub
+
+    def _shutter(self, enum_values: list[str]) -> TydomShutter:
+        return TydomShutter(
+            MagicMock(),
+            "10_20",
+            "20",
+            "Cover",
+            "shutter",
+            "10",
+            {
+                "positionCmd": {
+                    "permission": "w",
+                    "enum_values": enum_values,
+                }
+            },
+            {"position": 50},
+        )
+
+    async def test_creates_one_button_per_advertised_favourite(self) -> None:
+        """A gateway with both slots gets two stable controls once."""
+        hub = self._hub()
+        device = self._shutter(["DOWN", "UP", "FAVORIT1", "FAVORIT2"])
+
+        hub._maybe_create_cover_favourite_buttons(device)
+        hub._maybe_create_cover_favourite_buttons(device)
+
+        hub.add_button_callback.assert_called_once()
+        buttons = hub.add_button_callback.call_args.args[0]
+        self.assertEqual(len(buttons), 2)
+        self.assertTrue(
+            all(isinstance(button, HACoverFavouriteButton) for button in buttons)
+        )
+        self.assertEqual(
+            [button._favourite_number for button in buttons],
+            [1, 2],
+        )
+        self.assertEqual(
+            [button.unique_id for button in buttons],
+            [
+                "10_20_button_favourite_position_1",
+                "10_20_button_favourite_position_2",
+            ],
+        )
+
+    async def test_does_not_create_button_for_unadvertised_slot(self) -> None:
+        """No favourite controls appear when the endpoint lacks the values."""
+        hub = self._hub()
+        device = self._shutter(["DOWN", "UP", "STOP"])
+
+        hub._maybe_create_cover_favourite_buttons(device)
+
+        hub.add_button_callback.assert_not_called()

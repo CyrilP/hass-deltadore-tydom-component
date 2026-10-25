@@ -13,16 +13,16 @@
                 "name": "Temperatura de ausencia"
             },
             "absmaxcoolsetpoint": {
-                "name": "Consigna máxima de refrigeración"
+                "name": "Consigna máxima de refrigeración (límite del dispositivo)"
             },
             "absmaxheatsetpoint": {
-                "name": "Consigna máxima de calefacción"
+                "name": "Consigna máxima de calefacción (límite del dispositivo)"
             },
             "absmincoolsetpoint": {
-                "name": "Consigna mínima de refrigeración"
+                "name": "Consigna mínima de refrigeración (límite del dispositivo)"
             },
             "absminheatsetpoint": {
-                "name": "Consigna mínima de calefacción"
+                "name": "Consigna mínima de calefacción (límite del dispositivo)"
             },
             "ackeventcmd": {
                 "name": "Comando de confirmación de eventos"
@@ -187,28 +187,28 @@
                 "name": "Energía"
             },
             "energydistrib": {
-                "name": "Distribución de consumo"
+                "name": "Reparto"
             },
             "energydistrib_elec_a": {
                 "name": "Corriente (Electricidad)"
             },
             "energydistrib_elec_cooling": {
-                "name": "Distribución de consumo (Electricidad, Refrigeración)"
+                "name": "Reparto refrigeración elec."
             },
             "energydistrib_elec_heating": {
-                "name": "Distribución de consumo (Electricidad, Calefacción)"
+                "name": "Reparto calefacción elec."
             },
             "energydistrib_elec_hotwater": {
-                "name": "Distribución de consumo (Electricidad, Agua caliente)"
+                "name": "Reparto agua caliente elec."
             },
             "energydistrib_elec_other": {
-                "name": "Distribución de consumo (Electricidad, Otros)"
+                "name": "Reparto otros elec."
             },
             "energydistrib_elec_outlet": {
-                "name": "Distribución de consumo (Electricidad, Tomas)"
+                "name": "Reparto tomas elec."
             },
             "energydistrib_elec_total": {
-                "name": "Distribución de consumo (Electricidad, Total)"
+                "name": "Reparto total elec."
             },
             "energydistrib_elec_w": {
                 "name": "Potencia (Electricidad)"
@@ -217,22 +217,22 @@
                 "name": "Corriente (Gas)"
             },
             "energydistrib_gas_cooling": {
-                "name": "Distribución de consumo (Gas, Refrigeración)"
+                "name": "Reparto refrigeración gas"
             },
             "energydistrib_gas_heating": {
-                "name": "Distribución de consumo (Gas, Calefacción)"
+                "name": "Reparto calefacción gas"
             },
             "energydistrib_gas_hotwater": {
-                "name": "Distribución de consumo (Gas, Agua caliente)"
+                "name": "Reparto agua caliente gas"
             },
             "energydistrib_gas_other": {
-                "name": "Distribución de consumo (Gas, Otros)"
+                "name": "Reparto otros gas"
             },
             "energydistrib_gas_outlet": {
-                "name": "Distribución de consumo (Gas, Tomas)"
+                "name": "Reparto tomas gas"
             },
             "energydistrib_gas_total": {
-                "name": "Distribución de consumo (Gas, Total)"
+                "name": "Reparto total gas"
             },
             "energydistrib_gas_w": {
                 "name": "Potencia (Gas)"
@@ -241,22 +241,22 @@
                 "name": "Corriente (Gas)"
             },
             "energydistrib_gaz_cooling": {
-                "name": "Distribución de consumo (Gas, Refrigeración)"
+                "name": "Reparto refrigeración gas"
             },
             "energydistrib_gaz_heating": {
-                "name": "Distribución de consumo (Gas, Calefacción)"
+                "name": "Reparto calefacción gas"
             },
             "energydistrib_gaz_hotwater": {
-                "name": "Distribución de consumo (Gas, Agua caliente)"
+                "name": "Reparto agua caliente gas"
             },
             "energydistrib_gaz_other": {
-                "name": "Distribución de consumo (Gas, Otros)"
+                "name": "Reparto otros gas"
             },
             "energydistrib_gaz_outlet": {
-                "name": "Distribución de consumo (Gas, Tomas)"
+                "name": "Reparto tomas gas"
             },
             "energydistrib_gaz_total": {
-                "name": "Distribución de consumo (Gas, Total)"
+                "name": "Reparto total gas"
             },
             "energydistrib_gaz_w": {
                 "name": "Potencia (Gas)"
@@ -265,22 +265,22 @@
                 "name": "Corriente (Agua)"
             },
             "energydistrib_water_cooling": {
-                "name": "Distribución de consumo (Agua, Refrigeración)"
+                "name": "Reparto refrigeración agua"
             },
             "energydistrib_water_heating": {
-                "name": "Distribución de consumo (Agua, Calefacción)"
+                "name": "Reparto calefacción agua"
             },
             "energydistrib_water_hotwater": {
-                "name": "Distribución de consumo (Agua, Agua caliente)"
+                "name": "Reparto agua caliente agua"
             },
             "energydistrib_water_other": {
-                "name": "Distribución de consumo (Agua, Otros)"
+                "name": "Reparto otros agua"
             },
             "energydistrib_water_outlet": {
-                "name": "Distribución de consumo (Agua, Tomas)"
+                "name": "Reparto tomas agua"
             },
             "energydistrib_water_total": {
-                "name": "Distribución de consumo (Agua, Total)"
+                "name": "Reparto total agua"
             },
             "energydistrib_water_w": {
                 "name": "Potencia (Agua)"
@@ -385,28 +385,28 @@
                 "name": "Potencia (Agua)"
             },
             "energyindex": {
-                "name": "Índice de consumo"
+                "name": "Índice"
             },
             "energyindex_elec_a": {
                 "name": "Corriente (Electricidad)"
             },
             "energyindex_elec_cooling": {
-                "name": "Índice de consumo (Electricidad, Refrigeración)"
+                "name": "Índice refrigeración elec."
             },
             "energyindex_elec_heating": {
-                "name": "Índice de consumo (Electricidad, Calefacción)"
+                "name": "Índice calefacción elec."
             },
             "energyindex_elec_hotwater": {
-                "name": "Índice de consumo (Electricidad, Agua caliente)"
+                "name": "Índice agua caliente elec."
             },
             "energyindex_elec_other": {
-                "name": "Índice de consumo (Electricidad, Otros)"
+                "name": "Índice otros elec."
             },
             "energyindex_elec_outlet": {
-                "name": "Índice de consumo (Electricidad, Tomas)"
+                "name": "Índice tomas elec."
             },
             "energyindex_elec_total": {
-                "name": "Índice de consumo (Electricidad, Total)"
+                "name": "Índice total elec."
             },
             "energyindex_elec_w": {
                 "name": "Potencia (Electricidad)"
@@ -415,22 +415,22 @@
                 "name": "Corriente (Gas)"
             },
             "energyindex_gas_cooling": {
-                "name": "Índice de consumo (Gas, Refrigeración)"
+                "name": "Índice refrigeración gas"
             },
             "energyindex_gas_heating": {
-                "name": "Índice de consumo (Gas, Calefacción)"
+                "name": "Índice calefacción gas"
             },
             "energyindex_gas_hotwater": {
-                "name": "Índice de consumo (Gas, Agua caliente)"
+                "name": "Índice agua caliente gas"
             },
             "energyindex_gas_other": {
-                "name": "Índice de consumo (Gas, Otros)"
+                "name": "Índice otros gas"
             },
             "energyindex_gas_outlet": {
-                "name": "Índice de consumo (Gas, Tomas)"
+                "name": "Índice tomas gas"
             },
             "energyindex_gas_total": {
-                "name": "Índice de consumo (Gas, Total)"
+                "name": "Índice total gas"
             },
             "energyindex_gas_w": {
                 "name": "Potencia (Gas)"
@@ -439,22 +439,22 @@
                 "name": "Corriente (Gas)"
             },
             "energyindex_gaz_cooling": {
-                "name": "Índice de consumo (Gas, Refrigeración)"
+                "name": "Índice refrigeración gas"
             },
             "energyindex_gaz_heating": {
-                "name": "Índice de consumo (Gas, Calefacción)"
+                "name": "Índice calefacción gas"
             },
             "energyindex_gaz_hotwater": {
-                "name": "Índice de consumo (Gas, Agua caliente)"
+                "name": "Índice agua caliente gas"
             },
             "energyindex_gaz_other": {
-                "name": "Índice de consumo (Gas, Otros)"
+                "name": "Índice otros gas"
             },
             "energyindex_gaz_outlet": {
-                "name": "Índice de consumo (Gas, Tomas)"
+                "name": "Índice tomas gas"
             },
             "energyindex_gaz_total": {
-                "name": "Índice de consumo (Gas, Total)"
+                "name": "Índice total gas"
             },
             "energyindex_gaz_w": {
                 "name": "Potencia (Gas)"
@@ -463,22 +463,22 @@
                 "name": "Corriente (Agua)"
             },
             "energyindex_water_cooling": {
-                "name": "Índice de consumo (Agua, Refrigeración)"
+                "name": "Índice refrigeración agua"
             },
             "energyindex_water_heating": {
-                "name": "Índice de consumo (Agua, Calefacción)"
+                "name": "Índice calefacción agua"
             },
             "energyindex_water_hotwater": {
-                "name": "Índice de consumo (Agua, Agua caliente)"
+                "name": "Índice agua caliente agua"
             },
             "energyindex_water_other": {
-                "name": "Índice de consumo (Agua, Otros)"
+                "name": "Índice otros agua"
             },
             "energyindex_water_outlet": {
-                "name": "Índice de consumo (Agua, Tomas)"
+                "name": "Índice tomas agua"
             },
             "energyindex_water_total": {
-                "name": "Índice de consumo (Agua, Total)"
+                "name": "Índice total agua"
             },
             "energyindex_water_w": {
                 "name": "Potencia (Agua)"
@@ -493,13 +493,13 @@
                 "name": "Energía (Agua caliente)"
             },
             "energyindexheatgas": {
-                "name": "Índice de consumo (Gas, Calefacción)"
+                "name": "Índice calefacción gas"
             },
             "energyindexheatwatt": {
                 "name": "Energía (Calefacción)"
             },
             "energyindexti1": {
-                "name": "Índice de consumo (TI1)"
+                "name": "Índice TI1"
             },
             "energyindexti1watt": {
                 "name": "Energía (TI1)"
@@ -1057,7 +1057,7 @@
                 "name": "Escala — Potencia (Electricidad) (mínimo)"
             },
             "energytotindexwatt": {
-                "name": "Índice de consumo (Electricidad)"
+                "name": "Índice elec."
             },
             "gsmlevel": {
                 "name": "Nivel de señal móvil"
@@ -1646,16 +1646,16 @@
                 "name": "Temperatura de ausencia"
             },
             "absmaxcoolsetpoint": {
-                "name": "Consigna máxima de refrigeración"
+                "name": "Consigna máxima de refrigeración (límite del dispositivo)"
             },
             "absmaxheatsetpoint": {
-                "name": "Consigna máxima de calefacción"
+                "name": "Consigna máxima de calefacción (límite del dispositivo)"
             },
             "absmincoolsetpoint": {
-                "name": "Consigna mínima de refrigeración"
+                "name": "Consigna mínima de refrigeración (límite del dispositivo)"
             },
             "absminheatsetpoint": {
-                "name": "Consigna mínima de calefacción"
+                "name": "Consigna mínima de calefacción (límite del dispositivo)"
             },
             "ackeventcmd": {
                 "name": "Comando de confirmación de eventos"
@@ -2370,6 +2370,9 @@
             },
             "zones": {
                 "name": "Zonas de alarma"
+            },
+            "climate_command_pending": {
+                "name": "Orden pendiente"
             }
         },
         "number": {
@@ -2380,16 +2383,16 @@
                 "name": "Temperatura de ausencia"
             },
             "absmaxcoolsetpoint": {
-                "name": "Consigna máxima de refrigeración"
+                "name": "Consigna máxima de refrigeración (límite del dispositivo)"
             },
             "absmaxheatsetpoint": {
-                "name": "Consigna máxima de calefacción"
+                "name": "Consigna máxima de calefacción (límite del dispositivo)"
             },
             "absmincoolsetpoint": {
-                "name": "Consigna mínima de refrigeración"
+                "name": "Consigna mínima de refrigeración (límite del dispositivo)"
             },
             "absminheatsetpoint": {
-                "name": "Consigna mínima de calefacción"
+                "name": "Consigna mínima de calefacción (límite del dispositivo)"
             },
             "ackeventcmd": {
                 "name": "Comando de confirmación de eventos"
@@ -3087,16 +3090,16 @@
                 "name": "Temperatura de ausencia"
             },
             "absmaxcoolsetpoint": {
-                "name": "Consigna máxima de refrigeración"
+                "name": "Consigna máxima de refrigeración (límite del dispositivo)"
             },
             "absmaxheatsetpoint": {
-                "name": "Consigna máxima de calefacción"
+                "name": "Consigna máxima de calefacción (límite del dispositivo)"
             },
             "absmincoolsetpoint": {
-                "name": "Consigna mínima de refrigeración"
+                "name": "Consigna mínima de refrigeración (límite del dispositivo)"
             },
             "absminheatsetpoint": {
-                "name": "Consigna mínima de calefacción"
+                "name": "Consigna mínima de calefacción (límite del dispositivo)"
             },
             "ackeventcmd": {
                 "name": "Comando de confirmación de eventos"
@@ -3876,6 +3879,12 @@
             "identify_device": {
                 "name": "Identificar dispositivo"
             },
+            "favourite_position_1": {
+                "name": "Activar posición favorita 1"
+            },
+            "favourite_position_2": {
+                "name": "Activar posición favorita 2"
+            },
             "refresh_energy": {
                 "name": "Actualizar datos de energía"
             },
@@ -3927,6 +3936,20 @@
             "tywell_shutters_night": {
                 "name": "Persianas de noche"
             }
+        }
+    },
+    "exceptions": {
+        "invalid_target_temperature": {
+            "message": "La temperatura de consigna debe ser un número finito."
+        },
+        "target_temperature_out_of_range": {
+            "message": "La temperatura solicitada {temperature} está fuera de los límites del dispositivo ({minimum} a {maximum})."
+        },
+        "stored_alarm_pin_missing": {
+            "message": "Guarda un PIN de alarma en los ajustes de esta integración de TYDOM antes de usar esta acción."
+        },
+        "unsupported_stored_pin_alarm_mode": {
+            "message": "Elige Ausente, En casa, Noche o Desarmar para la acción con PIN guardado."
         }
     },
     "device": {

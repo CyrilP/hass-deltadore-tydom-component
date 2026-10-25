@@ -227,6 +227,91 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
     def _client(self) -> TydomClient:
         return TydomClient(None, "test", "001122334455", "password", host="local")
 
+    async def test_local_websocket_uses_application_ping_watchdog(self) -> None:
+        """Disable client heartbeat only for the app-ping-monitored local socket."""
+        for host, expected_heartbeat in (
+            ("local", None),
+            ("mediation.tydom.com", 2.0),
+        ):
+            with self.subTest(host=host):
+                client = TydomClient(
+                    None,
+                    "test",
+                    "001122334455",
+                    "password",
+                    host=host,
+                )
+                ssl_context = MagicMock()
+                ssl_context.options = 0
+                response = MagicMock()
+                response.headers = {
+                    "WWW-Authenticate": 'Digest realm="Tydom", nonce="abc123"'
+                }
+                response.text = AsyncMock(return_value="")
+                connection = _websocket()
+                session = MagicMock()
+                session.request = AsyncMock(return_value=response)
+                session.ws_connect = AsyncMock(return_value=connection)
+                client.build_digest_headers = MagicMock(return_value="Digest auth")
+
+                with (
+                    patch.object(
+                        client_module,
+                        "async_create_clientsession",
+                        return_value=session,
+                    ),
+                    patch.object(
+                        client_module.ssl,
+                        "create_default_context",
+                        return_value=ssl_context,
+                    ),
+                ):
+                    await client.async_connect()
+
+                self.assertEqual(
+                    session.ws_connect.await_args.kwargs["heartbeat"],
+                    expected_heartbeat,
+                )
+                self.assertTrue(session.ws_connect.await_args.kwargs["autoping"])
+
+    async def test_local_idle_websocket_receive_timeout_is_not_logged_as_an_error(
+        self,
+    ) -> None:
+        """A quiet local websocket uses /ping for liveness checks."""
+        client = self._client()
+        connection = _websocket()
+        connection.receive = AsyncMock(side_effect=asyncio.TimeoutError)
+        client._connection = connection
+        client._connection_ready = True
+        logger.reset_mock()
+
+        self.assertIsNone(await client.consume_messages())
+
+        logger.exception.assert_not_called()
+        self.assertIs(client._connection, connection)
+        self.assertTrue(client._connection_ready)
+
+    async def test_remote_websocket_receive_timeout_is_still_reported(self) -> None:
+        """Keep reporting a remote timeout, whose heartbeat remains enabled."""
+        client = TydomClient(
+            None,
+            "test",
+            "001122334455",
+            "password",
+            host="mediation.tydom.com",
+        )
+        connection = _websocket()
+        connection.receive = AsyncMock(side_effect=asyncio.TimeoutError)
+        client._connection = connection
+        client._connection_ready = True
+        logger.reset_mock()
+
+        self.assertIsNone(await client.consume_messages())
+
+        logger.exception.assert_called_once_with("Unable to handle message")
+        self.assertIs(client._connection, connection)
+        self.assertTrue(client._connection_ready)
+
     async def test_legacy_alarm_disarm_uses_global_alarm_command(self) -> None:
         """A zone-capable legacy alarm must not drop a global disarm."""
         client = self._client()
@@ -1004,6 +1089,52 @@ class TestDevicePolling(IsolatedAsyncioTestCase):
         client.get_poll_device_data.assert_awaited_once_with(
             "/devices/8/endpoints/8/data"
         )
+
+    async def test_cdata_poll_waits_for_stream_completion(self) -> None:
+        """A cdata GET must stay pending until the handler receives its EOR."""
+        client = self._client()
+        client._message_handler = MagicMock()
+        completion_event = asyncio.Event()
+        client._message_handler.prepare_request.return_value = (
+            "request-1",
+            b"request",
+        )
+        client._message_handler.register_cdata_poll.return_value = completion_event
+        request_sent = asyncio.Event()
+        client.send_bytes = AsyncMock(side_effect=lambda _request: request_sent.set())
+
+        poll = asyncio.create_task(
+            client.get_poll_device_data(
+                "/devices/10/endpoints/20/cdata?name=energyIndex"
+            )
+        )
+        await request_sent.wait()
+        await asyncio.sleep(0)
+        self.assertFalse(poll.done())
+
+        completion_event.set()
+        await poll
+        client._message_handler.remove_cdata_poll.assert_called_once_with("request-1")
+
+    async def test_cdata_poll_timeout_cleans_pending_waiter(self) -> None:
+        """A missing EOR must not leave a stale transaction waiter behind."""
+        client = self._client()
+        client._message_handler = MagicMock()
+        completion_event = asyncio.Event()
+        client._message_handler.prepare_request.return_value = (
+            "request-1",
+            b"request",
+        )
+        client._message_handler.register_cdata_poll.return_value = completion_event
+        client.send_bytes = AsyncMock()
+
+        with patch.object(client_module, "_CDATA_POLL_RESPONSE_TIMEOUT", 0.001):
+            await client.get_poll_device_data(
+                "/devices/10/endpoints/20/cdata?name=energyIndex"
+            )
+
+        self.assertFalse(completion_event.is_set())
+        client._message_handler.remove_cdata_poll.assert_called_once_with("request-1")
 
     async def test_cdata_poll_can_target_one_energy_endpoint(self) -> None:
         """An entity refresh button must poll only its own TYWATT endpoint."""

@@ -369,11 +369,12 @@ def _refresh_remote_control_info() -> None:
 
 @dataclass(frozen=True)
 class AreaDeviceReference:
-    """Identify the device endpoint whose state is backed by an area."""
+    """Identify a device endpoint receiving area state or telemetry."""
 
     uid: str
     device_id: str
     endpoint_id: str
+    telemetry_only: bool = False
 
 
 _AREA_CONTROL_ATTRIBUTES = {
@@ -381,6 +382,12 @@ _AREA_CONTROL_ATTRIBUTES = {
     "setpoint",
     "heatSetpoint",
     "coolSetpoint",
+}
+
+_AREA_TELEMETRY_ATTRIBUTES = {
+    "hygroIn",
+    "anticipcoeff",
+    "anticpcoeff",
 }
 
 
@@ -571,6 +578,7 @@ class MessageHandler:
         self.cmd_prefix = cmd_prefix
         self._cdata_replies: list[Reply] = []
         self._end_reply_events: dict[str, asyncio.Event] = {}
+        self._cdata_poll_events: dict[str, asyncio.Event] = {}
         self._reply_errors: dict[str, str] = {}
         self._alarm_command_waiters: dict[
             tuple[str, str, str], list[asyncio.Future[dict[str, Any]]]
@@ -668,6 +676,21 @@ class MessageHandler:
         """Return and forget a protocol error for one pending request."""
         return self._reply_errors.pop(transaction_id, None)
 
+    def register_cdata_poll(self, transaction_id: str) -> asyncio.Event:
+        """Register a waiter completed by the cdata stream's EOR marker."""
+        event = asyncio.Event()
+        self._cdata_poll_events[transaction_id] = event
+        return event
+
+    def complete_cdata_poll(self, transaction_id: str) -> None:
+        """Complete a pending cdata poll after its stream has ended."""
+        if event := self._cdata_poll_events.pop(transaction_id, None):
+            event.set()
+
+    def remove_cdata_poll(self, transaction_id: str) -> None:
+        """Remove a cdata poll waiter after completion or timeout."""
+        self._cdata_poll_events.pop(transaction_id, None)
+
     def create_alarm_command_waiter(
         self, device_id: str, endpoint_id: str, command: str
     ) -> asyncio.Future[dict[str, Any]]:
@@ -758,6 +781,8 @@ class MessageHandler:
             transaction_id = parsed_message.headers.get("Transac-Id")
 
             if status is not None and status >= 400:
+                if transaction_id:
+                    self.complete_cdata_poll(transaction_id)
                 if status == 404 and uri_origin in _OPTIONAL_PATHS:
                     self.tydom_client.mark_optional_path_unsupported(uri_origin)
                     LOGGER.debug(
@@ -1073,7 +1098,14 @@ class MessageHandler:
         match last_usage:
             case "shutter" | "klineShutter" | "awning" | "swingShutter":
                 return TydomShutter(
-                    tydom_client, uid, device_id, name, last_usage, endpoint, None, data
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata.get(uid),
+                    data,
                 )
             case (
                 "window"
@@ -1103,7 +1135,7 @@ class MessageHandler:
                     device_metadata.get(uid),
                     data,
                 )
-            case "garage_door":
+            case "garage_door" | "garage_door_horizontal":
                 return TydomGarage(
                     tydom_client,
                     uid,
@@ -1809,6 +1841,25 @@ class MessageHandler:
                         for elem in endpoint.get("data", [])
                         if elem.get("validity") == "upToDate"
                     ]
+                    # Gateway firmware quirk (issue #507): a periodic full
+                    # refresh can report the frost-protection sub-block before
+                    # it is populated — antiFrostSetpoint comes back null while
+                    # antiFrostWhenOff defaults to false, both flagged
+                    # "upToDate". A correcting frame restores the real values a
+                    # few seconds later. Applying the transient false makes the
+                    # "Frost protection" binary sensor flap, so drop
+                    # antiFrostWhenOff whenever it arrives with a null
+                    # antiFrostSetpoint in the same frame.
+                    if any(
+                        elem.get("name") == "antiFrostSetpoint"
+                        and elem.get("value") is None
+                        for elem in valid_data
+                    ):
+                        valid_data = [
+                            elem
+                            for elem in valid_data
+                            if elem.get("name") != "antiFrostWhenOff"
+                        ]
                     has_valid_data = bool(valid_data)
 
                     # Some TYWATT/Calybox gateways advertise phantom consumption
@@ -1891,19 +1942,19 @@ class MessageHandler:
                     try:
                         data = {}
                         area_id = None
+                        area_telemetry_only = False
                         passive_climate_uid = None
 
                         link = endpoint.get("link")
                         # An endpoint that exposes a writable ``comfortMode``
                         # drives its own thermostat (heat/cool/stop) directly, so
                         # its ``/devices/data`` state and setpoints are
-                        # authoritative. Such a thermostat must not be bound to
-                        # the area it is merely grouped into: the area aggregates
-                        # a zone and can report a different/stale mode (e.g. a
-                        # Tybox Home RF 210 reporting COOLING on its endpoint
-                        # while the area still reads HEATING), which otherwise
-                        # shadows the real state and routes commands to the wrong
-                        # target. (#463)
+                        # authoritative. Keep its thermostat control on that
+                        # endpoint; the linked area aggregates a zone and can
+                        # report a different/stale mode (e.g. a Tybox Home RF
+                        # 210 reporting COOLING while the area still reads
+                        # HEATING). Its sensor telemetry can still be useful.
+                        # (#463)
                         endpoint_controls_own_thermostat = _has_writable_comfort_mode(
                             device_metadata.get(unique_id)
                         )
@@ -1928,10 +1979,12 @@ class MessageHandler:
                                     ).copy()
                                 )
                             elif endpoint_controls_own_thermostat:
-                                # Keep it a standalone device endpoint: drop the
-                                # area binding so reads and writes target the real
-                                # thermostat endpoint rather than the zone.
-                                area_id = None
+                                # Keep thermostat control on the physical endpoint,
+                                # while retaining the area link for its read-only
+                                # sensor data and diagnostic identifier.
+                                data["area_id"] = area_id
+                                data["_endpoint_controls_own_thermostat"] = True
+                                area_telemetry_only = True
                             else:
                                 data["area_id"] = area_id
 
@@ -1940,6 +1993,7 @@ class MessageHandler:
                                     uid=reference_uid,
                                     device_id=str(device_id),
                                     endpoint_id=str(endpoint_id),
+                                    telemetry_only=area_telemetry_only,
                                 )
                                 self._area_devices.setdefault(area_id, {})[
                                     reference_uid
@@ -1958,7 +2012,17 @@ class MessageHandler:
                             and area_id in self._area_data
                             and passive_climate_uid is None
                         ):
-                            data.update(self._area_data[area_id])
+                            if area_telemetry_only:
+                                for attribute in _AREA_TELEMETRY_ATTRIBUTES:
+                                    if (
+                                        attribute not in data
+                                        and attribute in self._area_data[area_id]
+                                    ):
+                                        data[attribute] = self._area_data[area_id][
+                                            attribute
+                                        ]
+                            else:
+                                data.update(self._area_data[area_id])
 
                         # Create the device (even without data)
                         device = await MessageHandler.get_device(
@@ -2097,6 +2161,16 @@ class MessageHandler:
             data = cached_data.copy()
 
             for reference in references.values():
+                device_data = data
+                if reference.telemetry_only:
+                    device_data = {
+                        attribute: value
+                        for attribute, value in data.items()
+                        if attribute in _AREA_TELEMETRY_ATTRIBUTES
+                    }
+                    if not device_data:
+                        continue
+
                 device = await MessageHandler.get_device(
                     self.tydom_client,
                     self.get_type_from_id(reference.uid),
@@ -2104,7 +2178,7 @@ class MessageHandler:
                     reference.device_id,
                     self.get_name_from_id(reference.uid),
                     reference.endpoint_id,
-                    data,
+                    device_data,
                 )
                 if device is not None:
                     devices.append(device)
@@ -2122,9 +2196,14 @@ class MessageHandler:
         """Parse devices cdata."""
         LOGGER.debug("parse_devices_cdata : %s", parsed)
         devices = []
+        cdata_poll_complete = False
 
         for i in parsed:
             for endpoint in i["endpoints"]:
+                if endpoint["error"] != 0:
+                    cdata_poll_complete = True
+                    continue
+
                 if endpoint["error"] == 0 and len(endpoint["cdata"]) > 0:
                     try:
                         device_id = i["id"]
@@ -2136,6 +2215,9 @@ class MessageHandler:
                         data = {}
 
                         for elem in endpoint["cdata"]:
+                            if elem.get("EOR", False):
+                                cdata_poll_complete = True
+
                             if type_of_id == "alarm":
                                 self._resolve_alarm_command_waiter(
                                     device_id, endpoint_id, elem
@@ -2253,6 +2335,10 @@ class MessageHandler:
                                 )
                     except Exception as e:
                         LOGGER.exception("Error when parsing msg_cdata", exc_info=e)
+
+        if transaction_id and cdata_poll_complete:
+            self.complete_cdata_poll(transaction_id)
+
         return devices
 
     async def parse_scenarios_file(self, parsed, transaction_id):
