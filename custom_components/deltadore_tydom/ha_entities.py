@@ -5019,6 +5019,11 @@ class HASensor(SensorEntity, HAEntity):
             battery_attributes, SensorStateClass.MEASUREMENT
         )
         self.units = dict.fromkeys(battery_attributes, PERCENTAGE)
+        self.entity_profile_hidden = bool(
+            getattr(device, "is_physical_tywell_control", False)
+        )
+        if self.entity_profile_hidden:
+            self._attr_entity_registry_enabled_default = False
         self._attr_unique_id = f"{self._device.device_id}_sensor"
         self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []

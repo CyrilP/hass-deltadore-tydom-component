@@ -99,12 +99,21 @@ class FakeRegistry:
 class FakeEntity:
     """Expose the entity properties used during registration."""
 
-    def __init__(self, unique_id="raw", *, category=None, essential=None, enabled=True):
+    def __init__(
+        self,
+        unique_id="raw",
+        *,
+        category=None,
+        essential=None,
+        enabled=True,
+        hidden=False,
+    ):
         """Initialise the test double."""
         self.unique_id = unique_id
         self.entity_category = category
         self.entity_profile_essential = essential
         self._attr_entity_registry_enabled_default = enabled
+        self.entity_profile_hidden = hidden
 
     @property
     def entity_registry_enabled_default(self):
@@ -352,6 +361,55 @@ class TestRegistryModes(TestCase):
         self.assertIsNone(self.row("technical").disabled_by)
         self.assertEqual(self.row("gateway_removal").disabled_by, Disabler.INTEGRATION)
         self.assertEqual(ids_before, set(self.registry.entities))
+
+    def test_existing_profile_disabled_entities_restore_on_full_mode_startup(self):
+        """Restore profile-disabled entities when the saved mode is already full."""
+        self.registry.entities["sensor.technical"] = RegistryEntry(
+            "sensor.technical",
+            "technical",
+            disabled_by=Disabler.INTEGRATION,
+            options={DOMAIN: {"secondary": True, "profile_disabled": True}},
+        )
+
+        self.add([FakeEntity("technical", category="diagnostic")])
+
+        self.assertIsNone(self.row("technical").disabled_by)
+        self.assertFalse(self.row("technical").options[DOMAIN]["profile_disabled"])
+
+    def test_full_mode_startup_preserves_user_disabled_profile_entity(self):
+        """Do not re-enable a profile entity that the user disabled individually."""
+        self.registry.entities["sensor.technical"] = RegistryEntry(
+            "sensor.technical",
+            "technical",
+            disabled_by=Disabler.USER,
+            options={DOMAIN: {"secondary": True, "profile_disabled": True}},
+        )
+
+        self.add([FakeEntity("technical", category="diagnostic")])
+
+        self.assertEqual(self.row("technical").disabled_by, Disabler.USER)
+        self.assertFalse(self.row("technical").options[DOMAIN]["profile_disabled"])
+
+    def test_tywell_empty_primary_is_hidden_without_profile_mode_changes(self):
+        """Keep the Tywell placeholder hidden in both global entity modes."""
+        self.add([FakeEntity("tywell_primary", hidden=True)])
+        self.assertEqual(self.row("tywell_primary").disabled_by, Disabler.INTEGRATION)
+        self.assertTrue(self.row("tywell_primary").options[DOMAIN]["profile_hidden"])
+
+        self.switch("simplified")
+        self.switch("all")
+        self.assertEqual(self.row("tywell_primary").disabled_by, Disabler.INTEGRATION)
+
+    def test_tywell_primary_user_override_is_respected(self):
+        """Remember an explicit user choice to enable the hidden placeholder."""
+        self.add([FakeEntity("tywell_primary", hidden=True)])
+        self.registry.async_update_entity("sensor.tywell_primary", disabled_by=None)
+        self.registry.flush(self.profile)
+
+        self.assertIsNone(self.row("tywell_primary").disabled_by)
+        self.assertFalse(self.row("tywell_primary").options[DOMAIN]["profile_hidden"])
+        self.add([FakeEntity("tywell_primary", hidden=True)])
+        self.assertIsNone(self.row("tywell_primary").disabled_by)
 
     def test_options_changes_apply_to_existing_entities_reversibly(self):
         """Change existing entities only on an explicit mode switch."""
