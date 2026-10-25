@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import importlib.util
 import json
+import sys
 from pathlib import Path
 import types
 import unittest
@@ -319,6 +320,144 @@ class GeneralClimateEntityTests(unittest.IsolatedAsyncioTestCase):
             await entity.async_will_remove_from_hass()
             wire.general_climate.update("hvac", {"mode": "HEATING"})
             entity.async_write_ha_state.assert_called_once()
+
+
+class GeneralClimateReloadTests(unittest.IsolatedAsyncioTestCase):
+    """Run the real inventory reset with only HA registry/network adapters mocked."""
+
+    def hub(self, *, supported=True):
+        tree = ast.parse((COMPONENT / "hub.py").read_text(encoding="utf-8"))
+        hub_class = next(
+            n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "Hub"
+        )
+        names = {"reload_devices", "_ensure_general_climate_control", "ready"}
+        module = ast.Module(
+            body=[
+                ast.ClassDef(
+                    name="ReloadHub",
+                    bases=[],
+                    keywords=[],
+                    body=[
+                        n
+                        for n in hub_class.body
+                        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                        and n.name in names
+                    ],
+                    decorator_list=[],
+                )
+            ],
+            type_ignores=[],
+        )
+        general = Mock(
+            side_effect=lambda hub: types.SimpleNamespace(
+                unique_id="gateway_general_climate_mode"
+            )
+        )
+        ns = {"LOGGER": Mock(), "HAGatewayGeneralClimateSelect": general}
+        for name in (
+            "HAReloadButton",
+            "HAGatewayAssociationCategorySelect",
+            "HAGatewayAssociationProductSelect",
+            "HAGatewayAssociationChannelSelect",
+            "HAGatewayAssociationUsageSelect",
+            "HAGatewayAssociationGuideButton",
+            "HAGatewayStartAssociationButton",
+            "HAGatewayAssociationNameText",
+        ):
+            ns[name] = Mock()
+        exec(compile(ast.fix_missing_locations(module), "reload_hub", "exec"), ns)
+        hub = ns["ReloadHub"]()
+        hub._hass = Mock()
+        hub._entry = types.SimpleNamespace(entry_id="entry")
+        hub._tydom_client = types.SimpleNamespace(
+            general_climate=client().general_climate
+        )
+        if not supported:
+            hub._tydom_client.general_climate.support = ()
+        for name in (
+            "get_info",
+            "put_api_mode",
+            "post_refresh",
+            "get_configs_file",
+            "get_groups",
+            "get_devices_meta",
+            "get_devices_cmeta",
+            "get_devices_data",
+            "get_scenarii",
+            "get_moments",
+        ):
+            setattr(hub._tydom_client, name, AsyncMock())
+        for name in (
+            "devices",
+            "ha_devices",
+            "_remote_battery_entities",
+            "_interrupter_battery_entities",
+            "_twc_scene_sets",
+            "_twc_cover_entities",
+            "_refresh_energy_buttons_created",
+            "_device_association_buttons_created",
+            "_cover_favourite_buttons_created",
+        ):
+            setattr(hub, name, {})
+        hub._association_controls = []
+        hub._association_controls_created = True
+        hub._reload_button_created = True
+        hub._general_climate_created = True
+        for name in (
+            "cover",
+            "sensor",
+            "climate",
+            "light",
+            "lock",
+            "update",
+            "alarm",
+            "weather",
+            "scene",
+            "switch",
+            "button",
+            "number",
+            "select",
+            "text",
+            "event",
+            "binary_sensor",
+        ):
+            setattr(hub, f"add_{name}_callback", Mock())
+        hub._validate_data_consistency = AsyncMock()
+        return hub, general
+
+    async def test_general_control_survives_repeated_inventory_reload(self):
+        hub, general = self.hub()
+        registry = types.SimpleNamespace(
+            entities={"select.general": types.SimpleNamespace(config_entry_id="entry")},
+            async_remove=Mock(),
+        )
+        er = types.SimpleNamespace(async_get=Mock(return_value=registry))
+        helpers = types.ModuleType("homeassistant.helpers")
+        helpers.entity_registry = er
+        with patch.dict(sys.modules, {"homeassistant.helpers": helpers}):
+            for expected in (1, 2):
+                await hub.reload_devices()
+                self.assertEqual(general.call_count, expected)
+                self.assertTrue(hub._general_climate_created)
+                hub.ready()
+                self.assertEqual(general.call_count, expected)
+        self.assertEqual(registry.async_remove.call_count, 2)
+
+    async def test_unsupported_control_waits_for_capability_discovery(self):
+        hub, general = self.hub(supported=False)
+        helpers = types.ModuleType("homeassistant.helpers")
+        helpers.entity_registry = types.SimpleNamespace(
+            async_get=Mock(return_value=types.SimpleNamespace(entities={}))
+        )
+        with patch.dict(sys.modules, {"homeassistant.helpers": helpers}):
+            await hub.reload_devices()
+        general.assert_not_called()
+        self.assertFalse(hub._general_climate_created)
+        hub._tydom_client.general_climate.update(
+            "hvac", {"support": ["STOP", "HEATING"]}
+        )
+        hub.ready()
+        general.assert_called_once()
 
 
 if __name__ == "__main__":
