@@ -3291,10 +3291,9 @@ class HaClimate(ClimateEntity, HAEntity):
 
         if self._uses_local_mode:
             local_mode = getattr(self._device, "localMode", None)
-            if (
-                local_mode in self.OFF_LOCAL_MODES
-                or getattr(self._device, "thermicLevel", None) in self.OFF_LOCAL_MODES
-            ):
+            # localMode is the zone's on/off order. A separate thermicLevel
+            # frost-protection switch must not turn an enabled zone Off (#540).
+            if local_mode in self.OFF_LOCAL_MODES:
                 return HVACMode.OFF
             if local_mode is not None:
                 authorization = getattr(self._device, "authorization", None)
@@ -3367,12 +3366,11 @@ class HaClimate(ClimateEntity, HAEntity):
         if self._uses_local_mode:
             if self._resolve_hvac_mode() == HVACMode.OFF:
                 return HVACAction.OFF
-            # A running zone falls through to the setpoint comparison below.
-            # These zones populate no setpoint while following their schedule,
-            # so target_temperature is None and heat delivery cannot be
-            # inferred: HEATING is reported for the whole time the zone is on.
-            # The gateway exposes nothing else to distinguish it from idle.
-            # ABSENCE does report a setpoint, and resolves correctly.
+            # The app's frost switch is distinct from localMode. It can
+            # withdraw every setpoint while leaving the zone enabled. Without
+            # an active target, do not claim that the zone is delivering heat.
+            if getattr(self._device, "thermicLevel", None) == "ANTI_FROST":
+                return HVACAction.IDLE
 
         authorization = getattr(self._device, "authorization", None)
         thermic_level = getattr(self._device, "thermicLevel", None)
@@ -3444,11 +3442,18 @@ class HaClimate(ClimateEntity, HAEntity):
         """Return the actual target reported by TYDOM, without pending requests."""
         if self._device.general_control_lock == "off":
             return None
-        if self._uses_local_mode and self._resolve_hvac_mode() == HVACMode.OFF:
-            # TYDOM can report an unrelated setpoint while the zone is in frost
-            # protection, then restore its heating target on NORMAL. There is
-            # no active heating target to present while the climate is Off.
-            return None
+        if self._uses_local_mode:
+            if self._resolve_hvac_mode() == HVACMode.OFF:
+                return None
+            if (
+                getattr(self._device, "localMode", None) == "NORMAL"
+                and getattr(self._device, "thermicLevel", None) in self.OFF_LOCAL_MODES
+            ):
+                # An enabled zone can still be in frost protection, with no
+                # active heating target. In particular, the area's 30 C frost
+                # feedback is not a heating consigne. Absence keeps its own
+                # reported target; requested temperatures stay separate above.
+                return None
         if not self._device.is_area_trv and getattr(self._device, "useMode", None) in {
             "MANUAL",
             "OVERRIDE",

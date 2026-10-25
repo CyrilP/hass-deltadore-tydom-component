@@ -970,14 +970,14 @@ class TywellAreaModeTests(IsolatedAsyncioTestCase):
         client.put_home_hvac_mode.assert_not_awaited()
         client.put_area_data.assert_not_awaited()
 
-    def test_zone_frost_feedback_wins_over_general_heating(self) -> None:
-        """The season can be Heating while a Tybox zone remains in frost mode."""
+    def test_frost_level_keeps_zone_enabled_without_exposing_30c_target(self) -> None:
+        """An enabled zone can hold frost protection without a valid heat target."""
         entity, _ = self._zone()
         entity._device.thermicLevel = "ANTI_FROST"
         entity._device.heatSetpoint = 30
         entity._device.setpoint = 30
-        self.assertEqual(entity.hvac_mode, HVACMode.OFF)
-        self.assertEqual(entity.hvac_action, entities_module.HVACAction.OFF)
+        self.assertEqual(entity.hvac_mode, HVACMode.HEAT)
+        self.assertEqual(entity.hvac_action, entities_module.HVACAction.IDLE)
         self.assertIsNone(entity.target_temperature)
         entity._device.thermicLevel = None
         entity._device.heatSetpoint = 18.5
@@ -1411,7 +1411,10 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
         self.assertTrue(entity.extra_state_attributes["command_pending"])
         entity._device.localMode = "NORMAL"
         entity._handle_climate_update()
-        self.assertTrue(entity.extra_state_attributes["command_pending"])
+        # The zone enable request is confirmed by NORMAL; a separate frost
+        # switch can still hold the action Idle without keeping Heat pending.
+        self.assertFalse(entity.extra_state_attributes["command_pending"])
+        self.assertEqual(entity.hvac_action, entities_module.HVACAction.IDLE)
         entity._device.thermicLevel = None
         entity._handle_climate_update()
         self.assertFalse(entity.extra_state_attributes["command_pending"])
@@ -1600,8 +1603,14 @@ class FrostResumeTests(IsolatedAsyncioTestCase):
                     client.put_area_data.assert_not_awaited()
                 client.put_home_hvac_mode.assert_not_awaited()
                 self.assertEqual(entity.target_temperature, 19.5)
-                self.assertEqual(entity.hvac_mode, HVACMode.OFF)
+                self.assertEqual(entity.hvac_mode, HVACMode.HEAT)
                 self.assertTrue(entity.extra_state_attributes["command_pending"])
+                # Heat is already enabled: only actual target feedback can
+                # confirm resumption, not another unchanged NORMAL/frost push.
+                entity._handle_climate_update()
+                self.assertTrue(entity.extra_state_attributes["command_pending"])
+                self.assertIsNone(entity.reported_target_temperature)
+                self.assertEqual(entity.hvac_action, entities_module.HVACAction.IDLE)
                 entity._device.thermicLevel = None
                 entity._device.heatSetpoint = 19.5
                 entity._device.setpoint = 19.5
@@ -1648,14 +1657,14 @@ class FrostResumeTests(IsolatedAsyncioTestCase):
         client.put_devices_data.assert_not_awaited()
 
     async def test_failed_resume_does_not_claim_heat_or_confirm_temperature(self):
-        """A failed write leaves the actual zone Off and clears pending display."""
+        """A failed write leaves frost protection active and clears pending display."""
         entity, client = self.zone()
         entity._handle_climate_update()
         self.freeze(entity)
         client.put_devices_data.side_effect = RuntimeError("send failed")
         with self.assertRaisesRegex(RuntimeError, "send failed"):
             await entity.async_set_hvac_mode(HVACMode.HEAT)
-        self.assertEqual(entity.hvac_mode, HVACMode.OFF)
+        self.assertEqual(entity.hvac_mode, HVACMode.HEAT)
         self.assertIsNone(entity.target_temperature)
         self.assertFalse(entity.extra_state_attributes["command_pending"])
 
@@ -1708,6 +1717,127 @@ class FrostResumeTests(IsolatedAsyncioTestCase):
         self.assertEqual(entity._last_confirmed_targets[HVACMode.HEAT], 19.5)
         self.freeze(entity)
         self.assertEqual(entity._last_confirmed_targets[HVACMode.HEAT], 19.5)
+
+
+class FrostProtectionActionTests(IsolatedAsyncioTestCase):
+    """Preserve the five hardware-derived frost-switch scenarios from PR #540."""
+
+    @staticmethod
+    def _zone(
+        *,
+        local_mode="ANTI_FROST",
+        thermic_level="derived",
+        setpoint=None,
+        ambient=22.41,
+    ):
+        if thermic_level == "derived":
+            thermic_level = "ANTI_FROST" if local_mode == "ANTI_FROST" else None
+        return _thermostat(
+            metadata={
+                "authorization": {
+                    "type": "string",
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "comfortMode": {
+                    "type": "string",
+                    "permission": "w",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "thermicLevel": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["STOP", "ANTI_FROST"],
+                },
+                "localMode": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+                },
+                "heatSetpoint": {
+                    "type": "numeric",
+                    "permission": "rw",
+                    "min": 1.0,
+                    "max": 50.0,
+                },
+            },
+            data={
+                "authorization": "HEATING",
+                "thermicLevel": thermic_level,
+                "localMode": local_mode,
+                "heatSetpoint": setpoint,
+                "setpoint": setpoint,
+                "ambientTemperature": ambient,
+            },
+        )
+
+    def test_frost_protection_switch_on_reports_idle_not_heating(self) -> None:
+        """Frost protection withholds every setpoint; the zone is not heating.
+
+        Captured on a running zone (localMode NORMAL, useMode SCHED) with the
+        app's frost protection switch on: thermicLevel ANTI_FROST, heatSetpoint
+        and setpoint null.  Without a target the setpoint comparison cannot run
+        and the entity used to report HEATING for as long as the switch stayed
+        on, while the mode is, correctly, still heat.
+        """
+        entity, _client = self._zone(
+            local_mode="NORMAL", thermic_level="ANTI_FROST", ambient=19.8
+        )
+
+        self.assertIsNone(entity.target_temperature)
+        self.assertEqual(entity.hvac_mode, HVACMode.HEAT)
+        self.assertEqual(entity.hvac_action, entities_module.HVACAction.IDLE)
+
+    def test_frost_protection_switch_off_compares_against_the_setpoint(self) -> None:
+        """With the switch off the gateway reports a setpoint again.
+
+        Captured immediately after switching it off: thermicLevel cleared,
+        heatSetpoint and setpoint 19.0.  The comparison then separates idle
+        from heating.
+        """
+        warm, _ = self._zone(
+            local_mode="NORMAL", thermic_level=None, setpoint=19.0, ambient=19.8
+        )
+        cold, _ = self._zone(
+            local_mode="NORMAL", thermic_level=None, setpoint=19.0, ambient=17.1
+        )
+
+        self.assertEqual(warm.hvac_action, entities_module.HVACAction.IDLE)
+        self.assertEqual(cold.hvac_action, entities_module.HVACAction.HEATING)
+
+    def test_frost_protection_in_manual_use_mode_reports_idle(self) -> None:
+        """The same holds for a zone that was set manually.
+
+        Captured with useMode MANUAL: thermicLevel and overrideThermicLevel both
+        ANTI_FROST, every setpoint cleared.
+        """
+        entity, _client = self._zone(
+            local_mode="NORMAL", thermic_level="ANTI_FROST", ambient=19.8
+        )
+        setattr(entity._device, "useMode", "MANUAL")
+        setattr(entity._device, "overrideThermicLevel", "ANTI_FROST")
+
+        self.assertEqual(entity.hvac_action, entities_module.HVACAction.IDLE)
+
+    def test_frost_protection_switch_does_not_change_the_off_states(self) -> None:
+        """Power off still reads off, whatever the frost switch says."""
+        for local_mode in ("ANTI_FROST", "STOP"):
+            with self.subTest(local_mode=local_mode):
+                entity, _client = self._zone(
+                    local_mode=local_mode, thermic_level="ANTI_FROST"
+                )
+
+                self.assertEqual(entity.hvac_mode, HVACMode.OFF)
+                self.assertEqual(entity.hvac_action, entities_module.HVACAction.OFF)
+
+    def test_absence_with_frost_protection_reports_idle(self) -> None:
+        """ABSENCE keeps reporting its own setpoint; the action stays idle."""
+        entity, _client = self._zone(
+            local_mode="ABSENCE", thermic_level="ANTI_FROST", setpoint=8.0, ambient=19.8
+        )
+
+        self.assertEqual(entity.hvac_mode, HVACMode.HEAT)
+        self.assertEqual(entity.hvac_action, entities_module.HVACAction.IDLE)
 
 
 if __name__ == "__main__":
