@@ -652,6 +652,20 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
                 "max": 50.0,
                 "step": 0.5,
             },
+            "overrideSetpoint": {
+                "type": "numeric",
+                "permission": "rw",
+                "min": 1.0,
+                "max": 50.0,
+                "step": 0.5,
+            },
+            "overrideRemainingTime": {
+                "type": "numeric",
+                "permission": "rw",
+                "min": 0,
+                "max": 720,
+                "step": 1,
+            },
             "absenceSetpoint": {
                 "type": "numeric",
                 "permission": "rw",
@@ -672,6 +686,8 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
             "localMode": local_mode,
             "useMode": use_mode,
             "heatSetpoint": 19.5,
+            "overrideSetpoint": 19.5,
+            "overrideRemainingTime": 0,
             "minHeatSetpoint": 15.0,
             "maxHeatSetpoint": 25.0,
             "absenceSetpoint": 10.0,
@@ -744,7 +760,7 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
         self.assertEqual(entity.min_temp, 15.0)
         self.assertEqual(entity.max_temp, 25.0)
         self.assertEqual(entity.target_temperature, 19.5)
-        self.assertFalse(
+        self.assertTrue(
             entity.supported_features & ClimateEntityFeature.TARGET_TEMPERATURE
         )
         self.assertEqual(
@@ -752,8 +768,8 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
             [entities_module.PRESET_NONE, entities_module.PRESET_AWAY],
         )
 
-    def test_scheduled_target_is_available_as_read_only_sensor(self) -> None:
-        """Keep the scheduled target visible separately from climate controls."""
+    def test_scheduled_target_is_available_on_climate_and_sensor(self) -> None:
+        """Expose the target on climate and retain its diagnostic sensor."""
         entity, _client = self._rf7110_zone()
 
         with patch.object(entities_module, "is_binary_attribute", return_value=False):
@@ -767,8 +783,110 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
         self.assertEqual(sensor.native_value, 19.5)
         self.assertEqual(sensor._attr_unique_id, "10_20_heatSetpoint")
         self.assertFalse(hasattr(sensor, "async_set_temperature"))
+        self.assertTrue(
+            entity.supported_features & ClimateEntityFeature.TARGET_TEMPERATURE
+        )
+
+    def test_active_override_stays_in_auto_and_reports_override_target(self) -> None:
+        """A temporary target override is still the app's scheduled Auto mode."""
+        entity, _client = self._rf7110_zone(
+            use_mode="OVERRIDE", overrideSetpoint=21.5
+        )
+
+        self.assertEqual(entity.hvac_mode, HVACMode.AUTO)
+        self.assertEqual(entity.target_temperature, 21.5)
+
+    def test_manual_mode_reports_the_manual_override_target(self) -> None:
+        """Manual mode reads the same writable register used by its command."""
+        entity, _client = self._rf7110_zone(
+            use_mode="MANUAL", heatSetpoint=19.5, overrideSetpoint=21.0
+        )
+
+        self.assertEqual(entity.hvac_mode, HVACMode.HEAT)
+        self.assertEqual(entity.target_temperature, 21.0)
+
+    async def test_schedule_capability_requires_the_override_registers(self) -> None:
+        """Do not apply RF7110 schedule controls to a partial localMode profile."""
+        entity, _client = _thermostat(
+            metadata={
+                "authorization": {
+                    "type": "string",
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "localMode": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+                },
+                "useMode": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["SCHED", "MANUAL"],
+                },
+                "heatSetpoint": {
+                    "type": "numeric",
+                    "permission": "rw",
+                    "min": 1,
+                    "max": 50,
+                },
+            },
+            data={
+                "authorization": "HEATING",
+                "localMode": "NORMAL",
+                "useMode": "SCHED",
+                "heatSetpoint": 20,
+            },
+        )
+
+        self.assertTrue(entity._uses_scheduled_local_mode)
+        self.assertFalse(entity._supports_scheduled_temperature_override)
+        self.assertIn(HVACMode.AUTO, entity.hvac_modes)
         self.assertFalse(
             entity.supported_features & ClimateEntityFeature.TARGET_TEMPERATURE
+        )
+        with self.assertRaisesRegex(Exception, "Switch to Heat mode"):
+            await entity.async_set_temperature(temperature=21.0)
+
+    async def test_tybox_1137_schedule_setpoint_path_is_unchanged(self) -> None:
+        """A useMode thermostat without RF7110 localMode keeps its old write."""
+        entity, client = _thermostat(
+            metadata={
+                "authorization": {
+                    "type": "string",
+                    "permission": "r",
+                    "enum_values": ["STOP", "HEATING"],
+                },
+                "useMode": {
+                    "type": "string",
+                    "permission": "rw",
+                    "enum_values": ["SCHED", "OVERRIDE", "MANUAL"],
+                },
+                "heatSetpoint": {
+                    "type": "numeric",
+                    "permission": "rw",
+                    "min": 5,
+                    "max": 30,
+                },
+                "overrideSetpoint": {
+                    "type": "numeric",
+                    "permission": "rw",
+                    "min": 5,
+                    "max": 30,
+                },
+            },
+            data={
+                "authorization": "HEATING",
+                "useMode": "SCHED",
+                "heatSetpoint": 19,
+                "overrideSetpoint": 19,
+            },
+        )
+
+        self.assertFalse(entity._uses_scheduled_local_mode)
+        await entity.async_set_temperature(temperature=21.0)
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "heatSetpoint", "21.0"
         )
 
     async def test_scheduled_zone_modes_use_the_matching_tydom_registers(self) -> None:
@@ -822,9 +940,23 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
         )
 
         scheduled, scheduled_client = self._rf7110_zone()
-        with self.assertRaisesRegex(Exception, "Switch to Heat mode"):
-            await scheduled.async_set_temperature(temperature=21.0)
-        scheduled_client.put_devices_data.assert_not_awaited()
+        await scheduled.async_set_temperature(temperature=21.0)
+        scheduled_client.put_devices_data.assert_has_awaits(
+            [
+                call("20", "10", "overrideSetpoint", "21.0"),
+                call("20", "10", "useMode", "OVERRIDE"),
+            ]
+        )
+        scheduled._device.useMode = "OVERRIDE"
+        scheduled._device.overrideSetpoint = 21.0
+        self.assertEqual(scheduled.hvac_mode, HVACMode.AUTO)
+        self.assertEqual(scheduled.target_temperature, 21.0)
+
+        scheduled_client.put_devices_data.reset_mock()
+        await scheduled.async_set_temperature(temperature=21.5)
+        scheduled_client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "overrideSetpoint", "21.5"
+        )
 
         entity, client = self._rf7110_zone(local_mode="ANTI_FROST", use_mode="MANUAL")
         self.assertEqual(entity.target_temperature, 8.0)

@@ -2926,11 +2926,24 @@ class HaClimate(ClimateEntity, HAEntity):
             if isinstance(use_mode_meta, dict)
             else set()
         )
+        heat_setpoint_meta = (metadata or {}).get("heatSetpoint")
+        override_setpoint_meta = (metadata or {}).get("overrideSetpoint")
+        override_time_meta = (metadata or {}).get("overrideRemainingTime")
         self._uses_scheduled_local_mode = (
             self._uses_local_mode
             and {"STOP", "ABSENCE"}.issubset(self._local_mode_values)
             and {"r", "w"}.issubset(use_mode_permission)
             and {"SCHED", "MANUAL"}.issubset(use_mode_values)
+        )
+        self._supports_scheduled_temperature_override = (
+            self._uses_scheduled_local_mode
+            and "OVERRIDE" in use_mode_values
+            and isinstance(heat_setpoint_meta, dict)
+            and "w" in heat_setpoint_meta.get("permission", "")
+            and isinstance(override_setpoint_meta, dict)
+            and "w" in override_setpoint_meta.get("permission", "")
+            and isinstance(override_time_meta, dict)
+            and {"r", "w"}.issubset(override_time_meta.get("permission", ""))
         )
         # A zone that carries localMode is driven through it exclusively.  It
         # would otherwise also satisfy the pilot-wire test when it exposes no
@@ -3013,17 +3026,22 @@ class HaClimate(ClimateEntity, HAEntity):
         from the state present while the Home Assistant entity was constructed.
         """
         features = self._attr_supported_features
-        if not self._device.is_area_trv:
-            if self._uses_scheduled_local_mode and self.hvac_mode == HVACMode.AUTO:
-                return features & ~ClimateEntityFeature.TARGET_TEMPERATURE
-            return features
+        if self._device.is_area_trv:
+            return (features | ClimateEntityFeature.TARGET_TEMPERATURE) & ~(
+                ClimateEntityFeature.TURN_OFF
+                | ClimateEntityFeature.TURN_ON
+                | ClimateEntityFeature.PRESET_MODE
+                | ClimateEntityFeature.FAN_MODE
+            )
 
-        return (features | ClimateEntityFeature.TARGET_TEMPERATURE) & ~(
-            ClimateEntityFeature.TURN_OFF
-            | ClimateEntityFeature.TURN_ON
-            | ClimateEntityFeature.PRESET_MODE
-            | ClimateEntityFeature.FAN_MODE
-        )
+        if (
+            self._uses_scheduled_local_mode
+            and not self._supports_scheduled_temperature_override
+            and self.hvac_mode == HVACMode.AUTO
+        ):
+            return features & ~ClimateEntityFeature.TARGET_TEMPERATURE
+
+        return features
 
     @property
     def hvac_modes(self) -> list[HVACMode]:
@@ -3180,7 +3198,9 @@ class HaClimate(ClimateEntity, HAEntity):
             if local_mode is not None:
                 if (
                     self._uses_scheduled_local_mode
-                    and getattr(self._device, "useMode", None) == "SCHED"
+                    and local_mode == "NORMAL"
+                    and getattr(self._device, "useMode", None)
+                    in {"SCHED", "OVERRIDE"}
                 ):
                     return HVACMode.AUTO
                 return HVACMode.HEAT
@@ -3327,6 +3347,20 @@ class HaClimate(ClimateEntity, HAEntity):
             setpoint = getattr(
                 self._device, self._device.area_setpoint_attribute(), None
             )
+            if setpoint is not None:
+                return float(setpoint)
+
+        if (
+            self._supports_scheduled_temperature_override
+            and getattr(self._device, "localMode", None) == "NORMAL"
+        ):
+            use_mode = getattr(self._device, "useMode", None)
+            setpoint_attribute = (
+                "overrideSetpoint"
+                if use_mode in {"OVERRIDE", "MANUAL"}
+                else "heatSetpoint"
+            )
+            setpoint = getattr(self._device, setpoint_attribute, None)
             if setpoint is not None:
                 return float(setpoint)
 
@@ -3586,12 +3620,26 @@ class HaClimate(ClimateEntity, HAEntity):
 
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
-        if self._uses_scheduled_local_mode and self.hvac_mode == HVACMode.AUTO:
-            raise HomeAssistantError(
-                "Switch to Heat mode before changing a temperature while following the schedule."
-            )
-
         temperature = kwargs.get(ATTR_TEMPERATURE)
+        if self._uses_scheduled_local_mode and self.hvac_mode == HVACMode.AUTO:
+            if (
+                self._supports_scheduled_temperature_override
+                and getattr(self._device, "useMode", None) == "SCHED"
+            ):
+                await self._async_track_command(
+                    "temperature",
+                    temperature,
+                    self._device.set_scheduled_override_temperature(
+                        str(temperature)
+                    ),
+                )
+                return
+            if not self._supports_scheduled_temperature_override:
+                raise HomeAssistantError(
+                    "Switch to Heat mode before changing a temperature while "
+                    "following the schedule."
+                )
+
         self._device.validate_temperature(temperature)
         if self._device.is_area_trv:
             # Area thermostat commands use a JSON numeric value. The physical
