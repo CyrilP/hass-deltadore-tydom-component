@@ -326,6 +326,7 @@ class GeneralClimateReloadTests(unittest.IsolatedAsyncioTestCase):
     """Run the real inventory reset with only HA registry/network adapters mocked."""
 
     def hub(self, *, supported=True):
+        """Load the real lifecycle methods with mocked framework adapters."""
         tree = ast.parse((COMPONENT / "hub.py").read_text(encoding="utf-8"))
         hub_class = next(
             n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "Hub"
@@ -426,6 +427,7 @@ class GeneralClimateReloadTests(unittest.IsolatedAsyncioTestCase):
         return hub, general
 
     async def test_general_control_survives_repeated_inventory_reload(self):
+        """Each registry reset recreates exactly one control without new feedback."""
         hub, general = self.hub()
         registry = types.SimpleNamespace(
             entities={"select.general": types.SimpleNamespace(config_entry_id="entry")},
@@ -444,6 +446,7 @@ class GeneralClimateReloadTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(registry.async_remove.call_count, 2)
 
     async def test_unsupported_control_waits_for_capability_discovery(self):
+        """Do not create unsupported controls; accept capabilities arriving later."""
         hub, general = self.hub(supported=False)
         helpers = types.ModuleType("homeassistant.helpers")
         helpers.entity_registry = types.SimpleNamespace(
