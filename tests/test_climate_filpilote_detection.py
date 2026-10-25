@@ -339,7 +339,7 @@ def _reversible_zone(*, thermic_level="ANTI_FROST"):
 
 def _rf6600fp(*, authorization="HEATING", thermic_level="ECO"):
     """Create the RF6600FP profile reported in issue #505."""
-    return _thermostat(
+    entity, client = _thermostat(
         metadata={
             "authorization": {
                 "type": "string",
@@ -379,6 +379,9 @@ def _rf6600fp(*, authorization="HEATING", thermic_level="ECO"):
             "useMode": "SCHED",
         },
     )
+    # Endpoint STOP does not mean that the installation's general mode is Off.
+    client.general_climate = types.SimpleNamespace(mode="HEATING", lock_reason=None)
+    return entity, client
 
 
 class FilPiloteDetectionTests(TestCase):
