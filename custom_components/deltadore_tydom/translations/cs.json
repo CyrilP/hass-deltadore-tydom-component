@@ -753,6 +753,12 @@
         "moment": {}
     },
     "exceptions": {
+        "general_hvac_absence": {
+            "message": "Celkový režim nepřítomnosti je aktivní. Před ovládáním této zóny jej vypněte v TYDOM nebo pomocí celkového ovládání brány."
+        },
+        "general_hvac_stopped": {
+            "message": "Celkový režim vytápění/klimatizace je vypnutý. Před ovládáním této zóny jej zapněte v TYDOM nebo pomocí celkového ovládání brány."
+        },
         "stored_alarm_pin_missing": {
             "message": "Před použitím této akce uložte PIN alarmu v nastavení této integrace TYDOM."
         },

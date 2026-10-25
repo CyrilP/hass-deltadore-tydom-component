@@ -3930,6 +3930,12 @@
         }
     },
     "exceptions": {
+        "general_hvac_absence": {
+            "message": "Ogólny tryb nieobecności jest aktywny. Wyłącz go w TYDOM lub za pomocą ogólnego sterowania bramką przed sterowaniem tą strefą."
+        },
+        "general_hvac_stopped": {
+            "message": "Ogólny tryb ogrzewania/klimatyzacji jest wyłączony. Włącz go w TYDOM lub za pomocą ogólnego sterowania bramką przed sterowaniem tą strefą."
+        },
         "invalid_target_temperature": {
             "message": "Temperatura zadana musi być liczbą skończoną."
         },

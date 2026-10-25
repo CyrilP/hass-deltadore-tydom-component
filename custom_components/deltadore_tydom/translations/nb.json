@@ -753,6 +753,12 @@
         "moment": {}
     },
     "exceptions": {
+        "general_hvac_absence": {
+            "message": "Den generelle bortemodusen er aktiv. Deaktiver den i TYDOM eller med gatewayens generelle kontroll før du styrer denne sonen."
+        },
+        "general_hvac_stopped": {
+            "message": "Den generelle varme-/klimamodusen er av. Aktiver den i TYDOM eller med gatewayens generelle kontroll før du styrer denne sonen."
+        },
         "stored_alarm_pin_missing": {
             "message": "Lagre en alarm-PIN i innstillingene for denne TYDOM-integrasjonen før du bruker denne handlingen."
         },

@@ -3930,6 +3930,12 @@
         }
     },
     "exceptions": {
+        "general_hvac_absence": {
+            "message": "De algemene afwezigheidsmodus is actief. Schakel deze in TYDOM of via de algemene bediening van de gateway uit voordat u deze zone bedient."
+        },
+        "general_hvac_stopped": {
+            "message": "De algemene verwarmings-/airconditioningmodus staat uit. Schakel deze in TYDOM of via de algemene bediening van de gateway in voordat u deze zone bedient."
+        },
         "invalid_target_temperature": {
             "message": "De gewenste temperatuur moet een eindig getal zijn."
         },

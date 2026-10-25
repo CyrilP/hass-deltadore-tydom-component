@@ -3077,9 +3077,6 @@ class HaClimate(ClimateEntity, HAEntity):
             # local override command.
             self._attr_supported_features |= ClimateEntityFeature.TARGET_TEMPERATURE
 
-        if self._device.is_derived_area_climate:
-            set_entity_name(self, "thermostat")
-
     @property
     def supported_features(self) -> ClimateEntityFeature:
         """Return the features currently supported by this climate entity.
@@ -3089,6 +3086,14 @@ class HaClimate(ClimateEntity, HAEntity):
         from the state present while the Home Assistant entity was constructed.
         """
         features = self._attr_supported_features
+        if self._device.general_control_lock is not None:
+            return features & ~(
+                ClimateEntityFeature.TARGET_TEMPERATURE
+                | ClimateEntityFeature.PRESET_MODE
+                | ClimateEntityFeature.TURN_ON
+                | ClimateEntityFeature.TURN_OFF
+                | ClimateEntityFeature.FAN_MODE
+            )
         if not self._device.is_area_trv:
             return features
 
@@ -3102,6 +3107,8 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def hvac_modes(self) -> list[HVACMode]:
         """Return the modes currently supported by this climate entity."""
+        if self._device.general_control_lock is not None:
+            return [self._resolve_hvac_mode()]
         if self._device.is_area_trv:
             return [HVACMode.HEAT]
         return self._attr_hvac_modes
@@ -3188,12 +3195,18 @@ class HaClimate(ClimateEntity, HAEntity):
         self._command_listening = True
         self._device.register_callback(self._handle_climate_update)
         self._device._ha_device = self
+        home = getattr(self._device._tydom_client, "general_climate", None)
+        if home is not None:
+            home.add_listener(self._handle_climate_update)
 
     async def async_will_remove_from_hass(self) -> None:
         """Remove the push callback registered in async_added_to_hass."""
         self._command_listening = False
         self._device.remove_callback(self._handle_climate_update)
         self._get_command_tracker().close()
+        home = getattr(self._device._tydom_client, "general_climate", None)
+        if home is not None:
+            home.remove_listener(self._handle_climate_update)
         if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
             self._device._ha_device = None
         await super().async_will_remove_from_hass()
@@ -3246,12 +3259,17 @@ class HaClimate(ClimateEntity, HAEntity):
 
     def _resolve_hvac_mode(self) -> HVACMode:
         """Derive HA HVAC mode from Tydom thermostat registers."""
+        if self._device.general_control_lock == "off":
+            return HVACMode.OFF
         if self._device.is_area_trv:
             return HVACMode.HEAT
 
         if self._uses_local_mode:
             local_mode = getattr(self._device, "localMode", None)
-            if local_mode in self.OFF_LOCAL_MODES:
+            if (
+                local_mode in self.OFF_LOCAL_MODES
+                or getattr(self._device, "thermicLevel", None) in self.OFF_LOCAL_MODES
+            ):
                 return HVACMode.OFF
             if local_mode is not None:
                 authorization = getattr(self._device, "authorization", None)
@@ -3320,8 +3338,7 @@ class HaClimate(ClimateEntity, HAEntity):
             return HVACAction.OFF if level == "STOP" else HVACAction.HEATING
 
         if self._uses_local_mode:
-            local_mode = getattr(self._device, "localMode", None)
-            if local_mode in self.OFF_LOCAL_MODES:
+            if self._resolve_hvac_mode() == HVACMode.OFF:
                 return HVACAction.OFF
             # A running zone falls through to the setpoint comparison below.
             # These zones populate no setpoint while following their schedule,
@@ -3396,10 +3413,7 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def reported_target_temperature(self) -> float | None:
         """Return the actual target reported by TYDOM, without pending requests."""
-        if self._device.uses_area_local_mode and (
-            getattr(self._device, "localMode", None) in self.OFF_LOCAL_MODES
-            or getattr(self._device, "authorization", None) == "STOP"
-        ):
+        if self._uses_local_mode and self._resolve_hvac_mode() == HVACMode.OFF:
             # TYDOM can report an unrelated setpoint while the zone is in frost
             # protection, then restore its heating target on NORMAL. There is
             # no active heating target to present while the climate is Off.
@@ -3463,6 +3477,7 @@ class HaClimate(ClimateEntity, HAEntity):
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
+        self._device.validate_general_hvac_mode()
         if self._device.is_area_trv:
             return
 
@@ -3502,6 +3517,8 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def preset_mode(self) -> str | None:
         """Return the current preset mode."""
+        if self._device.general_control_lock == "absence":
+            return PRESET_AWAY
         if getattr(self, "_is_filpilote", False):
             level = getattr(self._device, "thermicLevel", None)
             if level == "COMFORT":
@@ -3537,6 +3554,7 @@ class HaClimate(ClimateEntity, HAEntity):
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new target preset mode."""
+        self._device.validate_general_hvac_mode()
         if self._uses_local_mode:
             if preset_mode == PRESET_AWAY:
                 await self._async_track_command(
@@ -3686,6 +3704,7 @@ class HaClimate(ClimateEntity, HAEntity):
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         """Set new target fan mode (Naviclim: Auto/1/2/3)."""
+        self._device.validate_general_hvac_mode()
         if not getattr(self, "_supports_fan", False):
             return
         if fan_mode == FAN_AUTO:

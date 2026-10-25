@@ -921,6 +921,7 @@ class TydomBoiler(TydomDevice):
 
     async def set_hvac_mode(self, mode):
         """Set hvac mode (ANTI_FROST/NORMAL/STOP)."""
+        self.validate_general_hvac_mode()
         LOGGER.debug("setting hvac mode to %s", mode)
         # Mode changes must not clear or replace the setpoint. TYDOM retains
         # the user's last setpoint and restores it when heating resumes.
@@ -1068,6 +1069,7 @@ class TydomBoiler(TydomDevice):
 
     def validate_temperature(self, temperature) -> None:
         """Reject invalid or out-of-range requests before recording or sending them."""
+        self.validate_general_hvac_mode()
         try:
             numeric_temperature = float(temperature)
         except (TypeError, ValueError):
@@ -1167,23 +1169,42 @@ class TydomBoiler(TydomDevice):
             self._id, self._endpoint, "thermicLevel", level
         )
 
-    async def set_local_hvac_mode(self, mode: str) -> None:
-        """Resume the heating season when Heat is requested from seasonal Stop.
-
-        A local NORMAL order alone cannot start a zone while authorization is
-        STOP. Preset changes use set_local_mode directly and do not restart the
-        installation as a side effect of clearing Absence.
-        """
-        if (
-            mode == "NORMAL"
-            and getattr(self, "area_id", None) is not None
-            and getattr(self, "authorization", None) == "STOP"
+    @property
+    def general_control_lock(self) -> str | None:
+        """Return a known general Off/Absence lock, without guessing from a model."""
+        home = getattr(self._tydom_client, "general_climate", None)
+        reason = getattr(home, "lock_reason", None)
+        if isinstance(reason, str) and reason in ("off", "absence"):
+            return reason
+        if isinstance(getattr(home, "mode", None), str):
+            return None
+        # Before the general resource arrives, local-mode profiles advertise
+        # the same seasonal stop through their authorization register.
+        if getattr(self, "authorization", None) == "STOP" and (
+            self.uses_area_local_mode or self._is_writable("localMode")
         ):
-            await self._tydom_client.put_home_hvac_mode("HEATING")
+            return "off"
+        return None
+
+    def validate_general_hvac_mode(self) -> None:
+        """Reject zone requests locked by the installation's general mode."""
+        if (reason := self.general_control_lock) is not None:
+            from homeassistant.exceptions import HomeAssistantError
+
+            raise HomeAssistantError(
+                translation_domain="deltadore_tydom",
+                translation_key="general_hvac_stopped"
+                if reason == "off"
+                else "general_hvac_absence",
+            )
+
+    async def set_local_hvac_mode(self, mode: str) -> None:
+        """Change only the zone; general HVAC commands belong to the gateway."""
         await self.set_local_mode(mode)
 
     async def set_local_mode(self, mode):
-        """Set a zone's localMode order (NORMAL/ANTI_FROST/STOP/ABSENCE)."""
+        """Set the local order without changing or bypassing the general mode."""
+        self.validate_general_hvac_mode()
         if self.uses_area_local_mode:
             await self._tydom_client.put_area_data(self.area_id, "localMode", mode)
             return

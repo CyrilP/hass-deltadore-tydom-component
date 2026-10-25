@@ -216,6 +216,12 @@
         }
     },
     "exceptions": {
+        "general_hvac_absence": {
+            "message": "Le mode Absence général est actif. Désactivez-le dans TYDOM ou avec la commande générale de la passerelle avant de piloter cette zone."
+        },
+        "general_hvac_stopped": {
+            "message": "Le mode général de chauffage/climatisation est sur Arrêt. Réactivez-le dans TYDOM ou avec la commande générale de la passerelle avant de piloter cette zone."
+        },
         "stored_alarm_pin_missing": {
             "message": "Enregistrez un code PIN d'alarme dans les paramètres de cette intégration TYDOM avant d'utiliser cette action."
         },

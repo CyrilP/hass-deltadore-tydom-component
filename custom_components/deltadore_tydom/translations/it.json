@@ -3930,6 +3930,12 @@
         }
     },
     "exceptions": {
+        "general_hvac_absence": {
+            "message": "La modalità assenza generale è attiva. Disattivarla in TYDOM o con il comando generale del gateway prima di controllare questa zona."
+        },
+        "general_hvac_stopped": {
+            "message": "La modalità generale di riscaldamento/climatizzazione è disattivata. Attivarla in TYDOM o con il comando generale del gateway prima di controllare questa zona."
+        },
         "invalid_target_temperature": {
             "message": "La temperatura impostata deve essere un numero finito."
         },
