@@ -2968,8 +2968,9 @@ class HaClimate(ClimateEntity, HAEntity):
         # heating zones, but their actual pilot-wire order is thermicLevel.
         # The RF6600 profile can be distinguished by its writable
         # comfortMode STOP/HEATING authorization and the full pilot-wire level
-        # set. Keep this narrow so Tybox Home RF 210 (NO_REGUL, no COMFORT/ECO)
-        # remains on its localMode path.
+        # set without AUTO. Profiles advertising AUTO (e.g. Calybox 230)
+        # use localMode for HVAC and thermicLevel for Eco/Comfort/Auto presets.
+        # Tybox Home RF 210 (NO_REGUL, no COMFORT/ECO) also keeps localMode.
         self._uses_comfort_mode_pilot_wire = (
             not self._is_area_controlled
             and "r" in local_mode_permission
@@ -2983,6 +2984,7 @@ class HaClimate(ClimateEntity, HAEntity):
             and isinstance(thermic_level_meta, dict)
             and {"r", "w"}.issubset(set(thermic_level_meta.get("permission", "")))
             and {"COMFORT", "ECO", "ANTI_FROST", "STOP"}.issubset(thermic_level_values)
+            and "AUTO" not in thermic_level_values
             and not has_setpoint_meta
             and not has_live_setpoint
             and not has_cool_enum_meta

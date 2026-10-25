@@ -432,6 +432,63 @@ class FilPiloteDetectionTests(TestCase):
             ],
         )
 
+    def test_calybox_auto_capability_keeps_local_mode_with_every_live_level(
+        self,
+    ) -> None:
+        """Issue #543's AUTO capability distinguishes it from the RF6600 profile."""
+        for level in ("AUTO", "ECO", "COMFORT", "ANTI_FROST", "STOP", None):
+            with self.subTest(level=level):
+                original, _ = _rf6600fp(thermic_level=level)
+                original._device._metadata["thermicLevel"]["enum_values"].append("AUTO")
+                entity = HaClimate(original._device, MagicMock())
+                self.assertTrue(entity._uses_local_mode)
+                self.assertFalse(entity._uses_comfort_mode_pilot_wire)
+                self.assertFalse(entity._is_filpilote)
+
+    def test_setpoint_thermostats_are_not_captured_by_rf6600_signature(self) -> None:
+        """Tybox/Typass real setpoints remain authoritative even when null while Off."""
+        for register in ("setpoint", "heatSetpoint", "coolSetpoint"):
+            for target in (None, 19.5):
+                with self.subTest(register=register, target=target):
+                    original, _ = _rf6600fp()
+                    original._device._metadata[register] = {
+                        "type": "numeric",
+                        "permission": "rw",
+                        "min": 10,
+                        "max": 30,
+                    }
+                    setattr(original._device, register, target)
+                    entity = HaClimate(original._device, MagicMock())
+                    self.assertFalse(entity._uses_comfort_mode_pilot_wire)
+                    self.assertFalse(entity._is_filpilote)
+                    self.assertTrue(
+                        entity.supported_features
+                        & ClimateEntityFeature.TARGET_TEMPERATURE
+                    )
+
+    def test_tywell_area_profiles_are_not_captured_by_rf6600_signature(self) -> None:
+        """An area link takes precedence for active and passive Tywell controllers."""
+        for device_type in (
+            "re2020Controller",
+            "re2020ControlPassive",
+            "re2020ControlBoiler",
+        ):
+            with self.subTest(device_type=device_type):
+                original, _ = _rf6600fp()
+                device = original._device
+                entity, _ = _thermostat(
+                    metadata=device._metadata,
+                    data={
+                        "area_id": "7",
+                        "authorization": "HEATING",
+                        "localMode": "NORMAL",
+                        "useMode": "SCHED",
+                        "setpoint": None,
+                    },
+                    device_type=device_type,
+                )
+                self.assertFalse(entity._uses_comfort_mode_pilot_wire)
+
     def test_area_detection_falls_back_for_v034_devices(self) -> None:
         """Older Tydom devices identify area control by the area_id attribute."""
         entity, _client = _rf6600fp()
