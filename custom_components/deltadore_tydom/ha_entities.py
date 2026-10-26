@@ -117,6 +117,7 @@ from .tydom.tydom_devices import (
     TydomAlarmCommandError,
     TydomOpenIssuesNotReadyError,
     get_twc_scene_action,
+    is_tywell_control_type,
 )
 
 from .const import (
@@ -3293,7 +3294,7 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
             and getattr(self._device, "thermicLevel", None) == "ANTI_FROST"
             and not self._get_command_tracker().pending
         ):
-            resume_target = self._last_confirmed_targets.get(HVACMode.HEAT)
+            resume_target = self._heating_resume_target()
         self._remember_confirmed_target()
         tracker = self._get_command_tracker()
         # This real feedback will be published below. Avoid another climate
@@ -3313,7 +3314,7 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
             )
 
     async def _async_resume_after_general_heating(self, target: float) -> None:
-        """Reapply only a saved heating target after the gateway unlocks zones."""
+        """Apply a confirmed or first-use target after the gateway unlocks zones."""
         try:
             await self.async_set_temperature(temperature=target)
         except Exception as err:
@@ -3445,6 +3446,22 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
         return super().target_temperature_step
 
     OFF_LOCAL_MODES = ("ANTI_FROST", "STOP")
+    DEFAULT_HEATING_RESUME_TARGET = 17.0
+
+    def _heating_resume_target(self) -> float | None:
+        """Use the confirmed target, or default only for independent zones."""
+        target = self._last_confirmed_targets.get(HVACMode.HEAT)
+        if target is not None:
+            return target
+        if self._last_confirmed_targets:
+            return None
+        if (
+            self._uses_local_mode
+            and not self._is_area_controlled
+            and not is_tywell_control_type(self._device.device_type)
+        ):
+            return self.DEFAULT_HEATING_RESUME_TARGET
+        return None
 
     def _resolve_hvac_mode(self) -> HVACMode:
         """Derive HA HVAC mode from Tydom thermostat registers."""
@@ -3708,8 +3725,12 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
             # General Heating can leave a scheduled zone in frost protection
             # even though its local mode is already NORMAL. Re-sending NORMAL
             # is a no-op; the app releases this state by requesting a setpoint.
-            # Reuse only an actual confirmed target for this direction.
-            target = self._last_confirmed_targets.get(hvac_mode)
+            # Reuse the confirmed target; only independent zones may default to 17 C.
+            target = (
+                self._heating_resume_target()
+                if hvac_mode == HVACMode.HEAT
+                else self._last_confirmed_targets.get(hvac_mode)
+            )
             if target is None:
                 raise HomeAssistantError(
                     translation_domain=DOMAIN,

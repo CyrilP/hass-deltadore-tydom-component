@@ -1726,10 +1726,10 @@ class PresetNoneSendsAutoTests(IsolatedAsyncioTestCase):
 class FrostResumeTests(IsolatedAsyncioTestCase):
     """Reproduce general Heating with local NORMAL but effective frost protection."""
 
-    def zone(self, *, area=False):
+    def zone(self, *, area=False, device_type=None):
         """Use the writable setpoint/local-mode capabilities captured on Site 2."""
         entity, client = _thermostat(
-            device_type="re2020Controller" if area else "boiler",
+            device_type=device_type or ("re2020Controller" if area else "boiler"),
             metadata={
                 "authorization": {
                     "permission": "r",
@@ -1831,21 +1831,40 @@ class FrostResumeTests(IsolatedAsyncioTestCase):
             "20", "10", "heatSetpoint", "19.5"
         )
 
-    async def test_no_known_target_raises_without_inventing_one(self):
-        """A startup in frost requires an explicit target, never a default value."""
+    async def test_first_heat_resume_uses_17_for_independent_zone(self):
+        """A local thermostat gets a safe initial target when no target is known."""
         entity, client = self.zone()
         self.freeze(entity)
-        with self.assertRaises(_HomeAssistantError) as caught:
-            await entity.async_set_hvac_mode(HVACMode.HEAT)
-        self.assertEqual(caught.exception.translation_key, "resume_target_unknown")
-        client.put_devices_data.assert_not_awaited()
-        client.put_area_data.assert_not_awaited()
-        self.assertFalse(entity.extra_state_attributes["command_pending"])
-        # The standard HA action can release the zone even without a dial target.
-        await entity.async_set_temperature(temperature=21)
+        # Frost feedback alone must not make an independent zone look like it
+        # has an active target; the default is applied only when Heat is requested.
+        self.assertIsNone(entity.target_temperature)
+        await entity.async_set_hvac_mode(HVACMode.HEAT)
         client.put_devices_data.assert_awaited_once_with(
-            "20", "10", "heatSetpoint", "21"
+            "20", "10", "heatSetpoint", "17.0"
         )
+        client.put_area_data.assert_not_awaited()
+        self.assertTrue(entity.extra_state_attributes["command_pending"])
+
+    async def test_tywell_re2020_profiles_without_target_do_not_get_default(self):
+        """RE2020/Typass controllers never receive the independent-zone default."""
+        for device_type, area in (
+            ("re2020Controller", True),
+            ("re2020Controller", False),
+            ("re2020ControlBoiler", False),
+            ("re2020ControlPassive", False),
+        ):
+            with self.subTest(device_type=device_type, area=area):
+                entity, client = self.zone(area=area, device_type=device_type)
+                self.freeze(entity)
+                self.assertIsNone(entity.target_temperature)
+                with self.assertRaises(_HomeAssistantError) as caught:
+                    await entity.async_set_hvac_mode(HVACMode.HEAT)
+                self.assertEqual(
+                    caught.exception.translation_key, "resume_target_unknown"
+                )
+                client.put_devices_data.assert_not_awaited()
+                client.put_area_data.assert_not_awaited()
+                self.assertFalse(entity.extra_state_attributes["command_pending"])
 
     async def test_cooling_target_is_not_reused_for_heating(self):
         """A reversible controller must not substitute its cooling setpoint."""
@@ -1977,8 +1996,8 @@ class FrostResumeTests(IsolatedAsyncioTestCase):
         client.put_area_data.assert_awaited_once_with("7", "setpoint", "19.5")
         client.put_devices_data.assert_not_awaited()
 
-    async def test_general_transition_without_target_does_not_invent_one(self):
-        """No old target means no automatic heating command."""
+    async def test_general_transition_without_target_uses_17_for_independent_zone(self):
+        """Re-enabling general heating seeds only a local zone at 17 C."""
         entity, client = self.zone()
         self.freeze(entity)
         entity._last_general_mode = "STOP"
@@ -1988,9 +2007,38 @@ class FrostResumeTests(IsolatedAsyncioTestCase):
         entity._handle_climate_update()
         await asyncio.sleep(0)
 
-        client.put_devices_data.assert_not_awaited()
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "heatSetpoint", "17.0"
+        )
         client.put_area_data.assert_not_awaited()
-        self.assertIsNone(entity.target_temperature)
+        self.assertEqual(entity.target_temperature, 17.0)
+        self.assertTrue(entity.extra_state_attributes["command_pending"])
+
+    async def test_general_transition_without_target_does_not_change_tywell_re2020(
+        self,
+    ):
+        """No default is sent to linked or unlinked Tywell/Typass profiles."""
+        for device_type, area in (
+            ("re2020Controller", True),
+            ("re2020Controller", False),
+            ("re2020ControlBoiler", False),
+            ("re2020ControlPassive", False),
+        ):
+            with self.subTest(device_type=device_type, area=area):
+                entity, client = self.zone(area=area, device_type=device_type)
+                self.freeze(entity)
+                entity._last_general_mode = "STOP"
+                client.general_climate = types.SimpleNamespace(
+                    mode="HEATING", lock_reason=None
+                )
+                entity.hass.async_create_task = asyncio.create_task
+
+                entity._handle_climate_update()
+                await asyncio.sleep(0)
+
+                client.put_devices_data.assert_not_awaited()
+                client.put_area_data.assert_not_awaited()
+                self.assertIsNone(entity.target_temperature)
 
     async def test_general_transition_does_not_resume_other_zone_states(self):
         """Explicitly stopped zones and unrelated mode changes remain untouched."""
