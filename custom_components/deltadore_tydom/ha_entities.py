@@ -2810,7 +2810,7 @@ class HaClimate(ClimateEntity, HAEntity):
             HVACMode.AUTO,
         ]
 
-        if self._device.is_area_controlled:
+        if self._is_area_controlled:
             area_modes = self._device.area_hvac_modes()
             self._attr_hvac_modes = [HVACMode.OFF]
             if "HEATING" in area_modes or "NORMAL" in area_modes:
@@ -2966,6 +2966,40 @@ class HaClimate(ClimateEntity, HAEntity):
             if isinstance(local_mode_meta, dict)
             else ""
         )
+        comfort_mode_meta = (metadata or {}).get("comfortMode")
+        comfort_mode_values = (
+            set(comfort_mode_meta.get("enum_values") or [])
+            if isinstance(comfort_mode_meta, dict)
+            else set()
+        )
+        thermic_level_meta = (metadata or {}).get("thermicLevel")
+        thermic_level_values = (
+            set(thermic_level_meta.get("enum_values") or [])
+            if isinstance(thermic_level_meta, dict)
+            else set()
+        )
+        # RF6600FP endpoints can advertise the X3D localMode enum even though
+        # pilot-wire orders are driven through thermicLevel. Require the full
+        # writable capability signature so other climate profiles keep their
+        # existing localMode, setpoint, and reversible paths.
+        self._uses_comfort_mode_pilot_wire = (
+            not self._is_area_controlled
+            and "r" in local_mode_permission
+            and "w" in local_mode_permission
+            and {"NORMAL", "STOP", "ANTI_FROST", "ABSENCE"}.issubset(
+                set(local_mode_meta.get("enum_values") or [])
+            )
+            and isinstance(comfort_mode_meta, dict)
+            and "w" in comfort_mode_meta.get("permission", "")
+            and {"STOP", "HEATING"}.issubset(comfort_mode_values)
+            and isinstance(thermic_level_meta, dict)
+            and {"r", "w"}.issubset(set(thermic_level_meta.get("permission", "")))
+            and {"COMFORT", "ECO", "ANTI_FROST", "STOP"}.issubset(thermic_level_values)
+            and "AUTO" not in thermic_level_values
+            and not has_setpoint_meta
+            and not has_live_setpoint
+            and not has_cool_enum_meta
+        )
         setpoint_meta = (metadata or {}).get("setpoint")
         setpoint_permission = (
             setpoint_meta.get("permission", "")
@@ -2997,12 +3031,13 @@ class HaClimate(ClimateEntity, HAEntity):
             # TRV-backed areas and Typass ATL zones.  Area-derived entities
             # build their mode list from area_hvac_modes() above, which can
             # include COOL, so they must keep it.
-            and not self._device.is_area_controlled
+            and not self._is_area_controlled
             # Reversible zones (heat pump / AC) reach [off, heat, cool] above
             # from their own enum metadata.  Frost protection is a preset on
             # those, not an off state, and collapsing them here would drop
             # cooling altogether — see #453 / #455.
             and HVACMode.COOL not in self._attr_hvac_modes
+            and not self._uses_comfort_mode_pilot_wire
         )
         # A zone that carries localMode is driven through it exclusively.  It
         # would otherwise also satisfy the pilot-wire test when it exposes no
@@ -3296,9 +3331,18 @@ class HaClimate(ClimateEntity, HAEntity):
         return super().max_temp
 
     @property
+    def _is_area_controlled(self) -> bool:
+        """Return area-control status, including compatibility with v0.34 devices."""
+        return bool(
+            getattr(
+                self._device, "is_area_controlled", hasattr(self._device, "area_id")
+            )
+        )
+
+    @property
     def target_temperature_step(self) -> float | None:
         """Return the area controller's advertised temperature step."""
-        if self._device.is_area_controlled:
+        if self._is_area_controlled:
             step = self._device.area_temperature_step()
             if step is not None:
                 return step
@@ -3325,6 +3369,13 @@ class HaClimate(ClimateEntity, HAEntity):
                     return HVACMode.OFF
                 if self._device.uses_area_local_mode and authorization == "COOLING":
                     return HVACMode.COOL
+                return HVACMode.HEAT
+
+        if self._uses_comfort_mode_pilot_wire:
+            authorization = getattr(self._device, "authorization", None)
+            if authorization == "STOP":
+                return HVACMode.OFF
+            if authorization == "HEATING":
                 return HVACMode.HEAT
 
         if getattr(self, "_is_filpilote", False):
@@ -3485,7 +3536,7 @@ class HaClimate(ClimateEntity, HAEntity):
             override = getattr(self._device, "overrideSetpoint", None)
             if override is not None:
                 return float(override)
-        if self._device.is_area_controlled:
+        if self._is_area_controlled:
             setpoint = getattr(
                 self._device, self._device.area_setpoint_attribute(), None
             )
@@ -3566,6 +3617,32 @@ class HaClimate(ClimateEntity, HAEntity):
             return
 
         if getattr(self, "_is_filpilote", False):
+            if self._uses_comfort_mode_pilot_wire:
+                if hvac_mode == HVACMode.OFF:
+                    operation = self._device._tydom_client.put_devices_data(
+                        self._device._id,
+                        self._device._endpoint,
+                        "comfortMode",
+                        "STOP",
+                    )
+                elif getattr(self._device, "thermicLevel", None) in (None, "STOP"):
+
+                    async def enable_heating() -> None:
+                        await self._device._tydom_client.put_devices_data(
+                            self._device._id,
+                            self._device._endpoint,
+                            "comfortMode",
+                            "HEATING",
+                        )
+                        await self._device.set_thermic_level("COMFORT")
+
+                    operation = enable_heating()
+                else:
+                    return
+
+                await self._async_track_command("hvac_mode", hvac_mode, operation)
+                return
+
             # OFF -> pilot-wire STOP. HEAT -> keep the current heating order, or
             # default to Comfort when coming from STOP; the level is chosen via
             # preset_mode (comfort/eco/away).
@@ -3698,7 +3775,7 @@ class HaClimate(ClimateEntity, HAEntity):
                 and "ABSENCE" in local_mode_metadata.get("enum_values", [])
                 and "w" in local_mode_metadata.get("permission", "")
             ):
-                if self._device.is_area_controlled:
+                if self._is_area_controlled:
                     await self._async_track_command(
                         "preset_mode",
                         preset_mode,
