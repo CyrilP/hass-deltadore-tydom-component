@@ -2788,12 +2788,21 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
 
         comfort_mode = metadata.get("comfortMode", {})
         for mode in comfort_mode.get("enum_values", []):
-            if mode not in ["HEATING", "COOLING", "STOP"]:
+            if mode not in ["HEATING", "COOLING", "STOP", "NO_REGUL"]:
                 add_preset(mode)
 
         thermic_level = metadata.get("thermicLevel", {})
-        for mode in thermic_level.get("enum_values", []):
-            if mode not in ["STOP", "AUTO"]:
+        thermic_level_values = thermic_level.get("enum_values", [])
+        # NO_REGUL is an internal TYDOM state, not a user-selectable preset.
+        # When reported, the live state can legitimately resolve to
+        # PRESET_NONE; remember this capability so only these entities expose
+        # the corresponding "no preset" option.
+        self._has_no_regul_thermic_level = "NO_REGUL" in thermic_level_values
+        self._has_no_regul_preset = self._has_no_regul_thermic_level or (
+            "NO_REGUL" in comfort_mode.get("enum_values", [])
+        )
+        for mode in thermic_level_values:
+            if mode not in ["STOP", "AUTO", "NO_REGUL"]:
                 add_preset(mode)
 
         # Add common presets if available
@@ -3079,6 +3088,42 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
             and not has_cool_enum_meta
         )
 
+        # The Tybox Home RF 210 / PAC profile exposes a writable localMode
+        # (NORMAL, STOP, ANTI_FROST, ABSENCE), a SCHED useMode, and the
+        # internal thermicLevel NO_REGUL marker. Use localMode to keep ABSENCE
+        # distinct from ANTI_FROST, and STOP for the HVAC state. Requiring the
+        # full capability set keeps X3D heating-only, fil-pilote, and
+        # Tywell/Typass area climate profiles on their existing paths. Do not
+        # expose ANTI_FROST as a selectable preset: live testing showed TYDOM
+        # restoring the schedule after a localMode-only write.
+        local_mode_meta = metadata.get("localMode", {})
+        use_mode_meta = metadata.get("useMode", {})
+        local_mode_values = (
+            set(local_mode_meta.get("enum_values", []))
+            if isinstance(local_mode_meta, dict)
+            else set()
+        )
+        self._uses_local_mode_presets = (
+            not self._is_filpilote
+            and not self._uses_local_mode
+            and not self._device.is_area_trv
+            and not self._device.is_derived_area_climate
+            and self._has_no_regul_thermic_level
+            and (has_setpoint_meta or has_live_setpoint)
+            and isinstance(local_mode_meta, dict)
+            and "r" in local_mode_meta.get("permission", "")
+            and "w" in local_mode_meta.get("permission", "")
+            and {"NORMAL", "STOP", "ANTI_FROST", "ABSENCE"}.issubset(local_mode_values)
+            and isinstance(use_mode_meta, dict)
+            and "SCHED" in use_mode_meta.get("enum_values", [])
+        )
+        if self._uses_local_mode_presets:
+            # Away is the only additional preset whose write has been verified.
+            # Frost remains visible in the existing local-mode diagnostic until
+            # TYDOM's complete command sequence can be confirmed.
+            self._attr_preset_modes = [PRESET_AWAY]
+            self._attr_supported_features |= ClimateEntityFeature.PRESET_MODE
+
         if self._is_filpilote:
             self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
             self._attr_preset_modes = [
@@ -3205,6 +3250,8 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
         modes = list(self._attr_preset_modes)
         if self._supports_absence_mode() and PRESET_AWAY not in modes:
             modes.append(PRESET_AWAY)
+        if modes and self._has_no_regul_preset and PRESET_NONE not in modes:
+            modes.append(PRESET_NONE)
         return modes
 
     def _get_command_tracker(self) -> ClimateCommandTracker:
@@ -3470,6 +3517,12 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
         if self._device.is_area_trv:
             return HVACMode.HEAT
 
+        if (
+            getattr(self, "_uses_local_mode_presets", False)
+            and getattr(self._device, "localMode", None) == "STOP"
+        ):
+            return HVACMode.OFF
+
         if self._uses_local_mode:
             local_mode = getattr(self._device, "localMode", None)
             # localMode is the zone's on/off order. A separate thermicLevel
@@ -3544,6 +3597,12 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
                 if getattr(self._device, "waterFlowReq", False)
                 else HVACAction.IDLE
             )
+
+        if (
+            getattr(self, "_uses_local_mode_presets", False)
+            and getattr(self._device, "localMode", None) == "STOP"
+        ):
+            return HVACAction.OFF
 
         if getattr(self, "_is_filpilote", False):
             # No temperature feedback exists, so we cannot distinguish heating
@@ -3816,6 +3875,12 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
             if level == "ANTI_FROST":
                 return PRESET_AWAY
             return PRESET_NONE
+        if getattr(self, "_uses_local_mode_presets", False):
+            # ABSENCE is the confirmed Away preset. ANTI_FROST remains visible
+            # from the local-mode diagnostic; it is not aliased to Away.
+            if getattr(self._device, "localMode", None) == "ABSENCE":
+                return PRESET_AWAY
+            return PRESET_NONE
         if self._uses_local_mode:
             local_mode = getattr(self._device, "localMode", None)
             if local_mode == "ABSENCE":
@@ -3927,6 +3992,31 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
                     "preset_mode", preset_mode, self._device.set_thermic_level("AUTO")
                 )
             return
+        if getattr(self, "_uses_local_mode_presets", False):
+            local_mode = getattr(self._device, "localMode", None)
+            if preset_mode == PRESET_AWAY:
+                target_local_mode = "ABSENCE"
+            elif preset_mode == PRESET_NONE and local_mode == "ABSENCE":
+                # Only clear Away. In STOP or ANTI_FROST, writing NORMAL would
+                # restart regulation or overwrite the active frost state.
+                target_local_mode = "NORMAL"
+            else:
+                return
+
+            if self._device.is_area_controlled:
+                operation = self._device._tydom_client.put_area_data(
+                    self._device.area_id, "localMode", target_local_mode
+                )
+            else:
+                operation = self._device._tydom_client.put_devices_data(
+                    self._device._id,
+                    self._device._endpoint,
+                    "localMode",
+                    target_local_mode,
+                )
+            await self._async_track_command("preset_mode", preset_mode, operation)
+            return
+
         if preset_mode == PRESET_AWAY and self._supports_absence_mode():
             local_mode_metadata = (self._device._metadata or {}).get("localMode", {})
             if (
