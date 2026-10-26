@@ -3039,6 +3039,28 @@ class HaClimate(ClimateEntity, HAEntity):
             and HVACMode.COOL not in self._attr_hvac_modes
             and not self._uses_comfort_mode_pilot_wire
         )
+        thermic_level_meta = (metadata or {}).get("thermicLevel")
+        thermic_level_permission = (
+            thermic_level_meta.get("permission", "")
+            if isinstance(thermic_level_meta, dict)
+            else ""
+        )
+        thermic_level_values = (
+            set(thermic_level_meta.get("enum_values") or [])
+            if isinstance(thermic_level_meta, dict)
+            else set()
+        )
+        # Some thermostats expose both registers: localMode carries the
+        # thermostat's on/off and absence state, while thermicLevel carries
+        # user-selectable Eco/Comfort/Auto levels. Limit this path to
+        # non-area devices with the complete writable capability signature.
+        self._uses_local_mode_thermic_presets = (
+            self._uses_local_mode
+            and not self._is_area_controlled
+            and "r" in thermic_level_permission
+            and "w" in thermic_level_permission
+            and {"AUTO", "ECO", "COMFORT"}.issubset(thermic_level_values)
+        )
         # A zone that carries localMode is driven through it exclusively.  It
         # would otherwise also satisfy the pilot-wire test when it exposes no
         # setpoint, and the two paths disagree: most properties check
@@ -3072,19 +3094,26 @@ class HaClimate(ClimateEntity, HAEntity):
             # modes; only the legacy heating-only zones reduce this list.
             if not self._device.uses_area_local_mode:
                 self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
-            # Replace any presets derived above.  These zones have no comfort
-            # or eco order: comfortMode is the write-only season register, so
-            # the generic extraction finds nothing usable and falls back to a
-            # hardcoded [NORMAL, ECO, COMFORT] the hardware does not implement.
-            # ABSENCE is the one real preset they do have.
-            if (
-                self._device.uses_area_local_mode
-                or "ABSENCE" in self._local_mode_values
-            ):
+            # Mixed profiles may additionally advertise real Eco/Comfort/Auto
+            # choices on thermicLevel; retain those while keeping localMode as
+            # the source for off and absence.
+            self._attr_preset_modes = []
+            if self._uses_local_mode_thermic_presets:
+                if "ECO" in thermic_level_values:
+                    self._attr_preset_modes.append(PRESET_ECO)
+                if "COMFORT" in thermic_level_values:
+                    self._attr_preset_modes.append(PRESET_COMFORT)
+            if "ABSENCE" in self._local_mode_values:
+                self._attr_preset_modes.extend([PRESET_NONE, PRESET_AWAY])
+            elif self._device.uses_area_local_mode:
+                # Preserve the existing area preset behavior when absence is
+                # controlled by the installation rather than this endpoint.
                 self._attr_preset_modes = [PRESET_NONE, PRESET_AWAY]
+            elif self._uses_local_mode_thermic_presets:
+                self._attr_preset_modes.append(PRESET_NONE)
+            if self._attr_preset_modes:
                 self._attr_supported_features |= ClimateEntityFeature.PRESET_MODE
             else:
-                self._attr_preset_modes = []
                 self._attr_supported_features &= ~ClimateEntityFeature.PRESET_MODE
 
         # Fan speed (Naviclim X3D reversible AC). Naviclim zones expose a numeric
@@ -3693,6 +3722,12 @@ class HaClimate(ClimateEntity, HAEntity):
             local_mode = getattr(self._device, "localMode", None)
             if local_mode == "ABSENCE":
                 return PRESET_AWAY
+            if self._uses_local_mode_thermic_presets:
+                thermic_level = getattr(self._device, "thermicLevel", None)
+                if thermic_level == "ECO":
+                    return PRESET_ECO
+                if thermic_level == "COMFORT":
+                    return PRESET_COMFORT
             return PRESET_NONE if self._attr_preset_modes else None
         if (
             not self._device.is_area_trv
@@ -3716,6 +3751,32 @@ class HaClimate(ClimateEntity, HAEntity):
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new target preset mode."""
         self._device.validate_general_hvac_mode()
+        if self._uses_local_mode_thermic_presets:
+            thermic_level_for_preset = {
+                PRESET_ECO: "ECO",
+                PRESET_COMFORT: "COMFORT",
+            }.get(preset_mode)
+            if thermic_level_for_preset is not None:
+                await self._async_track_command(
+                    "preset_mode",
+                    preset_mode,
+                    self._device.set_thermic_level(thermic_level_for_preset),
+                )
+                return
+            if preset_mode == PRESET_NONE:
+                # Leave Away through Auto first, then clear the absence state.
+                await self._async_track_command(
+                    "preset_mode",
+                    preset_mode,
+                    self._device.set_thermic_level("AUTO"),
+                )
+                if getattr(self._device, "localMode", None) == "ABSENCE":
+                    await self._async_track_command(
+                        "preset_mode",
+                        preset_mode,
+                        self._device.set_local_mode("NORMAL"),
+                    )
+                return
         if self._uses_local_mode:
             if preset_mode == PRESET_AWAY:
                 await self._async_track_command(
