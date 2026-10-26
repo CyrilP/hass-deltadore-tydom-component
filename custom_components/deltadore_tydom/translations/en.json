@@ -215,6 +215,15 @@
         }
     },
     "exceptions": {
+        "resume_target_unknown": {
+            "message": "This zone is still in frost protection and no confirmed target temperature is known. Choose a temperature with the climate.set_temperature action to resume it. The general heating/air conditioning mode must be enabled."
+        },
+        "general_hvac_absence": {
+            "message": "General Away mode is active. End it in TYDOM or with the gateway's general control before controlling this zone."
+        },
+        "general_hvac_stopped": {
+            "message": "The general heating/air conditioning mode is Off. Enable it in TYDOM or with the gateway's general control before controlling this zone."
+        },
         "stored_alarm_pin_missing": {
             "message": "Save an alarm PIN in this TYDOM integration's settings before using this action."
         },

@@ -262,9 +262,15 @@ readable technical name until a matching label is added.
 
 The climate entity uses the device's current heating or cooling setpoint limits, including installer limits reported by TYDOM. Out-of-range temperatures are rejected before sending a command.
 
-The diagnostic **Command pending** binary sensor switches on when Home Assistant sends a mode, temperature or preset request. The climate entity keeps showing the values reported by the thermostat; completing the network send does not confirm the physical change. The indicator switches off when a subsequent TYDOM update reports the requested value, or if sending fails. Multiple outstanding requests are confirmed separately.
+General Off takes priority over zone controls. Whilst it is active, Home Assistant disables zone mode, preset and target-temperature changes; a zone request never restarts heating for the whole installation. Reactivate the general mode in TYDOM first. For zones controlled through `localMode`, the zone's Off state follows `localMode: STOP` or `ANTI_FROST`. A separate `thermicLevel: ANTI_FROST` on an enabled (`localMode: NORMAL`) zone keeps its Heat mode with an Idle action. Frost feedback is not shown as a normal heating target, including the misleading 30 °C value returned by some areas.
 
-After two minutes without matching feedback, the status becomes `unconfirmed` and the indicator stays on. This does not prove the command failed. There is no automatic resend. The requested values and `command_status` are also available as climate attributes. Pending requests are cleared when the integration is unloaded.
+If an enabled zone remains in frost protection after general heating resumes, an explicit Heat request can reuse its last confirmed heating target. This never changes the general mode or sends a default temperature. If no valid target has been received since startup or an inventory rebuild, choose one explicitly with `climate.set_temperature`. Actual temperature feedback is required to confirm that setpoint request.
+
+The diagnostic **Command pending** binary sensor switches on when Home Assistant sends a mode, temperature or preset request. For every climate entity, including heating and air conditioning, a requested target temperature is displayed immediately while awaiting confirmation. The actual target remains available in the `reported_temperature` climate attribute; completing the network send does not confirm the physical change. The indicator switches off when a subsequent TYDOM update reports the requested value, or if sending fails. Multiple outstanding requests are confirmed separately.
+
+Mode and preset requests publish their pending status through this diagnostic sensor without republishing the climate's unchanged mode or preset. The climate is updated when TYDOM supplies feedback or its displayed target temperature changes. For immediate command-status tracking, use the diagnostic sensor and its attributes; the climate tracking attributes reflect its latest published state.
+
+If sending fails, the displayed target returns to the latest value reported by TYDOM. After two minutes without matching feedback, the status becomes `unconfirmed`, the indicator switches off and the displayed target returns to the reported value. This does not prove the command failed; a later update can still confirm it. There is no automatic resend. The requested values and `command_status` are also available as climate attributes. Pending requests are cleared when the integration is unloaded.
 
 ### General heating and air conditioning mode
 
