@@ -3083,6 +3083,18 @@
             }
         },
         "select": {
+            "general_climate_mode": {
+                "name": "Modalità generale",
+                "state": {
+                    "off": "Spento",
+                    "heat": "Riscaldamento",
+                    "cool": "Raffrescamento",
+                    "away": "Assenza",
+                    "fan_only": "Ventilazione",
+                    "dry": "Deumidificazione",
+                    "mixed": "Misto"
+                }
+            },
             "absence": {
                 "name": "Modalità assenza"
             },
@@ -3930,6 +3942,15 @@
         }
     },
     "exceptions": {
+        "resume_target_unknown": {
+            "message": "Questa zona è ancora in protezione antigelo e non è nota una temperatura impostata confermata. Scegliere una temperatura con l’azione climate.set_temperature per riattivarla. La modalità generale di riscaldamento/climatizzazione deve essere attiva."
+        },
+        "general_hvac_absence": {
+            "message": "La modalità assenza generale è attiva. Disattivarla in TYDOM o con il comando generale del gateway prima di controllare questa zona."
+        },
+        "general_hvac_stopped": {
+            "message": "La modalità generale di riscaldamento/climatizzazione è disattivata. Attivarla in TYDOM o con il comando generale del gateway prima di controllare questa zona."
+        },
         "invalid_target_temperature": {
             "message": "La temperatura impostata deve essere un numero finito."
         },
