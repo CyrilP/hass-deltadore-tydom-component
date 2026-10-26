@@ -545,8 +545,12 @@ class TydomShutter(TydomDevice):
 
     async def set_position(self, position: int) -> None:
         """Set cover to the given position."""
-        # Validate value with metadata
-        is_valid, error_msg = validate_value_with_metadata(self, "position", position)
+        # Cover positions are percentage targets. A coarse gateway step (for
+        # example, 100) must not prevent intermediate targets such as 25%.
+        # Keep the metadata type and min/max checks, but ignore its step here.
+        is_valid, error_msg = validate_value_with_metadata(
+            self, "position", position, ignore_step=True
+        )
         if not is_valid:
             from homeassistant.exceptions import HomeAssistantError
 
