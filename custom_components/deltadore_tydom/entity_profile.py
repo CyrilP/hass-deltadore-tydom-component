@@ -137,7 +137,7 @@ class EntityProfile:
         self._entry = entry
         self._registry = er.async_get(hass)
         self._mode = entry.data.get(CONF_ENTITY_MODE, ENTITY_MODE_ALL)
-        self._known: dict[tuple[str, str], tuple[bool, bool]] = {}
+        self._known: dict[tuple[str, str], tuple[bool, bool, bool]] = {}
         self._expected_changes: dict[str, er.RegistryEntryDisabler | None] = {}
         entry.async_on_unload(
             hass.bus.async_listen(
@@ -159,9 +159,16 @@ class EntityProfile:
             for entity in entities:
                 if entity.unique_id is None:
                     continue
+                hidden = bool(getattr(entity, "entity_profile_hidden", False))
+                if hidden:
+                    entity._attr_entity_registry_enabled_default = False
                 baseline_enabled = entity.entity_registry_enabled_default
                 secondary = not is_essential_entity(entity) and baseline_enabled
-                self._known[(domain, entity.unique_id)] = (secondary, baseline_enabled)
+                self._known[(domain, entity.unique_id)] = (
+                    secondary,
+                    baseline_enabled,
+                    hidden,
+                )
                 entity_id = self._registry.async_get_entity_id(
                     domain, DOMAIN, entity.unique_id
                 )
@@ -203,8 +210,21 @@ class EntityProfile:
         known = self._known.get((entity.domain, entity.unique_id))
         if known is None:
             return
-        secondary, baseline_enabled = known
+        secondary, baseline_enabled, hidden = known
         options = entity.options.get(DOMAIN, {})
+        if hidden:
+            if "profile_hidden" in options:
+                return
+            if entity.disabled_by is None:
+                self._set_options(entity, profile_hidden=True)
+                self._set_disabled(
+                    entity.entity_id, er.RegistryEntryDisabler.INTEGRATION
+                )
+            elif entity.disabled_by == er.RegistryEntryDisabler.INTEGRATION:
+                self._set_options(entity, profile_hidden=True)
+            else:
+                self._set_options(entity, profile_hidden=False)
+            return
         managed = bool(options.get("profile_disabled"))
         if not secondary and managed:
             self._set_options(entity, secondary=False, profile_disabled=False)
@@ -215,6 +235,15 @@ class EntityProfile:
                 self._set_disabled(entity.entity_id, None)
             return
         if secondary or "secondary" in options:
+            if managed and self._mode == ENTITY_MODE_ALL:
+                self._set_options(
+                    entity,
+                    secondary=secondary,
+                    profile_disabled=False,
+                )
+                if entity.disabled_by == er.RegistryEntryDisabler.INTEGRATION:
+                    self._set_disabled(entity.entity_id, None)
+                return
             self._set_options(
                 entity,
                 secondary=secondary,
@@ -246,7 +275,12 @@ class EntityProfile:
             expected = self._expected_changes.pop(entity_id)
             if entity.disabled_by == expected:
                 return
-        if entity.options.get(DOMAIN, {}).get("profile_disabled"):
+        options = entity.options.get(DOMAIN, {})
+        known = self._known.get((entity.domain, entity.unique_id))
+        if known is not None and known[2] and options.get("profile_hidden"):
+            self._set_options(entity, profile_hidden=False)
+            return
+        if options.get("profile_disabled"):
             self._set_options(entity, profile_disabled=False)
 
     @callback
