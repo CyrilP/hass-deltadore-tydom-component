@@ -36,6 +36,7 @@ from homeassistant.const import (
     PERCENTAGE,
 )
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.components.cover import (
@@ -2667,7 +2668,7 @@ class HASmoke(BinarySensorEntity, HAEntity):
         return attrs
 
 
-class HaClimate(ClimateEntity, HAEntity):
+class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
     """A climate entity."""
 
     _attr_should_poll = False
@@ -2708,6 +2709,7 @@ class HaClimate(ClimateEntity, HAEntity):
         self._attr_name = None
         self._enable_turn_on_off_backwards_compatibility = False
         self._last_confirmed_targets: dict[HVACMode, float] = {}
+        self._last_general_mode: str | None = None
 
         self.dict_modes_ha_to_dd = {
             HVACMode.COOL: "COOLING",
@@ -3237,18 +3239,61 @@ class HaClimate(ClimateEntity, HAEntity):
         mode = self.hvac_mode
         if mode not in (HVACMode.HEAT, HVACMode.COOL):
             return
-        target = self.reported_target_temperature
-        if target is None or not math.isfinite(target):
-            return
+        target = self._validated_confirmed_target(
+            mode, self.reported_target_temperature
+        )
+        if target is not None:
+            self._last_confirmed_targets[mode] = target
+
+    def _validated_confirmed_target(self, mode: HVACMode, target: Any) -> float | None:
+        """Accept only finite, in-range targets for a supported direction."""
+        if mode not in (HVACMode.HEAT, HVACMode.COOL) or isinstance(target, bool):
+            return None
+        with suppress(TypeError, ValueError):
+            target = float(target)
+        if not isinstance(target, float) or not math.isfinite(target):
+            return None
         minimum, maximum = self._device.temperature_limits()
         if (minimum is not None and target < minimum) or (
             maximum is not None and target > maximum
         ):
+            return None
+        return target
+
+    def _restore_confirmed_targets(self, last_state: Any) -> None:
+        """Restore targets from this integration, or a prior HA climate state."""
+        if last_state is None:
             return
-        self._last_confirmed_targets[mode] = target
+        attributes = getattr(last_state, "attributes", {})
+        stored = attributes.get("last_confirmed_targets", {})
+        if not isinstance(stored, dict):
+            stored = {}
+        for mode in (HVACMode.HEAT, HVACMode.COOL):
+            target = self._validated_confirmed_target(mode, stored.get(mode.value))
+            if target is None and getattr(last_state, "state", None) == mode.value:
+                target = self._validated_confirmed_target(
+                    mode, attributes.get(ATTR_TEMPERATURE)
+                )
+            if target is not None:
+                self._last_confirmed_targets[mode] = target
 
     def _handle_climate_update(self) -> None:
         """Confirm requests only when TYDOM publishes the actual device state."""
+        home = getattr(self._device._tydom_client, "general_climate", None)
+        current_general_mode = getattr(home, "mode", None)
+        previous_general_mode = self._last_general_mode
+        self._last_general_mode = current_general_mode
+        resume_target = None
+        if (
+            previous_general_mode == "STOP"
+            and current_general_mode == "HEATING"
+            and self._uses_local_mode
+            and self._device.general_control_lock is None
+            and getattr(self._device, "localMode", None) == "NORMAL"
+            and getattr(self._device, "thermicLevel", None) == "ANTI_FROST"
+            and not self._get_command_tracker().pending
+        ):
+            resume_target = self._last_confirmed_targets.get(HVACMode.HEAT)
         self._remember_confirmed_target()
         tracker = self._get_command_tracker()
         # This real feedback will be published below. Avoid another climate
@@ -3262,6 +3307,22 @@ class HaClimate(ClimateEntity, HAEntity):
             }
         )
         self.async_write_ha_state()
+        if resume_target is not None:
+            self.hass.async_create_task(
+                self._async_resume_after_general_heating(resume_target)
+            )
+
+    async def _async_resume_after_general_heating(self, target: float) -> None:
+        """Reapply only a saved heating target after the gateway unlocks zones."""
+        try:
+            await self.async_set_temperature(temperature=target)
+        except Exception as err:
+            LOGGER.warning(
+                "Could not restore the confirmed heating target after general "
+                "heating was enabled for device_id=%s: %s",
+                self._device.device_id,
+                err,
+            )
 
     async def _async_track_command(
         self, key: str, value: Any, operation: Awaitable[Any]
@@ -3298,18 +3359,24 @@ class HaClimate(ClimateEntity, HAEntity):
         return {
             "command_pending": tracker.pending,
             "reported_temperature": self.reported_target_temperature,
+            "last_confirmed_targets": {
+                mode.value: target
+                for mode, target in self._last_confirmed_targets.items()
+            },
             **tracker.attributes,
         }
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
         await super().async_added_to_hass()
+        self._restore_confirmed_targets(await self.async_get_last_state())
         self._command_listening = True
         self._remember_confirmed_target()
         self._device.register_callback(self._handle_climate_update)
         self._device._ha_device = self
         home = getattr(self._device._tydom_client, "general_climate", None)
         if home is not None:
+            self._last_general_mode = getattr(home, "mode", None)
             home.add_listener(self._handle_climate_update)
 
     async def async_will_remove_from_hass(self) -> None:
@@ -3539,7 +3606,17 @@ class HaClimate(ClimateEntity, HAEntity):
         requested = tracker.requested_value("temperature") if tracker else None
         if requested is not None:
             return float(requested)
-        return self.reported_target_temperature
+        reported = self.reported_target_temperature
+        if reported is not None:
+            return reported
+        if (
+            self._device.general_control_lock is None
+            and self._uses_local_mode
+            and getattr(self._device, "localMode", None) == "NORMAL"
+            and getattr(self._device, "thermicLevel", None) == "ANTI_FROST"
+        ):
+            return self._last_confirmed_targets.get(HVACMode.HEAT)
+        return None
 
     @property
     def reported_target_temperature(self) -> float | None:

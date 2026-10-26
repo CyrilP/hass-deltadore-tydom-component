@@ -112,6 +112,16 @@ _module("homeassistant.helpers", device_registry=types.ModuleType("device_regist
 _module("homeassistant.helpers.device_registry")
 
 
+class _StubRestoreEntity(_StubEntity):
+    """Expose the Home Assistant restore API used by climate entities."""
+
+    async def async_get_last_state(self):
+        return getattr(self, "_last_state_to_restore", None)
+
+
+_module("homeassistant.helpers.restore_state", RestoreEntity=_StubRestoreEntity)
+
+
 # --- homeassistant.exceptions ---
 class _HomeAssistantError(Exception):
     def __init__(self, *args, **kwargs):
@@ -1855,7 +1865,8 @@ class FrostResumeTests(IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(RuntimeError, "send failed"):
             await entity.async_set_hvac_mode(HVACMode.HEAT)
         self.assertEqual(entity.hvac_mode, HVACMode.HEAT)
-        self.assertIsNone(entity.target_temperature)
+        self.assertEqual(entity.target_temperature, 19.5)
+        self.assertIsNone(entity.reported_target_temperature)
         self.assertFalse(entity.extra_state_attributes["command_pending"])
 
     async def test_general_off_still_blocks_resume(self):
@@ -1907,6 +1918,104 @@ class FrostResumeTests(IsolatedAsyncioTestCase):
         self.assertEqual(entity._last_confirmed_targets[HVACMode.HEAT], 19.5)
         self.freeze(entity)
         self.assertEqual(entity._last_confirmed_targets[HVACMode.HEAT], 19.5)
+
+    async def test_confirmed_targets_restore_from_entity_state(self):
+        """A known target survives HA restart without reusing frost feedback."""
+        entity, _ = self.zone()
+        entity._restore_confirmed_targets(
+            types.SimpleNamespace(
+                state="off",
+                attributes={"last_confirmed_targets": {"heat": 19.5, "cool": 25}},
+            )
+        )
+        self.assertEqual(
+            entity._last_confirmed_targets,
+            {HVACMode.HEAT: 19.5, HVACMode.COOL: 25.0},
+        )
+
+    async def test_legacy_target_restores_only_from_matching_active_mode(self):
+        """A legacy HA target is used only when its state identifies the mode."""
+        entity, _ = self.zone()
+        entity._restore_confirmed_targets(
+            types.SimpleNamespace(state="heat", attributes={"temperature": 19.5})
+        )
+        self.assertEqual(entity._last_confirmed_targets[HVACMode.HEAT], 19.5)
+        entity._last_confirmed_targets.clear()
+        entity._restore_confirmed_targets(
+            types.SimpleNamespace(state="off", attributes={"temperature": 30})
+        )
+        self.assertEqual(entity._last_confirmed_targets, {})
+
+    async def test_general_off_to_heat_reapplies_saved_target(self):
+        """Only the exact site-2 frost state receives the remembered target."""
+        entity, client = self.zone()
+        entity._last_confirmed_targets[HVACMode.HEAT] = 19.5
+        self.freeze(entity)
+        self.assertEqual(entity.target_temperature, 19.5)
+        entity._last_general_mode = "STOP"
+        client.general_climate = types.SimpleNamespace(mode="HEATING", lock_reason=None)
+        entity.hass.async_create_task = asyncio.create_task
+        entity._handle_climate_update()
+        await asyncio.sleep(0)
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "heatSetpoint", "19.5"
+        )
+        self.assertTrue(entity.extra_state_attributes["command_pending"])
+
+    async def test_general_transition_resumes_area_zone_too(self):
+        """Tywell Control's area climate follows the same narrow recovery path."""
+        entity, client = self.zone(area=True)
+        entity._last_confirmed_targets[HVACMode.HEAT] = 19.5
+        self.freeze(entity)
+        entity._last_general_mode = "STOP"
+        client.general_climate = types.SimpleNamespace(mode="HEATING", lock_reason=None)
+        entity.hass.async_create_task = asyncio.create_task
+
+        entity._handle_climate_update()
+        await asyncio.sleep(0)
+
+        client.put_area_data.assert_awaited_once_with("7", "setpoint", "19.5")
+        client.put_devices_data.assert_not_awaited()
+
+    async def test_general_transition_without_target_does_not_invent_one(self):
+        """No old target means no automatic heating command."""
+        entity, client = self.zone()
+        self.freeze(entity)
+        entity._last_general_mode = "STOP"
+        client.general_climate = types.SimpleNamespace(mode="HEATING", lock_reason=None)
+        entity.hass.async_create_task = asyncio.create_task
+
+        entity._handle_climate_update()
+        await asyncio.sleep(0)
+
+        client.put_devices_data.assert_not_awaited()
+        client.put_area_data.assert_not_awaited()
+        self.assertIsNone(entity.target_temperature)
+
+    async def test_general_transition_does_not_resume_other_zone_states(self):
+        """Explicitly stopped zones and unrelated mode changes remain untouched."""
+        for local_mode, previous_mode, current_mode in (
+            ("STOP", "STOP", "HEATING"),
+            ("NORMAL", "HEATING", "COOLING"),
+        ):
+            with self.subTest(
+                local_mode=local_mode,
+                previous_mode=previous_mode,
+                current_mode=current_mode,
+            ):
+                entity, client = self.zone()
+                entity._last_confirmed_targets[HVACMode.HEAT] = 19.5
+                self.freeze(entity)
+                entity._device.localMode = local_mode
+                entity._last_general_mode = previous_mode
+                client.general_climate = types.SimpleNamespace(
+                    mode=current_mode, lock_reason=None
+                )
+                entity.hass.async_create_task = asyncio.create_task
+                entity._handle_climate_update()
+                await asyncio.sleep(0)
+                client.put_devices_data.assert_not_awaited()
+                client.put_area_data.assert_not_awaited()
 
 
 class FrostProtectionActionTests(IsolatedAsyncioTestCase):
