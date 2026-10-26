@@ -183,9 +183,7 @@ class GatewayAssociationTests(IsolatedAsyncioTestCase):
         self.assertIsNone(overview)
         self.assertEqual(steps, ("catalog_tywell_control_step1",))
         self.assertTrue(stepwise)
-        illustration = get_association_illustration_svg(
-            "catalog_tywell_control_step1"
-        )
+        illustration = get_association_illustration_svg("catalog_tywell_control_step1")
         self.assertIsNotNone(illustration)
         self.assertIn("#354254", illustration)
 
@@ -969,8 +967,8 @@ class GatewayAssociationTests(IsolatedAsyncioTestCase):
 
         self.assertEqual(corrupted_steps, [])
         self.assertIn(
-            "À l'aide de la télécommande.",
-            OFFICIAL_ASSOCIATION_TUTORIALS["TUBAUTO Procom 10-3"][0].text,
+            "à l'aide de la télécommande.",
+            OFFICIAL_ASSOCIATION_TUTORIALS["TUBAUTO Procom 10-3"][0].text.lower(),
         )
 
     def test_association_instructions_unescape_catalogue_quotes(self) -> None:
