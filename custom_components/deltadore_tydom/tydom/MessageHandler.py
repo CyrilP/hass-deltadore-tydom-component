@@ -276,6 +276,7 @@ scenario_metadata = {}  # Store scenario metadata from /configs/file
 groups_metadata = {}  # Store group metadata from /configs/file: {group_id: {"usage": "light", "name": "TOTAL"}}
 groups_data = {}  # Store groups data: {group_id: {"devices": [device_ids], "name": group_name}}
 endpoint_config = {}  # Store endpoint-specific configuration from /configs/file
+removed_configured_radio_endpoint_uids: set[str] = set()
 remote_control_info = {}  # Store physical remote and button details by endpoint UID
 # Complete file snapshots are required when the gateway configuration must be
 # updated.  The normal lookup dictionaries above intentionally retain only the
@@ -1415,6 +1416,22 @@ class MessageHandler:
         # removed from the gateway configuration keeps its old name/type and is
         # recreated during the following device-data refresh.
         previous_configured_uids = set(endpoint_config)
+        current_configured_uids = {
+            f"{endpoint['id_endpoint']}_{endpoint['id_device']}"
+            for endpoint in parsed.get("endpoints", [])
+            if isinstance(endpoint, dict)
+            and "id_endpoint" in endpoint
+            and "id_device" in endpoint
+        }
+        removed_configured_radio_endpoint_uids.update(
+            unique_id
+            for unique_id in previous_configured_uids - current_configured_uids
+            if endpoint_config[unique_id].get("usage")
+            in {"remoteControl", "interrupter"}
+        )
+        removed_configured_radio_endpoint_uids.difference_update(
+            current_configured_uids
+        )
         for unique_id in previous_configured_uids:
             device_name.pop(unique_id, None)
             device_type.pop(unique_id, None)
@@ -1635,6 +1652,13 @@ class MessageHandler:
                 for endpoint in i["endpoints"]:
                     endpoint_id = endpoint["id"]
                     unique_id = str(endpoint_id) + "_" + str(device_id)
+                    if unique_id in removed_configured_radio_endpoint_uids:
+                        LOGGER.debug(
+                            "Ignoring radio data for removed configured endpoint %s",
+                            unique_id,
+                        )
+                        continue
+
                     known_pending_endpoints = getattr(
                         self.tydom_client,
                         "_configless_remote_known_endpoint_ids",
