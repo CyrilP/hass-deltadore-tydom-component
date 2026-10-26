@@ -750,6 +750,12 @@
       "cancel_boost": {
         "default": "mdi:timer-off-outline"
       },
+      "favourite_position_1": {
+        "default": "mdi:star-box-outline"
+      },
+      "favourite_position_2": {
+        "default": "mdi:star-box-outline"
+      },
       "finalize_association": {
         "default": "mdi:form-select"
       },
@@ -2662,6 +2668,9 @@
       },
       "energy": {
         "default": "mdi:lightning-bolt"
+      },
+      "general_climate_mode": {
+        "default": "mdi:home-thermometer"
       },
       "gsmlevel": {
         "default": "mdi:signal-cellular-3"

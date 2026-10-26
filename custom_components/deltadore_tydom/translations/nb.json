@@ -321,6 +321,18 @@
             }
         },
         "select": {
+            "general_climate_mode": {
+                "name": "Generell klimamodus",
+                "state": {
+                    "off": "Av",
+                    "heat": "Oppvarming",
+                    "cool": "Kjøling",
+                    "away": "Borte",
+                    "fan_only": "Ventilasjon",
+                    "dry": "Avfukting",
+                    "mixed": "Blandet"
+                }
+            },
             "absmaxcoolsetpoint": {
                 "name": "Maksimalt settpunkt for kjøling (enhetsgrense)"
             },
@@ -753,6 +765,15 @@
         "moment": {}
     },
     "exceptions": {
+        "resume_target_unknown": {
+            "message": "Denne sonen er fortsatt i frostbeskyttelse, og ingen bekreftet måltemperatur er kjent. Velg en temperatur med handlingen climate.set_temperature for å starte den igjen. Den generelle varme-/kjølemodusen må være aktivert."
+        },
+        "general_hvac_absence": {
+            "message": "Den generelle bortemodusen er aktiv. Deaktiver den i TYDOM eller med gatewayens generelle kontroll før du styrer denne sonen."
+        },
+        "general_hvac_stopped": {
+            "message": "Den generelle varme-/klimamodusen er av. Aktiver den i TYDOM eller med gatewayens generelle kontroll før du styrer denne sonen."
+        },
         "stored_alarm_pin_missing": {
             "message": "Lagre en alarm-PIN i innstillingene for denne TYDOM-integrasjonen før du bruker denne handlingen."
         },

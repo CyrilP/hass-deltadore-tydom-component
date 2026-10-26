@@ -73,6 +73,7 @@ from .ha_entities import (
     HADeviceRemovalButton,
     HAGroupableProductFinalizeAssociationButton,
     HAGatewayAssociationCategorySelect,
+    HAGatewayGeneralClimateSelect,
     HAGatewayAssociationChannelSelect,
     HAGatewayAssociationGuideButton,
     HAGatewayAssociationNameText,
@@ -1978,6 +1979,8 @@ class Hub:
 
         self.online = True
         self._reload_button_created = False
+        self._general_climate_created = False
+        self._tydom_client.general_climate.add_listener(self._general_climate_updated)
         self._inventory_syncing = False
         self._inventory_sync_error: str | None = None
         self._association_controls_created = False
@@ -2106,6 +2109,10 @@ class Hub:
                     "Timed out closing Tydom websocket after credential test"
                 )
 
+    def _general_climate_updated(self) -> None:
+        """Create the gateway control when the optional feature is advertised."""
+        self.ready()
+
     def ready(self) -> bool:
         """Check if we're ready to work."""
         # and self.add_alarm_callback is not None
@@ -2161,7 +2168,19 @@ class Hub:
             self.add_text_callback([HAGatewayAssociationNameText(self)])
             self._association_controls_created = True
             LOGGER.debug("Gateway product-association controls created")
+        if is_ready:
+            self._ensure_general_climate_control()
         return is_ready
+
+    def _ensure_general_climate_control(self) -> None:
+        """Create the general control once per inventory lifecycle."""
+        if (
+            self.add_select_callback is not None
+            and not self._general_climate_created
+            and self._tydom_client.general_climate.support
+        ):
+            self.add_select_callback([HAGatewayGeneralClimateSelect(self)])
+            self._general_climate_created = True
 
     @property
     def association_categories(self) -> tuple[str, ...]:
@@ -3939,6 +3958,7 @@ class Hub:
         self._twc_cover_entities.clear()
         # Réinitialiser le flag pour recréer le bouton après le rechargement
         self._reload_button_created = False
+        self._general_climate_created = False
         self._association_controls_created = False
         self._association_controls.clear()
         self._refresh_energy_buttons_created.clear()
@@ -4005,6 +4025,10 @@ class Hub:
             )
             self.add_text_callback([HAGatewayAssociationNameText(self)])
             self._association_controls_created = True
+
+        # Registry removal above also removes gateway controls. General state
+        # may be unchanged, so no new feedback callback will recreate this one.
+        self._ensure_general_climate_control()
 
         LOGGER.info(
             "Rechargement terminé, les nouveaux appareils seront découverts automatiquement"

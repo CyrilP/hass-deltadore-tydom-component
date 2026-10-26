@@ -92,6 +92,66 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         self.client = MagicMock()
         self.handler = MessageHandler(self.client, b"")
 
+    async def test_general_resources_update_the_shared_state(self) -> None:
+        """Both general resources are parsed without inventing a zone state."""
+        home_spec = importlib.util.spec_from_file_location(
+            "home_state_test", tydom_path.parent / "home_climate.py"
+        )
+        assert home_spec is not None and home_spec.loader is not None
+        home_module = importlib.util.module_from_spec(home_spec)
+        home_spec.loader.exec_module(home_module)
+        self.client.general_climate = home_module.HomeClimateState()
+        await self.handler.parse_response(
+            b'{"mode":"STOP","support":["STOP","HEATING"]}',
+            "/home/hvac/data",
+            "application/json",
+            "1",
+        )
+        self.assertEqual(self.client.general_climate.current_option, "off")
+        await self.handler.parse_response(
+            b'{"to":-1}',
+            "/home/absence",
+            "application/json",
+            "2",
+        )
+        self.assertEqual(self.client.general_climate.current_option, "away")
+
+    async def test_authorisation_changes_refresh_instead_of_guessing_general_mode(
+        self,
+    ) -> None:
+        """A physical controller can change zone authorisation independently."""
+        self.client.get_home_climate_data = AsyncMock()
+
+        def frame(value):
+            return [
+                {
+                    "id": 20,
+                    "endpoints": [
+                        {"id": 10, "data": [{"name": "authorization", "value": value}]}
+                    ],
+                }
+            ]
+
+        await self.handler.parse_devices_data(frame("HEATING"), "1")
+        self.client.get_home_climate_data.assert_not_awaited()
+        await self.handler.parse_devices_data(frame("STOP"), "2")
+        self.client.get_home_climate_data.assert_awaited_once()
+        await self.handler.parse_devices_data(frame("STOP"), "3")
+        self.client.get_home_climate_data.assert_awaited_once()
+
+    async def test_home_events_refresh_both_general_and_device_state(self) -> None:
+        """General absence events must update the explicit gateway control."""
+        self.client.get_devices_data = AsyncMock()
+        self.client.get_home_climate_data = AsyncMock()
+        await self.handler.parse_response(
+            b"{}",
+            "/events/home/absence",
+            "application/json",
+            "1",
+        )
+        self.client.get_devices_data.assert_awaited_once()
+        self.client.get_home_climate_data.assert_awaited_once()
+
     async def _discover(self):
         """Return the thermostat created from an area-linked endpoint."""
         devices = await self.handler.parse_devices_data(
@@ -335,8 +395,15 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         self.assertEqual(climate.device_id, "10_20_area_climate")
         self.assertTrue(climate.is_derived_area_climate)
         self.assertEqual(climate.source_device_id, passive.device_id)
+        self.assertEqual(climate.source_device_name, "Tywell Ctrl RdC")
+        self.assertEqual(climate.registry_device_id, passive.device_id)
+        self.assertEqual(climate.registry_device_name, "Tywell Ctrl RdC")
         self.assertEqual(climate.device_name, "Tywell Ctrl RdC Thermostat")
         self.assertEqual(climate.area_id, "7")
+        self.assertTrue(climate.uses_area_local_mode)
+        self.client.put_area_data = AsyncMock()
+        await climate.set_hvac_mode("STOP")
+        self.client.put_area_data.assert_awaited_once_with("7", "localMode", "STOP")
         self.assertEqual(climate.ambientTemperature, 20.5)
         self.assertFalse(hasattr(climate, "hygroIn"))
 
@@ -968,16 +1035,64 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         device = await self._discover()
         self.client.put_area_data = AsyncMock()
 
+        device.authorization = "HEATING"
+        device.heatSetpoint = 23.5
+        device._metadata = {
+            "heatSetpoint": {"permission": "r"},
+            "setpoint": {"permission": "rw", "min": 10, "max": 30},
+        }
         await device.set_hvac_mode("NORMAL")
+        await device.set_hvac_mode("STOP")
         await device.set_temperature("21.5")
 
         self.assertEqual(
             self.client.put_area_data.await_args_list,
             [
-                call("7", "authorization", "HEATING"),
+                call("7", "localMode", "NORMAL"),
+                call("7", "localMode", "STOP"),
                 call("7", "setpoint", "21.5"),
             ],
         )
+
+    async def test_manual_area_uses_its_writable_override_setpoint(self) -> None:
+        """Manual mode does not write the scheduled/display setpoint register."""
+        device = await self._discover()
+        device.authorization = "HEATING"
+        device.useMode = "MANUAL"
+        device._metadata = {
+            "setpoint": {"permission": "rw", "min": 10, "max": 30},
+            "overrideSetpoint": {"permission": "rw", "min": 10, "max": 30},
+        }
+        self.client.put_area_data = AsyncMock()
+        await device.set_temperature("21.5")
+        self.client.put_area_data.assert_awaited_once_with(
+            "7", "overrideSetpoint", "21.5"
+        )
+        self.client.put_area_data.reset_mock()
+        device.useMode = "SCHED"
+        await device.set_temperature("22")
+        self.client.put_area_data.assert_awaited_once_with("7", "setpoint", "22")
+
+    async def test_re2020_comfort_mode_does_not_override_area_ownership(self) -> None:
+        """RE2020 controllers keep area control despite endpoint comfortMode."""
+        handler_module.device_metadata["10_20"] = {
+            "comfortMode": {"permission": "w", "enum_values": ["STOP", "HEATING"]},
+        }
+        device = await self._discover()
+        self.assertTrue(device.uses_area_local_mode)
+        self.assertFalse(getattr(device, "_endpoint_controls_own_thermostat", False))
+        updates = await self.handler.parse_areas_data(
+            [
+                {
+                    "id": 7,
+                    "data": [
+                        {"name": "localMode", "value": "STOP", "validity": "upToDate"},
+                    ],
+                }
+            ],
+            None,
+        )
+        self.assertEqual(updates[0].localMode, "STOP")
 
     async def test_self_controlled_thermostat_keeps_area_telemetry(self) -> None:
         """A writable-comfortMode endpoint owns its own state (#463).
@@ -1118,7 +1233,8 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         self.client.put_area_data.assert_not_awaited()
 
     async def test_reversible_area_uses_mode_specific_setpoint(self) -> None:
-        """A reversible system writes the register matching its current mode."""
+        """A non-RE2020 area retains its mode-specific setpoint register."""
+        handler_module.device_type["10_20"] = "boiler"
         handler_module.device_metadata["10_20"] = {
             "authorization": {"enum_values": ["STOP", "HEATING", "COOLING"]},
             "heatSetpoint": {"min": 7.0, "max": 32.0, "step": 0.5},
