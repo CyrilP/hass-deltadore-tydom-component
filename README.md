@@ -266,6 +266,12 @@ The diagnostic **Command pending** binary sensor switches on when Home Assistant
 
 After two minutes without matching feedback, the status becomes `unconfirmed` and the indicator stays on. This does not prove the command failed. There is no automatic resend. The requested values and `command_status` are also available as climate attributes. Pending requests are cleared when the integration is unloaded.
 
+### General heating and air conditioning mode
+
+On supported gateways, **General climate mode** appears in the gateway device's **Controls** section. It is separate from every Tybox, Tywell Control and other zone climate entity. Available choices come from the gateway's capability list: Off, Heating, and Cooling, Fan only or Dry where supported. Away uses the separate general absence command; selecting a normal mode ends general absence first. Existing timed absences are reported without changing their deadline.
+
+The control follows the gateway's reported state. Mixed is an aggregate display state, not a command and is never sent as a heating or cooling instruction. General requests use the gateway resources directly; they do not rewrite zone temperatures or send a batch of per-zone commands. Firmware without these optional resources does not gain a misleading general control.
+
 ### Diagnostic entities
 
 Internal counters (`activationCpt`, `activationIndex`, `indexTimeOn`,

@@ -92,6 +92,66 @@ class AreaThermostatTests(IsolatedAsyncioTestCase):
         self.client = MagicMock()
         self.handler = MessageHandler(self.client, b"")
 
+    async def test_general_resources_update_the_shared_state(self) -> None:
+        """Both general resources are parsed without inventing a zone state."""
+        home_spec = importlib.util.spec_from_file_location(
+            "home_state_test", tydom_path.parent / "home_climate.py"
+        )
+        assert home_spec is not None and home_spec.loader is not None
+        home_module = importlib.util.module_from_spec(home_spec)
+        home_spec.loader.exec_module(home_module)
+        self.client.general_climate = home_module.HomeClimateState()
+        await self.handler.parse_response(
+            b'{"mode":"STOP","support":["STOP","HEATING"]}',
+            "/home/hvac/data",
+            "application/json",
+            "1",
+        )
+        self.assertEqual(self.client.general_climate.current_option, "off")
+        await self.handler.parse_response(
+            b'{"to":-1}',
+            "/home/absence",
+            "application/json",
+            "2",
+        )
+        self.assertEqual(self.client.general_climate.current_option, "away")
+
+    async def test_authorisation_changes_refresh_instead_of_guessing_general_mode(
+        self,
+    ) -> None:
+        """A physical controller can change zone authorisation independently."""
+        self.client.get_home_climate_data = AsyncMock()
+
+        def frame(value):
+            return [
+                {
+                    "id": 20,
+                    "endpoints": [
+                        {"id": 10, "data": [{"name": "authorization", "value": value}]}
+                    ],
+                }
+            ]
+
+        await self.handler.parse_devices_data(frame("HEATING"), "1")
+        self.client.get_home_climate_data.assert_not_awaited()
+        await self.handler.parse_devices_data(frame("STOP"), "2")
+        self.client.get_home_climate_data.assert_awaited_once()
+        await self.handler.parse_devices_data(frame("STOP"), "3")
+        self.client.get_home_climate_data.assert_awaited_once()
+
+    async def test_home_events_refresh_both_general_and_device_state(self) -> None:
+        """General absence events must update the explicit gateway control."""
+        self.client.get_devices_data = AsyncMock()
+        self.client.get_home_climate_data = AsyncMock()
+        await self.handler.parse_response(
+            b"{}",
+            "/events/home/absence",
+            "application/json",
+            "1",
+        )
+        self.client.get_devices_data.assert_awaited_once()
+        self.client.get_home_climate_data.assert_awaited_once()
+
     async def _discover(self):
         """Return the thermostat created from an area-linked endpoint."""
         devices = await self.handler.parse_devices_data(

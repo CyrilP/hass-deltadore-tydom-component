@@ -3083,6 +3083,18 @@
             }
         },
         "select": {
+            "general_climate_mode": {
+                "name": "Algemene klimaatmodus",
+                "state": {
+                    "off": "Uit",
+                    "heat": "Verwarmen",
+                    "cool": "Koelen",
+                    "away": "Afwezig",
+                    "fan_only": "Ventileren",
+                    "dry": "Ontvochtigen",
+                    "mixed": "Gemengd"
+                }
+            },
             "absence": {
                 "name": "Afwezigheidsmodus"
             },

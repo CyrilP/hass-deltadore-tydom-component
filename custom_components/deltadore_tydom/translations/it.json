@@ -3083,6 +3083,18 @@
             }
         },
         "select": {
+            "general_climate_mode": {
+                "name": "Modalità generale",
+                "state": {
+                    "off": "Spento",
+                    "heat": "Riscaldamento",
+                    "cool": "Raffrescamento",
+                    "away": "Assenza",
+                    "fan_only": "Ventilazione",
+                    "dry": "Deumidificazione",
+                    "mixed": "Misto"
+                }
+            },
             "absence": {
                 "name": "Modalità assenza"
             },

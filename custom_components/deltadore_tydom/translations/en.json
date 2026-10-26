@@ -1152,6 +1152,18 @@
             }
         },
         "select": {
+            "general_climate_mode": {
+                "name": "General climate mode",
+                "state": {
+                    "off": "Off",
+                    "heat": "Heating",
+                    "cool": "Cooling",
+                    "away": "Away",
+                    "fan_only": "Fan only",
+                    "dry": "Dry",
+                    "mixed": "Mixed"
+                }
+            },
             "absence": {
                 "name": "Away mode"
             },

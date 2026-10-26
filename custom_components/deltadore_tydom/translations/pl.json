@@ -3083,6 +3083,18 @@
             }
         },
         "select": {
+            "general_climate_mode": {
+                "name": "Ogólny tryb klimatu",
+                "state": {
+                    "off": "Wyłączony",
+                    "heat": "Ogrzewanie",
+                    "cool": "Chłodzenie",
+                    "away": "Nieobecność",
+                    "fan_only": "Wentylacja",
+                    "dry": "Osuszanie",
+                    "mixed": "Mieszany"
+                }
+            },
             "absence": {
                 "name": "Tryb nieobecności"
             },
