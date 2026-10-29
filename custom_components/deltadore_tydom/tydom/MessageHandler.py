@@ -88,8 +88,17 @@ _ENERGY_INSTANT_DIVISORS = {
 """Divisors used by TYDOM for supported instantaneous measurements."""
 
 
-def _parse_energy_cdata_element(element: Any) -> dict[str, int | float]:
-    """Extract sensor values from one successful energy cdata element."""
+def _parse_energy_cdata_element(
+    element: Any, *, allow_legacy_histo: bool = False
+) -> dict[str, int | float]:
+    """Extract sensor values from one successful energy cdata element.
+
+    Older TYDOM firmware exposes consumption readings through generic
+    ``dest``/``counter`` or ``period``/uppercase-value shapes. Keep accepting
+    those shapes. ``energyHisto`` is only interpreted this way when cmeta
+    identifies a legacy endpoint without the current energy commands; modern
+    replies contain history samples rather than live sensor readings.
+    """
     if not isinstance(element, dict) or element.get("status", "OK") != "OK":
         return {}
 
@@ -102,28 +111,52 @@ def _parse_energy_cdata_element(element: Any) -> dict[str, int | float]:
     if name == "energyIndex":
         destination = parameters.get("dest")
         counter = values.get("counter")
-        if (
-            not isinstance(destination, str)
-            or destination.startswith("TEMP_")
-            or not isinstance(counter, (int, float))
-            or isinstance(counter, bool)
-        ):
+        if isinstance(destination, str) and destination.startswith("TEMP_"):
             return {}
-        return {f"{name}_{destination}": counter}
+        if (
+            isinstance(destination, str)
+            and isinstance(counter, (int, float))
+            and not isinstance(counter, bool)
+        ):
+            return {f"{name}_{destination}": counter}
 
     if name == "energyInstant":
         unit = parameters.get("unit")
         measure = values.get("measure")
         if (
-            not isinstance(unit, str)
-            or unit not in _ENERGY_INSTANT_DIVISORS
-            or not isinstance(measure, (int, float))
-            or isinstance(measure, bool)
+            isinstance(unit, str)
+            and unit in _ENERGY_INSTANT_DIVISORS
+            and isinstance(measure, (int, float))
+            and not isinstance(measure, bool)
         ):
-            return {}
-        return {f"{name}_{unit}": measure / _ENERGY_INSTANT_DIVISORS[unit]}
+            return {f"{name}_{unit}": measure / _ENERGY_INSTANT_DIVISORS[unit]}
 
     if name == "energyDistrib":
+        return {
+            f"{name}_{key}": value
+            for key, value in values.items()
+            if isinstance(key, str)
+            and key.isupper()
+            and isinstance(value, (int, float))
+            and not isinstance(value, bool)
+        }
+
+    if name == "energyHisto" and not allow_legacy_histo:
+        return {}
+
+    destination = parameters.get("dest")
+    counter = values.get("counter")
+    if (
+        isinstance(name, str)
+        and name
+        and isinstance(destination, str)
+        and not destination.startswith("TEMP_")
+        and isinstance(counter, (int, float))
+        and not isinstance(counter, bool)
+    ):
+        return {f"{name}_{destination}": counter}
+
+    if parameters.get("period") is not None and isinstance(name, str) and name:
         return {
             f"{name}_{key}": value
             for key, value in values.items()
@@ -1546,11 +1579,21 @@ class MessageHandler:
             for endpoint in i["endpoints"]:
                 command_metadata = endpoint.get("cmetadata", [])
                 unique_id = f"{endpoint['id']}_{i['id']}"
+                command_names = {
+                    elem.get("name")
+                    for elem in command_metadata
+                    if isinstance(elem, dict) and isinstance(elem.get("name"), str)
+                }
                 device_command_metadata[unique_id] = {
                     elem["name"]: elem
                     for elem in command_metadata
                     if isinstance(elem, dict) and elem.get("name")
                 }
+                legacy_energy_histo_only = "energyHisto" in command_names and not {
+                    "energyIndex",
+                    "energyInstant",
+                    "energyDistrib",
+                }.intersection(command_names)
                 if len(command_metadata) > 0:
                     for elem in command_metadata:
                         if elem["name"] == "energyIndex":
@@ -1606,6 +1649,28 @@ class MessageHandler:
                                         )
                                         self.tydom_client.add_poll_device_url_5m(url)
                                         LOGGER.debug("Add poll device : " + url)
+                        elif elem["name"] == "energyHisto" and legacy_energy_histo_only:
+                            # Older TYWATT firmware exposes its only usable
+                            # readings through energyHisto. Poll it only when
+                            # the endpoint does not advertise the current
+                            # energy commands; history polling alongside those
+                            # commands can starve their live counters (#485).
+                            for params in elem.get("parameters", []):
+                                if params.get("name") == "dest":
+                                    for dest in params.get("enum_values", []):
+                                        if not isinstance(dest, str):
+                                            continue
+                                        url = (
+                                            "/devices/"
+                                            + str(i["id"])
+                                            + "/endpoints/"
+                                            + str(endpoint["id"])
+                                            + "/cdata?name=energyHisto&period=YEAR"
+                                            + "&periodOffset=0&dest="
+                                            + dest
+                                        )
+                                        self.tydom_client.add_poll_device_url_5m(url)
+                                        LOGGER.debug("Add legacy energy poll: %s", url)
 
         LOGGER.debug("Metadata configuration updated")
 
@@ -2277,6 +2342,12 @@ class MessageHandler:
                         unique_id = str(endpoint_id) + "_" + str(device_id)
                         name_of_id = self.get_name_from_id(unique_id)
                         type_of_id = self.get_type_from_id(unique_id)
+                        energy_commands = device_command_metadata.get(unique_id, {})
+                        allow_legacy_histo = "energyHisto" in energy_commands and not {
+                            "energyIndex",
+                            "energyInstant",
+                            "energyDistrib",
+                        }.intersection(energy_commands)
 
                         data = {}
 
@@ -2296,7 +2367,11 @@ class MessageHandler:
                                     data["eventAlarm"] = event
 
                             if type_of_id in {"conso", "plug"}:
-                                data.update(_parse_energy_cdata_element(elem))
+                                data.update(
+                                    _parse_energy_cdata_element(
+                                        elem, allow_legacy_histo=allow_legacy_histo
+                                    )
+                                )
 
                             elif type_of_id == "alarm" and transaction_id not in (
                                 None,
