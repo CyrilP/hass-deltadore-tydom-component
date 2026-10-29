@@ -216,6 +216,15 @@
         }
     },
     "exceptions": {
+        "resume_target_unknown": {
+            "message": "Cette zone reste en hors-gel et aucune consigne confirmée n’est connue. Choisissez une température avec l’action climate.set_temperature pour la relancer. Le mode général de chauffage/climatisation doit être activé."
+        },
+        "general_hvac_absence": {
+            "message": "Le mode Absence général est actif. Désactivez-le dans TYDOM ou avec la commande générale de la passerelle avant de piloter cette zone."
+        },
+        "general_hvac_stopped": {
+            "message": "Le mode général de chauffage/climatisation est sur Arrêt. Réactivez-le dans TYDOM ou avec la commande générale de la passerelle avant de piloter cette zone."
+        },
         "stored_alarm_pin_missing": {
             "message": "Enregistrez un code PIN d'alarme dans les paramètres de cette intégration TYDOM avant d'utiliser cette action."
         },
@@ -1153,6 +1162,18 @@
             }
         },
         "select": {
+            "general_climate_mode": {
+                "name": "Mode général",
+                "state": {
+                    "off": "Arrêt",
+                    "heat": "Chauffage",
+                    "cool": "Climatisation",
+                    "away": "Absence",
+                    "fan_only": "Ventilation",
+                    "dry": "Déshumidification",
+                    "mixed": "Mixte"
+                }
+            },
             "absence": {
                 "name": "Mode absence"
             },

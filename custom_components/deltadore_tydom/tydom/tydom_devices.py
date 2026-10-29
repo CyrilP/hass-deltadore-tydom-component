@@ -42,8 +42,9 @@ _TUTORIAL_PREFIX_MODELS = {
 }
 
 _TYWELL_CONTROL_TYPES = {
-    "re2020ControlBoiler",
-    "re2020ControlPassive",
+    "re2020controlboiler",
+    "re2020controlpassive",
+    "re2020controller",
 }
 
 _TYWELL_CONTROL_MODELS = {
@@ -64,6 +65,11 @@ _TYWELL_CONTROL_SENSOR_ATTRIBUTES = {
 }
 
 
+def is_tywell_control_type(device_type: str | None) -> bool:
+    """Return whether the endpoint is one of TYDOM's RE2020 controllers."""
+    return str(device_type or "").strip().casefold() in _TYWELL_CONTROL_TYPES
+
+
 def is_physical_tywell_control_profile(
     tutorial_id: str | None,
     device_type: str | None,
@@ -72,23 +78,23 @@ def is_physical_tywell_control_profile(
 ) -> bool:
     """Return whether descriptors identify a physical Tywell wall controller.
 
-    A controller may be advertised as either a passive endpoint or an unlinked
-    boiler endpoint depending on how it is associated with the heating system.
-    Prefer Delta Dore's explicit tutorial identifier and retain the established
-    capability fallback for older configurations.
+    TYDOM may describe the same wall controller with different endpoint types
+    depending on its configuration. Prefer explicit Delta Dore model metadata,
+    then retain the capability fallback for older installations.
     """
-    if device_type not in _TYWELL_CONTROL_TYPES:
-        return False
-
-    if device_type == "re2020ControlPassive":
-        return True
-
     tutorial = str(tutorial_id or "").strip().casefold()
     if tutorial in _TYWELL_CONTROL_TUTORIALS:
         return True
 
     product_name = str((data or {}).get("productName", "")).strip().casefold()
     if product_name in _TYWELL_CONTROL_MODELS:
+        return True
+
+    normalized_type = str(device_type or "").strip().casefold()
+    if normalized_type not in _TYWELL_CONTROL_TYPES:
+        return False
+
+    if normalized_type in {"re2020controlpassive", "re2020controller"}:
         return True
 
     attributes = set(metadata or {}) | set(data or {})
@@ -349,14 +355,24 @@ class TydomDevice:
         return self._endpoint
 
     @property
+    def source_device_id(self) -> str:
+        """Return the physical device identifier represented by this endpoint."""
+        return self.device_id
+
+    @property
+    def source_device_name(self) -> str:
+        """Return the physical device name represented by this endpoint."""
+        return self.device_name
+
+    @property
     def registry_device_id(self) -> str:
         """Return the physical device identifier used by Home Assistant."""
-        return str(getattr(self, "_registry_device_id", self._uid))
+        return str(getattr(self, "_registry_device_id", self.source_device_id))
 
     @property
     def registry_device_name(self) -> str:
         """Return the physical device name used by Home Assistant."""
-        return str(getattr(self, "_registry_device_name", self._name))
+        return str(getattr(self, "_registry_device_name", self.source_device_name))
 
     @property
     def registry_device_targets(self) -> tuple[tuple[str, str], ...]:
@@ -529,8 +545,12 @@ class TydomShutter(TydomDevice):
 
     async def set_position(self, position: int) -> None:
         """Set cover to the given position."""
-        # Validate value with metadata
-        is_valid, error_msg = validate_value_with_metadata(self, "position", position)
+        # Cover positions are percentage targets. A coarse gateway step (for
+        # example, 100) must not prevent intermediate targets such as 25%.
+        # Keep the metadata type and min/max checks, but ignore its step here.
+        is_valid, error_msg = validate_value_with_metadata(
+            self, "position", position, ignore_step=True
+        )
         if not is_valid:
             from homeassistant.exceptions import HomeAssistantError
 
@@ -677,6 +697,13 @@ class TydomBoiler(TydomDevice):
         )
 
     @property
+    def uses_area_local_mode(self) -> bool:
+        """Return whether zone commands belong to a RE2020 controller's area."""
+        return self.is_area_controlled and (
+            self.is_derived_area_climate or is_tywell_control_type(self.device_type)
+        )
+
+    @property
     def is_area_trv(self) -> bool:
         """Return whether this is a radiator thermostat linked to an area."""
         return self._type == "sh_hvac" and self.is_area_controlled
@@ -697,6 +724,13 @@ class TydomBoiler(TydomDevice):
         if self.is_derived_area_climate:
             return self.device_id.removesuffix("_area_climate")
         return self.device_id
+
+    @property
+    def source_device_name(self) -> str:
+        """Return the physical device name represented by this climate."""
+        if self.is_derived_area_climate:
+            return self.device_name.removesuffix(" Thermostat")
+        return self.device_name
 
     def area_setpoint_attribute(self) -> str:
         """Return the setpoint register advertised for the current area mode."""
@@ -868,6 +902,13 @@ class TydomBoiler(TydomDevice):
 
     def _temperature_command_name(self) -> str:
         """Select the writable setpoint register for the current HVAC direction."""
+        if self.uses_area_local_mode:
+            if getattr(self, "useMode", None) in {
+                "MANUAL",
+                "OVERRIDE",
+            } and self._is_writable("overrideSetpoint"):
+                return "overrideSetpoint"
+            return "setpoint"
         if self._uses_zone_authorization():
             if getattr(self, "authorization", None) == "COOLING" and self._is_writable(
                 "coolSetpoint"
@@ -884,6 +925,7 @@ class TydomBoiler(TydomDevice):
 
     async def set_hvac_mode(self, mode):
         """Set hvac mode (ANTI_FROST/NORMAL/STOP)."""
+        self.validate_general_hvac_mode()
         LOGGER.debug("setting hvac mode to %s", mode)
         # Mode changes must not clear or replace the setpoint. TYDOM retains
         # the user's last setpoint and restores it when heating resumes.
@@ -894,6 +936,10 @@ class TydomBoiler(TydomDevice):
                     self.device_id,
                     mode,
                 )
+            return
+
+        if self.uses_area_local_mode and mode in ("NORMAL", "HEATING", "STOP"):
+            await self.set_local_hvac_mode("STOP" if mode == "STOP" else "NORMAL")
             return
 
         if self.is_area_controlled:
@@ -1027,6 +1073,7 @@ class TydomBoiler(TydomDevice):
 
     def validate_temperature(self, temperature) -> None:
         """Reject invalid or out-of-range requests before recording or sending them."""
+        self.validate_general_hvac_mode()
         try:
             numeric_temperature = float(temperature)
         except (TypeError, ValueError):
@@ -1062,6 +1109,8 @@ class TydomBoiler(TydomDevice):
         setpoint_attribute = (
             "localSetpoint"
             if self.is_area_trv
+            else self._temperature_command_name()
+            if self.uses_area_local_mode
             else self.area_setpoint_attribute()
             if self.is_area_controlled
             else self._temperature_command_name()
@@ -1092,7 +1141,9 @@ class TydomBoiler(TydomDevice):
             return
 
         setpoint_attribute = (
-            self.area_setpoint_attribute()
+            self._temperature_command_name()
+            if self.uses_area_local_mode
+            else self.area_setpoint_attribute()
             if self.is_area_controlled
             else self._temperature_command_name()
         )
@@ -1122,8 +1173,45 @@ class TydomBoiler(TydomDevice):
             self._id, self._endpoint, "thermicLevel", level
         )
 
+    @property
+    def general_control_lock(self) -> str | None:
+        """Return a known general Off/Absence lock, without guessing from a model."""
+        home = getattr(self._tydom_client, "general_climate", None)
+        reason = getattr(home, "lock_reason", None)
+        if isinstance(reason, str) and reason in ("off", "absence"):
+            return reason
+        if isinstance(getattr(home, "mode", None), str):
+            return None
+        # Before the general resource arrives, local-mode profiles advertise
+        # the same seasonal stop through their authorization register.
+        if getattr(self, "authorization", None) == "STOP" and (
+            self.uses_area_local_mode or self._is_writable("localMode")
+        ):
+            return "off"
+        return None
+
+    def validate_general_hvac_mode(self) -> None:
+        """Reject zone requests locked by the installation's general mode."""
+        if (reason := self.general_control_lock) is not None:
+            from homeassistant.exceptions import HomeAssistantError
+
+            raise HomeAssistantError(
+                translation_domain="deltadore_tydom",
+                translation_key="general_hvac_stopped"
+                if reason == "off"
+                else "general_hvac_absence",
+            )
+
+    async def set_local_hvac_mode(self, mode: str) -> None:
+        """Change only the zone; general HVAC commands belong to the gateway."""
+        await self.set_local_mode(mode)
+
     async def set_local_mode(self, mode):
-        """Set a zone's localMode order (NORMAL/ANTI_FROST/STOP/ABSENCE)."""
+        """Set the local order without changing or bypassing the general mode."""
+        self.validate_general_hvac_mode()
+        if self.uses_area_local_mode:
+            await self._tydom_client.put_area_data(self.area_id, "localMode", mode)
+            return
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "localMode", mode
         )

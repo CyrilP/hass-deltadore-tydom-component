@@ -14,6 +14,7 @@ from typing import Any
 from homeassistant.helpers.entity import EntityDescription
 
 ENTITY_NAMES: dict[str, str] = {
+    "general_climate_mode": "General climate mode",
     "climate_command_pending": "Command pending",
     "tywell_weather_condition": "Weather",
     "tywell_weather_daily_power": "Daily power",

@@ -302,7 +302,7 @@
         "default": "mdi:alert-circle-outline"
       },
       "loadsheddingon": {
-        "default": "mdi:power-plug-off"
+        "default": "mdi:radiator-off"
       },
       "localisation": {
         "default": "mdi:map-marker-outline"
@@ -350,19 +350,19 @@
         "default": "mdi:thermometer-high"
       },
       "maxheatsetpoint": {
-        "default": "mdi:thermometer-chevron-up"
+        "default": "mdi:thermometer-plus"
       },
       "maxsetpoint": {
-        "default": "mdi:thermometer-chevron-up"
+        "default": "mdi:thermometer-plus"
       },
       "mincoolsetpoint": {
         "default": "mdi:thermometer-chevron-down"
       },
       "minheatsetpoint": {
-        "default": "mdi:thermometer-chevron-down"
+        "default": "mdi:thermometer-minus"
       },
       "minsetpoint": {
-        "default": "mdi:thermometer-chevron-down"
+        "default": "mdi:thermometer-minus"
       },
       "modeasso": {
         "default": "mdi:link-variant-plus"
@@ -749,6 +749,12 @@
       },
       "cancel_boost": {
         "default": "mdi:timer-off-outline"
+      },
+      "favourite_position_1": {
+        "default": "mdi:star-box-outline"
+      },
+      "favourite_position_2": {
+        "default": "mdi:star-box-outline"
       },
       "finalize_association": {
         "default": "mdi:form-select"
@@ -2024,7 +2030,7 @@
         "default": "mdi:alert-circle-outline"
       },
       "loadsheddingon": {
-        "default": "mdi:power-plug-off"
+        "default": "mdi:radiator-off"
       },
       "localisation": {
         "default": "mdi:map-marker-outline"
@@ -2072,19 +2078,19 @@
         "default": "mdi:thermometer-high"
       },
       "maxheatsetpoint": {
-        "default": "mdi:thermometer-chevron-up"
+        "default": "mdi:thermometer-plus"
       },
       "maxsetpoint": {
-        "default": "mdi:thermometer-chevron-up"
+        "default": "mdi:thermometer-plus"
       },
       "mincoolsetpoint": {
         "default": "mdi:thermometer-chevron-down"
       },
       "minheatsetpoint": {
-        "default": "mdi:thermometer-chevron-down"
+        "default": "mdi:thermometer-minus"
       },
       "minsetpoint": {
-        "default": "mdi:thermometer-chevron-down"
+        "default": "mdi:thermometer-minus"
       },
       "modeasso": {
         "default": "mdi:link-variant-plus"
@@ -2673,6 +2679,9 @@
       "energy": {
         "default": "mdi:lightning-bolt"
       },
+      "general_climate_mode": {
+        "default": "mdi:home-thermometer"
+      },
       "gsmlevel": {
         "default": "mdi:signal-cellular-3"
       },
@@ -2791,7 +2800,7 @@
         "default": "mdi:alert-circle-outline"
       },
       "loadsheddingon": {
-        "default": "mdi:power-plug-off"
+        "default": "mdi:radiator-off"
       },
       "localisation": {
         "default": "mdi:map-marker-outline"
@@ -2839,19 +2848,19 @@
         "default": "mdi:thermometer-high"
       },
       "maxheatsetpoint": {
-        "default": "mdi:thermometer-chevron-up"
+        "default": "mdi:thermometer-plus"
       },
       "maxsetpoint": {
-        "default": "mdi:thermometer-chevron-up"
+        "default": "mdi:thermometer-plus"
       },
       "mincoolsetpoint": {
         "default": "mdi:thermometer-chevron-down"
       },
       "minheatsetpoint": {
-        "default": "mdi:thermometer-chevron-down"
+        "default": "mdi:thermometer-minus"
       },
       "minsetpoint": {
-        "default": "mdi:thermometer-chevron-down"
+        "default": "mdi:thermometer-minus"
       },
       "modeasso": {
         "default": "mdi:link-variant-plus"
@@ -3503,7 +3512,7 @@
         "default": "mdi:alert-circle-outline"
       },
       "loadsheddingon": {
-        "default": "mdi:power-plug-off"
+        "default": "mdi:radiator-off"
       },
       "localisation": {
         "default": "mdi:map-marker-outline"
@@ -3551,19 +3560,19 @@
         "default": "mdi:thermometer-high"
       },
       "maxheatsetpoint": {
-        "default": "mdi:thermometer-chevron-up"
+        "default": "mdi:thermometer-plus"
       },
       "maxsetpoint": {
-        "default": "mdi:thermometer-chevron-up"
+        "default": "mdi:thermometer-plus"
       },
       "mincoolsetpoint": {
         "default": "mdi:thermometer-chevron-down"
       },
       "minheatsetpoint": {
-        "default": "mdi:thermometer-chevron-down"
+        "default": "mdi:thermometer-minus"
       },
       "minsetpoint": {
-        "default": "mdi:thermometer-chevron-down"
+        "default": "mdi:thermometer-minus"
       },
       "modeasso": {
         "default": "mdi:link-variant-plus"

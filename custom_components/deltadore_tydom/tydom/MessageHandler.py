@@ -3,6 +3,7 @@
 import asyncio
 import contextlib
 import copy
+import inspect
 import json
 import re
 import time
@@ -39,6 +40,7 @@ from .tydom_devices import (
     TydomScene,
     is_binary_tyxia_receiver_profile,
     is_physical_tywell_control_profile,
+    is_tywell_control_type,
     resolve_device_model,
 )
 
@@ -67,7 +69,9 @@ _ENDPOINT_WARNING_MILESTONES = {1, 10, 100, 1000}
 _CLIMATE_META_KEYS = frozenset({"heatSetpoint", "coolSetpoint", "thermicLevel"})
 """Thermostat-only endpoint metadata keys that cannot describe a conso endpoint."""
 
-_OPTIONAL_PATHS = frozenset({"/moments/file", "/scenarios/file"})
+_OPTIONAL_PATHS = frozenset(
+    {"/moments/file", "/scenarios/file", "/home/hvac/data", "/home/absence"}
+)
 """Feature endpoints absent from some older TYDOM gateway firmware."""
 
 _HISTO_END_INDEX = 255
@@ -272,6 +276,7 @@ scenario_metadata = {}  # Store scenario metadata from /configs/file
 groups_metadata = {}  # Store group metadata from /configs/file: {group_id: {"usage": "light", "name": "TOTAL"}}
 groups_data = {}  # Store groups data: {group_id: {"devices": [device_ids], "name": group_name}}
 endpoint_config = {}  # Store endpoint-specific configuration from /configs/file
+removed_configured_radio_endpoint_uids: set[str] = set()
 remote_control_info = {}  # Store physical remote and button details by endpoint UID
 # Complete file snapshots are required when the gateway configuration must be
 # updated.  The normal lookup dictionaries above intentionally retain only the
@@ -583,6 +588,7 @@ class MessageHandler:
         self._alarm_command_waiters: dict[
             tuple[str, str, str], list[asyncio.Future[dict[str, Any]]]
         ] = {}
+        self._home_zone_state: dict[tuple[str, str], Any] = {}
         self._area_devices: dict[str, dict[str, AreaDeviceReference]] = {}
         self._area_data: dict[str, dict[str, Any]] = {}
         self._area_metadata: dict[str, dict] = {}
@@ -953,12 +959,20 @@ class MessageHandler:
         async def event_message(*args):
             LOGGER.debug("Event message, refreshing...")
             await self.tydom_client.get_devices_data()
+            refresh = getattr(self.tydom_client, "get_home_climate_data", None)
+            if inspect.iscoroutinefunction(refresh):
+                await refresh()
 
         async def ping_message(*args):
             self.tydom_client.receive_pong()
 
+        async def home_climate_message(resource: str, parsed, *_args):
+            self.tydom_client.general_climate.update(resource, parsed)
+
         MSG_MAPPING = {
             "/areas/data": self.parse_areas_data,
+            "/home/hvac/data": partial(home_climate_message, "hvac"),
+            "/home/absence": partial(home_climate_message, "absence"),
             "/configs/file": MessageHandler.parse_config_data,
             "/configs/gateway/api_mode": partial(no_op, "msg_api_mode"),
             "/devices/data": self.parse_devices_data,
@@ -1402,6 +1416,22 @@ class MessageHandler:
         # removed from the gateway configuration keeps its old name/type and is
         # recreated during the following device-data refresh.
         previous_configured_uids = set(endpoint_config)
+        current_configured_uids = {
+            f"{endpoint['id_endpoint']}_{endpoint['id_device']}"
+            for endpoint in parsed.get("endpoints", [])
+            if isinstance(endpoint, dict)
+            and "id_endpoint" in endpoint
+            and "id_device" in endpoint
+        }
+        removed_configured_radio_endpoint_uids.update(
+            unique_id
+            for unique_id in previous_configured_uids - current_configured_uids
+            if endpoint_config[unique_id].get("usage")
+            in {"remoteControl", "interrupter"}
+        )
+        removed_configured_radio_endpoint_uids.difference_update(
+            current_configured_uids
+        )
         for unique_id in previous_configured_uids:
             device_name.pop(unique_id, None)
             device_type.pop(unique_id, None)
@@ -1590,6 +1620,25 @@ class MessageHandler:
             # logging one "Unsupported message" warning per key.
             parsed = [parsed]
 
+        refresh_home = False
+        for record in parsed:
+            if not isinstance(record, dict):
+                continue
+            for endpoint in record.get("endpoints", []):
+                uid = f"{endpoint.get('id')}_{record.get('id')}"
+                for item in endpoint.get("data", []):
+                    name = item.get("name")
+                    if name not in {"authorization", "localMode", "thermicLevel"}:
+                        continue
+                    key = (uid, name)
+                    value = item.get("value")
+                    if (
+                        key in self._home_zone_state
+                        and self._home_zone_state[key] != value
+                    ):
+                        refresh_home = True
+                    self._home_zone_state[key] = value
+
         for area_id, metadata in _area_control_metadata(parsed).items():
             if _area_metadata_score(metadata) >= _area_metadata_score(
                 self._area_metadata.get(area_id, {})
@@ -1603,6 +1652,13 @@ class MessageHandler:
                 for endpoint in i["endpoints"]:
                     endpoint_id = endpoint["id"]
                     unique_id = str(endpoint_id) + "_" + str(device_id)
+                    if unique_id in removed_configured_radio_endpoint_uids:
+                        LOGGER.debug(
+                            "Ignoring radio data for removed configured endpoint %s",
+                            unique_id,
+                        )
+                        continue
+
                     known_pending_endpoints = getattr(
                         self.tydom_client,
                         "_configless_remote_known_endpoint_ids",
@@ -1955,9 +2011,13 @@ class MessageHandler:
                         # 210 reporting COOLING while the area still reads
                         # HEATING). Its sensor telemetry can still be useful.
                         # (#463)
-                        endpoint_controls_own_thermostat = _has_writable_comfort_mode(
-                            device_metadata.get(unique_id)
-                        )
+                        # RE2020 wall controllers operate their linked area,
+                        # even when their endpoint advertises comfortMode.
+                        # Independent Tybox/Typass thermostats retain endpoint
+                        # ownership and their own mode feedback (#463).
+                        endpoint_controls_own_thermostat = not is_tywell_control_type(
+                            type_of_id
+                        ) and _has_writable_comfort_mode(device_metadata.get(unique_id))
                         if (
                             isinstance(link, dict)
                             and link.get("type") == "area"
@@ -2110,6 +2170,12 @@ class MessageHandler:
                         )
             else:
                 LOGGER.warning("Unsupported message received: %s", parsed)
+        # Zone authorisation and general absence can change through the app or
+        # a physical controller without a /home/* push. Read the general state;
+        # never infer it from a zone's activity or from a frost-protection value.
+        refresh = getattr(self.tydom_client, "get_home_climate_data", None)
+        if refresh_home and inspect.iscoroutinefunction(refresh):
+            await refresh()
         return devices
 
     async def parse_areas_data(
