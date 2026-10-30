@@ -1968,6 +1968,7 @@ class MessageHandler:
                             endpoint.get("error"),
                             name_of_id,
                         )
+                        continue
                     elif not has_data and type_of_id != "conso":
                         self._record_endpoint_issue(
                             device_id,
