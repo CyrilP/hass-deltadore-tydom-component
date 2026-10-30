@@ -4315,7 +4315,7 @@ class HaDoor(CoverEntity, HAEntity):
 
     @property
     def is_closed(self) -> bool | None:
-        """Return if the door is closed."""
+        """Return if the door is closed, or None if the state is unknown."""
         if hasattr(self._device, "podPosition"):
             return getattr(self._device, "podPosition", None) in ("CLOSE", "LOCK")
         elif hasattr(self._device, "openState"):
@@ -4325,10 +4325,12 @@ class HaDoor(CoverEntity, HAEntity):
             intrusion_detect = getattr(self._device, "intrusionDetect", False)
             return not bool(intrusion_detect)
         else:
-            raise AttributeError(
-                "The required attributes 'podPosition', 'openState' or "
-                "'intrusionDetect' are not available in the device."
+            LOGGER.warning(
+                "no attribute 'podPosition', 'openState' or 'intrusionDetect' "
+                "for device %s",
+                self._device.device_id,
             )
+            return None
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the door."""
@@ -4854,37 +4856,70 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         return attributes
 
     @property
-    def alarm_state(self) -> AlarmControlPanelState:
-        """Return the alarm state."""
-        # alarmMode :  "OFF", "ON", "TEST", "ZONE", "MAINTENANCE"
+    def alarm_state(self) -> AlarmControlPanelState | None:
+        """Return the alarm state, or None if it cannot be determined.
+
+        Previously fell through to TRIGGERED — the most alarming state
+        possible — whenever 'alarmMode' was missing (e.g. briefly after a
+        HA restart, before the first push) or held a value this code
+        didn't recognize (the docstring itself lists "TEST", which was
+        never handled). A fail-unsafe default is worse than no default: it
+        reports an intrusion that isn't happening. Unknown now returns
+        None, matching the fail-safe pattern used elsewhere in this file
+        (see HaDoor.is_closed). Also: "DELAYED" (entry/exit countdown) now
+        maps to PENDING instead of TRIGGERED — nothing has actually
+        triggered yet. "QUIET" (silent intrusion alarm) still maps to
+        TRIGGERED: it is a genuine alarm condition, just without a siren.
+        """
+        # alarmMode :  "OFF", "ON", "TEST", "ZONE", "PART", "MAINTENANCE"
         # alarmState: "OFF", "DELAYED", "ON", "QUIET"
-        if hasattr(self._device, "alarmMode"):
-            alarm_mode = getattr(self._device, "alarmMode", None)
-            if alarm_mode == "MAINTENANCE":
-                return AlarmControlPanelState.DISARMED
+        if not hasattr(self._device, "alarmMode"):
+            LOGGER.warning(
+                "no attribute 'alarmMode' for device %s — alarm state unknown",
+                self._device.device_id,
+            )
+            return None
 
-            if alarm_mode == "OFF":
-                return AlarmControlPanelState.DISARMED
-            if alarm_mode == "ON":
-                alarm_state = getattr(self._device, "alarmState", None)
-                if alarm_state == "OFF":
+        alarm_mode = getattr(self._device, "alarmMode", None)
+
+        if alarm_mode == "MAINTENANCE":
+            return AlarmControlPanelState.DISARMED
+
+        if alarm_mode == "OFF":
+            return AlarmControlPanelState.DISARMED
+
+        if alarm_mode == "ON":
+            alarm_state = getattr(self._device, "alarmState", None)
+            if alarm_state == "OFF":
+                return AlarmControlPanelState.ARMED_AWAY
+            if alarm_state == "DELAYED":
+                return AlarmControlPanelState.PENDING
+            return AlarmControlPanelState.TRIGGERED
+
+        if alarm_mode in ("ZONE", "PART"):
+            alarm_state = getattr(self._device, "alarmState", None)
+            if alarm_state == "OFF":
+                configured_mode = self._device.get_alarm_mode_from_zones()
+
+                if configured_mode == "night":
+                    return AlarmControlPanelState.ARMED_NIGHT
+
+                if configured_mode == "away":
                     return AlarmControlPanelState.ARMED_AWAY
-                return AlarmControlPanelState.TRIGGERED
-            if alarm_mode in ("ZONE", "PART"):
-                alarm_state = getattr(self._device, "alarmState", None)
-                if alarm_state == "OFF":
-                    configured_mode = self._device.get_alarm_mode_from_zones()
 
-                    if configured_mode == "night":
-                        return AlarmControlPanelState.ARMED_NIGHT
+                return AlarmControlPanelState.ARMED_HOME
 
-                    if configured_mode == "away":
-                        return AlarmControlPanelState.ARMED_AWAY
+            if alarm_state == "DELAYED":
+                return AlarmControlPanelState.PENDING
 
-                    return AlarmControlPanelState.ARMED_HOME
+            return AlarmControlPanelState.TRIGGERED
 
-                return AlarmControlPanelState.TRIGGERED
-        return AlarmControlPanelState.TRIGGERED
+        LOGGER.warning(
+            "unrecognized alarmMode %r for device %s — alarm state unknown",
+            alarm_mode,
+            self._device.device_id,
+        )
+        return None
 
     @property
     def icon(self) -> str:
