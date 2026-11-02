@@ -403,6 +403,47 @@ def _rf6600fp(*, authorization="HEATING", thermic_level="ECO"):
     return entity, client
 
 
+def _calybox_2020_wt(*, setpoint=19.0, thermic_level=None):
+    """Create the Calybox dry-contact profile with individual thermic STOP."""
+    return _thermostat(
+        metadata={
+            "authorization": {
+                "type": "string",
+                "permission": "rw",
+                "enum_values": ["STOP", "HEATING"],
+            },
+            "comfortMode": {
+                "type": "string",
+                "permission": "w",
+                "enum_values": ["STOP", "HEATING"],
+            },
+            "thermicLevel": {
+                "type": "string",
+                "permission": "rw",
+                "enum_values": ["STOP"],
+            },
+            "hvacMode": {
+                "type": "string",
+                "permission": "rw",
+                "enum_values": ["NORMAL", "STOP", "ANTI_FROST"],
+            },
+            "setpoint": {
+                "type": "numeric",
+                "permission": "rw",
+                "min": 10,
+                "max": 30,
+                "step": 0.5,
+            },
+        },
+        data={
+            "authorization": "HEATING",
+            "thermicLevel": thermic_level,
+            "hvacMode": "NORMAL",
+            "setpoint": setpoint,
+        },
+    )
+
+
 class FilPiloteDetectionTests(TestCase):
     """Ensure _is_filpilote correctly discriminates pilot-wire zones."""
 
@@ -606,6 +647,62 @@ class TyboxThermostatModeTests(IsolatedAsyncioTestCase):
         client.put_devices_data.assert_awaited_once_with(
             "20", "10", "comfortMode", "HEATING"
         )
+
+
+class Calybox2020WtIndividualStopTests(IsolatedAsyncioTestCase):
+    """Keep the Calybox dry-contact stop order off the shared season register."""
+
+    async def test_off_and_heat_use_individual_thermic_stop_and_setpoint(self) -> None:
+        """OFF writes thermicLevel; HEAT restores the confirmed target only."""
+        entity, client = _calybox_2020_wt()
+        self.addCleanup(entity._get_command_tracker().close)
+
+        self.assertTrue(entity._device.uses_individual_thermic_stop)
+        self.assertFalse(entity._uses_local_mode)
+        self.assertFalse(entity._is_filpilote)
+
+        await entity.async_set_hvac_mode(HVACMode.OFF)
+        entity._device.thermicLevel = "STOP"
+        entity._device.setpoint = None
+        await entity.async_set_hvac_mode(HVACMode.HEAT)
+
+        self.assertEqual(
+            client.put_devices_data.await_args_list,
+            [
+                call("20", "10", "thermicLevel", "STOP"),
+                call("20", "10", "setpoint", "19.0"),
+            ],
+        )
+
+    async def test_heat_without_confirmed_target_does_not_enable_shared_season(self):
+        """A stopped zone with no target must fail instead of writing comfortMode."""
+        entity, client = _calybox_2020_wt(setpoint=None, thermic_level="STOP")
+        self.addCleanup(entity._get_command_tracker().close)
+
+        with self.assertRaises(_HomeAssistantError) as error:
+            await entity.async_set_hvac_mode(HVACMode.HEAT)
+
+        self.assertEqual(error.exception.translation_key, "resume_target_unknown")
+        client.put_devices_data.assert_not_awaited()
+
+    async def test_set_temperature_still_restores_a_stopped_zone(self) -> None:
+        """An explicit target remains the supported recovery path."""
+        entity, client = _calybox_2020_wt(setpoint=None, thermic_level="STOP")
+        self.addCleanup(entity._get_command_tracker().close)
+
+        await entity.async_set_temperature(temperature=19)
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "setpoint", "19"
+        )
+
+    def test_nearby_profiles_do_not_match(self) -> None:
+        """LocalMode and reversible profiles retain their existing paths."""
+        local_mode, _client = LocalModeZoneTests._zone()
+        reversible, _client = _reversible_zone()
+
+        self.assertFalse(local_mode._device.uses_individual_thermic_stop)
+        self.assertFalse(reversible._device.uses_individual_thermic_stop)
 
 
 class ClimateSensorMetadataTests(TestCase):
