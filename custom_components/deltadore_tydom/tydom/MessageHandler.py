@@ -40,6 +40,7 @@ from .tydom_devices import (
     TydomScene,
     is_binary_tyxia_receiver_profile,
     is_physical_tywell_control_profile,
+    is_tyxia_dimmer_profile,
     is_tywell_control_type,
     resolve_device_model,
 )
@@ -145,6 +146,25 @@ def _is_tyxia_4910_other(uid: str) -> bool:
     if str(device_tutorial_id.get(uid, "")).lower() != "9_tyxia_modulaire_serie4900":
         return False
     return is_binary_tyxia_receiver_profile(device_metadata.get(uid))
+
+
+def _is_dimmable_other(uid: str) -> bool:
+    """Identify a dimmable receiver configured under the TYDOM 'others' usage."""
+    metadata = device_metadata.get(uid)
+    if not isinstance(metadata, dict):
+        return False
+
+    level = metadata.get("level")
+    if not isinstance(level, dict):
+        return False
+    if level.get("type") != "numeric":
+        return False
+
+    permission = level.get("permission")
+    if not isinstance(permission, str) or "w" not in permission.lower():
+        return False
+
+    return is_tyxia_dimmer_profile(metadata)
 
 
 def _is_unconfigured_x3d_remote(uid: str, endpoint: dict[str, Any]) -> bool:
@@ -1340,6 +1360,17 @@ class MessageHandler:
                 )
             case "others" if _is_tyxia_4910_other(uid):
                 return TydomSwitch(
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata.get(uid),
+                    data,
+                )
+            case "others" if _is_dimmable_other(uid):
+                return TydomLight(
                     tydom_client,
                     uid,
                     device_id,
