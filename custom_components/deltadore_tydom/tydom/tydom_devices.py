@@ -778,6 +778,16 @@ class TydomBoiler(TydomDevice):
                 else None,
             )
 
+        if (local_mode_setpoint := self._active_local_mode_setpoint()) is not None:
+            setpoint_metadata = (self._metadata or {}).get(local_mode_setpoint, {})
+            minimum = setpoint_metadata.get("min")
+            maximum = setpoint_metadata.get("max")
+            if minimum is not None or maximum is not None:
+                return (
+                    float(minimum) if minimum is not None else None,
+                    float(maximum) if maximum is not None else None,
+                )
+
         authorization = getattr(self, "authorization", None) or getattr(
             self, "hvacMode", None
         )
@@ -900,8 +910,31 @@ class TydomBoiler(TydomDevice):
             and value in command.get("enum_values", [])
         )
 
+    def _active_local_mode_setpoint(self) -> str | None:
+        """Return an independent zone's writable absence/frost setpoint."""
+        if self.uses_area_local_mode:
+            return None
+        local_mode = getattr(self, "localMode", None)
+        if local_mode == "ABSENCE":
+            name = "absenceSetpoint"
+        elif local_mode == "ANTI_FROST" or (
+            getattr(self, "openingDetected", False) is True
+            and getattr(self, "antiFrostWhenOff", None) is True
+        ):
+            name = "antiFrostSetpoint"
+        else:
+            return None
+
+        return name if self._is_writable(name) else None
+
     def _temperature_command_name(self) -> str:
         """Select the writable setpoint register for the current HVAC direction."""
+        if (
+            not self.uses_area_local_mode
+            and (local_mode_setpoint := self._active_local_mode_setpoint()) is not None
+        ):
+            return local_mode_setpoint
+
         if self.uses_area_local_mode:
             if getattr(self, "useMode", None) in {
                 "MANUAL",
@@ -1156,6 +1189,32 @@ class TydomBoiler(TydomDevice):
                 self._id, self._endpoint, setpoint_attribute, temperature
             )
 
+    async def set_scheduled_override_temperature(self, temperature) -> None:
+        """Apply a temporary target until the next scheduled program change."""
+        self.validate_temperature(temperature)
+        if not self._is_writable(
+            "overrideSetpoint"
+        ) or not self._supports_command_value("useMode", "OVERRIDE"):
+            from homeassistant.exceptions import HomeAssistantError
+
+            raise HomeAssistantError("Scheduled temperature override is unsupported.")
+
+        is_valid, error_msg = validate_value_with_metadata(
+            self, "overrideSetpoint", temperature
+        )
+        if not is_valid:
+            from homeassistant.exceptions import HomeAssistantError
+
+            raise HomeAssistantError(
+                error_msg or f"Temperature override is invalid: {temperature}"
+            )
+
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "overrideSetpoint", str(temperature)
+        )
+        # TYDOM owns the end of the override at the next schedule transition.
+        await self.set_use_mode("OVERRIDE")
+
     async def cancel_boost(self) -> None:
         """Cancel the active Boost on an area-backed radiator thermostat."""
         if not self.is_area_trv:
@@ -1214,6 +1273,15 @@ class TydomBoiler(TydomDevice):
             return
         await self._tydom_client.put_devices_data(
             self._id, self._endpoint, "localMode", mode
+        )
+
+    async def set_use_mode(self, mode):
+        """Set the thermostat schedule/manual mode when TYDOM allows it."""
+        if not self._supports_command_value("useMode", mode):
+            LOGGER.error("Unsupported useMode %s for %s", mode, self.device_id)
+            return
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "useMode", mode
         )
 
     async def set_fan_speed(self, speed) -> None:
