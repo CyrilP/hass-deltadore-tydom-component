@@ -1471,7 +1471,7 @@ class TydomClient:
         )
         completion_event = self._message_handler.register_cdata_poll(transaction_id)
         try:
-            await self.send_bytes(request)
+            await self.send_bytes(self._cmd_prefix + request)
             try:
                 await asyncio.wait_for(
                     completion_event.wait(), timeout=_CDATA_POLL_RESPONSE_TIMEOUT
