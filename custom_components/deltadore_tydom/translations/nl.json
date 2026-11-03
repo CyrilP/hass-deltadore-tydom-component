@@ -3083,6 +3083,18 @@
             }
         },
         "select": {
+            "general_climate_mode": {
+                "name": "Algemene klimaatmodus",
+                "state": {
+                    "off": "Uit",
+                    "heat": "Verwarmen",
+                    "cool": "Koelen",
+                    "away": "Afwezig",
+                    "fan_only": "Ventileren",
+                    "dry": "Ontvochtigen",
+                    "mixed": "Gemengd"
+                }
+            },
             "absence": {
                 "name": "Afwezigheidsmodus"
             },
@@ -3930,11 +3942,26 @@
         }
     },
     "exceptions": {
+        "resume_target_unknown": {
+            "message": "Deze zone staat nog op vorstbeveiliging en er is geen bevestigde doeltemperatuur bekend. Kies een temperatuur met de actie climate.set_temperature om de zone te hervatten. De algemene verwarmings-/koelmodus moet ingeschakeld zijn."
+        },
+        "general_hvac_absence": {
+            "message": "De algemene afwezigheidsmodus is actief. Schakel deze in TYDOM of via de algemene bediening van de gateway uit voordat u deze zone bedient."
+        },
+        "general_hvac_stopped": {
+            "message": "De algemene verwarmings-/airconditioningmodus staat uit. Schakel deze in TYDOM of via de algemene bediening van de gateway in voordat u deze zone bedient."
+        },
         "invalid_target_temperature": {
             "message": "De gewenste temperatuur moet een eindig getal zijn."
         },
         "target_temperature_out_of_range": {
             "message": "De gevraagde temperatuur {temperature} valt buiten de apparaatgrenzen ({minimum} tot {maximum})."
+        },
+        "stored_alarm_pin_missing": {
+            "message": "Sla een alarm-pincode op in de instellingen van deze TYDOM-integratie voordat je deze actie gebruikt."
+        },
+        "unsupported_stored_pin_alarm_mode": {
+            "message": "Kies Afwezig, Thuis, Nacht of Uitschakelen voor de actie met opgeslagen pincode."
         }
     },
     "device": {

@@ -36,6 +36,7 @@ from homeassistant.const import (
     PERCENTAGE,
 )
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.components.cover import (
@@ -116,6 +117,7 @@ from .tydom.tydom_devices import (
     TydomAlarmCommandError,
     TydomOpenIssuesNotReadyError,
     get_twc_scene_action,
+    is_tywell_control_type,
 )
 
 from .const import (
@@ -247,6 +249,13 @@ def _get_hub_for_tydom_device(hass: Any, device: Any):
     return None
 
 
+def _get_entity_registry_api():
+    """Import the entity registry only when generic sensor restoration needs it."""
+    from homeassistant.helpers import entity_registry
+
+    return entity_registry
+
+
 class HAEntity:
     """Generic abstract HA entity."""
 
@@ -363,6 +372,21 @@ class HAEntity:
         if registered_sensors is None:
             return sensors
 
+        # Generic sensors are discovered from live values. A gateway may omit
+        # a value from its first /devices/data response after a Home Assistant
+        # restart even though this integration created that sensor previously.
+        # Re-add known, supported attributes from this entry's registry so the
+        # existing entity remains available to receive the next live update.
+        restored_attributes = self.__dict__.get("_restored_sensor_attributes")
+        if restored_attributes is None:
+            restored_attributes = self._get_registered_sensor_attributes()
+            if restored_attributes is not None:
+                self._restored_sensor_attributes = restored_attributes
+            else:
+                # Hub setup can call sensor discovery before the config entry is
+                # present in hass.data. Retry on the next device update.
+                restored_attributes = set()
+
         registry_targets = self.__dict__.get("_sensor_registry_targets") or ()
         registrations_by_target = self.__dict__.setdefault(
             "_registered_sensors_by_target", {}
@@ -389,8 +413,14 @@ class HAEntity:
             target_registrations = [(None, None, "", None, registered_sensors)]
 
         consumed_attrs = self._get_consumed_attrs()
-        for attribute, value in self._device.__dict__.items():
-            if attribute[:1] != "_" and value is not None:
+        device_attributes = self._device.__dict__.copy()
+        for attribute in restored_attributes:
+            device_attributes.setdefault(attribute, None)
+
+        for attribute, value in device_attributes.items():
+            if attribute[:1] != "_" and (
+                value is not None or attribute in restored_attributes
+            ):
                 alt_name = attribute.split("_")[0]
                 if attribute in self.filtered_attrs or alt_name in self.filtered_attrs:
                     continue
@@ -486,6 +516,36 @@ class HAEntity:
                     )
 
         return sensors
+
+    def _get_registered_sensor_attributes(self) -> set[str] | None:
+        """Return known generic sensor attributes missing from the live payload."""
+        if self.hass is None or self._device is None:
+            return None
+
+        hub = self._get_hub()
+        entry = getattr(hub, "_entry", None)
+        if entry is None:
+            return None
+
+        supported_attributes = (
+            set(self.sensor_classes) | set(self.state_classes) | set(self.units)
+        )
+        if not supported_attributes:
+            return set()
+
+        prefix = f"{self._device.device_id}_"
+        entity_registry = _get_entity_registry_api()
+        registry = entity_registry.async_get(self.hass)
+        return {
+            registry_entry.unique_id.removeprefix(prefix)
+            for registry_entry in entity_registry.async_entries_for_config_entry(
+                registry, entry.entry_id
+            )
+            if registry_entry.domain == "sensor"
+            and registry_entry.platform == DOMAIN
+            and registry_entry.unique_id.startswith(prefix)
+            and registry_entry.unique_id.removeprefix(prefix) in supported_attributes
+        }
 
     def _get_consumed_attrs(self) -> set[str]:
         """Return raw attributes already represented by this primary entity.
@@ -2608,7 +2668,7 @@ class HASmoke(BinarySensorEntity, HAEntity):
         return attrs
 
 
-class HaClimate(ClimateEntity, HAEntity):
+class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
     """A climate entity."""
 
     _attr_should_poll = False
@@ -2644,8 +2704,12 @@ class HaClimate(ClimateEntity, HAEntity):
         self._device = device
         self._device._ha_device = self
         self._attr_unique_id = f"{self._device.device_id}_climate"
-        self._attr_name = "Thermostat" if self._device.is_derived_area_climate else None
+        # All climates are primary controls, including area-derived ones now
+        # grouped under the physical controller. HA lists primary controls first.
+        self._attr_name = None
         self._enable_turn_on_off_backwards_compatibility = False
+        self._last_confirmed_targets: dict[HVACMode, float] = {}
+        self._last_general_mode: str | None = None
 
         self.dict_modes_ha_to_dd = {
             HVACMode.COOL: "COOLING",
@@ -2723,12 +2787,21 @@ class HaClimate(ClimateEntity, HAEntity):
 
         comfort_mode = metadata.get("comfortMode", {})
         for mode in comfort_mode.get("enum_values", []):
-            if mode not in ["HEATING", "COOLING", "STOP"]:
+            if mode not in ["HEATING", "COOLING", "STOP", "NO_REGUL"]:
                 add_preset(mode)
 
         thermic_level = metadata.get("thermicLevel", {})
-        for mode in thermic_level.get("enum_values", []):
-            if mode not in ["STOP", "AUTO"]:
+        thermic_level_values = thermic_level.get("enum_values", [])
+        # NO_REGUL is an internal TYDOM state, not a user-selectable preset.
+        # When reported, the live state can legitimately resolve to
+        # PRESET_NONE; remember this capability so only these entities expose
+        # the corresponding "no preset" option.
+        self._has_no_regul_thermic_level = "NO_REGUL" in thermic_level_values
+        self._has_no_regul_preset = self._has_no_regul_thermic_level or (
+            "NO_REGUL" in comfort_mode.get("enum_values", [])
+        )
+        for mode in thermic_level_values:
+            if mode not in ["STOP", "AUTO", "NO_REGUL"]:
                 add_preset(mode)
 
         # Add common presets if available
@@ -2748,7 +2821,7 @@ class HaClimate(ClimateEntity, HAEntity):
             HVACMode.AUTO,
         ]
 
-        if hasattr(self._device, "area_id"):
+        if self._is_area_controlled:
             area_modes = self._device.area_hvac_modes()
             self._attr_hvac_modes = [HVACMode.OFF]
             if "HEATING" in area_modes or "NORMAL" in area_modes:
@@ -2861,6 +2934,17 @@ class HaClimate(ClimateEntity, HAEntity):
             getattr(self._device, attribute, None) is not None
             for attribute in ("setpoint", "heatSetpoint", "coolSetpoint")
         )
+        has_live_setpoint_bounds = any(
+            getattr(self._device, attribute, None) is not None
+            for attribute in (
+                "minSetpoint",
+                "maxSetpoint",
+                "minHeatSetpoint",
+                "maxHeatSetpoint",
+                "minCoolSetpoint",
+                "maxCoolSetpoint",
+            )
+        )
         has_cool_enum_meta = metadata is not None and any(
             isinstance(metadata.get(attr), dict)
             and "COOLING" in metadata[attr].get("enum_values", [])
@@ -2893,6 +2977,56 @@ class HaClimate(ClimateEntity, HAEntity):
             if isinstance(local_mode_meta, dict)
             else ""
         )
+        comfort_mode_meta = (metadata or {}).get("comfortMode")
+        comfort_mode_values = (
+            set(comfort_mode_meta.get("enum_values") or [])
+            if isinstance(comfort_mode_meta, dict)
+            else set()
+        )
+        thermic_level_meta = (metadata or {}).get("thermicLevel")
+        thermic_level_values = (
+            set(thermic_level_meta.get("enum_values") or [])
+            if isinstance(thermic_level_meta, dict)
+            else set()
+        )
+        # RF6600FP endpoints can advertise the X3D localMode enum even though
+        # pilot-wire orders are driven through thermicLevel. Require the full
+        # writable capability signature so other climate profiles keep their
+        # existing localMode, setpoint, and reversible paths.
+        self._uses_comfort_mode_pilot_wire = (
+            not self._is_area_controlled
+            and "r" in local_mode_permission
+            and "w" in local_mode_permission
+            and {"NORMAL", "STOP", "ANTI_FROST", "ABSENCE"}.issubset(
+                set(local_mode_meta.get("enum_values") or [])
+            )
+            and isinstance(comfort_mode_meta, dict)
+            and "w" in comfort_mode_meta.get("permission", "")
+            and {"STOP", "HEATING"}.issubset(comfort_mode_values)
+            and isinstance(thermic_level_meta, dict)
+            and {"r", "w"}.issubset(set(thermic_level_meta.get("permission", "")))
+            and {"COMFORT", "ECO", "ANTI_FROST", "STOP"}.issubset(thermic_level_values)
+            and "AUTO" not in thermic_level_values
+            and not has_setpoint_meta
+            and not has_live_setpoint
+            and not has_cool_enum_meta
+        )
+        setpoint_meta = (metadata or {}).get("setpoint")
+        setpoint_permission = (
+            setpoint_meta.get("permission", "")
+            if isinstance(setpoint_meta, dict)
+            else ""
+        )
+        self._local_mode_off_value = (
+            "STOP"
+            if self._device.uses_area_local_mode
+            or (
+                isinstance(local_mode_meta, dict)
+                and "STOP" in local_mode_meta.get("enum_values", [])
+                and "w" in setpoint_permission
+            )
+            else "ANTI_FROST"
+        )
         self._local_mode_values = (
             list(local_mode_meta.get("enum_values") or [])
             if isinstance(local_mode_meta, dict)
@@ -2900,7 +3034,7 @@ class HaClimate(ClimateEntity, HAEntity):
             and "w" in local_mode_permission
             else []
         )
-        self._uses_local_mode = (
+        self._uses_local_mode = self._device.uses_area_local_mode or (
             "NORMAL" in self._local_mode_values
             and "ANTI_FROST" in self._local_mode_values
             # `localMode` is not unique to these zones: area attributes use the
@@ -2908,12 +3042,35 @@ class HaClimate(ClimateEntity, HAEntity):
             # TRV-backed areas and Typass ATL zones.  Area-derived entities
             # build their mode list from area_hvac_modes() above, which can
             # include COOL, so they must keep it.
-            and not hasattr(self._device, "area_id")
+            and not self._is_area_controlled
             # Reversible zones (heat pump / AC) reach [off, heat, cool] above
             # from their own enum metadata.  Frost protection is a preset on
             # those, not an off state, and collapsing them here would drop
             # cooling altogether — see #453 / #455.
             and HVACMode.COOL not in self._attr_hvac_modes
+            and not self._uses_comfort_mode_pilot_wire
+        )
+        thermic_level_meta = (metadata or {}).get("thermicLevel")
+        thermic_level_permission = (
+            thermic_level_meta.get("permission", "")
+            if isinstance(thermic_level_meta, dict)
+            else ""
+        )
+        thermic_level_values = (
+            set(thermic_level_meta.get("enum_values") or [])
+            if isinstance(thermic_level_meta, dict)
+            else set()
+        )
+        # Some thermostats expose both registers: localMode carries the
+        # thermostat's on/off and absence state, while thermicLevel carries
+        # user-selectable Eco/Comfort/Auto levels. Limit this path to
+        # non-area devices with the complete writable capability signature.
+        self._uses_local_mode_thermic_presets = (
+            self._uses_local_mode
+            and not self._is_area_controlled
+            and "r" in thermic_level_permission
+            and "w" in thermic_level_permission
+            and {"AUTO", "ECO", "COMFORT"}.issubset(thermic_level_values)
         )
         use_mode_meta = (metadata or {}).get("useMode")
         use_mode_permission = (
@@ -2931,6 +3088,11 @@ class HaClimate(ClimateEntity, HAEntity):
         override_time_meta = (metadata or {}).get("overrideRemainingTime")
         self._uses_scheduled_local_mode = (
             self._uses_local_mode
+            and not self._is_area_controlled
+            and not self._device.uses_area_local_mode
+            and isinstance(heat_setpoint_meta, dict)
+            and {"r", "w"}.issubset(heat_setpoint_meta.get("permission", ""))
+            and "overrideThermicLevel" not in (metadata or {})
             and {"STOP", "ABSENCE"}.issubset(self._local_mode_values)
             and {"r", "w"}.issubset(use_mode_permission)
             and {"SCHED", "MANUAL"}.issubset(use_mode_values)
@@ -2956,8 +3118,45 @@ class HaClimate(ClimateEntity, HAEntity):
             and has_thermic_level
             and not has_setpoint_meta
             and not has_live_setpoint
+            and not has_live_setpoint_bounds
             and not has_cool_enum_meta
         )
+
+        # The Tybox Home RF 210 / PAC profile exposes a writable localMode
+        # (NORMAL, STOP, ANTI_FROST, ABSENCE), a SCHED useMode, and the
+        # internal thermicLevel NO_REGUL marker. Use localMode to keep ABSENCE
+        # distinct from ANTI_FROST, and STOP for the HVAC state. Requiring the
+        # full capability set keeps X3D heating-only, fil-pilote, and
+        # Tywell/Typass area climate profiles on their existing paths. Do not
+        # expose ANTI_FROST as a selectable preset: live testing showed TYDOM
+        # restoring the schedule after a localMode-only write.
+        local_mode_meta = metadata.get("localMode", {})
+        use_mode_meta = metadata.get("useMode", {})
+        local_mode_values = (
+            set(local_mode_meta.get("enum_values", []))
+            if isinstance(local_mode_meta, dict)
+            else set()
+        )
+        self._uses_local_mode_presets = (
+            not self._is_filpilote
+            and not self._uses_local_mode
+            and not self._device.is_area_trv
+            and not self._device.is_derived_area_climate
+            and self._has_no_regul_thermic_level
+            and (has_setpoint_meta or has_live_setpoint)
+            and isinstance(local_mode_meta, dict)
+            and "r" in local_mode_meta.get("permission", "")
+            and "w" in local_mode_meta.get("permission", "")
+            and {"NORMAL", "STOP", "ANTI_FROST", "ABSENCE"}.issubset(local_mode_values)
+            and isinstance(use_mode_meta, dict)
+            and "SCHED" in use_mode_meta.get("enum_values", [])
+        )
+        if self._uses_local_mode_presets:
+            # Away is the only additional preset whose write has been verified.
+            # Frost remains visible in the existing local-mode diagnostic until
+            # TYDOM's complete command sequence can be confirmed.
+            self._attr_preset_modes = [PRESET_AWAY]
+            self._attr_supported_features |= ClimateEntityFeature.PRESET_MODE
 
         if self._is_filpilote:
             self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
@@ -2973,19 +3172,31 @@ class HaClimate(ClimateEntity, HAEntity):
             self._attr_supported_features &= ~ClimateEntityFeature.TARGET_TEMPERATURE
 
         if self._uses_local_mode:
-            self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
-            if self._uses_scheduled_local_mode:
-                self._attr_hvac_modes.append(HVACMode.AUTO)
-            # Replace any presets derived above.  These zones have no comfort
-            # or eco order: comfortMode is the write-only season register, so
-            # the generic extraction finds nothing usable and falls back to a
-            # hardcoded [NORMAL, ECO, COMFORT] the hardware does not implement.
-            # ABSENCE is the one real preset they do have.
+            # Keep the advertised area modes intact. Standalone local-mode
+            # zones use the smaller set supported by their own endpoint.
+            if not self._device.uses_area_local_mode:
+                self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
+                if self._uses_scheduled_local_mode:
+                    self._attr_hvac_modes.append(HVACMode.AUTO)
+            # Mixed profiles may additionally advertise Eco/Comfort on
+            # thermicLevel while localMode controls Off and Absence.
+            self._attr_preset_modes = []
+            if self._uses_local_mode_thermic_presets:
+                if "ECO" in thermic_level_values:
+                    self._attr_preset_modes.append(PRESET_ECO)
+                if "COMFORT" in thermic_level_values:
+                    self._attr_preset_modes.append(PRESET_COMFORT)
             if "ABSENCE" in self._local_mode_values:
+                self._attr_preset_modes.extend([PRESET_NONE, PRESET_AWAY])
+            elif self._device.uses_area_local_mode:
+                # Preserve the existing area preset behavior when absence is
+                # controlled by the installation rather than this endpoint.
                 self._attr_preset_modes = [PRESET_NONE, PRESET_AWAY]
+            elif self._uses_local_mode_thermic_presets:
+                self._attr_preset_modes.append(PRESET_NONE)
+            if self._attr_preset_modes:
                 self._attr_supported_features |= ClimateEntityFeature.PRESET_MODE
             else:
-                self._attr_preset_modes = []
                 self._attr_supported_features &= ~ClimateEntityFeature.PRESET_MODE
 
         # Fan speed (Naviclim X3D reversible AC). Naviclim zones expose a numeric
@@ -3014,9 +3225,6 @@ class HaClimate(ClimateEntity, HAEntity):
             # local override command.
             self._attr_supported_features |= ClimateEntityFeature.TARGET_TEMPERATURE
 
-        if self._device.is_derived_area_climate:
-            set_entity_name(self, "thermostat")
-
     @property
     def supported_features(self) -> ClimateEntityFeature:
         """Return the features currently supported by this climate entity.
@@ -3026,6 +3234,14 @@ class HaClimate(ClimateEntity, HAEntity):
         from the state present while the Home Assistant entity was constructed.
         """
         features = self._attr_supported_features
+        if self._device.general_control_lock is not None:
+            return features & ~(
+                ClimateEntityFeature.TARGET_TEMPERATURE
+                | ClimateEntityFeature.PRESET_MODE
+                | ClimateEntityFeature.TURN_ON
+                | ClimateEntityFeature.TURN_OFF
+                | ClimateEntityFeature.FAN_MODE
+            )
         if self._device.is_area_trv:
             return (features | ClimateEntityFeature.TARGET_TEMPERATURE) & ~(
                 ClimateEntityFeature.TURN_OFF
@@ -3033,19 +3249,19 @@ class HaClimate(ClimateEntity, HAEntity):
                 | ClimateEntityFeature.PRESET_MODE
                 | ClimateEntityFeature.FAN_MODE
             )
-
         if (
             self._uses_scheduled_local_mode
             and not self._supports_scheduled_temperature_override
             and self.hvac_mode == HVACMode.AUTO
         ):
             return features & ~ClimateEntityFeature.TARGET_TEMPERATURE
-
         return features
 
     @property
     def hvac_modes(self) -> list[HVACMode]:
         """Return the modes currently supported by this climate entity."""
+        if self._device.general_control_lock is not None:
+            return [self._resolve_hvac_mode()]
         if self._device.is_area_trv:
             return [HVACMode.HEAT]
         return self._attr_hvac_modes
@@ -3074,6 +3290,8 @@ class HaClimate(ClimateEntity, HAEntity):
         modes = list(self._attr_preset_modes)
         if self._supports_absence_mode() and PRESET_AWAY not in modes:
             modes.append(PRESET_AWAY)
+        if modes and self._has_no_regul_preset and PRESET_NONE not in modes:
+            modes.append(PRESET_NONE)
         return modes
 
     def _get_command_tracker(self) -> ClimateCommandTracker:
@@ -3081,25 +3299,118 @@ class HaClimate(ClimateEntity, HAEntity):
         if not hasattr(self, "_command_tracker"):
             self._command_tracker = ClimateCommandTracker(self._notify_command_entities)
             self._command_listeners: set[Callable[[], None]] = set()
+            self._command_display_target = self.target_temperature
         return self._command_tracker
 
     def _notify_command_entities(self) -> None:
-        """Publish request status immediately without inventing thermostat state."""
-        if getattr(self, "_command_listening", False):
+        """Render target changes; keep mode/preset tracking on the diagnostic."""
+        target = self.target_temperature
+        target_changed = target != self._command_display_target
+        self._command_display_target = target
+        # A tracking-only write republishes the old mode/preset and resets the
+        # dashboard selector (#539/#541). Temperature display changes still
+        # need an immediate write, including a failed or expired target.
+        if target_changed and getattr(self, "_command_listening", False):
             self.async_write_ha_state()
         for listener in tuple(self._command_listeners):
             listener()
 
+    def _remember_confirmed_target(self) -> None:
+        """Remember real heat/cool targets, never pending or frost/absence values."""
+        if (
+            self._device.general_control_lock is not None
+            or self.preset_mode == PRESET_AWAY
+        ):
+            return
+        if getattr(self._device, "thermicLevel", None) in self.OFF_LOCAL_MODES:
+            return
+        mode = self.hvac_mode
+        if mode not in (HVACMode.HEAT, HVACMode.COOL):
+            return
+        target = self._validated_confirmed_target(
+            mode, self.reported_target_temperature
+        )
+        if target is not None:
+            self._last_confirmed_targets[mode] = target
+
+    def _validated_confirmed_target(self, mode: HVACMode, target: Any) -> float | None:
+        """Accept only finite, in-range targets for a supported direction."""
+        if mode not in (HVACMode.HEAT, HVACMode.COOL) or isinstance(target, bool):
+            return None
+        with suppress(TypeError, ValueError):
+            target = float(target)
+        if not isinstance(target, float) or not math.isfinite(target):
+            return None
+        minimum, maximum = self._device.temperature_limits()
+        if (minimum is not None and target < minimum) or (
+            maximum is not None and target > maximum
+        ):
+            return None
+        return target
+
+    def _restore_confirmed_targets(self, last_state: Any) -> None:
+        """Restore targets from this integration, or a prior HA climate state."""
+        if last_state is None:
+            return
+        attributes = getattr(last_state, "attributes", {})
+        stored = attributes.get("last_confirmed_targets", {})
+        if not isinstance(stored, dict):
+            stored = {}
+        for mode in (HVACMode.HEAT, HVACMode.COOL):
+            target = self._validated_confirmed_target(mode, stored.get(mode.value))
+            if target is None and getattr(last_state, "state", None) == mode.value:
+                target = self._validated_confirmed_target(
+                    mode, attributes.get(ATTR_TEMPERATURE)
+                )
+            if target is not None:
+                self._last_confirmed_targets[mode] = target
+
     def _handle_climate_update(self) -> None:
         """Confirm requests only when TYDOM publishes the actual device state."""
-        self._get_command_tracker().confirm(
+        home = getattr(self._device._tydom_client, "general_climate", None)
+        current_general_mode = getattr(home, "mode", None)
+        previous_general_mode = self._last_general_mode
+        self._last_general_mode = current_general_mode
+        resume_target = None
+        if (
+            previous_general_mode == "STOP"
+            and current_general_mode == "HEATING"
+            and self._uses_local_mode
+            and self._device.general_control_lock is None
+            and getattr(self._device, "localMode", None) == "NORMAL"
+            and getattr(self._device, "thermicLevel", None) == "ANTI_FROST"
+            and not self._get_command_tracker().pending
+        ):
+            resume_target = self._heating_resume_target()
+        self._remember_confirmed_target()
+        tracker = self._get_command_tracker()
+        # This real feedback will be published below. Avoid another climate
+        # write from the tracker's confirmation notification.
+        self._command_display_target = self.target_temperature
+        tracker.confirm(
             {
                 "hvac_mode": self.hvac_mode,
-                "temperature": self.target_temperature,
+                "temperature": self.reported_target_temperature,
                 "preset_mode": self.preset_mode,
             }
         )
         self.async_write_ha_state()
+        if resume_target is not None:
+            self.hass.async_create_task(
+                self._async_resume_after_general_heating(resume_target)
+            )
+
+    async def _async_resume_after_general_heating(self, target: float) -> None:
+        """Apply a confirmed or first-use target after the gateway unlocks zones."""
+        try:
+            await self.async_set_temperature(temperature=target)
+        except Exception as err:
+            LOGGER.warning(
+                "Could not restore the confirmed heating target after general "
+                "heating was enabled for device_id=%s: %s",
+                self._device.device_id,
+                err,
+            )
 
     async def _async_track_command(
         self, key: str, value: Any, operation: Awaitable[Any]
@@ -3110,30 +3421,60 @@ class HaClimate(ClimateEntity, HAEntity):
         try:
             await operation
         except asyncio.CancelledError:
-            tracker.fail(key, command, cancelled=True)
+            if tracker.fail(key, command, cancelled=True):
+                self._restore_failed_mode_request(key, tracker)
             raise
         except Exception:
-            tracker.fail(key, command)
+            if tracker.fail(key, command):
+                self._restore_failed_mode_request(key, tracker)
             raise
+
+    def _restore_failed_mode_request(
+        self, key: str, tracker: ClimateCommandTracker
+    ) -> None:
+        """Restore a failed selector without rolling back another pending target."""
+        if (
+            key != "temperature"
+            and not tracker.pending
+            and getattr(self, "_command_listening", False)
+        ):
+            self.async_write_ha_state()
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Expose outstanding requests alongside the unchanged device state."""
+        """Keep the actual setpoint visible alongside the requested target."""
         tracker = self._get_command_tracker()
-        return {"command_pending": tracker.pending, **tracker.attributes}
+        return {
+            "command_pending": tracker.pending,
+            "reported_temperature": self.reported_target_temperature,
+            "last_confirmed_targets": {
+                mode.value: target
+                for mode, target in self._last_confirmed_targets.items()
+            },
+            **tracker.attributes,
+        }
 
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
         await super().async_added_to_hass()
+        self._restore_confirmed_targets(await self.async_get_last_state())
         self._command_listening = True
+        self._remember_confirmed_target()
         self._device.register_callback(self._handle_climate_update)
         self._device._ha_device = self
+        home = getattr(self._device._tydom_client, "general_climate", None)
+        if home is not None:
+            self._last_general_mode = getattr(home, "mode", None)
+            home.add_listener(self._handle_climate_update)
 
     async def async_will_remove_from_hass(self) -> None:
         """Remove the push callback registered in async_added_to_hass."""
         self._command_listening = False
         self._device.remove_callback(self._handle_climate_update)
         self._get_command_tracker().close()
+        home = getattr(self._device._tydom_client, "general_climate", None)
+        if home is not None:
+            home.remove_listener(self._handle_climate_update)
         if hasattr(self._device, "_ha_device") and self._device._ha_device is self:
             self._device._ha_device = None
         await super().async_will_remove_from_hass()
@@ -3142,10 +3483,10 @@ class HaClimate(ClimateEntity, HAEntity):
     def device_info(self) -> DeviceInfo:
         """Information about this entity/device."""
         device_info = self._get_device_info()
-        registry_device_id = str(self._device.source_device_id)
+        registry_device_id = str(self._device.registry_device_id)
         infos: DeviceInfo = {
             "identifiers": {(DOMAIN, registry_device_id)},
-            "name": str(device_name.get(registry_device_id, self._device.device_name)),
+            "name": str(self._device.registry_device_name),
             "manufacturer": device_info["manufacturer"],
         }
         if "model" in device_info:
@@ -3174,35 +3515,79 @@ class HaClimate(ClimateEntity, HAEntity):
         return super().max_temp
 
     @property
+    def _is_area_controlled(self) -> bool:
+        """Return area-control status, including compatibility with v0.34 devices."""
+        return bool(
+            getattr(
+                self._device, "is_area_controlled", hasattr(self._device, "area_id")
+            )
+        )
+
+    @property
     def target_temperature_step(self) -> float | None:
         """Return the area controller's advertised temperature step."""
-        if hasattr(self._device, "area_id"):
+        if self._is_area_controlled:
             step = self._device.area_temperature_step()
             if step is not None:
                 return step
         return super().target_temperature_step
 
     OFF_LOCAL_MODES = ("ANTI_FROST", "STOP")
+    DEFAULT_HEATING_RESUME_TARGET = 17.0
+
+    def _heating_resume_target(self) -> float | None:
+        """Use the confirmed target, or default only for independent zones."""
+        target = self._last_confirmed_targets.get(HVACMode.HEAT)
+        if target is not None:
+            return target
+        if self._last_confirmed_targets:
+            return None
+        if (
+            self._uses_local_mode
+            and not self._is_area_controlled
+            and not is_tywell_control_type(self._device.device_type)
+        ):
+            return self.DEFAULT_HEATING_RESUME_TARGET
+        return None
 
     def _resolve_hvac_mode(self) -> HVACMode:
         """Derive HA HVAC mode from Tydom thermostat registers."""
+        if self._device.general_control_lock == "off":
+            return HVACMode.OFF
         if self._device.is_area_trv:
             return HVACMode.HEAT
 
+        if (
+            getattr(self, "_uses_local_mode_presets", False)
+            and getattr(self._device, "localMode", None) == "STOP"
+        ):
+            return HVACMode.OFF
+
         if self._uses_local_mode:
             local_mode = getattr(self._device, "localMode", None)
-            if local_mode == "STOP" or (
-                local_mode == "ANTI_FROST" and not self._uses_scheduled_local_mode
+            if local_mode in self.OFF_LOCAL_MODES and not (
+                self._uses_scheduled_local_mode and local_mode == "ANTI_FROST"
             ):
                 return HVACMode.OFF
             if local_mode is not None:
                 if (
                     self._uses_scheduled_local_mode
                     and local_mode == "NORMAL"
-                    and getattr(self._device, "useMode", None)
-                    in {"SCHED", "OVERRIDE"}
+                    and getattr(self._device, "useMode", None) in {"SCHED", "OVERRIDE"}
                 ):
                     return HVACMode.AUTO
+                authorization = getattr(self._device, "authorization", None)
+                if authorization == "STOP":
+                    return HVACMode.OFF
+                if self._device.uses_area_local_mode and authorization == "COOLING":
+                    return HVACMode.COOL
+                return HVACMode.HEAT
+
+        if self._uses_comfort_mode_pilot_wire:
+            authorization = getattr(self._device, "authorization", None)
+            if authorization == "STOP":
+                return HVACMode.OFF
+            if authorization == "HEATING":
                 return HVACMode.HEAT
 
         if getattr(self, "_is_filpilote", False):
@@ -3250,12 +3635,20 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def hvac_action(self) -> HVACAction | None:
         """Return the current running action."""
+        if self._device.general_control_lock == "off":
+            return HVACAction.OFF
         if self._device.is_area_trv:
             return (
                 HVACAction.HEATING
                 if getattr(self._device, "waterFlowReq", False)
                 else HVACAction.IDLE
             )
+
+        if (
+            getattr(self, "_uses_local_mode_presets", False)
+            and getattr(self._device, "localMode", None) == "STOP"
+        ):
+            return HVACAction.OFF
 
         if getattr(self, "_is_filpilote", False):
             # No temperature feedback exists, so we cannot distinguish heating
@@ -3264,11 +3657,12 @@ class HaClimate(ClimateEntity, HAEntity):
             return HVACAction.OFF if level == "STOP" else HVACAction.HEATING
 
         if self._uses_local_mode:
-            local_mode = getattr(self._device, "localMode", None)
-            if local_mode == "STOP" or (
-                local_mode == "ANTI_FROST" and not self._uses_scheduled_local_mode
-            ):
+            if self._resolve_hvac_mode() == HVACMode.OFF:
                 return HVACAction.OFF
+            # Frost protection can leave the zone enabled while withholding a
+            # usable heating target. Keep the recent Tywell behavior intact.
+            if getattr(self._device, "thermicLevel", None) == "ANTI_FROST":
+                return HVACAction.IDLE
             if self._uses_scheduled_local_mode:
                 if getattr(self._device, "loadSheddingOn", False) is True:
                     return HVACAction.IDLE
@@ -3277,10 +3671,6 @@ class HaClimate(ClimateEntity, HAEntity):
                     and getattr(self._device, "antiFrostWhenOff", None) is False
                 ):
                     return HVACAction.IDLE
-            # Fall through to a setpoint comparison where this profile
-            # exposes one. Older localMode zones without an active setpoint
-            # cannot report actuator state and retain the existing HEATING
-            # fallback while enabled.
 
         authorization = getattr(self._device, "authorization", None)
         thermic_level = getattr(self._device, "thermicLevel", None)
@@ -3288,7 +3678,7 @@ class HaClimate(ClimateEntity, HAEntity):
             return HVACAction.OFF
 
         current = self.current_temperature
-        target = self.target_temperature
+        target = self.reported_target_temperature
         if authorization == "COOLING":
             if current is not None and target is not None:
                 return HVACAction.IDLE if current < target else HVACAction.COOLING
@@ -3322,7 +3712,10 @@ class HaClimate(ClimateEntity, HAEntity):
     def current_humidity(self) -> float | None:
         """Return the current humidity when the device advertises hygroIn."""
         metadata = getattr(self._device, "_metadata", None)
-        if metadata is None or "hygroIn" not in metadata:
+        has_area_humidity = getattr(
+            self._device, "_endpoint_controls_own_thermostat", False
+        )
+        if not has_area_humidity and (metadata is None or "hygroIn" not in metadata):
             return None
 
         humidity = getattr(self._device, "hygroIn", None)
@@ -3335,32 +3728,68 @@ class HaClimate(ClimateEntity, HAEntity):
 
     @property
     def target_temperature(self) -> float | None:
-        """Return the temperature currently set to be reached."""
-        if self._uses_local_mode:
-            local_mode_setpoint = self._device._active_local_mode_setpoint()
-            if local_mode_setpoint is not None:
-                setpoint = getattr(self._device, local_mode_setpoint, None)
-                if setpoint is not None:
-                    return float(setpoint)
+        """Show the requested target until confirmed, failed or timed out."""
+        if self._device.general_control_lock is not None:
+            return self.reported_target_temperature
+        tracker = getattr(self, "_command_tracker", None)
+        requested = tracker.requested_value("temperature") if tracker else None
+        if requested is not None:
+            return float(requested)
+        reported = self.reported_target_temperature
+        if reported is not None:
+            return reported
+        if (
+            self._device.general_control_lock is None
+            and self._uses_local_mode
+            and getattr(self._device, "localMode", None) == "NORMAL"
+            and getattr(self._device, "thermicLevel", None) == "ANTI_FROST"
+        ):
+            return self._last_confirmed_targets.get(HVACMode.HEAT)
+        return None
 
-        if hasattr(self._device, "area_id"):
+    @property
+    def reported_target_temperature(self) -> float | None:
+        """Return the actual target reported by TYDOM, without pending requests."""
+        if self._device.general_control_lock == "off":
+            return None
+        if self._uses_local_mode:
+            local_mode = getattr(self._device, "localMode", None)
+            scheduled_anti_frost = (
+                self._uses_scheduled_local_mode and local_mode == "ANTI_FROST"
+            )
+            if self._resolve_hvac_mode() == HVACMode.OFF and not scheduled_anti_frost:
+                return None
+            if (
+                local_mode == "NORMAL"
+                and getattr(self._device, "thermicLevel", None) in self.OFF_LOCAL_MODES
+            ):
+                # An enabled zone can still be in frost protection. Keep the
+                # area's frost feedback separate from the saved heating target.
+                return None
+            if self._uses_scheduled_local_mode:
+                local_mode_setpoint = self._device._active_local_mode_setpoint()
+                if local_mode_setpoint is not None:
+                    setpoint = getattr(self._device, local_mode_setpoint, None)
+                    if setpoint is not None:
+                        return float(setpoint)
+                if (
+                    local_mode == "NORMAL"
+                    and getattr(self._device, "useMode", None) == "SCHED"
+                ):
+                    scheduled = getattr(self._device, "heatSetpoint", None)
+                    if scheduled is not None:
+                        return float(scheduled)
+        if not self._device.is_area_trv and getattr(self._device, "useMode", None) in {
+            "MANUAL",
+            "OVERRIDE",
+        }:
+            override = getattr(self._device, "overrideSetpoint", None)
+            if override is not None:
+                return float(override)
+        if self._is_area_controlled:
             setpoint = getattr(
                 self._device, self._device.area_setpoint_attribute(), None
             )
-            if setpoint is not None:
-                return float(setpoint)
-
-        if (
-            self._supports_scheduled_temperature_override
-            and getattr(self._device, "localMode", None) == "NORMAL"
-        ):
-            use_mode = getattr(self._device, "useMode", None)
-            setpoint_attribute = (
-                "overrideSetpoint"
-                if use_mode in {"OVERRIDE", "MANUAL"}
-                else "heatSetpoint"
-            )
-            setpoint = getattr(self._device, setpoint_attribute, None)
             if setpoint is not None:
                 return float(setpoint)
 
@@ -3409,10 +3838,65 @@ class HaClimate(ClimateEntity, HAEntity):
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
+        self._device.validate_general_hvac_mode()
+        self._remember_confirmed_target()
         if self._device.is_area_trv:
             return
 
+        if (
+            self._uses_local_mode
+            and hvac_mode in (HVACMode.HEAT, HVACMode.COOL)
+            and getattr(self._device, "localMode", None) == "NORMAL"
+            and getattr(self._device, "thermicLevel", None) in self.OFF_LOCAL_MODES
+        ):
+            # General Heating can leave a scheduled zone in frost protection
+            # even though its local mode is already NORMAL. Re-sending NORMAL
+            # is a no-op; the app releases this state by requesting a setpoint.
+            # Reuse the confirmed target; only independent zones may default to 17 C.
+            target = (
+                self._heating_resume_target()
+                if hvac_mode == HVACMode.HEAT
+                else self._last_confirmed_targets.get(hvac_mode)
+            )
+            if target is None:
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="resume_target_unknown",
+                )
+            await self._async_track_command(
+                "hvac_mode",
+                hvac_mode,
+                self.async_set_temperature(temperature=target),
+            )
+            return
+
         if getattr(self, "_is_filpilote", False):
+            if self._uses_comfort_mode_pilot_wire:
+                if hvac_mode == HVACMode.OFF:
+                    operation = self._device._tydom_client.put_devices_data(
+                        self._device._id,
+                        self._device._endpoint,
+                        "comfortMode",
+                        "STOP",
+                    )
+                elif getattr(self._device, "thermicLevel", None) in (None, "STOP"):
+
+                    async def enable_heating() -> None:
+                        await self._device._tydom_client.put_devices_data(
+                            self._device._id,
+                            self._device._endpoint,
+                            "comfortMode",
+                            "HEATING",
+                        )
+                        await self._device.set_thermic_level("COMFORT")
+
+                    operation = enable_heating()
+                else:
+                    return
+
+                await self._async_track_command("hvac_mode", hvac_mode, operation)
+                return
+
             # OFF -> pilot-wire STOP. HEAT -> keep the current heating order, or
             # default to Comfort when coming from STOP; the level is chosen via
             # preset_mode (comfort/eco/away).
@@ -3452,8 +3936,10 @@ class HaClimate(ClimateEntity, HAEntity):
             await self._async_track_command(
                 "hvac_mode",
                 hvac_mode,
-                self._device.set_local_mode(
-                    "ANTI_FROST" if hvac_mode == HVACMode.OFF else "NORMAL"
+                self._device.set_local_hvac_mode(
+                    self._local_mode_off_value
+                    if hvac_mode == HVACMode.OFF
+                    else "NORMAL"
                 ),
             )
             return
@@ -3466,6 +3952,8 @@ class HaClimate(ClimateEntity, HAEntity):
     @property
     def preset_mode(self) -> str | None:
         """Return the current preset mode."""
+        if self._device.general_control_lock == "absence":
+            return PRESET_AWAY
         if getattr(self, "_is_filpilote", False):
             level = getattr(self._device, "thermicLevel", None)
             if level == "COMFORT":
@@ -3475,10 +3963,22 @@ class HaClimate(ClimateEntity, HAEntity):
             if level == "ANTI_FROST":
                 return PRESET_AWAY
             return PRESET_NONE
+        if getattr(self, "_uses_local_mode_presets", False):
+            # ABSENCE is the confirmed Away preset. ANTI_FROST remains visible
+            # from the local-mode diagnostic; it is not aliased to Away.
+            if getattr(self._device, "localMode", None) == "ABSENCE":
+                return PRESET_AWAY
+            return PRESET_NONE
         if self._uses_local_mode:
             local_mode = getattr(self._device, "localMode", None)
             if local_mode == "ABSENCE":
                 return PRESET_AWAY
+            if self._uses_local_mode_thermic_presets:
+                thermic_level = getattr(self._device, "thermicLevel", None)
+                if thermic_level == "ECO":
+                    return PRESET_ECO
+                if thermic_level == "COMFORT":
+                    return PRESET_COMFORT
             return PRESET_NONE if self._attr_preset_modes else None
         if (
             not self._device.is_area_trv
@@ -3501,6 +4001,33 @@ class HaClimate(ClimateEntity, HAEntity):
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new target preset mode."""
+        self._device.validate_general_hvac_mode()
+        if self._uses_local_mode_thermic_presets:
+            thermic_level_for_preset = {
+                PRESET_ECO: "ECO",
+                PRESET_COMFORT: "COMFORT",
+            }.get(preset_mode)
+            if thermic_level_for_preset is not None:
+                await self._async_track_command(
+                    "preset_mode",
+                    preset_mode,
+                    self._device.set_thermic_level(thermic_level_for_preset),
+                )
+                return
+            if preset_mode == PRESET_NONE:
+                # Leave Away through Auto first, then clear the absence state.
+                await self._async_track_command(
+                    "preset_mode",
+                    preset_mode,
+                    self._device.set_thermic_level("AUTO"),
+                )
+                if getattr(self._device, "localMode", None) == "ABSENCE":
+                    await self._async_track_command(
+                        "preset_mode",
+                        preset_mode,
+                        self._device.set_local_mode("NORMAL"),
+                    )
+                return
         if self._uses_local_mode:
             if preset_mode == PRESET_AWAY:
                 await self._async_track_command(
@@ -3553,6 +4080,31 @@ class HaClimate(ClimateEntity, HAEntity):
                     "preset_mode", preset_mode, self._device.set_thermic_level("AUTO")
                 )
             return
+        if getattr(self, "_uses_local_mode_presets", False):
+            local_mode = getattr(self._device, "localMode", None)
+            if preset_mode == PRESET_AWAY:
+                target_local_mode = "ABSENCE"
+            elif preset_mode == PRESET_NONE and local_mode == "ABSENCE":
+                # Only clear Away. In STOP or ANTI_FROST, writing NORMAL would
+                # restart regulation or overwrite the active frost state.
+                target_local_mode = "NORMAL"
+            else:
+                return
+
+            if self._device.is_area_controlled:
+                operation = self._device._tydom_client.put_area_data(
+                    self._device.area_id, "localMode", target_local_mode
+                )
+            else:
+                operation = self._device._tydom_client.put_devices_data(
+                    self._device._id,
+                    self._device._endpoint,
+                    "localMode",
+                    target_local_mode,
+                )
+            await self._async_track_command("preset_mode", preset_mode, operation)
+            return
+
         if preset_mode == PRESET_AWAY and self._supports_absence_mode():
             local_mode_metadata = (self._device._metadata or {}).get("localMode", {})
             if (
@@ -3560,7 +4112,7 @@ class HaClimate(ClimateEntity, HAEntity):
                 and "ABSENCE" in local_mode_metadata.get("enum_values", [])
                 and "w" in local_mode_metadata.get("permission", "")
             ):
-                if hasattr(self._device, "area_id"):
+                if self._is_area_controlled:
                     await self._async_track_command(
                         "preset_mode",
                         preset_mode,
@@ -3629,9 +4181,7 @@ class HaClimate(ClimateEntity, HAEntity):
                 await self._async_track_command(
                     "temperature",
                     temperature,
-                    self._device.set_scheduled_override_temperature(
-                        str(temperature)
-                    ),
+                    self._device.set_scheduled_override_temperature(str(temperature)),
                 )
                 return
             if not self._supports_scheduled_temperature_override:
@@ -3669,6 +4219,7 @@ class HaClimate(ClimateEntity, HAEntity):
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         """Set new target fan mode (Naviclim: Auto/1/2/3)."""
+        self._device.validate_general_hvac_mode()
         if not getattr(self, "_supports_fan", False):
             return
         if fan_mode == FAN_AUTO:
@@ -5073,6 +5624,11 @@ class HASensor(SensorEntity, HAEntity):
             battery_attributes, SensorStateClass.MEASUREMENT
         )
         self.units = dict.fromkeys(battery_attributes, PERCENTAGE)
+        self.entity_profile_hidden = bool(
+            getattr(device, "is_physical_tywell_control", False)
+        )
+        if self.entity_profile_hidden:
+            self._attr_entity_registry_enabled_default = False
         self._attr_unique_id = f"{self._device.device_id}_sensor"
         self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
@@ -5664,53 +6220,54 @@ class HAScene(Scene, HAEntity):
             # Use the affected device IDs method
             affected_device_ids = self._get_affected_device_ids()
 
-            # Search for Tywell Control in affected devices
+            # Search for Tywell Control in affected devices. Area climates
+            # are synthetic proxies; resolve them to their physical endpoint
+            # before checking the controller profile or zone.
             tywell_keywords = ["TYWELL", "CONTROL", "TYWELL CONTROL"]
 
-            for device_id in affected_device_ids:
-                if device_id in hub_instance.devices:
-                    device = hub_instance.devices[device_id]
-
-                    # Check device name
-                    device_name_attr = (
-                        getattr(device, "device_name", "") or ""
-                    ).upper()
-                    # Check product name
-                    product_name = (getattr(device, "productName", "") or "").upper()
-                    # Check device type
-                    device_type_attr = (
-                        getattr(device, "device_type", "") or ""
-                    ).upper()
-
-                    # Check if it's a Tywell Control
-                    is_tywell = any(
-                        keyword in product_name
-                        or keyword in device_name_attr
-                        or keyword in device_type_attr
-                        for keyword in tywell_keywords
+            for affected_device_id in affected_device_ids:
+                device_id = affected_device_id
+                device = hub_instance.devices.get(device_id)
+                if device is None:
+                    continue
+                if getattr(device, "is_derived_area_climate", False):
+                    device_id = str(
+                        getattr(device, "source_device_id", affected_device_id)
                     )
+                    device = hub_instance.devices.get(device_id)
+                    if device is None:
+                        continue
 
-                    if is_tywell:
-                        # If zone filter is specified, verify device matches zone
-                        if zone:
-                            device_zone = self._get_zone_from_device(device)
-                            if device_zone != zone:
-                                LOGGER.debug(
-                                    "Tywell device %s zone (%s) doesn't match requested zone (%s)",
-                                    device_id,
-                                    device_zone,
-                                    zone,
-                                )
-                                continue
+                device_name_attr = (getattr(device, "device_name", "") or "").upper()
+                product_name = (getattr(device, "productName", "") or "").upper()
+                device_type_attr = (getattr(device, "device_type", "") or "").upper()
+                is_tywell = any(
+                    keyword in product_name
+                    or keyword in device_name_attr
+                    or keyword in device_type_attr
+                    for keyword in tywell_keywords
+                )
+                if not is_tywell:
+                    continue
 
-                        # Cache result
-                        self._cached_tywell_device_id = device_id
+                if zone:
+                    device_zone = self._get_zone_from_device(device)
+                    if device_zone != zone:
                         LOGGER.debug(
-                            "Found Tywell Control device %s for scene %s",
+                            "Tywell device %s zone (%s) doesn't match requested zone (%s)",
                             device_id,
-                            self._device.device_id,
+                            device_zone,
+                            zone,
                         )
-                        return device_id
+                        continue
+
+                self._cached_tywell_device_id = device_id
+                LOGGER.debug(
+                    "Found Tywell Control device %s for scene %s",
+                    device_id,
+                    self._device.device_id,
+                )
+                return device_id
 
             # TWC_UP/DOWN/STOP scenes generally target shutter groups, not the
             # controller endpoint itself. In that case grpAct/epAct cannot lead
@@ -5721,6 +6278,7 @@ class HAScene(Scene, HAEntity):
                 (device_id, device)
                 for device_id, device in hub_instance.devices.items()
                 if getattr(device, "is_physical_tywell_control", False)
+                and not getattr(device, "is_derived_area_climate", False)
             ]
 
             if zone:
@@ -6579,6 +7137,7 @@ class HATwcShutterCover(CoverEntity, HAEntity):
         self._scenes = scenes
         self._representative_scene = representative_scene
         self._device = representative_scene._device
+        self._zone_key = zone_key
         stable_key = grouping_key.replace(":", "_")
         self._attr_unique_id = f"{stable_key}_twc_shutter_cover"
         self._attr_translation_key = (
@@ -6621,8 +7180,39 @@ class HATwcShutterCover(CoverEntity, HAEntity):
 
     @property
     def device_info(self) -> DeviceInfo | None:
-        """Attach the cover to the same Tywell device as its scenarios."""
-        return self._representative_scene.device_info
+        """Attach the cover to its resolved physical Tywell controller."""
+        scene = self._representative_scene
+        find_controller = getattr(scene, "_find_tywell_device", None)
+        if callable(find_controller):
+            zone = self._zone_key
+            if zone is None:
+                get_zone = getattr(scene, "_get_zone_from_scene", None)
+                if callable(get_zone):
+                    zone = get_zone()
+            controller_id = find_controller(zone)
+            if controller_id is not None:
+                hub = self._get_hub()
+                ha_devices = getattr(hub, "ha_devices", {})
+                controller_entity = ha_devices.get(controller_id)
+                if controller_entity is None:
+                    controller_entity = next(
+                        (
+                            entity
+                            for entity in ha_devices.values()
+                            if getattr(
+                                getattr(entity, "_device", None),
+                                "source_device_id",
+                                None,
+                            )
+                            == controller_id
+                        ),
+                        None,
+                    )
+                if controller_entity is not None:
+                    controller_info = getattr(controller_entity, "device_info", None)
+                    if controller_info is not None:
+                        return controller_info
+        return scene.device_info
 
     def _target_device_ids(self) -> set[str]:
         """Return targets shared by the Open and Close scenarios."""
@@ -7655,9 +8245,15 @@ class HAButton(ButtonEntity, HAEntity):
     def device_info(self) -> DeviceInfo:
         """Return information to link this entity with the correct device."""
         device_info = self._get_device_info()
+        registry_device_id = str(
+            getattr(self._device, "registry_device_id", self._device.device_id)
+        )
+        registry_device_name = str(
+            getattr(self._device, "registry_device_name", self._device.device_name)
+        )
         info: DeviceInfo = {
-            "identifiers": {(DOMAIN, self._device.device_id)},
-            "name": self._device.device_name,
+            "identifiers": {(DOMAIN, registry_device_id)},
+            "name": registry_device_name,
             "manufacturer": device_info["manufacturer"],
         }
         if "model" in device_info:
@@ -7943,7 +8539,8 @@ class _GatewayAssociationEntity:
         self._hub = tydom_hub
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, tydom_hub.hub_id)},
-            name=tydom_hub._name,
+            # Match the gateway entity's canonical name, regardless of load order.
+            name=tydom_hub.hub_id,
             manufacturer=tydom_hub.manufacturer,
         )
 
@@ -7956,6 +8553,62 @@ class _GatewayAssociationEntity:
         """Stop receiving selection changes after removal."""
         self._hub.unregister_association_control(self)
         await super().async_will_remove_from_hass()
+
+
+class HAGatewayGeneralClimateSelect(_GatewayAssociationEntity, SelectEntity):
+    """Explicit general heating/air conditioning control on the gateway."""
+
+    _attr_entity_category = None
+    _attr_icon = "mdi:home-thermometer"
+    _attr_should_poll = True
+
+    def __init__(self, tydom_hub) -> None:
+        """Attach the general control to the configured gateway."""
+        super().__init__(tydom_hub)
+        self._attr_unique_id = f"{tydom_hub.hub_id}_general_climate_mode"
+        set_entity_name(self, "general_climate_mode")
+
+    @property
+    def available(self) -> bool:
+        """Return whether the gateway has advertised this optional feature."""
+        state = self._hub._tydom_client.general_climate
+        return self._hub.online and bool(state.support) and state.mode is not None
+
+    @property
+    def options(self) -> list[str]:
+        """Return only modes supported by this gateway."""
+        return self._hub._tydom_client.general_climate.options
+
+    @property
+    def current_option(self) -> str | None:
+        """Return the authoritative general mode."""
+        return self._hub._tydom_client.general_climate.current_option
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the underlying HVAC mode and absence deadline."""
+        state = self._hub._tydom_client.general_climate
+        return {"hvac_mode": state.mode, "absence_to": state.absence_to}
+
+    async def async_update(self) -> None:
+        """Refresh as a fallback when older firmware omits general-state pushes."""
+        await self._hub._tydom_client.get_home_climate_data()
+
+    async def async_select_option(self, option: str) -> None:
+        """Send the explicitly selected general command."""
+        await self._hub._tydom_client.set_general_climate_mode(option)
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to general-mode feedback."""
+        await SelectEntity.async_added_to_hass(self)
+        self._hub._tydom_client.general_climate.add_listener(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Release the general-mode subscription."""
+        self._hub._tydom_client.general_climate.remove_listener(
+            self.async_write_ha_state
+        )
+        await SelectEntity.async_will_remove_from_hass(self)
 
 
 class HAGatewayAssociationCategorySelect(_GatewayAssociationEntity, SelectEntity):
@@ -8415,7 +9068,7 @@ class HAReloadButton(ButtonEntity):
         self._attr_name = "Recharger les appareils"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, hub.hub_id)},
-            name=hub._name,
+            name=hub.hub_id,
             manufacturer=hub.manufacturer,
         )
         hub.register_association_control(self)

@@ -104,8 +104,9 @@ class CommandTrackerTests(IsolatedAsyncioTestCase):
         command = tracker.begin("temperature", 22)
         command.timeout.cancel()
         tracker._mark_unconfirmed("temperature", command)
-        self.assertTrue(tracker.pending)
+        self.assertFalse(tracker.pending)
         self.assertEqual(tracker.attributes["command_status"], "unconfirmed")
+        self.assertEqual(tracker.attributes["requested_temperature"], 22)
         tracker.confirm({"temperature": 22})
         self.assertFalse(tracker.pending)
 
@@ -222,13 +223,14 @@ class ClimateControlTests(IsolatedAsyncioTestCase):
         client.put_devices_data.assert_not_awaited()
 
     async def test_pending_until_matching_device_update(self):
-        """Sending preserves real state; an actual matching push clears pending."""
+        """Display the request while only matching real feedback clears pending."""
         climate, device, client = self.climate()
         sensor = ClimateCommandPendingSensor(climate)
         climate._command_listening = True
         device.register_callback(climate._handle_climate_update)
         await climate.async_set_temperature(temperature=22)
-        self.assertEqual(climate.target_temperature, 21)
+        self.assertEqual(climate.target_temperature, 22)
+        self.assertEqual(climate.reported_target_temperature, 21)
         self.assertTrue(sensor.is_on)
         self.assertEqual(climate.extra_state_attributes["requested_temperature"], 22)
         client.put_devices_data.assert_awaited_once_with("20", "10", "setpoint", "22")
@@ -297,12 +299,16 @@ class ClimateControlTests(IsolatedAsyncioTestCase):
         device.register_callback(climate._handle_climate_update)
         await climate.async_set_hvac_mode(HVACMode.OFF)
         self.assertEqual(climate.hvac_mode, HVACMode.HEAT)
+        climate.async_write_ha_state.assert_not_called()
         device.hvacMode = "STOP"
         await device.publish_updates()
         self.assertFalse(climate.extra_state_attributes["command_pending"])
+        climate.async_write_ha_state.assert_called_once()
+        climate.async_write_ha_state.reset_mock()
         await climate.async_set_preset_mode(PRESET_AWAY)
         self.assertTrue(climate.extra_state_attributes["command_pending"])
         self.assertNotEqual(climate.preset_mode, PRESET_AWAY)
+        climate.async_write_ha_state.assert_not_called()
         device.localMode = "ABSENCE"
         await device.publish_updates()
         self.assertFalse(climate.extra_state_attributes["command_pending"])
@@ -332,7 +338,8 @@ class ClimateControlTests(IsolatedAsyncioTestCase):
                 "localMode": "LOCAL_SETPOINT",
             },
         )
-        self.assertEqual(climate.target_temperature, 21)
+        self.assertEqual(climate.target_temperature, 22)
+        self.assertEqual(climate.reported_target_temperature, 21)
         device.currentSetpoint = 22
         climate._handle_climate_update()
         self.assertFalse(climate.extra_state_attributes["command_pending"])

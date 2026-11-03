@@ -11,6 +11,7 @@ from custom_components.deltadore_tydom.ha_entities import (
     supports_command,
 )
 from custom_components.deltadore_tydom.hub import HADeviceAssociationButton
+from custom_components.deltadore_tydom.tydom.tydom_devices import TydomBoiler
 
 
 class _Client:
@@ -65,6 +66,24 @@ class DeviceAssociationTests(IsolatedAsyncioTestCase):
             device._tydom_client.calls,
             [("42", "43", IDENTIFY_COMMAND, "START")],
         )
+
+    def test_derived_thermostat_buttons_use_the_parent_device_identity(self) -> None:
+        """Buttons for a passive controller's derived climate share its device."""
+        device = TydomBoiler(
+            _Client(),
+            "10_20_area_climate",
+            "20",
+            "Tywell Ctrl RdC Thermostat",
+            "re2020ControlBoiler",
+            "10",
+            {},
+            {"area_id": "7"},
+        )
+
+        button = HADeviceAssociationButton(device, None, ASSOCIATION_COMMAND)
+
+        self.assertEqual(button.device_info["identifiers"], {(DOMAIN, "10_20")})
+        self.assertEqual(button.device_info["name"], "Tywell Ctrl RdC")
 
     async def test_start_command_rejects_unsupported_device(self) -> None:
         """Avoid a write when the gateway does not advertise the command."""

@@ -253,6 +253,31 @@ class LevelCommandCoverTests(IsolatedAsyncioTestCase):
             ],
         )
 
+    async def test_shutter_position_ignores_coarse_metadata_step(self) -> None:
+        """Intermediate HA targets remain writable when TYDOM advertises step 100."""
+        client = MagicMock()
+        client.put_devices_data = AsyncMock()
+        shutter = TydomShutter(
+            client,
+            "10_20",
+            "20",
+            "Cover",
+            "shutter",
+            "10",
+            {
+                "position": {"min": 0, "max": 100, "step": 100},
+                "positionCmd": {"permission": "w"},
+            },
+            {"position": 0},
+        )
+        validator = devices_module.validate_value_with_metadata
+        validator.reset_mock()
+
+        await shutter.set_position(25)
+
+        validator.assert_called_once_with(shutter, "position", 25, ignore_step=True)
+        client.put_devices_data.assert_awaited_once_with("20", "10", "position", "25")
+
 
 class ShutterFavouritePositionTests(IsolatedAsyncioTestCase):
     """Exercise TYDOM favourite-position commands."""

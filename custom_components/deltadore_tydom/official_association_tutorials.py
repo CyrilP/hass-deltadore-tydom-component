@@ -307,6 +307,7 @@ def get_official_association_tutorial(
         OfficialAssociationStep(
             "Lorsque l’appareil est prêt à être associé, appuyez sur « Lancer "
             "l’écoute de la passerelle ».",
+            starts_gateway_listening=True,
         ),
     )
 
@@ -4110,6 +4111,8 @@ _COLOURS: Final = {
     # illustrations are Android Vector Drawables, whose @color references do
     # not mean anything to a browser unless they are resolved here.
     "@color/brandPrimary": "#24ad8d",
+    "@color/brandPrimaryDark": "#20776c",
+    "@color/brandPrimaryLight02": "#abdbc8",
     "@color/brandDark": "#354254",
     "@color/brandSecondary": "#f9d837",
     "@color/statusErrorDark": "#da483d",
@@ -4125,6 +4128,7 @@ _COLOURS: Final = {
     "@color/uiGray40": "#aeb3bb",
     "@color/uiGray50": "#9aa0a9",
     "@color/uiGray60": "#868e98",
+    "@color/uiGray70": "#717a87",
     "@color/uiGray80": "#5d6876",
     "@color/uiGray90": "#495465",
 }
@@ -4223,23 +4227,19 @@ def _svg_colour(value: str | None, default: str) -> str:
 
 def get_association_illustration_svg(image_id: str) -> str | None:
     """Convert one embedded Android vector to a browser-safe SVG document."""
-    vector = _COMPLEX_ILLUSTRATION_VECTORS.get(
-        image_id,
-        _CURRENT_CATALOGUE_ILLUSTRATION_VECTORS.get(
+    if image_id == "catalog_tywell_control_step1":
+        vector = _TYWELL_CONTROL_STEP_ILLUSTRATION
+    else:
+        vector = _COMPLEX_ILLUSTRATION_VECTORS.get(
             image_id,
-            _STANDARD_ILLUSTRATION_VECTORS.get(
+            _CURRENT_CATALOGUE_ILLUSTRATION_VECTORS.get(
                 image_id,
-                _EXACT_STANDARD_ILLUSTRATION_VECTORS.get(
+                _STANDARD_ILLUSTRATION_VECTORS.get(
                     image_id,
-                    (
-                        _TYWELL_CONTROL_STEP_ILLUSTRATION
-                        if image_id == "catalog_tywell_control_step1"
-                        else None
-                    ),
+                    _EXACT_STANDARD_ILLUSTRATION_VECTORS.get(image_id),
                 ),
             ),
-        ),
-    )
+        )
     if vector is None:
         return None
 

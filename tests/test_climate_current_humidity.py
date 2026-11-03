@@ -53,7 +53,7 @@ ClimateProbe = _load_current_humidity_property()
 
 
 class ClimateCurrentHumidityTests(TestCase):
-    """Verify humidity is exposed only when its metadata is advertised."""
+    """Verify humidity is exposed when the endpoint or linked area reports it."""
 
     def test_returns_fractional_humidity_without_rounding(self) -> None:
         """Keep the precision reported by the gateway metadata."""
@@ -71,6 +71,17 @@ class ClimateCurrentHumidityTests(TestCase):
         entity._device = SimpleNamespace(_metadata={}, hygroIn=56.7)
 
         self.assertIsNone(entity.current_humidity)
+
+    def test_returns_area_humidity_without_endpoint_metadata(self) -> None:
+        """Use area telemetry for a linked self-controlled thermostat."""
+        entity = ClimateProbe()
+        entity._device = SimpleNamespace(
+            _metadata={},
+            _endpoint_controls_own_thermostat=True,
+            hygroIn=45.2,
+        )
+
+        self.assertEqual(entity.current_humidity, 45.2)
 
     def test_returns_none_when_the_advertised_value_is_unavailable(self) -> None:
         """Handle devices that advertise humidity before a value arrives."""
