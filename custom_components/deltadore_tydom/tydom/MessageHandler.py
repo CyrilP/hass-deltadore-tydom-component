@@ -147,6 +147,36 @@ def _is_tyxia_4910_other(uid: str) -> bool:
     return is_binary_tyxia_receiver_profile(device_metadata.get(uid))
 
 
+def _is_dimmable_other(uid: str) -> bool:
+    """Identify a dimmable receiver configured under the TYDOM 'others' usage."""
+    metadata = device_metadata.get(uid)
+    if not isinstance(metadata, dict):
+        return False
+
+    level = metadata.get("level")
+    level_cmd = metadata.get("levelCmd")
+    if not isinstance(level, dict) or not isinstance(level_cmd, dict):
+        return False
+    if level.get("type") != "numeric":
+        return False
+
+    permission = level.get("permission")
+    if not isinstance(permission, str) or "w" not in permission.lower():
+        return False
+
+    commands = level_cmd.get("enum_values")
+    if not isinstance(commands, list) or not {"ON", "OFF"}.issubset(commands):
+        return False
+
+    try:
+        step = float(level["step"])
+        level_range = float(level["max"]) - float(level["min"])
+    except (KeyError, TypeError, ValueError):
+        return False
+
+    return 0 < step < level_range
+
+
 def _is_unconfigured_x3d_remote(uid: str, endpoint: dict[str, Any]) -> bool:
     """Return whether an endpoint is a radio remote without TYDOM config data.
 
@@ -1340,6 +1370,17 @@ class MessageHandler:
                 )
             case "others" if _is_tyxia_4910_other(uid):
                 return TydomSwitch(
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata.get(uid),
+                    data,
+                )
+            case "others" if _is_dimmable_other(uid):
+                return TydomLight(
                     tydom_client,
                     uid,
                     device_id,
