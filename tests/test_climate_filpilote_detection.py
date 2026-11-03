@@ -2470,13 +2470,36 @@ class Rf6600FilPiloteDetectionTests(TestCase):
 class Rf6600FilPiloteCommandTests(IsolatedAsyncioTestCase):
     """The RF6600FP uses comfortMode for authorization and thermicLevel for orders."""
 
-    async def test_turning_off_writes_comfort_mode_stop(self) -> None:
-        """Turn the RF6600FP off through its authorization register."""
+    async def test_turning_off_stops_only_the_zone(self) -> None:
+        """A zone Off uses its pilot order and leaves general Heating active."""
         entity, client = _rf6600fp()
+        self.addCleanup(entity._get_command_tracker().close)
+
         await entity.async_set_hvac_mode(HVACMode.OFF)
+
         client.put_devices_data.assert_awaited_once_with(
-            "20", "10", "comfortMode", "STOP"
+            "20", "10", "thermicLevel", "STOP"
         )
+        self.assertEqual(client.general_climate.mode, "HEATING")
+
+        entity._device.thermicLevel = "STOP"
+        self.assertEqual(entity.hvac_mode, HVACMode.OFF)
+        self.assertEqual(entity.hvac_action, entities_module.HVACAction.OFF)
+        self.assertEqual(entity.hvac_modes, [HVACMode.OFF, HVACMode.HEAT])
+
+    async def test_turning_on_a_locally_stopped_zone_keeps_general_heating(
+        self,
+    ) -> None:
+        """Resume the local pilot order without rewriting the active season."""
+        entity, client = _rf6600fp(thermic_level="STOP")
+        self.addCleanup(entity._get_command_tracker().close)
+
+        await entity.async_set_hvac_mode(HVACMode.HEAT)
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "thermicLevel", "COMFORT"
+        )
+        self.assertEqual(client.general_climate.mode, "HEATING")
 
     async def test_turning_on_enables_heating_before_comfort_order(self) -> None:
         """Enable the season before sending the first pilot-wire order."""
@@ -2494,6 +2517,21 @@ class Rf6600FilPiloteCommandTests(IsolatedAsyncioTestCase):
         """Keep the current pilot-wire level when heat is already enabled."""
         entity, client = _rf6600fp(thermic_level="ECO")
         await entity.async_set_hvac_mode(HVACMode.HEAT)
+        client.put_devices_data.assert_not_awaited()
+
+    async def test_general_off_still_blocks_zone_heat(self) -> None:
+        """A zone must not undo an explicit gateway-wide Off command."""
+        entity, client = _rf6600fp(authorization="STOP", thermic_level="STOP")
+        client.general_climate = types.SimpleNamespace(mode="STOP", lock_reason="off")
+        self.assertEqual(entity.hvac_modes, [HVACMode.OFF])
+
+        with (
+            patch.dict(sys.modules, {"homeassistant.exceptions": _ha_exceptions}),
+            self.assertRaises(_HomeAssistantError) as error,
+        ):
+            await entity.async_set_hvac_mode(HVACMode.HEAT)
+
+        self.assertEqual(error.exception.translation_key, "general_hvac_stopped")
         client.put_devices_data.assert_not_awaited()
 
     async def test_preset_still_writes_pilot_wire_level(self) -> None:
