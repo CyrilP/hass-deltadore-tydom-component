@@ -40,6 +40,7 @@ from .tydom_devices import (
     TydomScene,
     is_binary_tyxia_receiver_profile,
     is_physical_tywell_control_profile,
+    is_tyxia_dimmer_profile,
     is_tywell_control_type,
     resolve_device_model,
 )
@@ -154,8 +155,7 @@ def _is_dimmable_other(uid: str) -> bool:
         return False
 
     level = metadata.get("level")
-    level_cmd = metadata.get("levelCmd")
-    if not isinstance(level, dict) or not isinstance(level_cmd, dict):
+    if not isinstance(level, dict):
         return False
     if level.get("type") != "numeric":
         return False
@@ -164,17 +164,7 @@ def _is_dimmable_other(uid: str) -> bool:
     if not isinstance(permission, str) or "w" not in permission.lower():
         return False
 
-    commands = level_cmd.get("enum_values")
-    if not isinstance(commands, list) or not {"ON", "OFF"}.issubset(commands):
-        return False
-
-    try:
-        step = float(level["step"])
-        level_range = float(level["max"]) - float(level["min"])
-    except (KeyError, TypeError, ValueError):
-        return False
-
-    return 0 < step < level_range
+    return is_tyxia_dimmer_profile(metadata)
 
 
 def _is_unconfigured_x3d_remote(uid: str, endpoint: dict[str, Any]) -> bool:
