@@ -5,6 +5,7 @@ from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.const import EntityCategory
+from homeassistant.helpers.entity_registry import RegistryEntryDisabler
 
 from custom_components.deltadore_tydom.hub import (
     ASSOCIATION_CATALOG,
@@ -1871,7 +1872,9 @@ class GatewayAssociationTests(IsolatedAsyncioTestCase):
         hub._hass = object()
         registry = MagicMock()
         registry.async_get_entity_id.return_value = "button.c3_dissociation"
-        registry.async_get.return_value = SimpleNamespace(disabled_by="integration")
+        registry.async_get.return_value = SimpleNamespace(
+            disabled_by=RegistryEntryDisabler.INTEGRATION
+        )
         button = HADeviceRemovalButton(SimpleNamespace(device_id="c3", _id="c3"), None)
 
         with patch(
@@ -1883,6 +1886,25 @@ class GatewayAssociationTests(IsolatedAsyncioTestCase):
         registry.async_update_entity.assert_called_once_with(
             "button.c3_dissociation", disabled_by=None
         )
+
+    def test_existing_user_disabled_removal_button_stays_disabled(self) -> None:
+        """A user-disabled removal control must preserve the user's choice."""
+        hub = object.__new__(Hub)
+        hub._hass = object()
+        registry = MagicMock()
+        registry.async_get_entity_id.return_value = "button.c3_dissociation"
+        registry.async_get.return_value = SimpleNamespace(
+            disabled_by=RegistryEntryDisabler.USER
+        )
+        button = HADeviceRemovalButton(SimpleNamespace(device_id="c3", _id="c3"), None)
+
+        with patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=registry,
+        ):
+            hub._enable_existing_removal_buttons([button])
+
+        registry.async_update_entity.assert_not_called()
 
     def test_existing_gateway_removal_button_is_disabled(self) -> None:
         """An older active gateway-removal control is migrated to opt-in."""
