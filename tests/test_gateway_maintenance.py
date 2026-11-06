@@ -488,7 +488,8 @@ def _load_hub_methods() -> type:
         )
     }
     namespace["Tydom"] = Tydom
-    exec(compile(isolated, "hub.py", "exec"), namespace)
+    # The real path lets coverage credit the lines of hub.py.
+    exec(compile(isolated, str(COMPONENT / "hub.py"), "exec"), namespace)
     return namespace["Hub"]
 
 
@@ -622,7 +623,11 @@ def _load_client_methods() -> type:
         "STRUCTURED_LOGGER": MagicMock(),
         "_GATEWAY_READ_BACK_DELAY": 0,
     }
-    exec(compile(isolated, "tydom_client.py", "exec"), namespace)
+    # The real path lets coverage credit the lines of tydom_client.py.
+    exec(
+        compile(isolated, str(COMPONENT / "tydom" / "tydom_client.py"), "exec"),
+        namespace,
+    )
     return namespace["Client"]
 
 
