@@ -45,7 +45,7 @@ Plateforme | Description
 `climate` | Pilote le chauffage, la climatisation et la ventilation.
 `cover` | Pilote les volets, stores et bannes.
 `event` | Signale les appuis sur les télécommandes et interrupteurs physiques.
-`light` | Pilote les éclairages et variateurs.
+`light` | Pilote les éclairages et variateurs, y compris la couleur et la température de blanc des ampoules qui les annoncent.
 `lock` | Pilote une serrure.
 `number` | Modifie les paramètres numériques réglables exposés par un appareil.
 `scene` | Active les scénarios TYDOM.
@@ -119,7 +119,7 @@ Alarme et sécurité | TYXAL+, CS8000, CSX40 et détecteurs de fumée DFR TYXAL+
 Chauffage et régulation | Tybox 5101 avec Typass ATL, Tywell Control, Tywell 2050, têtes thermostatiques TRV 1.0, TYXIA 1137, Calybox et RF 6600 FP | Régulation par zone, températures, consignes de chauffage et de refroidissement, modes de fonctionnement, humidité, batterie et commandes de chauffage ou de fil pilote annoncées par l'appareil.
 Suivi énergétique | TYWATT 1000, TYWATT 2000 et TYWATT 5400 avec EMIC ; Delta Dore Easy Plug | Mesures de puissance, courant et énergie, y compris les canaux de chauffage, d'eau chaude sanitaire et de refroidissement lorsqu'ils sont annoncés. Les points de terminaison Easy Plug qui publient des données énergétiques exposent aussi la puissance instantanée et l'énergie cumulée utilisables dans le tableau de bord Énergie de Home Assistant.
 Portails et portes de garage | Récepteurs à contact sec TYXIA 4620, et points de terminaison de portail ou garage annonçant un retour `level` lisible | Les récepteurs à contact sec utilisent un bouton impulsionnel reproduisant la séquence ouverture/arrêt/fermeture. Les points de terminaison disposant d'un retour exposent une entité `cover` native avec état ouvert/fermé et position lorsqu'ils sont fournis.
-Éclairage et commutation | Récepteurs TYXIA 4910 à sortie fixe et TYXIA 4940 à variation configurés dans l'usage `Autres` de TYDOM, TYXIA 6610, Delta Dore Easy Plug et équipements X3D compatibles | Éclairages, luminosité, interrupteurs et prises selon les capacités annoncées par le point de terminaison.
+Éclairage et commutation | Récepteurs TYXIA 4910 à sortie fixe et TYXIA 4940 à variation configurés dans l'usage `Autres` de TYDOM, TYXIA 6610, Delta Dore Easy Plug, équipements X3D compatibles et ampoules Zigbee Hue `LCA008` et `LCA016` | Éclairages, luminosité, couleur et température de blanc, interrupteurs et prises selon les capacités annoncées par le point de terminaison.
 Ouvertures et protections solaires | Volets roulants TYMOOV et Well'com, installations BSO, volets Zigbee Profalux `MOT-C1Z06F` et `MOT-C1Z10F`, bannes TYXIA 5731, ouvrants K-Line DVI et portes K-Line POD | Volets natifs avec montée, descente, arrêt et position lorsqu'ils sont annoncés ; les commandes et positions des bannes sont converties selon la sémantique ouverture/fermeture de Home Assistant ; l'état d'ouverture ou de contact est exposé lorsqu'un retour est fourni.
 Commandes physiques | Interrupteurs muraux TYXIA 2600, télécommandes TYXIA 1410 et télécommandes TL 2000 Tyxal+ | Événements Home Assistant natifs utilisables dans les automatisations, avec diagnostic de batterie lorsqu'il est fourni.
 Capteurs | Tysense Sun et Tysense Thermo/SE 2000 | Irradiance solaire en W/m², température extérieure et diagnostics associés lorsqu'ils sont fournis.
