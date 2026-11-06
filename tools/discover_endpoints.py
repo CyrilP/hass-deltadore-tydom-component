@@ -35,11 +35,17 @@ KNOWN_ENDPOINTS = [
     "/configs/gateway/api_mode",
     "/configs/gateway/geoloc",
     "/configs/gateway/local_claim",
+    "/configs/gateway/capabilities",
+    "/configs/gateway/led",
+    "/configs/gateway/network/status",
+    "/configs/gateway/update/status",
+    "/configs/gateway/update/setup",
     # Endpoints devices
     "/devices/meta",
     "/devices/cmeta",
     "/devices/data",
     "/devices/{device_id}/endpoints/{endpoint_id}/data",
+    "/devices/update/status",
     # Endpoints areas
     "/areas/meta",
     "/areas/cmeta",

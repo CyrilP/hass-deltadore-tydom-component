@@ -70,7 +70,16 @@ _CLIMATE_META_KEYS = frozenset({"heatSetpoint", "coolSetpoint", "thermicLevel"})
 """Thermostat-only endpoint metadata keys that cannot describe a conso endpoint."""
 
 _OPTIONAL_PATHS = frozenset(
-    {"/moments/file", "/scenarios/file", "/home/hvac/data", "/home/absence"}
+    {
+        "/moments/file",
+        "/scenarios/file",
+        "/home/hvac/data",
+        "/home/absence",
+        "/configs/gateway/led",
+        "/configs/gateway/network/status",
+        "/configs/gateway/update/status",
+        "/devices/update/status",
+    }
 )
 """Feature endpoints absent from some older TYDOM gateway firmware."""
 
@@ -983,6 +992,21 @@ class MessageHandler:
             "/events": event_message,
             "/groups/file": self.parse_groups_file,
             "/info": self.parse_msg_info,
+            "/configs/gateway/led": partial(self.parse_gateway_resource, "gateway_led"),
+            "/configs/gateway/network/status": partial(
+                self.parse_gateway_resource, "gateway_network_status"
+            ),
+            "/configs/gateway/update/status": partial(
+                self.parse_gateway_resource, "gateway_update_status"
+            ),
+            "/configs/gateway/update/setup": partial(
+                self.parse_gateway_resource, "gateway_update_setup"
+            ),
+            "/devices/update/status": partial(
+                self.parse_gateway_resource, "gateway_devices_update_status"
+            ),
+            "/configs/gateway/reboot": partial(no_op, "msg_gateway_reboot"),
+            "/devices/update": partial(no_op, "msg_devices_update"),
             "/ping": ping_message,
             "/refresh/all": partial(no_op, "msg_refresh_all"),
             "/scenarios/file": self.parse_scenarios_file,
@@ -1091,6 +1115,29 @@ class MessageHandler:
                 None,
                 None,
                 parsed,
+            )
+        ]
+
+    async def parse_gateway_resource(self, attribute, parsed, transaction_id=None):
+        """Attach one gateway maintenance document to the gateway device.
+
+        Each resource is stored under its own attribute so that a partial
+        refresh (for example only the LED after a change) never erases the
+        values read from ``/info`` or from the other resources.
+        """
+        if not isinstance(parsed, dict):
+            LOGGER.debug("Ignoring non-JSON %s payload: %s", attribute, parsed)
+            return []
+        return [
+            Tydom(
+                self.tydom_client,
+                self.tydom_client.id,
+                self.tydom_client.id,
+                self.tydom_client.id,
+                "Tydom Gateway",
+                None,
+                None,
+                {attribute: parsed},
             )
         ]
 

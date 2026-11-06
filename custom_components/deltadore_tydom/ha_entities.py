@@ -1789,6 +1789,12 @@ class HATydom(UpdateEntity, HAEntity):
         "moments",  # Filter moments dict
         "local_claim",  # Filter local_claim dict
         "weather",  # Filter weather dict
+        # Maintenance documents exposed by dedicated entities (gateway_entities)
+        "gateway_led",
+        "gateway_network_status",
+        "gateway_update_status",
+        "gateway_update_setup",
+        "gateway_devices_update_status",
     ]
 
     def __init__(self, device: Tydom, hass) -> None:
@@ -1900,6 +1906,19 @@ class HATydom(UpdateEntity, HAEntity):
         if hasattr(self._device, "mainId") and self._device.mainId:
             attrs["main_id"] = str(self._device.mainId)
 
+        # Detailed firmware status (/configs/gateway/update/status)
+        update_status = getattr(self._device, "update_status", {}) or {}
+        for key, name in (
+            ("installStatus", "install_status"),
+            ("downloadProcess", "download_process"),
+            ("checkProcess", "check_process"),
+        ):
+            if update_status.get(key) is not None:
+                attrs[name] = update_status[key]
+        running = getattr(self._device, "running_firmware_versions", {}) or {}
+        for target, component_version in running.items():
+            attrs[f"firmware_{target}"] = component_version
+
         return attrs
 
     @property
@@ -1921,17 +1940,27 @@ class HATydom(UpdateEntity, HAEntity):
         if version is None:
             return None
 
-        if (
-            normalize_binary_state(getattr(self._device, "updateAvailable", None))
-            is True
-        ):
-            # TYDOM reports availability but does not provide the target
-            # version. Home Assistant treats the special "latest" version as
-            # newer than the installed version, so its update entity becomes
-            # actionable without inventing a firmware number.
+        update_status = getattr(self._device, "update_status", {}) or {}
+        available = update_status.get("updateAvailable")
+        if available is None:
+            available = getattr(self._device, "updateAvailable", None)
+        if normalize_binary_state(available) is True:
+            # /configs/gateway/update/status lists the pending application
+            # version once the gateway knows it. Otherwise fall back to the
+            # special "latest" version: Home Assistant treats it as newer than
+            # the installed version, so the entity becomes actionable without
+            # inventing a firmware number.
+            target = getattr(self._device, "target_firmware_version", None)
+            if target and target != version:
+                return str(target)
             return "latest"
 
         return version
+
+    @property
+    def in_progress(self) -> bool:
+        """Return whether the gateway is downloading or installing firmware."""
+        return bool(getattr(self._device, "update_in_progress", False))
 
     async def async_install(
         self, version: str | None, backup: bool, **kwargs: Any

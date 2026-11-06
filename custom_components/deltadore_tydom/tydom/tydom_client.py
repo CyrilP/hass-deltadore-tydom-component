@@ -705,6 +705,7 @@ class TydomClient:
             return
 
         await self.get_scenarii()
+        await self.get_gateway_maintenance_status()
 
     async def _reconnect_with_backoff(self) -> bool:
         """Reconnect with exponential backoff strategy.
@@ -2257,3 +2258,71 @@ class TydomClient:
         msg_type = "/configs/gateway/update"
         req = "PUT"
         await self.send_message(method=req, msg=msg_type)
+
+    # ########################
+    # Gateway maintenance (LED, reboot, firmware status)
+    # ########################
+
+    async def _get_optional(self, path: str) -> None:
+        """GET an endpoint that older gateway firmware may not provide."""
+        if path in self._unsupported_optional_paths:
+            return
+        await self.send_message(method="GET", msg=path)
+
+    async def get_gateway_led(self) -> None:
+        """Read the status LED configuration."""
+        await self._get_optional("/configs/gateway/led")
+
+    async def put_gateway_led(self, document: dict) -> None:
+        """Write the complete status LED document, then read it back."""
+        await self.get_reply_to_request("PUT", "/configs/gateway/led", body=document)
+        await self.get_gateway_led()
+
+    async def reboot_gateway(self) -> None:
+        """Restart the gateway.
+
+        The gateway drops the connection while restarting, so no reply is
+        awaited; the normal reconnection logic takes over.
+        """
+        STRUCTURED_LOGGER.api_request("info", "PUT", "/configs/gateway/reboot")
+        await self.send_request("PUT", "/configs/gateway/reboot")
+
+    async def get_gateway_update_status(self) -> None:
+        """Read the detailed gateway firmware status."""
+        await self._get_optional("/configs/gateway/update/status")
+
+    async def put_gateway_update_setup(self, mode: str) -> None:
+        """Select manual or automatic gateway firmware updates."""
+        await self.get_reply_to_request(
+            "PUT", "/configs/gateway/update/setup", body={"mode": mode}
+        )
+        await self.get_gateway_update_status()
+
+    async def get_devices_update_status(self) -> None:
+        """Read the firmware status of the radio products."""
+        await self._get_optional("/devices/update/status")
+
+    async def put_devices_update(self, firmwares: list[dict[str, str | None]]) -> None:
+        """Ask the gateway to deploy radio product firmware.
+
+        The official app sends a JSON array of ``{"fwId", "modelId"}`` objects.
+        """
+        body = json.dumps(firmwares).encode("ascii")
+        await self.get_reply_to_request(
+            "PUT",
+            "/devices/update",
+            body=body,
+            headers={"Content-Type": "application/json; charset=UTF-8"},
+        )
+        await self.get_devices_update_status()
+
+    async def get_gateway_network_status(self) -> None:
+        """Read the gateway IP and internet connectivity status."""
+        await self._get_optional("/configs/gateway/network/status")
+
+    async def get_gateway_maintenance_status(self) -> None:
+        """Refresh every gateway maintenance resource exposed in Home Assistant."""
+        await self.get_gateway_led()
+        await self.get_gateway_network_status()
+        await self.get_gateway_update_status()
+        await self.get_devices_update_status()

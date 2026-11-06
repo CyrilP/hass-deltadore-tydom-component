@@ -45,6 +45,7 @@ def _load_haty_dom_class():
     ast.fix_missing_locations(isolated_module)
     namespace = {
         "BinarySensorDeviceClass": SimpleNamespace(UPDATE="update"),
+        "EntityCategory": SimpleNamespace(CONFIG="config", DIAGNOSTIC="diagnostic"),
         "UpdateDeviceClass": SimpleNamespace(FIRMWARE="firmware"),
         "UpdateEntityFeature": SimpleNamespace(INSTALL="install"),
         "UpdateEntity": type("UpdateEntity", (), {}),
@@ -89,3 +90,33 @@ class TestTydomUpdateEntity(TestCase):
         entity = self._entity("pending")
 
         self.assertEqual(entity.installed_version, entity.latest_version)
+
+    def test_detailed_status_provides_the_target_version(self):
+        """A pending version from update/status replaces the generic value."""
+        device = SimpleNamespace(
+            device_id="gateway-id",
+            device_name="TYDOM",
+            mainVersionSW="03.24.29",
+            updateAvailable=False,
+            update_status={"updateAvailable": True},
+            target_firmware_version="03.25.01",
+            update_in_progress=True,
+        )
+        entity = HATydom(device, hass=None)
+
+        self.assertEqual("03.25.01", entity.latest_version)
+        self.assertTrue(entity.in_progress)
+
+    def test_detailed_status_without_version_keeps_latest(self):
+        """Availability without a known version still uses the generic value."""
+        device = SimpleNamespace(
+            device_id="gateway-id",
+            device_name="TYDOM",
+            mainVersionSW="03.24.29",
+            update_status={"updateAvailable": True},
+            target_firmware_version=None,
+        )
+        entity = HATydom(device, hass=None)
+
+        self.assertEqual("latest", entity.latest_version)
+        self.assertFalse(entity.in_progress)
