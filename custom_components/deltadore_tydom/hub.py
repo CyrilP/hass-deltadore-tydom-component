@@ -42,6 +42,16 @@ from .tydom.tydom_devices import (
     TydomMoment,
     TydomRemoteControl,
 )
+from .gateway_entities import (
+    GatewayConnectivitySensor,
+    GatewayLedColorSelect,
+    GatewayLedSwitch,
+    GatewayRebootButton,
+    GatewayUpdateModeSelect,
+    RadioFirmwareUpdate,
+    RadioFirmwareUpdateAvailableSensor,
+    gateway_firmware_ids,
+)
 from .ha_entities import (
     HATydom,
     HACover,
@@ -2011,6 +2021,8 @@ class Hub:
         self._refresh_energy_buttons_created: set[str] = set()
         self._device_association_buttons_created: set[tuple[str, str]] = set()
         self._cover_favourite_buttons_created: set[tuple[str, str]] = set()
+        # Gateway maintenance entities already created (by stable key)
+        self._gateway_controls_created: set[str] = set()
         self._remote_battery_entities: dict[str, HARemoteBattery] = {}
         self._interrupter_battery_entities: dict[str, HAInterrupterBattery] = {}
         self._twc_scene_sets: dict[str, dict[str, HAScene]] = {}
@@ -2889,7 +2901,68 @@ class Hub:
         if self.add_update_callback is not None:
             self.add_update_callback([ha_device])
         self._add_discovered_entities(ha_device.get_sensors())
+        self._maybe_create_gateway_controls(device)
         # Le bouton de rechargement est créé dans ready() pour être toujours présent
+
+    def _add_gateway_control(self, key: str, adder, factory) -> None:
+        """Create one gateway maintenance entity once its platform is ready."""
+        if key in self._gateway_controls_created or adder is None:
+            return
+        adder([factory()])
+        self._gateway_controls_created.add(key)
+
+    def _maybe_create_gateway_controls(self, device: Tydom) -> None:
+        """Create the gateway maintenance entities as their data appears.
+
+        The LED, connectivity and firmware documents are read after ``/info``
+        and some gateways do not provide them at all, so each entity is only
+        created once the gateway has answered with the matching resource.
+        """
+        self._add_gateway_control(
+            "reboot",
+            self.add_button_callback,
+            lambda: GatewayRebootButton(device),
+        )
+        if device.led_config is not None:
+            self._add_gateway_control(
+                "led", self.add_switch_callback, lambda: GatewayLedSwitch(device)
+            )
+            self._add_gateway_control(
+                "led_color",
+                self.add_select_callback,
+                lambda: GatewayLedColorSelect(device),
+            )
+        network = device.network_status
+        for attribute, key in (
+            ("ipStatus", "gateway_ip_status"),
+            ("internetAccessStatus", "gateway_internet_status"),
+        ):
+            if attribute in network:
+                self._add_gateway_control(
+                    key,
+                    self.add_binary_sensor_callback,
+                    lambda attribute=attribute, key=key: GatewayConnectivitySensor(
+                        device, attribute, key
+                    ),
+                )
+        if device.update_mode is not None:
+            self._add_gateway_control(
+                "update_mode",
+                self.add_select_callback,
+                lambda: GatewayUpdateModeSelect(device),
+            )
+        if device.devices_update_status:
+            self._add_gateway_control(
+                "radio_firmware_update_available",
+                self.add_binary_sensor_callback,
+                lambda: RadioFirmwareUpdateAvailableSensor(device),
+            )
+        for fw_id in gateway_firmware_ids(device):
+            self._add_gateway_control(
+                f"radio_firmware_{fw_id}",
+                self.add_update_callback,
+                lambda fw_id=fw_id: RadioFirmwareUpdate(device, fw_id),
+            )
 
     async def _create_shutter_device(self, device: TydomShutter) -> None:
         """Create shutter/cover device."""
@@ -3363,6 +3436,8 @@ class Hub:
                 self._add_discovered_entities(new_sensors)
             if isinstance(ha_device, HAEnergy):
                 self._maybe_create_refresh_energy_button(stored_device, ha_device)
+            if isinstance(stored_device, Tydom):
+                self._maybe_create_gateway_controls(stored_device)
             self._maybe_create_device_association_buttons(stored_device)
             # ha_device.publish_updates()
             # ha_device.update()
@@ -3792,6 +3867,7 @@ class Hub:
             await self._tydom_client.get_devices_data()
             await self._tydom_client.get_scenarii()
             await self._tydom_client.get_moments()
+            await self._tydom_client.get_gateway_maintenance_status()
             await self._interruptible_sleep(600)
 
     async def refresh_data_1s(self) -> None:
@@ -3964,6 +4040,7 @@ class Hub:
         self._refresh_energy_buttons_created.clear()
         self._device_association_buttons_created.clear()
         self._cover_favourite_buttons_created.clear()
+        self._gateway_controls_created = set()
 
         # Supprimer toutes les entités existantes via l'Entity Registry
         from homeassistant.helpers import entity_registry as er
@@ -3996,6 +4073,7 @@ class Hub:
         await self._tydom_client.get_devices_data()
         await self._tydom_client.get_scenarii()
         await self._tydom_client.get_moments()
+        await self._tydom_client.get_gateway_maintenance_status()
 
         # Recréer le bouton de rechargement après le rechargement
         # (le bouton d'actualisation énergie est recréé par _create_energy_device

@@ -735,6 +735,21 @@
       },
       "zones": {
         "default": "mdi:shield-outline"
+      },
+      "gateway_ip_status": {
+        "default": "mdi:lan-connect",
+        "state": {
+          "off": "mdi:lan-disconnect"
+        }
+      },
+      "gateway_internet_status": {
+        "default": "mdi:web",
+        "state": {
+          "off": "mdi:web-off"
+        }
+      },
+      "radio_firmware_update_available": {
+        "default": "mdi:update"
       }
     },
     "button": {
@@ -809,6 +824,9 @@
       },
       "toggle": {
         "default": "mdi:toggle-switch-outline"
+      },
+      "reboot_gateway": {
+        "default": "mdi:restart"
       }
     },
     "climate": {
@@ -3196,6 +3214,12 @@
       },
       "zones": {
         "default": "mdi:shield-outline"
+      },
+      "gateway_led_color": {
+        "default": "mdi:palette"
+      },
+      "gateway_update_mode": {
+        "default": "mdi:update"
       }
     },
     "text": {
@@ -3913,6 +3937,9 @@
     "update": {
       "firmware": {
         "default": "mdi:package-up"
+      },
+      "radio_firmware": {
+        "default": "mdi:chip"
       }
     },
     "cover": {
@@ -3924,6 +3951,14 @@
       },
       "tywell_shutters_night": {
         "default": "mdi:weather-night"
+      }
+    },
+    "switch": {
+      "gateway_led": {
+        "default": "mdi:led-on",
+        "state": {
+          "off": "mdi:led-off"
+        }
       }
     }
   }

@@ -1,6 +1,14 @@
 {
     "entity": {
+        "switch": {
+            "gateway_led": {
+                "name": "Dioda stanu"
+            }
+        },
         "update": {
+            "radio_firmware": {
+                "name": "Oprogramowanie {model}"
+            },
             "firmware": {
                 "name": "Firmware"
             }
@@ -1639,6 +1647,15 @@
             }
         },
         "binary_sensor": {
+            "gateway_ip_status": {
+                "name": "Sieć lokalna"
+            },
+            "gateway_internet_status": {
+                "name": "Dostęp do internetu"
+            },
+            "radio_firmware_update_available": {
+                "name": "Aktualizacja produktów radiowych"
+            },
             "absence": {
                 "name": "Tryb nieobecności"
             },
@@ -3083,6 +3100,12 @@
             }
         },
         "select": {
+            "gateway_led_color": {
+                "name": "Kolor diody stanu"
+            },
+            "gateway_update_mode": {
+                "name": "Tryb aktualizacji oprogramowania"
+            },
             "general_climate_mode": {
                 "name": "Ogólny tryb klimatu",
                 "state": {
@@ -3846,6 +3869,9 @@
             }
         },
         "button": {
+            "reboot_gateway": {
+                "name": "Uruchom ponownie bramkę"
+            },
             "acknowledge_events": {
                 "name": "Potwierdź zdarzenia"
             },

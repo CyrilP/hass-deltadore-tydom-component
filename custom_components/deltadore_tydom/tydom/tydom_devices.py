@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 import math
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol
@@ -453,6 +454,40 @@ class TydomDevice:
                 LOGGER.exception("Device callback failed for %s", self.device_id)
 
 
+GATEWAY_LED_OFF = "off"
+"""LED colour value meaning "switched off" in ``/configs/gateway/led``."""
+
+GATEWAY_LED_DEFAULT_COLOR = "white"
+"""Colour the official app applies when switching the LED back on."""
+
+GATEWAY_LED_COLORS: tuple[str, ...] = (
+    "white",
+    "light_green",
+    "green",
+    "light_blue",
+    "cyan",
+    "ocean",
+    "purple",
+    "pink",
+    "custom_pink",
+    "coral",
+    "red",
+    "orange",
+    "yellow",
+    "custom_DD",
+)
+"""Named colours known by the official app for the gateway LED."""
+
+GATEWAY_UPDATE_MODES: tuple[str, ...] = ("MANUAL", "AUTO")
+"""Firmware update modes advertised by ``/configs/gateway/capabilities``."""
+
+_IDLE_PROCESS_STATES = {None, "", "idle", "IDLE"}
+
+# Keys of the colour map that hold the "connected" state.  Gateways without a
+# cellular modem use ``OK``; LTE-capable gateways use the combined key.
+_GATEWAY_LED_ONLINE_KEYS = ("OK", "IpOk LteOk")
+
+
 class Tydom(TydomDevice):
     """Tydom Gateway."""
 
@@ -460,6 +495,186 @@ class Tydom(TydomDevice):
         """Trigger firmware update."""
         LOGGER.debug("Installing firmware update...")
         await self._tydom_client.update_firmware()
+        await self._tydom_client.get_gateway_update_status()
+
+    # ------------------------------------------------------------------
+    # Status LED (/configs/gateway/led)
+    # ------------------------------------------------------------------
+
+    @property
+    def led_config(self) -> dict[str, Any] | None:
+        """Return the last LED document reported by the gateway."""
+        config = getattr(self, "gateway_led", None)
+        if not isinstance(config, dict) or not isinstance(config.get("color"), dict):
+            return None
+        return config
+
+    def _led_online_key(self) -> str | None:
+        config = self.led_config
+        if config is None:
+            return None
+        colors = config["color"]
+        for key in _GATEWAY_LED_ONLINE_KEYS:
+            if isinstance(colors.get(key), str):
+                return key
+        return None
+
+    @property
+    def led_color(self) -> str | None:
+        """Return the colour shown while the gateway is connected."""
+        key = self._led_online_key()
+        if key is None:
+            return None
+        return self.led_config["color"][key]
+
+    @property
+    def led_is_on(self) -> bool | None:
+        """Return whether the connected-state LED is lit."""
+        color = self.led_color
+        if color is None:
+            return None
+        return color != GATEWAY_LED_OFF
+
+    def led_document(self, color: str) -> dict[str, Any]:
+        """Return the complete LED document with only the online colour changed.
+
+        The gateway expects the whole document back: the other states
+        (``local``, ``error``…) and ``power`` are preserved untouched.
+        """
+        key = self._led_online_key()
+        if key is None:
+            raise ValueError("The gateway has not reported its LED configuration")
+        document = copy.deepcopy(self.led_config)
+        document["color"][key] = color
+        return document
+
+    async def async_set_led_color(self, color: str) -> None:
+        """Set the connected-state LED colour (or ``off``)."""
+        if color != GATEWAY_LED_OFF and color not in GATEWAY_LED_COLORS:
+            raise ValueError(f"Unsupported LED colour: {color}")
+        current = self.led_color
+        if current not in (None, GATEWAY_LED_OFF):
+            self._last_led_color = current
+        await self._tydom_client.put_gateway_led(self.led_document(color))
+
+    async def async_turn_led_on(self) -> None:
+        """Light the LED again with the last known (or default) colour."""
+        color = getattr(self, "_last_led_color", None) or GATEWAY_LED_DEFAULT_COLOR
+        await self.async_set_led_color(color)
+
+    async def async_turn_led_off(self) -> None:
+        """Switch the connected-state LED off."""
+        await self.async_set_led_color(GATEWAY_LED_OFF)
+
+    # ------------------------------------------------------------------
+    # Gateway maintenance
+    # ------------------------------------------------------------------
+
+    async def async_reboot(self) -> None:
+        """Restart the gateway."""
+        await self._tydom_client.reboot_gateway()
+
+    @property
+    def network_status(self) -> dict[str, Any]:
+        """Return ``/configs/gateway/network/status`` (empty when unknown)."""
+        status = getattr(self, "gateway_network_status", None)
+        return status if isinstance(status, dict) else {}
+
+    # ------------------------------------------------------------------
+    # Gateway firmware (/configs/gateway/update/status)
+    # ------------------------------------------------------------------
+
+    @property
+    def update_status(self) -> dict[str, Any]:
+        """Return the detailed gateway update status (empty when unknown)."""
+        status = getattr(self, "gateway_update_status", None)
+        return status if isinstance(status, dict) else {}
+
+    @property
+    def update_in_progress(self) -> bool:
+        """Return whether a gateway firmware download or install is running."""
+        status = self.update_status
+        return any(
+            status.get(key) not in _IDLE_PROCESS_STATES
+            for key in ("installStatus", "downloadProcess")
+        )
+
+    @staticmethod
+    def _versions_by_target(entries: Any) -> dict[str, str]:
+        if not isinstance(entries, list):
+            return {}
+        return {
+            str(entry["target"]): str(entry["versionSW"])
+            for entry in entries
+            if isinstance(entry, dict)
+            and entry.get("target")
+            and entry.get("versionSW") not in (None, "")
+        }
+
+    @property
+    def running_firmware_versions(self) -> dict[str, str]:
+        """Return the installed version of each gateway component."""
+        return self._versions_by_target(self.update_status.get("running"))
+
+    @property
+    def target_firmware_version(self) -> str | None:
+        """Return the application version the gateway is about to install.
+
+        TYDOM lists the pending versions in ``wish`` (requested) and
+        ``downloaded`` (ready).  Both are null while no update is offered.
+        """
+        status = self.update_status
+        for key in ("wish", "downloaded"):
+            version = self._versions_by_target(status.get(key)).get("appli")
+            if version is not None:
+                return version
+        return None
+
+    @property
+    def update_mode(self) -> str | None:
+        """Return the gateway firmware update mode (``MANUAL`` or ``AUTO``)."""
+        setup = getattr(self, "gateway_update_setup", None)
+        if not isinstance(setup, dict):
+            setup = self.update_status.get("setup")
+        mode = setup.get("mode") if isinstance(setup, dict) else None
+        return mode if mode in GATEWAY_UPDATE_MODES else None
+
+    async def async_set_update_mode(self, mode: str) -> None:
+        """Choose between manual and automatic gateway firmware updates."""
+        if mode not in GATEWAY_UPDATE_MODES:
+            raise ValueError(f"Unsupported update mode: {mode}")
+        await self._tydom_client.put_gateway_update_setup(mode)
+
+    # ------------------------------------------------------------------
+    # Radio product firmware (/devices/update/status)
+    # ------------------------------------------------------------------
+
+    @property
+    def devices_update_status(self) -> dict[str, Any]:
+        """Return the radio product firmware status (empty when unknown)."""
+        status = getattr(self, "gateway_devices_update_status", None)
+        return status if isinstance(status, dict) else {}
+
+    @property
+    def device_firmwares(self) -> dict[str, dict[str, Any]]:
+        """Return the firmware entries managed by the gateway, by ``fwId``."""
+        entries = self.devices_update_status.get("fwList")
+        if not isinstance(entries, list):
+            return {}
+        return {
+            str(entry["fwId"]): entry
+            for entry in entries
+            if isinstance(entry, dict) and entry.get("fwId") not in (None, "")
+        }
+
+    async def async_install_device_firmware(self, fw_id: str) -> None:
+        """Ask the gateway to deploy one radio product firmware."""
+        firmware = self.device_firmwares.get(fw_id)
+        if firmware is None:
+            raise ValueError(f"Unknown radio firmware: {fw_id}")
+        await self._tydom_client.put_devices_update(
+            [{"fwId": firmware["fwId"], "modelId": firmware.get("modelId")}]
+        )
 
 
 class TydomShutter(TydomDevice):
