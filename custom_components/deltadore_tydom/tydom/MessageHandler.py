@@ -642,6 +642,7 @@ class MessageHandler:
 
         """
         reply = None
+        self._cdata_get_transactions.discard(transaction_id)
 
         for r in self._cdata_replies:
             if r["transaction_id"] == transaction_id:
@@ -841,7 +842,6 @@ class MessageHandler:
                 )
                 if transaction_id in self._cdata_get_transactions:
                     # The cdata payload and its EOR follow this acknowledgment.
-                    self._cdata_get_transactions.discard(transaction_id)
                     return None
                 if transaction_id:
                     self._complete_empty_reply(transaction_id)
@@ -858,7 +858,11 @@ class MessageHandler:
                 # not with cdata.  Preserve that document for callers which
                 # deliberately wait for a fresh file before modifying it.
                 # cdata requests complete themselves in parse_devices_cdata.
-                if transaction_id and transaction_id in self._end_reply_events:
+                if (
+                    transaction_id
+                    and transaction_id in self._end_reply_events
+                    and transaction_id not in self._cdata_get_transactions
+                ):
                     event = self._end_reply_events.pop(transaction_id)
                     parsed: Any = parsed_message.body
                     with contextlib.suppress(json.decoder.JSONDecodeError):

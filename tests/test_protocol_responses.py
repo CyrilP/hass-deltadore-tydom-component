@@ -1,6 +1,7 @@
 """Tests for Tydom protocol response handling."""
 
 import asyncio
+import json
 import importlib.util
 from pathlib import Path
 import sys
@@ -952,6 +953,58 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         self.assertTrue(reply_event.is_set())
         self.assertEqual(handler.get_reply("request-1")["events"][0]["name"], "label")
         self.assertNotIn("request-1", handler._cdata_get_transactions)
+
+    async def test_tracked_alarm_history_waits_for_eor(self) -> None:
+        """Streamed histo messages must not complete as one raw document."""
+        handler = MessageHandler(MagicMock(), b"")
+        handler.get_type_from_id = MagicMock(return_value="alarm")
+        handler.get_name_from_id = MagicMock(return_value="Alarm")
+        reply_event = asyncio.Event()
+        handler.prepare_request(
+            "GET",
+            "/devices/20/endpoints/10/cdata?name=histo&type=EVENTS",
+            headers={"Transac-Id": "request-3"},
+            reply_event=reply_event,
+        )
+
+        def push(cdata: dict) -> bytes:
+            body = json.dumps(
+                [{"id": 20, "endpoints": [{"id": 10, "error": 0, "cdata": [cdata]}]}]
+            ).encode()
+            return (
+                b"PUT /devices/cdata HTTP/1.1\r\n"
+                b"content-type: application/json\r\n"
+                b"Transac-Id: request-3\r\n"
+                b"Content-Length: " + str(len(body)).encode() + b"\r\n\r\n" + body
+            )
+
+        await handler.route_response(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Uri-Origin: /devices/20/endpoints/10/cdata\r\n"
+            b"Content-Type: application/json\r\n"
+            b"Content-Length: 0\r\n"
+            b"Transac-Id: request-3\r\n\r\n"
+        )
+        for index in (0, 1):
+            await handler.route_response(
+                push(
+                    {
+                        "name": "histo",
+                        "values": {
+                            "index": index,
+                            "event": {"name": "refusMiseEnMarche"},
+                        },
+                    }
+                )
+            )
+            self.assertFalse(reply_event.is_set())
+
+        await handler.route_response(push({"EOR": True}))
+
+        self.assertTrue(reply_event.is_set())
+        events = handler.get_reply("request-3")["events"]
+        self.assertEqual([e["values"]["index"] for e in events], [0, 1])
+        self.assertNotIn("request-3", handler._cdata_get_transactions)
 
     async def test_tracked_cdata_put_still_completes_on_empty_ack(self) -> None:
         """Only GET cdata requests wait past the empty acknowledgment."""
