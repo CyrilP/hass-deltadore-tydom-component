@@ -1954,6 +1954,78 @@ class TydomAlarm(TydomDevice):
         await self.publish_updates()
         return issues
 
+    PRODUCT_DEFECT_HISTORY_TYPES: ClassVar[tuple[str, ...]] = (
+        "CURRENT_DEFECTS",
+        "AUTOPROTECTION",
+        "INACTIVE_PRODUCTS",
+    )
+
+    async def get_product_defects(
+        self,
+        defect_type: str = "CURRENT_DEFECTS",
+        *,
+        timeout: float | None = None,
+        log_timeout: bool = True,
+    ) -> list[dict[str, Any]]:
+        """Return per-product records of a CS8000 defect history view.
+
+        The record layout of these views is not documented. Product metadata
+        is normalised like OPEN_ISSUES and every other value is kept under
+        ``details`` so the real layout stays visible.
+        """
+        if defect_type not in self.PRODUCT_DEFECT_HISTORY_TYPES:
+            raise ValueError(f"Unsupported alarm defect history type: {defect_type}")
+        if self._endpoint is None:
+            LOGGER.error(
+                "Cannot get product defects: endpoint is None for device %s", self._id
+            )
+            return []
+        kwargs: dict[str, Any] = {"nbElement": 50, "log_timeout": log_timeout}
+        if timeout is not None:
+            kwargs["timeout"] = timeout
+        messages = await self._tydom_client.get_historic_cdata(
+            self._id, self._endpoint, defect_type, **kwargs
+        )
+        LOGGER.debug("Raw %s messages: %s", defect_type, messages)
+        records: list[dict[str, Any]] = []
+        for message in messages or []:
+            if not isinstance(message, dict) or message.get("EOR", False):
+                continue
+            values = message.get("values")
+            if not isinstance(values, dict):
+                continue
+            # Une éventuelle erreur de la centrale reste visible dans details :
+            # on ne sait pas encore si une liste vide est signalée par une erreur.
+            product = values.get("product")
+            record: dict[str, Any] = {}
+            if isinstance(product, dict):
+                record = {
+                    key: value
+                    for key, value in {
+                        "id": product.get("id"),
+                        "name": product.get("nameCustom") or product.get("nameStd"),
+                        "name_custom": product.get("nameCustom"),
+                        "name_standard": product.get("nameStd"),
+                        "number": product.get("number"),
+                        "type_short": product.get("typeShort"),
+                        "type_long": product.get("typeLong"),
+                        "zone": product.get("zone"),
+                    }.items()
+                    if value is not None
+                }
+            # Champs de pagination du flux histo : sans intérêt pour l'utilisateur.
+            details = {
+                key: value
+                for key, value in values.items()
+                if key not in ("product", "step", "index", "nbElemTot")
+            }
+            if not record and not details:
+                continue
+            if details:
+                record["details"] = details
+            records.append(record)
+        return records
+
     def _require_endpoint(self) -> str:
         """Return the alarm endpoint or fail before building a request."""
         if self._endpoint is None:
