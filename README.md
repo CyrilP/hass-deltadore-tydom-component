@@ -711,6 +711,8 @@ useful in Home Assistant:
 - `deltadore_tydom.acknowledge_events` acknowledges pending alarm events;
 - `deltadore_tydom.get_open_issues` returns the exact products currently
   reported by the alarm central as preventing normal arming;
+- `deltadore_tydom.get_product_defects` lists the products currently in
+  fault, in tamper alarm or inactive, as reported by the alarm central;
 - `deltadore_tydom.force_arm` explicitly arms a configured Away, Home or Night
   mode when normal arming was refused because of defects;
 - `deltadore_tydom.get_alarm_products` lists configured products and zones;
@@ -815,6 +817,35 @@ When TYDOM reports the actor for an alarm transition, the alarm entity exposes
 `changed_by` with the user-code or product name and `changed_by_type` with
 either `access_code` or `product`. These attributes describe the latest
 reported arm or disarm transition.
+
+### Product defects
+
+`deltadore_tydom.get_product_defects` is read-only. It asks the alarm central
+which products are behind the global defect sensors, for example which
+detector or keypad has a low battery when `systbatterydefect` is on.
+
+The `defect_type` field selects the list read from the central:
+
+- `CURRENT_DEFECTS` (default): products with a current defect, such as a low
+  battery;
+- `AUTOPROTECTION`: products in tamper alarm;
+- `INACTIVE_PRODUCTS`: products the central considers inactive.
+
+```yaml
+action: deltadore_tydom.get_product_defects
+target:
+  entity_id: alarm_control_panel.tyxal_alarm
+data:
+  defect_type: CURRENT_DEFECTS
+response_variable: defects
+```
+
+The response is grouped by alarm entity, like `get_events`. Each product entry
+contains `id`, `name`, `name_custom`, `name_standard`, `number`, `type_short`,
+`type_long` and `zone` when the central provides them. All other values are
+kept unchanged under `details`, for example `details.defects: ["pile"]`, because
+the record layout is not documented. An error returned by the central remains
+visible in `details.error`. An empty list means that no product is reported.
 
 ## TYDOM programme snapshot — experimental, read-only
 
