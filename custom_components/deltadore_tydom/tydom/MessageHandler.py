@@ -584,6 +584,9 @@ class MessageHandler:
         self._cdata_replies: list[Reply] = []
         self._end_reply_events: dict[str, asyncio.Event] = {}
         self._cdata_poll_events: dict[str, asyncio.Event] = {}
+        # Tracked GET .../cdata requests: TYXAL acknowledges them with an empty
+        # 200 before streaming the data and the EOR marker.
+        self._cdata_get_transactions: set[str] = set()
         self._reply_errors: dict[str, str] = {}
         self._alarm_command_waiters: dict[
             tuple[str, str, str], list[asyncio.Future[dict[str, Any]]]
@@ -676,6 +679,7 @@ class MessageHandler:
 
         # Remove from end_reply_events
         self._end_reply_events.pop(transaction_id, None)
+        self._cdata_get_transactions.discard(transaction_id)
         LOGGER.debug("Removed pending reply for transaction_id: %s", transaction_id)
 
     def get_reply_error(self, transaction_id: str) -> str | None:
@@ -835,6 +839,10 @@ class MessageHandler:
                     transaction_id,
                     uri_origin,
                 )
+                if transaction_id in self._cdata_get_transactions:
+                    # The cdata payload and its EOR follow this acknowledgment.
+                    self._cdata_get_transactions.discard(transaction_id)
+                    return None
                 if transaction_id:
                     self._complete_empty_reply(transaction_id)
                 return None
@@ -929,6 +937,8 @@ class MessageHandler:
 
         if reply_event:
             self._end_reply_events[transaction_id] = reply_event
+            if method.upper() == "GET" and "/cdata" in url.split("?", 1)[0]:
+                self._cdata_get_transactions.add(transaction_id)
 
         return (transaction_id, request)
 

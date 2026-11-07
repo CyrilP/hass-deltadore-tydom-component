@@ -919,6 +919,62 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         self.assertTrue(completion_event.is_set())
         self.assertNotIn("request-1", handler._cdata_poll_events)
 
+    async def test_tracked_alarm_cdata_get_ignores_empty_ack(self) -> None:
+        """CS8000 acks GET cdata with an empty 200 before the label data."""
+        handler = MessageHandler(MagicMock(), b"")
+        handler.get_type_from_id = MagicMock(return_value="alarm")
+        handler.get_name_from_id = MagicMock(return_value="Alarm")
+        reply_event = asyncio.Event()
+        transaction_id, _ = handler.prepare_request(
+            "GET",
+            "/devices/20/endpoints/10/cdata?name=label",
+            headers={"Transac-Id": "request-1"},
+            reply_event=reply_event,
+        )
+
+        await handler.route_response(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Uri-Origin: /devices/20/endpoints/10/cdata\r\n"
+            b"Content-Type: application/json\r\n"
+            b"Content-Length: 0\r\n"
+            b"Transac-Id: request-1\r\n\r\n"
+        )
+        self.assertFalse(reply_event.is_set())
+
+        envelope = {"id": 20, "endpoints": [{"id": 10, "error": 0, "cdata": []}]}
+        envelope["endpoints"][0]["cdata"] = [
+            {"name": "label", "values": {"products": [{"id": 0}], "zones": []}}
+        ]
+        await handler.parse_devices_cdata([envelope], transaction_id)
+        envelope["endpoints"][0]["cdata"] = [{"EOR": True}]
+        await handler.parse_devices_cdata([envelope], transaction_id)
+
+        self.assertTrue(reply_event.is_set())
+        self.assertEqual(handler.get_reply("request-1")["events"][0]["name"], "label")
+        self.assertNotIn("request-1", handler._cdata_get_transactions)
+
+    async def test_tracked_cdata_put_still_completes_on_empty_ack(self) -> None:
+        """Only GET cdata requests wait past the empty acknowledgment."""
+        handler = MessageHandler(MagicMock(), b"")
+        reply_event = asyncio.Event()
+        handler.prepare_request(
+            "PUT",
+            "/devices/20/endpoints/10/cdata?name=zoneLabel",
+            body={"id": 1},
+            headers={"Transac-Id": "request-2"},
+            reply_event=reply_event,
+        )
+
+        await handler.route_response(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Uri-Origin: /devices/20/endpoints/10/cdata\r\n"
+            b"Content-Type: application/json\r\n"
+            b"Content-Length: 0\r\n"
+            b"Transac-Id: request-2\r\n\r\n"
+        )
+
+        self.assertTrue(reply_event.is_set())
+
     async def test_empty_devices_response_is_a_valid_inventory(self) -> None:
         """An empty TYDOM inventory must not be reported as an unknown message."""
         logger.reset_mock()
