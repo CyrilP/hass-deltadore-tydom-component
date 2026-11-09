@@ -98,7 +98,6 @@ class TestRemoteControl(IsolatedAsyncioTestCase):
             "groups_metadata",
             "groups_data",
             "endpoint_config",
-            "removed_configured_radio_endpoint_uids",
             "remote_control_info",
             "device_endpoint",
             "device_tutorial_id",
@@ -106,7 +105,10 @@ class TestRemoteControl(IsolatedAsyncioTestCase):
         ):
             getattr(handler_module, mapping_name).clear()
         logger.reset_mock()
-        self.handler = MessageHandler(MagicMock(), b"")
+        client = MagicMock()
+        client.id = f"remote-control-test-{id(self)}"
+        self.handler = MessageHandler(client, b"")
+        self.handler._config_file_data = {"endpoints": []}
 
     async def _configure_remote(
         self,
@@ -280,7 +282,7 @@ class TestRemoteControl(IsolatedAsyncioTestCase):
         configured_uid = f"{device_id}_{device_id}"
         pending_endpoint_id = 1693573380
         pending_uid = f"{pending_endpoint_id}_{device_id}"
-        handler_module.config_file_data = {"endpoints": []}
+        self.handler._config_file_data = {"endpoints": []}
         handler_module.endpoint_config[configured_uid] = {
             "device_id": device_id,
             "endpoint_id": device_id,
@@ -455,8 +457,8 @@ class TestRemoteControl(IsolatedAsyncioTestCase):
             button_count=4,
         )
 
-        all_configured_endpoints = handler_module.config_file_data["endpoints"][:]
-        groups = handler_module.config_file_data["groups"]
+        all_configured_endpoints = self.handler._config_file_data["endpoints"][:]
+        groups = self.handler._config_file_data["groups"]
         configured_endpoints = all_configured_endpoints[:3]
         await self.handler.parse_config_data(
             {"endpoints": configured_endpoints, "groups": groups}, None
@@ -497,8 +499,98 @@ class TestRemoteControl(IsolatedAsyncioTestCase):
             {"endpoints": all_configured_endpoints, "groups": groups}, None
         )
         self.assertNotIn(
-            removed_uid, handler_module.removed_configured_radio_endpoint_uids
+            removed_uid, self.handler._removed_configured_radio_endpoint_uids
         )
+
+    async def test_config_refresh_is_scoped_to_its_gateway(self) -> None:
+        """Refreshing one gateway preserves the other gateway's endpoints."""
+        other_client = MagicMock()
+        other_client.id = f"other-gateway-test-{id(self)}"
+        other_handler = MessageHandler(other_client, b"")
+
+        shared_endpoint_a = {
+            "id_device": 10,
+            "id_endpoint": 20,
+            "name": "Gateway A shared endpoint",
+            "last_usage": "others",
+        }
+        shared_endpoint_b = {
+            "id_device": 10,
+            "id_endpoint": 20,
+            "name": "Gateway B shared endpoint",
+            "last_usage": "others",
+        }
+        gateway_a_config = {
+            "endpoints": [
+                shared_endpoint_a,
+                {
+                    "id_device": 11,
+                    "id_endpoint": 21,
+                    "name": "Gateway A removable endpoint",
+                    "last_usage": "others",
+                },
+            ],
+            "groups": [],
+        }
+        gateway_b_config = {
+            "endpoints": [
+                shared_endpoint_b,
+                {
+                    "id_device": 30,
+                    "id_endpoint": 40,
+                    "name": "Gateway B endpoint",
+                    "last_usage": "others",
+                },
+            ],
+            "groups": [],
+        }
+
+        await self.handler.parse_config_data(gateway_a_config, None)
+        await other_handler.parse_config_data(gateway_b_config, None)
+
+        self.assertEqual(
+            self.handler._config_file_data["endpoints"], gateway_a_config["endpoints"]
+        )
+        self.assertEqual(
+            other_handler._config_file_data["endpoints"],
+            gateway_b_config["endpoints"],
+        )
+        self.assertIn("21_11", handler_module.endpoint_config)
+        self.assertIn("40_30", handler_module.endpoint_config)
+
+        await self.handler.parse_config_data({"endpoints": [], "groups": []}, None)
+
+        self.assertNotIn("21_11", handler_module.endpoint_config)
+        self.assertIn("40_30", handler_module.endpoint_config)
+        self.assertEqual(
+            handler_module.endpoint_config["20_10"]["name"],
+            "Gateway B shared endpoint",
+        )
+        devices = await other_handler.parse_devices_data(
+            [
+                {
+                    "id": 10,
+                    "endpoints": [
+                        {
+                            "id": 20,
+                            "error": 0,
+                            "data": [{"name": "state", "value": "ON"}],
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+        self.assertEqual(
+            [device.device_name for device in devices],
+            ["Gateway B shared endpoint"],
+        )
+
+        await self.handler.parse_config_data({"endpoints": [], "groups": []}, None)
+        self.assertIn("20_10", handler_module.endpoint_config)
+        await other_handler.parse_config_data({"endpoints": [], "groups": []}, None)
+        self.assertNotIn("20_10", handler_module.endpoint_config)
+        self.assertNotIn("40_30", handler_module.endpoint_config)
 
     async def test_only_fresh_non_idle_action_advances_event_sequence(self) -> None:
         """Polling without a fresh action must not repeat the previous press."""

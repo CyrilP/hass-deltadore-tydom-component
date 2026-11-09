@@ -416,7 +416,7 @@ class TestDeviceModelApplication(IsolatedAsyncioTestCase):
         """The observed two-record pairing retains its physical model."""
         device_id = 30
         endpoint_ids = (30, 31)
-        await MessageHandler.parse_config_data(
+        await self.handler.parse_config_data(
             {
                 "endpoints": [
                     {
