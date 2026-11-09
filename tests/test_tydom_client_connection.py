@@ -87,6 +87,11 @@ _module(
     MEDIATION_URL="mediation.tydom.com",
 )
 _module(
+    "custom_components.deltadore_tydom.home_climate",
+    HomeClimateState=MagicMock,
+    HVAC_OPTIONS={},
+)
+_module(
     "custom_components.deltadore_tydom.tydom.MessageHandler",
     MessageHandler=MagicMock(),
 )
@@ -237,6 +242,75 @@ class TestLocalPasswordPairing(IsolatedAsyncioTestCase):
             b"Transac-Id: 0\r\n\r\n"
         )
         connection.close.assert_awaited_once()
+
+
+class TestHistoricCdataRequest(IsolatedAsyncioTestCase):
+    """Exercise request framing for streamed historical data."""
+
+    async def test_history_request_includes_empty_body_headers(self) -> None:
+        """The history GET explicitly marks its empty body for the cloud relay."""
+        client = TydomClient(
+            None, "test", "001122334455", "password", host="mediation.tydom.com"
+        )
+        client.get_reply_to_request = AsyncMock(return_value=[])
+
+        result = await client.get_historic_cdata(
+            "1723280440",
+            "1723280440",
+            "OPEN_ISSUES",
+            nbElement=10,
+            timeout=60.0,
+            log_timeout=False,
+        )
+        self.assertEqual(result, [])
+        client.get_reply_to_request.assert_awaited_once_with(
+            "GET",
+            "/devices/1723280440/endpoints/1723280440/cdata?name=histo&type=OPEN_ISSUES&indexStart=0&nbElem=10",
+            headers={
+                "Content-Length": "0",
+                "Content-Type": "application/json; charset=UTF-8",
+            },
+            timeout=60.0,
+            log_timeout=False,
+        )
+
+    async def test_successful_request_send_is_logged_without_query_secrets(
+        self,
+    ) -> None:
+        """The send is visible in debug logs while sensitive query values stay redacted."""
+        client = TydomClient(None, "test", "001122334455", "password", host="local")
+        request_event: asyncio.Event | None = None
+
+        def prepare_request(*_args, **kwargs):
+            nonlocal request_event
+            request_event = kwargs["reply_event"]
+            return "123456", b"request"
+
+        async def send_request(_request: bytes) -> None:
+            assert request_event is not None
+            request_event.set()
+
+        client._message_handler.prepare_request = MagicMock(side_effect=prepare_request)
+        client._message_handler.get_reply_error.return_value = None
+        client._message_handler.get_reply.return_value = {
+            "done": True,
+            "events": [],
+        }
+        client.send_bytes = AsyncMock(side_effect=send_request)
+        logger.reset_mock()
+        url = "/configs/gateway/password?password=do-not-log"
+
+        with patch.object(client_module.async_timeout, "timeout", _no_timeout):
+            result = await client.get_reply_to_request("GET", url, timeout=1.0)
+
+        self.assertEqual(result, [])
+        logger.debug.assert_any_call(
+            "Sent request to Tydom (%s %s, transaction_id: %s)",
+            "GET",
+            sanitize_log_message(url),
+            "123456",
+        )
+        self.assertNotIn("do-not-log", repr(logger.mock_calls))
 
 
 class TestManagedConnection(IsolatedAsyncioTestCase):

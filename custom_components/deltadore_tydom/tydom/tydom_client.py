@@ -1076,6 +1076,12 @@ class TydomClient:
 
         try:
             await self.send_bytes(request)
+            LOGGER.debug(
+                "Sent request to Tydom (%s %s, transaction_id: %s)",
+                method,
+                safe_url,
+                transaction_id,
+            )
         except Exception as e:
             LOGGER.error(
                 "Failed to send request %s %s: %s",
@@ -2050,11 +2056,17 @@ class TydomClient:
         safe_endpoint_id = quote(str(endpoint_id), safe="")
         safe_type = quote(str(type_), safe="")
         url = f"/devices/{safe_device_id}/endpoints/{safe_endpoint_id}/cdata?name=histo&type={safe_type}&indexStart={indexStart}&nbElem={nbElement}"
+        # Explicitly mark the GET as having no body, as other TYDOM GET paths
+        # do. This may matter to the cloud mediation relay.
+        headers = {
+            "Content-Length": "0",
+            "Content-Type": "application/json; charset=UTF-8",
+        }
         # The box streams the events one message at a time (about 2 seconds
         # apart), so the reply wait needs the long timeout; the default one
         # (10 s) cuts the stream off after a few events.
         return await self.get_reply_to_request(
-            "GET", url, timeout=timeout, log_timeout=log_timeout
+            "GET", url, headers=headers, timeout=timeout, log_timeout=log_timeout
         )
 
     @staticmethod
