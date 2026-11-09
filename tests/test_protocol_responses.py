@@ -418,9 +418,7 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         client._zone_night = "1,3"
         client._zone_away = "1,2,3"
         client.put_alarm_cdata = AsyncMock()
-        alarm = TydomAlarm(
-            client, "10_20", "20", "Alarm", "alarm", "10", {}, data
-        )
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, data)
         return alarm, client
 
     async def test_alarm_profile_reduction_disables_only_surplus_zones(self) -> None:
@@ -489,9 +487,7 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
 
     async def test_alarm_profile_uses_updated_integration_configuration(self) -> None:
         """Profile calculations must use current integration option values."""
-        alarm, client = self._profile_alarm(
-            {"zone1State": "ON", "zone2State": "OFF"}
-        )
+        alarm, client = self._profile_alarm({"zone1State": "ON", "zone2State": "OFF"})
         client._zone_home = "2"
 
         await alarm.alarm_arm_home("123456")
@@ -554,9 +550,7 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
 
         await alarm.alarm_disarm("unused-code")
 
-        client.put_devices_data.assert_awaited_once_with(
-            "20", "10", "alarmCmd", "OFF"
-        )
+        client.put_devices_data.assert_awaited_once_with("20", "10", "alarmCmd", "OFF")
         client.put_alarm_cdata.assert_not_awaited()
 
     async def test_legacy_global_arm_uses_regular_data(self) -> None:
@@ -565,9 +559,7 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
 
         await alarm.alarm_arm_away("unused-code")
 
-        client.put_devices_data.assert_awaited_once_with(
-            "20", "10", "alarmCmd", "ON"
-        )
+        client.put_devices_data.assert_awaited_once_with("20", "10", "alarmCmd", "ON")
         client.put_alarm_cdata.assert_not_awaited()
 
     async def test_legacy_partial_arm_retains_cdata_part_command(self) -> None:
@@ -736,7 +728,9 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         )
         callback.assert_called_once_with()
 
-    async def test_open_issues_return_the_products_reported_by_the_central(self) -> None:
+    async def test_open_issues_return_the_products_reported_by_the_central(
+        self,
+    ) -> None:
         """OPEN_ISSUES must retain only dashboard-safe product metadata."""
         client = MagicMock()
         client.get_historic_cdata = AsyncMock(
@@ -823,7 +817,9 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         handler.parse_devices_cdata.assert_awaited_once_with([], "request-1")
         self.assertTrue(reply_event.is_set())
 
-    async def test_untagged_cloud_history_response_uses_single_pending_request(self) -> None:
+    async def test_untagged_cloud_history_response_uses_single_pending_request(
+        self,
+    ) -> None:
         """A mediation response without its transaction id remains usable."""
         handler = MessageHandler(MagicMock(), b"")
         handler.get_type_from_id = MagicMock(return_value="alarm")
@@ -863,11 +859,7 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
             b"HTTP/1.1 200 OK\r\n"
             b"Uri-Origin: /devices/cdata\r\n"
             b"Content-Type: application/json\r\n"
-            + (
-                b"Transac-Id: "
-                + transaction_id.encode("ascii")
-                + b"\r\n\r\n"
-            )
+            + (b"Transac-Id: " + transaction_id.encode("ascii") + b"\r\n\r\n")
             + b'[{"id":20,"endpoints":[{"id":10,"error":0,"cdata":[]}]}]'
         )
 

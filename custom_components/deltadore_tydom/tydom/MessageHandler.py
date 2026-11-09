@@ -2300,13 +2300,9 @@ class MessageHandler:
         for i in parsed:
             for endpoint in i["endpoints"]:
                 if endpoint["error"] != 0:
-<<<<<<< HEAD
                     cdata_poll_complete = True
                     continue
 
-                if endpoint["error"] == 0 and len(endpoint["cdata"]) > 0:
-=======
-                    continue
                 cdata = endpoint.get("cdata") or []
                 if not cdata:
                     # A mediation relay may preserve the successful envelope
@@ -2317,7 +2313,6 @@ class MessageHandler:
                         self._complete_empty_reply(transaction_id)
                     continue
                 if len(cdata) > 0:
->>>>>>> a4e02aa (Fix cloud TYXAL open issues history replies)
                     try:
                         device_id = i["id"]
                         endpoint_id = endpoint["id"]
@@ -2327,14 +2322,10 @@ class MessageHandler:
 
                         data = {}
 
-<<<<<<< HEAD
-                        for elem in endpoint["cdata"]:
+                        for elem in cdata:
                             if elem.get("EOR", False):
                                 cdata_poll_complete = True
 
-=======
-                        for elem in cdata:
->>>>>>> a4e02aa (Fix cloud TYXAL open issues history replies)
                             if type_of_id == "alarm":
                                 self._resolve_alarm_command_waiter(
                                     device_id, endpoint_id, elem
