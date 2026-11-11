@@ -24,6 +24,7 @@ from .tydom_devices import (
     TydomEnergy,
     TydomGarage,
     TydomGate,
+    TydomImpulse,
     TydomGroup,
     TydomInterrupter,
     TydomLight,
@@ -138,6 +139,33 @@ def _parse_energy_cdata_element(element: Any) -> dict[str, int | float]:
 
 _EMPTY_CDATA_EOR_GRACE = 0.1
 """Seconds to wait for TYXAL data sent just after an early empty EOR."""
+
+
+def _is_stateless_toggle_other(uid: str, data: dict | None) -> bool:
+    """Identify the reported pulse-only Other profile without guessing state."""
+    metadata = device_metadata.get(uid)
+    if not isinstance(metadata, dict):
+        return False
+    command = metadata.get("levelCmd")
+    if not isinstance(command, dict):
+        return False
+    values = command.get("enum_values")
+    if not isinstance(values, (list, tuple)) or list(values) != ["TOGGLE"]:
+        return False
+    permission = command.get("permission")
+    if permission is not None and (
+        not isinstance(permission, str) or "w" not in permission.lower()
+    ):
+        return False
+    state_keys = {"level", "position", "on", "state", "openState"}
+    if state_keys.intersection(metadata) or (
+        isinstance(data, dict) and state_keys.intersection(data)
+    ):
+        return False
+    return not any(
+        isinstance(key, str) and key.endswith("Cmd") and key != "levelCmd"
+        for key in metadata
+    )
 
 
 def _is_tyxia_4910_other(uid: str) -> bool:
@@ -1329,6 +1357,17 @@ class MessageHandler:
                 )
             case "sensorThermo":
                 return TydomThermo(
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata.get(uid),
+                    data,
+                )
+            case "others" if _is_stateless_toggle_other(uid, data):
+                return TydomImpulse(
                     tydom_client,
                     uid,
                     device_id,
