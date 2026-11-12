@@ -1,6 +1,7 @@
 """Tests for colour and white-temperature support on lights."""
 
 import ast
+from contextlib import contextmanager
 import importlib.util
 import math
 from pathlib import Path
@@ -109,9 +110,15 @@ TydomLight = _load_devices_module().TydomLight
 HaLight = _load_ha_light()
 
 LEVEL = {"permission": "rw", "type": "numeric", "min": 0, "max": 100, "step": 1}
-COLOR_XY = {"permission": "rw", "type": "numeric", "min": 0, "max": 4294967294}
-MIRED = {"permission": "rw", "type": "numeric", "min": 0, "max": 65279}
-MIRED_LIMIT = {"permission": "r", "type": "numeric"}
+COLOR_XY = {
+    "permission": "rw",
+    "type": "numeric",
+    "min": 0,
+    "max": 4294967294,
+    "step": 1,
+}
+MIRED = {"permission": "rw", "type": "numeric", "min": 0, "max": 65279, "step": 1}
+MIRED_LIMIT = {"permission": "r", "type": "numeric", "min": 0, "max": 65279, "step": 1}
 COLOR_MODE = {"permission": "r", "type": "string"}
 XY_METADATA = {"level": LEVEL, "colorXY": COLOR_XY, "colorMode": COLOR_MODE}
 TEMP_METADATA = {
@@ -135,6 +142,19 @@ def _device(metadata: dict | None, **data) -> TydomLight:
 def _entity(metadata: dict | None, **data) -> HaLight:
     """Return a real HaLight around a real light."""
     return HaLight(_device(metadata, **data), MagicMock())
+
+
+@contextmanager
+def _home_assistant_error():
+    """Provide the HomeAssistantError a device imports when it refuses a write."""
+
+    class HomeAssistantError(Exception):
+        pass
+
+    exceptions = types.ModuleType("homeassistant.exceptions")
+    exceptions.HomeAssistantError = HomeAssistantError
+    with patch.dict(sys.modules, {"homeassistant.exceptions": exceptions}):
+        yield HomeAssistantError
 
 
 def _puts(light: TydomLight | HaLight) -> list:
@@ -168,10 +188,37 @@ class ColorModeTests(TestCase):
         entity = _entity(metadata, level=50)
         self.assertEqual(entity._attr_supported_color_modes, {ColorMode.BRIGHTNESS})
 
+    def test_permission_case_is_ignored(self) -> None:
+        """An upper-case permission reads as the lower-case one."""
+        metadata = {
+            **COLOR_METADATA,
+            "level": {**LEVEL, "permission": "RW"},
+            "colorXY": {**COLOR_XY, "permission": "RW"},
+        }
+        self.assertTrue(_device(metadata).supports_color_xy)
+        self.assertFalse(
+            _device(
+                {**metadata, "level": {**LEVEL, "permission": "R"}}
+            ).supports_color_xy
+        )
+
     def test_missing_permission_is_not_color(self) -> None:
         """Only an explicit write permission advertises colour."""
         entity = _entity({"level": LEVEL, "colorXY": {"type": "numeric"}}, level=50)
         self.assertEqual(entity._attr_supported_color_modes, {ColorMode.BRIGHTNESS})
+
+    def test_read_only_level_is_not_color(self) -> None:
+        """Lighting a bulb for a colour writes level: a read-only one has no colour."""
+        entity = _entity({**COLOR_METADATA, "level": {**LEVEL, "permission": "r"}})
+        self.assertEqual(entity._attr_supported_color_modes, {ColorMode.BRIGHTNESS})
+
+    def test_level_without_permission_keeps_color(self) -> None:
+        """Only an explicit read-only level withdraws colour."""
+        unmarked = {k: v for k, v in LEVEL.items() if k != "permission"}
+        entity = _entity({**COLOR_METADATA, "level": unmarked}, level=0)
+        self.assertEqual(
+            entity._attr_supported_color_modes, {ColorMode.XY, ColorMode.COLOR_TEMP}
+        )
 
     def test_color_needs_brightness(self) -> None:
         """Without dimming a colour mode's slider would not work: stay on/off."""
@@ -376,6 +423,211 @@ class LightWriteTests(IsolatedAsyncioTestCase):
                     ],
                 )
 
+    async def test_read_only_level_is_never_written(self) -> None:
+        """A level marked read-only is refused, whatever the request asked for."""
+        metadata = {**COLOR_METADATA, "level": {**LEVEL, "permission": "r"}}
+        requests = (
+            {},
+            {"brightness": 128},
+            {"xy_color": (0.0, 1.0)},
+            {"color_temp_kelvin": 3000},
+            {"brightness": 128, "xy_color": (0.0, 1.0)},
+        )
+        with _home_assistant_error() as error:
+            for request in requests:
+                for level in (0, 30):
+                    with self.subTest(request=request, level=level):
+                        entity = _entity(metadata, level=level)
+                        with self.assertRaises(error):
+                            await entity.async_turn_on(**request)
+                        self.assertEqual(_puts(entity), [])
+            entity = _entity(metadata, level=30)
+            with self.assertRaises(error):
+                await entity.async_turn_off()
+            self.assertEqual(_puts(entity), [])
+
+    async def test_read_only_level_still_switches_through_level_command(self) -> None:
+        """A levelCmd needs no level write, so it keeps switching such a light."""
+        metadata = {
+            **COLOR_METADATA,
+            "level": {**LEVEL, "permission": "r"},
+            "levelCmd": {"permission": "w", "enum_values": ["ON", "OFF"]},
+        }
+        entity = _entity(metadata, level=0)
+        await entity.async_turn_on(xy_color=(0.0, 1.0))
+        await entity.async_turn_off()
+        self.assertEqual(
+            _puts(entity),
+            [call("20", "10", "levelCmd", "ON"), call("20", "10", "levelCmd", "OFF")],
+        )
+
+    async def test_level_without_permission_is_still_written(self) -> None:
+        """Only an explicit read-only stops the write: other lights are unchanged."""
+        unmarked = {"type": "numeric", "min": 0, "max": 100, "step": 1}
+        levels = [unmarked, "n/a"]
+        levels += [{**unmarked, "permission": p} for p in (None, "", "RW", "w")]
+        for metadata in (None, {}, *({"level": level} for level in levels)):
+            with self.subTest(metadata=metadata):
+                entity = _entity(metadata, level=0)
+                await entity.async_turn_on()
+                await entity.async_turn_off()
+                self.assertEqual(
+                    _puts(entity),
+                    [call("20", "10", "level", "100"), call("20", "10", "level", "0")],
+                )
+
+    async def test_color_never_toggles(self) -> None:
+        """Without a writable ON, a stale off level must not toggle a lit bulb off."""
+        for level_cmd in (
+            {"permission": "w", "enum_values": ["TOGGLE"]},
+            {"permission": "w", "enum_values": ["TOGGLE", "OFF"]},
+            {"permission": "w", "enum_values": []},
+            {"permission": "w", "enum_values": None},
+            {"permission": "r", "enum_values": ["ON", "OFF"]},
+        ):
+            for data in ({"level": 0}, {"level": None}, {}):
+                with self.subTest(level_cmd=level_cmd, data=data):
+                    metadata = {**COLOR_METADATA, "levelCmd": level_cmd}
+                    entity = _entity(metadata, **data)
+                    await entity.async_turn_on(xy_color=(0.0, 1.0))
+                    self.assertEqual(
+                        _puts(entity),
+                        [
+                            call("20", "10", "level", "100"),
+                            call("20", "10", "colorXY", "65535"),
+                        ],
+                    )
+                    self.assertEqual(entity._device.level, 100)
+
+    async def test_toggle_flips_the_remembered_state(self) -> None:
+        """A TOGGLE-only bulb is remembered as what the TOGGLE left it."""
+        metadata = {
+            **COLOR_METADATA,
+            "levelCmd": {"permission": "w", "enum_values": ["TOGGLE"]},
+        }
+        for level, action, expected in (
+            (40, "on", 0),
+            (0, "on", 100),
+            (40, "off", 0),
+            (0, "off", 100),
+            (None, "on", None),
+            (None, "off", None),
+        ):
+            with self.subTest(level=level, action=action):
+                entity = _entity(metadata, level=level)
+                if action == "on":
+                    await entity.async_turn_on()
+                else:
+                    await entity.async_turn_off()
+                self.assertEqual(
+                    _puts(entity), [call("20", "10", "levelCmd", "TOGGLE")]
+                )
+                self.assertEqual(entity._device.level, expected)
+
+    async def test_color_from_off_lights_as_a_plain_on_does(self) -> None:
+        """The level that lights an off bulb is 100 unchecked, as for a plain on."""
+        metadata = {**COLOR_METADATA, "level": {**LEVEL, "max": 99}}
+        plain = _entity(metadata, level=0)
+        await plain.async_turn_on()
+        entity = _entity(metadata, level=0)
+        await entity.async_turn_on(xy_color=(0.0, 1.0))
+        self.assertEqual(
+            _puts(entity), [*_puts(plain), call("20", "10", "colorXY", "65535")]
+        )
+
+    async def test_on_command_without_permission_is_used(self) -> None:
+        """Only a read-only levelCmd is passed over: an unmarked ON still lights."""
+        metadata = {**COLOR_METADATA, "levelCmd": {"enum_values": ["ON", "OFF"]}}
+        entity = _entity(metadata, level=0)
+        await entity.async_turn_on(xy_color=(0.0, 1.0))
+        self.assertEqual(
+            _puts(entity),
+            [call("20", "10", "levelCmd", "ON"), call("20", "10", "colorXY", "65535")],
+        )
+
+    async def test_temperature_snaps_to_metadata_step(self) -> None:
+        """A slider value between two steps lands on the nearest one in range."""
+        for kelvin, expected in (
+            (3000, "330"),  # 333 mired
+            (2970, "340"),  # 336 mired
+            (6600, "160"),  # clamped to 153, whose nearest step 150 is out of range
+            (2000, "500"),
+            (2040, "490"),
+        ):
+            with self.subTest(kelvin=kelvin):
+                metadata = {
+                    **COLOR_METADATA,
+                    "miredTemperatureW": {**MIRED, "min": 150, "max": 500, "step": 10},
+                }
+                entity = _entity(
+                    metadata,
+                    level=30,
+                    minMiredTemperatureW=153,
+                    maxMiredTemperatureW=500,
+                )
+                await entity.async_turn_on(color_temp_kelvin=kelvin)
+                self.assertEqual(
+                    _puts(entity),
+                    [call("20", "10", "miredTemperatureW", expected)],
+                )
+
+    async def test_temperature_step_counts_from_metadata_minimum(self) -> None:
+        """Steps start at the metadata minimum, as the validator counts them."""
+        metadata = {
+            **COLOR_METADATA,
+            "miredTemperatureW": {**MIRED, "min": 153, "max": 500, "step": 10},
+        }
+        entity = _entity(metadata, level=30)
+        await entity.async_turn_on(color_temp_kelvin=3000)
+        self.assertEqual(_puts(entity), [call("20", "10", "miredTemperatureW", "333")])
+
+    async def test_temperature_stays_inside_metadata_range(self) -> None:
+        """Without usable limits, HA's default range is cut to the metadata's."""
+        for step in ({}, {"step": 1}):
+            for kelvin, expected in ((2000, "454"), (6535, "250"), (3000, "333")):
+                with self.subTest(step=step, kelvin=kelvin):
+                    metadata = {
+                        **COLOR_METADATA,
+                        "miredTemperatureW": {**MIRED, "min": 250, "max": 454, **step},
+                    }
+                    entity = _entity(metadata, level=30)
+                    await entity.async_turn_on(color_temp_kelvin=kelvin)
+                    self.assertEqual(
+                        _puts(entity), [call("20", "10", "miredTemperatureW", expected)]
+                    )
+
+    async def test_temperature_never_passes_a_warm_limit(self) -> None:
+        """Kelvin and back can land one mired past a limit above 1000 mired."""
+        entity = _entity(
+            COLOR_METADATA,
+            level=30,
+            minMiredTemperatureW=153,
+            maxMiredTemperatureW=1500,
+        )
+        await entity.async_turn_on(color_temp_kelvin=500)
+        self.assertEqual(_puts(entity), [call("20", "10", "miredTemperatureW", "1500")])
+
+    async def test_temperature_snaps_without_maximum_or_limits(self) -> None:
+        """A step alone still snaps: no metadata maximum, no limits reported."""
+        metadata = {
+            **COLOR_METADATA,
+            "miredTemperatureW": {"permission": "rw", "type": "numeric", "step": 10},
+        }
+        entity = _entity(metadata, level=30)
+        await entity.async_turn_on(color_temp_kelvin=3000)
+        self.assertEqual(_puts(entity), [call("20", "10", "miredTemperatureW", "330")])
+
+    async def test_temperature_without_usable_step_is_unchanged(self) -> None:
+        """A missing, zero or malformed step sends the requested mired."""
+        for step in ({}, {"step": 0}, {"step": "n/a"}, {"step": 1}):
+            with self.subTest(step=step):
+                metadata = {**COLOR_METADATA, "miredTemperatureW": {**MIRED, **step}}
+                entity = _entity(metadata, level=30)
+                await entity.async_turn_on(color_temp_kelvin=3000)
+                self.assertEqual(
+                    _puts(entity), [call("20", "10", "miredTemperatureW", "333")]
+                )
+
     async def test_color_after_brightness_keeps_that_brightness(self) -> None:
         """A colour right after dimming an off bulb, before any poll, sends no level."""
         entity = _entity(COLOR_METADATA, level=0)
@@ -427,7 +679,7 @@ class LightWriteTests(IsolatedAsyncioTestCase):
         )
 
     async def test_color_from_off_uses_level_command(self) -> None:
-        """Colour from off lights the bulb the way a plain on does."""
+        """With an explicit ON, colour from off lights the bulb through it."""
         metadata = {
             **COLOR_METADATA,
             "levelCmd": {"permission": "w", "enum_values": ["ON", "OFF"]},
@@ -533,19 +785,10 @@ class LightWriteTests(IsolatedAsyncioTestCase):
 
     async def test_invalid_value_writes_nothing(self) -> None:
         """A value metadata rejects fails before the first write."""
-        metadata = {**COLOR_METADATA, "miredTemperatureW": {**MIRED, "max": 300}}
+        metadata = {**COLOR_METADATA, "colorXY": {**COLOR_XY, "max": 100}}
         device = _device(metadata, level=0)
-
-        class HomeAssistantError(Exception):
-            pass
-
-        exceptions = types.ModuleType("homeassistant.exceptions")
-        exceptions.HomeAssistantError = HomeAssistantError
-        with (
-            patch.dict(sys.modules, {"homeassistant.exceptions": exceptions}),
-            self.assertRaises(HomeAssistantError),
-        ):
-            await device.set_light_state(50, None, 400)
+        with _home_assistant_error() as error, self.assertRaises(error):
+            await device.set_light_state(50, (0.5, 0.5), None)
         self.assertEqual(_puts(device), [])
         device._tydom_client.add_poll_device_url_1s.assert_not_called()
 
