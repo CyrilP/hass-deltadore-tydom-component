@@ -2123,6 +2123,7 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyIndexECSWatt": SensorDeviceClass.ENERGY,
         "energyIndexHeatGas": SensorDeviceClass.ENERGY,
         "energyIndex": SensorDeviceClass.ENERGY,
+        "energyIndex_WATER_TOTAL": SensorDeviceClass.WATER,
         "energyDistrib": SensorDeviceClass.ENERGY,
         "outTemperature": SensorDeviceClass.TEMPERATURE,
         # Instant consumption reading (see energyInstant in
@@ -2210,6 +2211,7 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyIndexECSWatt": UnitOfEnergy.WATT_HOUR,
         "energyIndexHeatGas": UnitOfEnergy.WATT_HOUR,
         "energyIndex": UnitOfEnergy.WATT_HOUR,
+        "energyIndex_WATER_TOTAL": "L",
         "energyDistrib": UnitOfEnergy.WATT_HOUR,
         "outTemperature": UnitOfTemperature.CELSIUS,
         "energyInstant_ELEC_A": UnitOfElectricCurrent.AMPERE,
