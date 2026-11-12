@@ -43,7 +43,7 @@ Platform | Description
 `climate` | Controls heating, cooling and ventilation.
 `cover` | Controls shutters, blinds and awnings.
 `event` | Reports physical remote-control and wall-switch button presses.
-`light` | Controls lights and dimmers.
+`light` | Controls lights and dimmers, including colour and white temperature on bulbs which advertise them.
 `lock` | Controls a lock.
 `number` | Controls writable numeric settings exposed by a device.
 `scene` | Activates TYDOM scenes.
@@ -111,7 +111,7 @@ Alarm and safety | TYXAL+, CS8000, CSX40 and DFR TYXAL+ smoke detectors | Alarm 
 Climate and heating | Tybox 5101 with Typass ATL, Tywell Control, Tywell 2050, TRV 1.0 thermostatic radiator valves, TYXIA 1137, Calybox and RF 6600 FP | Area-backed climate control, temperatures, heating and cooling setpoints, operating modes, humidity, battery and capability-driven heating or pilot-wire commands where advertised.
 Energy monitoring | TYWATT 1000, TYWATT 2000 and TYWATT 5400 with EMIC; Delta Dore Easy Plug | Power, current and energy measurements, including heating, domestic hot water and cooling channels where advertised. Easy Plug endpoints which publish energy data also expose instantaneous power and cumulative energy for Home Assistant's Energy dashboard.
 Gates and garage doors | TYXIA 4620 dry-contact receivers, and gate or garage endpoints which advertise readable `level` feedback | Dry-contact receivers use a stateless toggle matching the open/stop/close pulse sequence. Feedback-capable endpoints expose a native cover with open/closed state and supported position feedback.
-Lighting and switching | TYXIA 4910 fixed-output and TYXIA 4940 dimming receivers configured under TYDOM's `Others` usage, TYXIA 6610, Delta Dore Easy Plug and compatible X3D equipment | Lights, brightness, switches and plugs according to the capabilities reported by the endpoint.
+Lighting and switching | TYXIA 4910 fixed-output and TYXIA 4940 dimming receivers configured under TYDOM's `Others` usage, TYXIA 6610, Delta Dore Easy Plug, compatible X3D equipment and Hue `LCA008` and `LCA016` Zigbee bulbs | Lights, brightness, colour and white temperature, switches and plugs according to the capabilities reported by the endpoint.
 Openings and covers | TYMOOV and Well'com roller shutters, BSO installations, Profalux `MOT-C1Z06F` and `MOT-C1Z10F` Zigbee shutters, TYXIA 5731 awnings, K-Line DVI openings and K-Line POD doors | Native covers with up, down, stop and position control where advertised; awning commands and positions are translated into Home Assistant open/close semantics; opening/contact state is exposed when feedback is supplied.
 Physical controls | TYXIA 2600 wall switches, TYXIA 1410 remote controls and TL 2000 Tyxal+ remote controls | Native Home Assistant button events for automations, with battery diagnostics where supplied.
 Sensors | Tysense Sun and Tysense Thermo/SE 2000 | Solar irradiance in W/m², outdoor temperature and associated diagnostics where supplied.

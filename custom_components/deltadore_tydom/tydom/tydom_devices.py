@@ -1454,6 +1454,138 @@ class TydomGarage(TydomLevelCommandCover):
 class TydomLight(TydomDevice):
     """represents a light."""
 
+    _COLOR_XY_SCALE: ClassVar[int] = 65535
+    # Largest colorXY the gateway accepts: x=y=1 packs to one above it.
+    _COLOR_XY_MAX: ClassVar[int] = 4294967294
+    _COLOR_MODE_NAMES: ClassVar[dict[str, str]] = {
+        "TEMP. MIRED": "temp",
+        "XY": "xy",
+        "HUE_SAT": "xy",
+    }
+
+    def _permission(self, attribute: str) -> str:
+        """Return an attribute's permission in lower case, empty when it has none."""
+        if not isinstance(self._metadata, dict):
+            return ""
+        metadata = self._metadata.get(attribute)
+        if not isinstance(metadata, dict):
+            return ""
+        return str(metadata.get("permission") or "").lower()
+
+    def _is_writable(self, attribute: str) -> bool:
+        """Return whether metadata explicitly marks an attribute writable."""
+        return "w" in self._permission(attribute)
+
+    def _positive_attribute(self, attribute: str) -> int | None:
+        """Return a numeric data attribute, or None when missing or not positive."""
+        try:
+            value = int(float(getattr(self, attribute, None)))
+        except (OverflowError, TypeError, ValueError):
+            return None
+        return value if value > 0 else None
+
+    def _is_read_only(self, attribute: str) -> bool:
+        """Return whether metadata explicitly marks an attribute read-only."""
+        permission = self._permission(attribute)
+        return "r" in permission and "w" not in permission
+
+    @property
+    def _supports_writable_brightness(self) -> bool:
+        """Return whether the colour path may write level, as lighting a bulb does."""
+        return self.supports_brightness and not self._is_read_only("level")
+
+    @property
+    def _has_on_command(self) -> bool:
+        """Return whether levelCmd, unless read-only, advertises an explicit ON."""
+        if not isinstance(self._metadata, dict) or self._is_read_only("levelCmd"):
+            return False
+        level_cmd = self._metadata.get("levelCmd")
+        if not isinstance(level_cmd, dict):
+            return False
+        return "ON" in (level_cmd.get("enum_values") or ())
+
+    def _fit_mired(self, mired: int) -> int | float:
+        """Return the mired to write: inside the limits, on the metadata step."""
+        metadata = self._metadata["miredTemperatureW"]
+
+        def number(key: str, default: float) -> float:
+            try:
+                return float(metadata.get(key, default))
+            except (TypeError, ValueError):
+                return default
+
+        base = number("min", 0)
+        low, high = base, number("max", math.inf)
+        limits = self.mired_limits
+        if limits is not None:
+            low, high = max(low, limits[0]), min(high, limits[1])
+        if not low <= high:
+            return mired
+        fitted = min(high, max(low, float(mired)))
+        step = number("step", 0)
+        if 0 < step < math.inf:
+            # The validator counts steps from the metadata minimum.
+            fitted = base + round((fitted - base) / step) * step
+            if fitted > high:
+                fitted -= step
+            elif fitted < low:
+                fitted += step
+        return int(fitted) if fitted.is_integer() else fitted
+
+    @property
+    def supports_color_xy(self) -> bool:
+        """Return whether metadata exposes a writable xy colour and dimming."""
+        return self._supports_writable_brightness and self._is_writable("colorXY")
+
+    @property
+    def supports_color_temp(self) -> bool:
+        """Return whether metadata exposes a writable temperature, limits and dimming."""
+        return (
+            self._supports_writable_brightness
+            and self._is_writable("miredTemperatureW")
+            and "minMiredTemperatureW" in self._metadata
+            and "maxMiredTemperatureW" in self._metadata
+        )
+
+    @property
+    def color_xy(self) -> tuple[float, float] | None:
+        """Return the decoded xy colour, high 16 bits x and low 16 bits y."""
+        packed = self._positive_attribute("colorXY")
+        if packed is None or packed > 0xFFFFFFFF:
+            return None
+        return (
+            (packed >> 16) / self._COLOR_XY_SCALE,
+            (packed & 0xFFFF) / self._COLOR_XY_SCALE,
+        )
+
+    @property
+    def color_temp_mired(self) -> int | None:
+        """Return the current colour temperature in mired."""
+        return self._positive_attribute("miredTemperatureW")
+
+    @property
+    def mired_limits(self) -> tuple[int, int] | None:
+        """Return this bulb's (coldest, warmest) mired, when it reports both."""
+        minimum = self._positive_attribute("minMiredTemperatureW")
+        maximum = self._positive_attribute("maxMiredTemperatureW")
+        if minimum is None or maximum is None or minimum > maximum:
+            return None
+        return minimum, maximum
+
+    @property
+    def color_mode_name(self) -> str | None:
+        """Return "temp" or "xy" from colorMode, or None when it is not known."""
+        color_mode = getattr(self, "colorMode", None)
+        if not isinstance(color_mode, str):
+            return None
+        return self._COLOR_MODE_NAMES.get(color_mode)
+
+    @classmethod
+    def _pack_color_xy(cls, xy: tuple[float, float]) -> int:
+        """Pack an xy colour into the gateway's colorXY value."""
+        x, y = (round(component * cls._COLOR_XY_SCALE) for component in xy)
+        return min((x << 16) | y, cls._COLOR_XY_MAX)
+
     @property
     def supports_brightness(self) -> bool:
         """Return whether level metadata exposes intermediate light levels."""
@@ -1475,8 +1607,42 @@ class TydomLight(TydomDevice):
 
         return step > 0 and maximum - minimum > step
 
+    def _remember_level(self, level: int) -> None:
+        """Keep a written level on colour bulbs, whose next write depends on it."""
+        if self.supports_color_xy or self.supports_color_temp:
+            self.level = level
+
+    def _remember_command(self, command: str) -> None:
+        """Keep the level a levelCmd leaves; TOGGLE flips the cached state."""
+        level = getattr(self, "level", None)
+        if command == "TOGGLE":
+            if level is not None:
+                self._remember_level(0 if level else 100)
+        elif command == "ON":
+            # ON names no level; any lit value will do until a report.
+            self._remember_level(level or 100)
+        else:
+            self._remember_level(0)
+
+    async def _write_level(self, value: int | str) -> None:
+        """Write level, unless metadata explicitly marks it read-only."""
+        if self._is_read_only("level"):
+            from homeassistant.exceptions import HomeAssistantError
+
+            raise HomeAssistantError("Le niveau de cet éclairage est en lecture seule")
+        await self._tydom_client.put_devices_data(
+            self._id, self._endpoint, "level", str(value)
+        )
+
     async def turn_on(self, brightness) -> None:
         """Turn on the light with specified brightness."""
+        await self._send_on(brightness)
+        self._tydom_client.add_poll_device_url_1s(
+            f"/devices/{self._id}/endpoints/{self._endpoint}/data"
+        )
+
+    async def _send_on(self, brightness) -> None:
+        """Send the writes that turn on the light, without queueing a poll."""
         # Validate brightness value with metadata
         if brightness is not None:
             is_valid, error_msg = validate_value_with_metadata(
@@ -1502,18 +1668,60 @@ class TydomLight(TydomDevice):
                 await self._tydom_client.put_devices_data(
                     self._id, self._endpoint, "levelCmd", command
                 )
+                self._remember_command(command)
             else:
-                await self._tydom_client.put_devices_data(
-                    self._id, self._endpoint, "level", "100"
-                )
+                await self._write_level(100)
+                self._remember_level(100)
 
         else:
-            await self._tydom_client.put_devices_data(
-                self._id, self._endpoint, "level", str(brightness)
+            await self._write_level(brightness)
+            self._remember_level(brightness)
+
+    async def set_light_state(
+        self,
+        brightness: int | None = None,
+        xy: tuple[float, float] | None = None,
+        mired: int | None = None,
+    ) -> None:
+        """Turn on the light with an optional brightness and colour."""
+        if xy is None and mired is None:
+            await self.turn_on(brightness)
+            return
+
+        writes: list[tuple[str, int | float]] = []
+        if xy is not None:
+            writes.append(("colorXY", self._pack_color_xy(xy)))
+        if mired is not None:
+            writes.append(("miredTemperatureW", self._fit_mired(mired)))
+
+        lit = bool(getattr(self, "level", None))
+
+        # Validate first so a bad colour cannot leave a partial write.
+        for attribute, value in writes:
+            is_valid, error_msg = validate_value_with_metadata(self, attribute, value)
+            if not is_valid:
+                from homeassistant.exceptions import HomeAssistantError
+
+                raise HomeAssistantError(
+                    error_msg or f"Valeur invalide pour {attribute}: {value}"
+                )
+
+        try:
+            # A lit bulb keeps its level. An off one is lit by ON, else by a
+            # level: its cached level may be stale, and TOGGLE would turn it off.
+            if brightness is not None or (not lit and self._has_on_command):
+                await self._send_on(brightness)
+            elif not lit:
+                await self._write_level(100)
+                self._remember_level(100)
+            for attribute, value in writes:
+                await self._tydom_client.put_devices_data(
+                    self._id, self._endpoint, attribute, str(value)
+                )
+        finally:
+            self._tydom_client.add_poll_device_url_1s(
+                f"/devices/{self._id}/endpoints/{self._endpoint}/data"
             )
-        self._tydom_client.add_poll_device_url_1s(
-            f"/devices/{self._id}/endpoints/{self._endpoint}/data"
-        )
 
     async def turn_off(self) -> None:
         """Tell light to turn off."""
@@ -1530,10 +1738,10 @@ class TydomLight(TydomDevice):
             await self._tydom_client.put_devices_data(
                 self._id, self._endpoint, "levelCmd", command
             )
+            self._remember_command(command)
         else:
-            await self._tydom_client.put_devices_data(
-                self._id, self._endpoint, "level", "0"
-            )
+            await self._write_level(0)
+            self._remember_level(0)
 
         self._tydom_client.add_poll_device_url_1s(
             f"/devices/{self._id}/endpoints/{self._endpoint}/data"

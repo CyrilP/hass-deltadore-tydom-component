@@ -53,7 +53,13 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorEntityDescription,
 )
-from homeassistant.components.light import LightEntity, ColorMode, ATTR_BRIGHTNESS
+from homeassistant.components.light import (
+    ATTR_BRIGHTNESS,
+    ATTR_COLOR_TEMP_KELVIN,
+    ATTR_XY_COLOR,
+    ColorMode,
+    LightEntity,
+)
 from homeassistant.components.update import (
     UpdateEntity,
     UpdateEntityFeature,
@@ -66,6 +72,10 @@ from homeassistant.components.alarm_control_panel import (
 from homeassistant.util.percentage import (
     percentage_to_ranged_value,
     ranged_value_to_percentage,
+)
+from homeassistant.util.color import (
+    color_temperature_kelvin_to_mired,
+    color_temperature_mired_to_kelvin,
 )
 from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntityFeature,
@@ -4661,7 +4671,16 @@ class HaLight(LightEntity, HAEntity):
         self._attr_unique_id = f"{self._device.device_id}_light"
         self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
-        if self._device.supports_brightness:
+        color_modes = set()
+        if self._device.supports_color_xy:
+            color_modes.add(ColorMode.XY)
+        if self._device.supports_color_temp:
+            color_modes.add(ColorMode.COLOR_TEMP)
+        if color_modes:
+            # HA rejects BRIGHTNESS or ONOFF next to a colour mode; both of these
+            # already imply brightness. color_mode is reported dynamically.
+            self._attr_supported_color_modes = color_modes
+        elif self._device.supports_brightness:
             self._attr_color_mode = ColorMode.BRIGHTNESS
             if self._attr_supported_color_modes is None:
                 self._attr_supported_color_modes = set()
@@ -4721,6 +4740,52 @@ class HaLight(LightEntity, HAEntity):
         return False
 
     @property
+    def color_mode(self) -> ColorMode | str | None:
+        """Return the active color mode, read from the gateway on colour bulbs."""
+        supported = self._attr_supported_color_modes
+        if ColorMode.XY not in supported and ColorMode.COLOR_TEMP not in supported:
+            return self._attr_color_mode
+
+        reported = {"temp": ColorMode.COLOR_TEMP, "xy": ColorMode.XY}.get(
+            self._device.color_mode_name
+        )
+        if reported in supported:
+            return reported
+        # HA raises on a lit light without a mode. Same fallback as Hue's v2 light.
+        if ColorMode.COLOR_TEMP in supported and (
+            ColorMode.XY not in supported or self._device.color_temp_mired is not None
+        ):
+            return ColorMode.COLOR_TEMP
+        return ColorMode.XY
+
+    @property
+    def xy_color(self) -> tuple[float, float] | None:
+        """Return the xy color."""
+        return self._device.color_xy
+
+    @property
+    def color_temp_kelvin(self) -> int | None:
+        """Return the color temperature in Kelvin."""
+        mired = self._device.color_temp_mired
+        return color_temperature_mired_to_kelvin(mired) if mired is not None else None
+
+    @property
+    def min_color_temp_kelvin(self) -> int:
+        """Return the warmest color temperature this bulb supports."""
+        limits = self._device.mired_limits
+        if limits is None:
+            return super().min_color_temp_kelvin
+        return color_temperature_mired_to_kelvin(limits[1])
+
+    @property
+    def max_color_temp_kelvin(self) -> int:
+        """Return the coldest color temperature this bulb supports."""
+        limits = self._device.mired_limits
+        if limits is None:
+            return super().max_color_temp_kelvin
+        return color_temperature_mired_to_kelvin(limits[0])
+
+    @property
     def icon(self) -> str:
         """Return the icon for the light based on state."""
         if self.is_on:
@@ -4744,7 +4809,18 @@ class HaLight(LightEntity, HAEntity):
                     self.BRIGHTNESS_SCALE, kwargs[ATTR_BRIGHTNESS]
                 )
             )
-        await self._device.turn_on(brightness)
+        xy = None
+        if self._device.supports_color_xy:
+            xy = kwargs.get(ATTR_XY_COLOR)
+        mired = None
+        if self._device.supports_color_temp and ATTR_COLOR_TEMP_KELVIN in kwargs:
+            # HA's process_turn_on_params passes the requested kelvin unclamped.
+            kelvin = max(
+                self.min_color_temp_kelvin,
+                min(self.max_color_temp_kelvin, kwargs[ATTR_COLOR_TEMP_KELVIN]),
+            )
+            mired = color_temperature_kelvin_to_mired(kelvin)
+        await self._device.set_light_state(brightness, xy, mired)
 
     async def async_turn_off(self, **kwargs):
         """Turn device off."""
