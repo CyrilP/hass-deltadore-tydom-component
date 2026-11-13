@@ -189,6 +189,120 @@ class Tyxia4910Tests(IsolatedAsyncioTestCase):
 
         self.assertIs(type(device), TydomDevice)
 
+    async def test_writable_dimmable_other_creates_light(self) -> None:
+        """Writable intermediate levels make an 'others' device a light."""
+        uid = "40_30"
+        handler_module.device_metadata[uid] = {
+            "level": {
+                "type": "numeric",
+                "permission": "rw",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "unit": "%",
+            },
+            "levelCmd": {
+                "enum_values": [
+                    "ON",
+                    "OFF",
+                    "STOP",
+                    "FAVORIT1",
+                    "FAVORIT2",
+                    "TOGGLE",
+                    "ON_SLOW",
+                    "OFF_SLOW",
+                ]
+            },
+        }
+        client = MagicMock()
+        client.put_devices_data = AsyncMock()
+
+        device = await MessageHandler.get_device(
+            client,
+            "others",
+            uid,
+            "30",
+            "Dimmable output",
+            "40",
+            {"level": 50},
+        )
+
+        self.assertIs(type(device), TydomLight)
+        self.assertTrue(device.supports_brightness)
+        await device.turn_on(37)
+        client.put_devices_data.assert_awaited_once_with("30", "40", "level", "37")
+
+    async def test_other_requires_writable_numeric_levels_and_on_off(self) -> None:
+        """Only the confirmed writable dimmer profile becomes a light."""
+        invalid_profiles = [
+            {
+                "level": {
+                    "type": "numeric",
+                    "permission": "rw",
+                    "min": 0,
+                    "max": 100,
+                    "step": 100,
+                },
+                "levelCmd": {"enum_values": ["ON", "OFF"]},
+            },
+            {
+                "level": {
+                    "type": "numeric",
+                    "permission": "r",
+                    "min": 0,
+                    "max": 100,
+                    "step": 1,
+                },
+                "levelCmd": {"enum_values": ["ON", "OFF"]},
+            },
+            {
+                "level": {
+                    "type": "boolean",
+                    "permission": "rw",
+                    "min": 0,
+                    "max": 100,
+                    "step": 1,
+                },
+                "levelCmd": {"enum_values": ["ON", "OFF"]},
+            },
+            {
+                "level": {
+                    "type": "numeric",
+                    "permission": "rw",
+                    "min": 0,
+                    "max": 100,
+                    "step": 1,
+                },
+                "levelCmd": {"enum_values": ["ON"]},
+            },
+            {
+                "level": {
+                    "type": "numeric",
+                    "permission": "rw",
+                    "min": 0,
+                    "max": 100,
+                    "step": 1,
+                },
+                "levelCmd": {"enum_values": ["ON", "OFF", "STOP"]},
+            },
+        ]
+
+        for index, metadata in enumerate(invalid_profiles):
+            with self.subTest(profile=index):
+                uid = f"{40 + index}_{30 + index}"
+                handler_module.device_metadata[uid] = metadata
+                device = await MessageHandler.get_device(
+                    MagicMock(),
+                    "others",
+                    uid,
+                    str(30 + index),
+                    "Unknown output",
+                    str(40 + index),
+                    {"level": 0},
+                )
+
+                self.assertIs(type(device), TydomDevice)
+
     async def test_unidentified_other_usage_remains_generic(self) -> None:
         """Unrelated devices using 'others' continue through generic discovery."""
         uid = "40_30"
