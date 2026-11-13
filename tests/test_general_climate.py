@@ -386,6 +386,7 @@ class GeneralClimateReloadTests(unittest.IsolatedAsyncioTestCase):
             "get_devices_data",
             "get_scenarii",
             "get_moments",
+            "get_gateway_maintenance_status",
         ):
             setattr(hub._tydom_client, name, AsyncMock())
         for name in (

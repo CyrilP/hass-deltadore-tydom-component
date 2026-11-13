@@ -42,6 +42,9 @@ from ..home_climate import HomeClimateState, HVAC_OPTIONS
 from .MessageHandler import MessageHandler
 from .tydom_devices import TydomAlarmCommandError
 
+_GATEWAY_READ_BACK_DELAY = 2.0
+"""Seconds to wait before reading back a gateway resource after a PUT."""
+
 if TYPE_CHECKING:
     from .tydom_devices import TydomDevice
 
@@ -705,6 +708,7 @@ class TydomClient:
             return
 
         await self.get_scenarii()
+        await self.get_gateway_maintenance_status()
 
     async def _reconnect_with_backoff(self) -> bool:
         """Reconnect with exponential backoff strategy.
@@ -2257,3 +2261,105 @@ class TydomClient:
         msg_type = "/configs/gateway/update"
         req = "PUT"
         await self.send_message(method=req, msg=msg_type)
+
+    # ########################
+    # Gateway maintenance (LED, reboot, firmware status)
+    # ########################
+
+    async def _get_optional(self, path: str) -> None:
+        """GET an endpoint that older gateway firmware may not provide."""
+        if path in self._unsupported_optional_paths:
+            return
+        await self.send_message(method="GET", msg=path)
+
+    async def get_gateway_led(self) -> None:
+        """Read the status LED configuration."""
+        await self._get_optional("/configs/gateway/led")
+
+    async def _put_then_read_back(
+        self,
+        path: str,
+        body: dict | bytes,
+        read_back,
+        headers: dict | None = None,
+    ) -> None:
+        """Send a configuration PUT, then read the resource back.
+
+        TYDOM does not answer these PUTs with a reply carrying the request's
+        transaction id, so waiting for one only ends in a timeout. The
+        resource is read again instead: Home Assistant then shows the state
+        the gateway actually applied.
+        """
+        STRUCTURED_LOGGER.api_request("debug", "PUT", path)
+        await self._send_gateway_command("PUT", path, body=body, headers=headers)
+        await asyncio.sleep(_GATEWAY_READ_BACK_DELAY)
+        await read_back()
+
+    async def _send_gateway_command(
+        self,
+        method: str,
+        path: str,
+        body: dict | bytes | None = None,
+        headers: dict | None = None,
+    ) -> None:
+        """Send a request framed exactly like the integration's other commands.
+
+        ``prepare_request`` does not add the command prefix that the remote
+        (mediation) connection requires, so it is prepended here.
+        """
+        _, request = self._message_handler.prepare_request(method, path, body, headers)
+        await self.send_bytes(self._cmd_prefix + request)
+
+    async def put_gateway_led(self, document: dict) -> None:
+        """Write the complete status LED document, then read it back."""
+        await self._put_then_read_back(
+            "/configs/gateway/led", document, self.get_gateway_led
+        )
+
+    async def reboot_gateway(self) -> None:
+        """Restart the gateway.
+
+        The gateway drops the connection while restarting, so no reply is
+        awaited; the normal reconnection logic takes over.
+        """
+        STRUCTURED_LOGGER.api_request("info", "PUT", "/configs/gateway/reboot")
+        await self._send_gateway_command("PUT", "/configs/gateway/reboot")
+
+    async def get_gateway_update_status(self) -> None:
+        """Read the detailed gateway firmware status."""
+        await self._get_optional("/configs/gateway/update/status")
+
+    async def put_gateway_update_setup(self, mode: str) -> None:
+        """Select manual or automatic gateway firmware updates."""
+        await self._put_then_read_back(
+            "/configs/gateway/update/setup",
+            {"mode": mode},
+            self.get_gateway_update_status,
+        )
+
+    async def get_devices_update_status(self) -> None:
+        """Read the firmware status of the radio products."""
+        await self._get_optional("/devices/update/status")
+
+    async def put_devices_update(self, firmwares: list[dict[str, str | None]]) -> None:
+        """Ask the gateway to deploy radio product firmware.
+
+        The official app sends a JSON array of ``{"fwId", "modelId"}`` objects.
+        """
+        await self._put_then_read_back(
+            "/devices/update",
+            json.dumps(firmwares).encode("ascii"),
+            self.get_devices_update_status,
+            headers={"Content-Type": "application/json; charset=UTF-8"},
+        )
+
+    async def get_gateway_network_status(self) -> None:
+        """Read the gateway IP and internet connectivity status."""
+        await self._get_optional("/configs/gateway/network/status")
+
+    async def get_gateway_maintenance_status(self) -> None:
+        """Refresh every gateway maintenance resource exposed in Home Assistant."""
+        await self.get_gateway_led()
+        await self.get_gateway_network_status()
+        await self.get_gateway_update_status()
+        await self.get_devices_update_status()

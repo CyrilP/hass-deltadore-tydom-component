@@ -582,6 +582,14 @@ ENTITY_NAMES: dict[str, str] = {
     "zone8state": "State (ZONE 8)",
     "zonecmd": "Alarm zone command",
     "zones": "Alarm zones",
+    "gateway_led": "Status LED",
+    "gateway_led_color": "Status LED color",
+    "gateway_update_mode": "Firmware update mode",
+    "gateway_ip_status": "Local network",
+    "gateway_internet_status": "Internet access",
+    "reboot_gateway": "Restart gateway",
+    "radio_firmware": "Firmware {model}",
+    "radio_firmware_update_available": "Radio product firmware update",
 }
 
 

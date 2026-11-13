@@ -379,8 +379,15 @@
     },
     "entity": {
         "scene": {},
-        "switch": {},
+        "switch": {
+            "gateway_led": {
+                "name": "LED d'état"
+            }
+        },
         "button": {
+            "reboot_gateway": {
+                "name": "Redémarrer la passerelle"
+            },
             "acknowledge_events": {
                 "name": "Acquitter les événements"
             },
@@ -1162,6 +1169,32 @@
             }
         },
         "select": {
+            "gateway_led_color": {
+                "name": "Couleur de la LED d'état",
+                "state": {
+                    "white": "Blanc",
+                    "light_green": "Vert clair",
+                    "green": "Vert",
+                    "light_blue": "Bleu clair",
+                    "cyan": "Cyan",
+                    "ocean": "Bleu océan",
+                    "purple": "Violet",
+                    "pink": "Rose",
+                    "custom_pink": "Rose personnalisé",
+                    "coral": "Corail",
+                    "red": "Rouge",
+                    "orange": "Orange",
+                    "yellow": "Jaune",
+                    "custom_dd": "Couleur Delta Dore"
+                }
+            },
+            "gateway_update_mode": {
+                "name": "Mode de mise à jour du firmware",
+                "state": {
+                    "manual": "Manuel",
+                    "auto": "Automatique"
+                }
+            },
             "general_climate_mode": {
                 "name": "Mode général",
                 "state": {
@@ -1945,6 +1978,9 @@
         "lock": {},
         "weather": {},
         "update": {
+            "radio_firmware": {
+                "name": "Firmware {model}"
+            },
             "firmware": {
                 "name": "Firmware"
             }
@@ -3583,6 +3619,15 @@
             }
         },
         "binary_sensor": {
+            "gateway_ip_status": {
+                "name": "Réseau local"
+            },
+            "gateway_internet_status": {
+                "name": "Accès Internet"
+            },
+            "radio_firmware_update_available": {
+                "name": "Mise à jour des produits radio"
+            },
             "absence": {
                 "name": "Mode absence"
             },
