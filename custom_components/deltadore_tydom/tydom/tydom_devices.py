@@ -1437,6 +1437,10 @@ class TydomLevelCommandCover(TydomDevice):
         await self._send_level_command(self._command_for("TOGGLE"))
 
 
+class TydomImpulse(TydomLevelCommandCover):
+    """A stateless receiver operated by a single pulse."""
+
+
 class TydomGate(TydomLevelCommandCover):
     """represents a gate."""
 

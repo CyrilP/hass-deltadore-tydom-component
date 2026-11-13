@@ -26,6 +26,7 @@ from .tydom.tydom_devices import (
     TydomWindow,
     TydomDoor,
     TydomGate,
+    TydomImpulse,
     TydomGarage,
     TydomLight,
     TydomSwitch,
@@ -2035,6 +2036,7 @@ class Hub:
             TydomWindow: self._create_window_device,
             TydomDoor: self._create_door_device,
             TydomGate: self._create_gate_device,
+            TydomImpulse: self._create_impulse_device,
             TydomGarage: self._create_garage_device,
             TydomLight: self._create_light_device,
             TydomSwitch: self._create_switch_device,
@@ -3016,6 +3018,14 @@ class Hub:
             if self.add_binary_sensor_callback:
                 self.add_binary_sensor_callback([ha_device])
 
+        self.ha_devices[device.device_id] = ha_device
+        self._add_discovered_entities(ha_device.get_sensors())
+
+    async def _create_impulse_device(self, device: TydomImpulse) -> None:
+        """Expose a stateless pulse without implying a particular device type."""
+        ha_device = HAButton(device, self._hass, "Toggle", "toggle", primary=True)
+        if self.add_button_callback is not None:
+            self.add_button_callback([ha_device])
         self.ha_devices[device.device_id] = ha_device
         self._add_discovered_entities(ha_device.get_sensors())
 
