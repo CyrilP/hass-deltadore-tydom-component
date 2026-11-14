@@ -806,6 +806,86 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         )
         callback.assert_called_once_with()
 
+    async def test_product_defects_keep_product_and_details(self) -> None:
+        """CURRENT_DEFECTS records keep product metadata and every other value."""
+        client = MagicMock()
+        client.get_historic_cdata = AsyncMock(
+            return_value=[
+                {
+                    "values": {
+                        "step": 0,
+                        "index": 0,
+                        "nbElemTot": 2,
+                        "product": {
+                            "id": 4,
+                            "nameCustom": "CLT0755C",
+                            "typeShort": "CLT",
+                            "typeLong": "CLT 8000",
+                            "privateRadioIdentifier": "hidden",
+                        },
+                        "defects": ["BATTERY"],
+                    }
+                },
+                {
+                    "values": {
+                        "product": {"id": 2, "nameStd": "ENTRY", "number": 1, "zone": 7},
+                        "defects": ["BATTERY"],
+                    }
+                },
+                {"EOR": True},
+            ]
+        )
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+
+        result = await alarm.get_product_defects("CURRENT_DEFECTS", timeout=10.0)
+
+        self.assertEqual(
+            result,
+            [
+                {
+                    "id": 4,
+                    "name": "CLT0755C",
+                    "name_custom": "CLT0755C",
+                    "type_short": "CLT",
+                    "type_long": "CLT 8000",
+                    "details": {"defects": ["BATTERY"]},
+                },
+                {
+                    "id": 2,
+                    "name": "ENTRY",
+                    "name_standard": "ENTRY",
+                    "number": 1,
+                    "zone": 7,
+                    "details": {"defects": ["BATTERY"]},
+                },
+            ],
+        )
+        client.get_historic_cdata.assert_awaited_once_with(
+            "20", "10", "CURRENT_DEFECTS", nbElement=50, log_timeout=True, timeout=10.0
+        )
+
+    async def test_product_defects_expose_central_error(self) -> None:
+        """An error reply stays visible instead of looking like an empty list."""
+        client = MagicMock()
+        client.get_historic_cdata = AsyncMock(
+            return_value=[{"values": {"error": "error detected"}}, {"EOR": True}]
+        )
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+
+        result = await alarm.get_product_defects("AUTOPROTECTION")
+
+        self.assertEqual(result, [{"details": {"error": "error detected"}}])
+
+    async def test_product_defects_reject_unknown_view(self) -> None:
+        """Only the documented read-only defect views can be requested."""
+        client = MagicMock()
+        client.get_historic_cdata = AsyncMock()
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+
+        with self.assertRaises(ValueError):
+            await alarm.get_product_defects("ALL")
+        client.get_historic_cdata.assert_not_awaited()
+
     async def test_open_issues_does_not_replace_cache_with_central_error(self) -> None:
         """A temporary OPEN_ISSUES error must be retried by the alarm entity."""
         client = MagicMock()

@@ -233,6 +233,28 @@ get_open_issues:
     entity:
       integration: deltadore_tydom
       domain: alarm_control_panel
+get_product_defects:
+  name: Get alarm product defects
+  description: Retrieve, product by product, the defects currently reported by the TYXAL central (current defects, tamper or inactive products). Read-only.
+  target:
+    entity:
+      integration: deltadore_tydom
+      domain: alarm_control_panel
+  fields:
+    defect_type:
+      name: Defect view
+      description: Defect history view to read from the central.
+      required: false
+      default: "CURRENT_DEFECTS"
+      selector:
+        select:
+          options:
+            - label: Current defects
+              value: CURRENT_DEFECTS
+            - label: Tamper (autoprotection)
+              value: AUTOPROTECTION
+            - label: Inactive products
+              value: INACTIVE_PRODUCTS
 get_alarm_products:
   name: Get alarm products and zones
   description: Retrieve the products and zones configured on a TYXAL alarm. This service does not require the alarm PIN.

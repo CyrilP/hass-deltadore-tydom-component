@@ -718,6 +718,8 @@ TYXAL+ utiles dans Home Assistant :
 - `deltadore_tydom.acknowledge_events` acquitte les événements en attente ;
 - `deltadore_tydom.get_open_issues` renvoie les produits exacts signalés par la
   centrale comme empêchant un armement normal ;
+- `deltadore_tydom.get_product_defects` répertorie les produits actuellement en
+  défaut, en autoprotection ou inactifs, tels que signalés par la centrale ;
 - `deltadore_tydom.force_arm` arme explicitement un mode Absent, Présent ou
   Nuit configuré lorsqu'un armement normal a été refusé en raison de défauts ;
 - `deltadore_tydom.get_alarm_products` répertorie les produits et zones
@@ -834,6 +836,37 @@ Lorsque TYDOM transmet l'auteur d'une transition d'alarme, l'entité d'alarme
 expose `changed_by`, contenant le nom du code utilisateur ou du produit, ainsi
 que `changed_by_type`, dont la valeur est `access_code` ou `product`. Ces
 attributs décrivent la dernière transition d'armement ou de désarmement reçue.
+
+### Produits en défaut
+
+`deltadore_tydom.get_product_defects` est en lecture seule. Il demande à la
+centrale quels produits sont à l'origine des capteurs de défaut globaux, par
+exemple quel détecteur ou clavier a une pile faible lorsque
+`systbatterydefect` est actif.
+
+Le champ `defect_type` choisit la liste lue sur la centrale :
+
+- `CURRENT_DEFECTS` (par défaut) : produits ayant un défaut en cours, comme une
+  pile faible ;
+- `AUTOPROTECTION` : produits en autoprotection ;
+- `INACTIVE_PRODUCTS` : produits que la centrale considère comme inactifs.
+
+```yaml
+action: deltadore_tydom.get_product_defects
+target:
+  entity_id: alarm_control_panel.tyxal_alarm
+data:
+  defect_type: CURRENT_DEFECTS
+response_variable: defects
+```
+
+La réponse est regroupée par entité d'alarme, comme pour `get_events`. Chaque
+produit contient `id`, `name`, `name_custom`, `name_standard`, `number`,
+`type_short`, `type_long` et `zone` lorsque la centrale les fournit. Toutes les
+autres valeurs sont conservées telles quelles sous `details`, par exemple
+`details.defects: ["pile"]`, car le format de l'enregistrement n'est pas
+documenté. Une erreur renvoyée par la centrale reste visible dans
+`details.error`. Une liste vide signifie qu'aucun produit n'est signalé.
 
 ## Lecture de la programmation TYDOM — expérimentale
 
