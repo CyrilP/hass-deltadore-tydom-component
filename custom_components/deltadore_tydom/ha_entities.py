@@ -3540,8 +3540,12 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
                 return HVACMode.HEAT
 
         if self._uses_comfort_mode_pilot_wire:
+            # The season authorization can remain HEATING while this endpoint's
+            # pilot-wire order is locally stopped. The general lock above still
+            # takes precedence when the whole installation is Off.
+            thermic_level = getattr(self._device, "thermicLevel", None)
             authorization = getattr(self._device, "authorization", None)
-            if authorization == "STOP":
+            if thermic_level == "STOP" or authorization == "STOP":
                 return HVACMode.OFF
             if authorization == "HEATING":
                 return HVACMode.HEAT
@@ -3806,22 +3810,21 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
 
         if getattr(self, "_is_filpilote", False):
             if self._uses_comfort_mode_pilot_wire:
+                authorization = getattr(self._device, "authorization", None)
                 if hvac_mode == HVACMode.OFF:
-                    operation = self._device._tydom_client.put_devices_data(
-                        self._device._id,
-                        self._device._endpoint,
-                        "comfortMode",
-                        "STOP",
-                    )
+                    # Stop only this endpoint. comfortMode STOP can also put
+                    # the gateway's shared heating season into Off.
+                    operation = self._device.set_thermic_level("STOP")
                 elif getattr(self._device, "thermicLevel", None) in (None, "STOP"):
 
                     async def enable_heating() -> None:
-                        await self._device._tydom_client.put_devices_data(
-                            self._device._id,
-                            self._device._endpoint,
-                            "comfortMode",
-                            "HEATING",
-                        )
+                        if authorization != "HEATING":
+                            await self._device._tydom_client.put_devices_data(
+                                self._device._id,
+                                self._device._endpoint,
+                                "comfortMode",
+                                "HEATING",
+                            )
                         await self._device.set_thermic_level("COMFORT")
 
                     operation = enable_heating()
