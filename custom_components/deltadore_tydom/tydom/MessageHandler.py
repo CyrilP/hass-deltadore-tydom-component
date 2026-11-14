@@ -276,12 +276,11 @@ scenario_metadata = {}  # Store scenario metadata from /configs/file
 groups_metadata = {}  # Store group metadata from /configs/file: {group_id: {"usage": "light", "name": "TOTAL"}}
 groups_data = {}  # Store groups data: {group_id: {"devices": [device_ids], "name": group_name}}
 endpoint_config = {}  # Store endpoint-specific configuration from /configs/file
-removed_configured_radio_endpoint_uids: set[str] = set()
 remote_control_info = {}  # Store physical remote and button details by endpoint UID
-# Complete file snapshots are required when the gateway configuration must be
-# updated.  The normal lookup dictionaries above intentionally retain only the
-# fields used to create HA entities and cannot safely be written back.
-config_file_data: dict[str, Any] | None = None
+# Configuration endpoint ownership and file snapshots are scoped to a gateway.
+# The entity lookup maps remain keyed by TYDOM endpoint UID for compatibility.
+_configured_endpoint_data_by_gateway: dict[str, dict[str, dict[str, Any]]] = {}
+_removed_configured_radio_endpoint_uids_by_gateway: dict[str, set[str]] = {}
 groups_file_data: dict[str, Any] | None = None
 
 SUPPORTED_CONTROL_GROUP_USAGES = {"awning", "light", "plug", "shutter"}
@@ -581,6 +580,16 @@ class MessageHandler:
         """Initialize MessageHandler."""
         self.tydom_client = tydom_client
         self.cmd_prefix = cmd_prefix
+        gateway_id = getattr(tydom_client, "id", None)
+        self._gateway_id = str(
+            gateway_id if gateway_id is not None else id(tydom_client)
+        )
+        self._config_file_data: dict[str, Any] | None = None
+        self._removed_configured_radio_endpoint_uids = (
+            _removed_configured_radio_endpoint_uids_by_gateway.setdefault(
+                self._gateway_id, set()
+            )
+        )
         self._cdata_replies: list[Reply] = []
         self._end_reply_events: dict[str, asyncio.Event] = {}
         self._cdata_poll_events: dict[str, asyncio.Event] = {}
@@ -973,7 +982,7 @@ class MessageHandler:
             "/areas/data": self.parse_areas_data,
             "/home/hvac/data": partial(home_climate_message, "hvac"),
             "/home/absence": partial(home_climate_message, "absence"),
-            "/configs/file": MessageHandler.parse_config_data,
+            "/configs/file": self.parse_config_data,
             "/configs/gateway/api_mode": partial(no_op, "msg_api_mode"),
             "/devices/data": self.parse_devices_data,
             "/devices/cdata": self.parse_devices_cdata,
@@ -1401,44 +1410,57 @@ class MessageHandler:
                     data,
                 )
 
-    @staticmethod
-    async def parse_config_data(parsed, transaction_id):
-        """Parse config data."""
-        global config_file_data
+    async def parse_config_data(self, parsed, transaction_id):
+        """Parse config data for this gateway."""
         LOGGER.debug("parse_config_data : %s", parsed)
         if not isinstance(parsed, dict):
             LOGGER.warning("Ignoring malformed /configs/file response: %s", parsed)
             return []
-        config_file_data = copy.deepcopy(parsed)
+        self._config_file_data = copy.deepcopy(parsed)
 
-        # ``/configs/file`` is a complete snapshot. Remove mappings derived
-        # from its previous version before rebuilding them, otherwise a button
-        # removed from the gateway configuration keeps its old name/type and is
-        # recreated during the following device-data refresh.
-        previous_configured_uids = set(endpoint_config)
-        current_configured_uids = {
-            f"{endpoint['id_endpoint']}_{endpoint['id_device']}"
+        # /configs/file is a complete snapshot for one gateway. Keep the
+        # previous UID set per gateway so refreshing one entry cannot remove
+        # another entry's endpoints from the shared lookup maps.
+        previous_endpoint_data = _configured_endpoint_data_by_gateway.get(
+            self._gateway_id, {}
+        )
+        previous_configured_uids = set(previous_endpoint_data)
+        current_endpoint_data = {
+            f"{endpoint['id_endpoint']}_{endpoint['id_device']}": {
+                "usage": endpoint.get("last_usage") or "unknown"
+            }
             for endpoint in parsed.get("endpoints", [])
             if isinstance(endpoint, dict)
             and "id_endpoint" in endpoint
             and "id_device" in endpoint
         }
-        removed_configured_radio_endpoint_uids.update(
+        current_configured_uids = set(current_endpoint_data)
+        self._removed_configured_radio_endpoint_uids.update(
             unique_id
             for unique_id in previous_configured_uids - current_configured_uids
-            if endpoint_config[unique_id].get("usage")
+            if previous_endpoint_data[unique_id].get("usage")
             in {"remoteControl", "interrupter"}
         )
-        removed_configured_radio_endpoint_uids.difference_update(
+        self._removed_configured_radio_endpoint_uids.difference_update(
             current_configured_uids
         )
-        for unique_id in previous_configured_uids:
+
+        for unique_id in previous_configured_uids - current_configured_uids:
+            still_configured_elsewhere = any(
+                unique_id in endpoint_data
+                for gateway_id, endpoint_data in _configured_endpoint_data_by_gateway.items()
+                if gateway_id != self._gateway_id
+            )
+            if still_configured_elsewhere:
+                continue
             device_name.pop(unique_id, None)
             device_type.pop(unique_id, None)
             device_endpoint.pop(unique_id, None)
             device_tutorial_id.pop(unique_id, None)
             interrupter_endpoint_config.pop(unique_id, None)
-        endpoint_config.clear()
+            endpoint_config.pop(unique_id, None)
+
+        _configured_endpoint_data_by_gateway[self._gateway_id] = current_endpoint_data
         for i in parsed["endpoints"]:
             device_unique_id = str(i["id_endpoint"]) + "_" + str(i["id_device"])
 
@@ -1612,6 +1634,10 @@ class MessageHandler:
     async def parse_devices_data(self, parsed, transaction_id):
         """Parse device data."""
         LOGGER.debug("parse_devices_data : %s", parsed)
+        config_file_data = self._config_file_data
+        removed_configured_radio_endpoint_uids = (
+            self._removed_configured_radio_endpoint_uids
+        )
         devices = []
         seen_unique_ids = {}  # Track unique_ids to detect collisions
 
