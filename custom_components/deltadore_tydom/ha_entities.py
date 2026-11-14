@@ -717,7 +717,6 @@ class GenericSensor(SensorEntity):
         "jobsRM",
         "indexTimeOn",
         "timeOnCpt",
-        "loadSheddingOn",
         "maintenanceNeeded",
         # TYDOM gateway firmware, protocol and registration telemetry.
         "apiMode",
@@ -3075,6 +3074,41 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
             and "w" in thermic_level_permission
             and {"AUTO", "ECO", "COMFORT"}.issubset(thermic_level_values)
         )
+        use_mode_meta = (metadata or {}).get("useMode")
+        use_mode_permission = (
+            use_mode_meta.get("permission", "")
+            if isinstance(use_mode_meta, dict)
+            else ""
+        )
+        use_mode_values = (
+            set(use_mode_meta.get("enum_values") or [])
+            if isinstance(use_mode_meta, dict)
+            else set()
+        )
+        heat_setpoint_meta = (metadata or {}).get("heatSetpoint")
+        override_setpoint_meta = (metadata or {}).get("overrideSetpoint")
+        override_time_meta = (metadata or {}).get("overrideRemainingTime")
+        self._uses_scheduled_local_mode = (
+            self._uses_local_mode
+            and not self._is_area_controlled
+            and not self._device.uses_area_local_mode
+            and isinstance(heat_setpoint_meta, dict)
+            and {"r", "w"}.issubset(heat_setpoint_meta.get("permission", ""))
+            and "overrideThermicLevel" not in (metadata or {})
+            and {"STOP", "ABSENCE"}.issubset(self._local_mode_values)
+            and {"r", "w"}.issubset(use_mode_permission)
+            and {"SCHED", "MANUAL"}.issubset(use_mode_values)
+        )
+        self._supports_scheduled_temperature_override = (
+            self._uses_scheduled_local_mode
+            and "OVERRIDE" in use_mode_values
+            and isinstance(heat_setpoint_meta, dict)
+            and "w" in heat_setpoint_meta.get("permission", "")
+            and isinstance(override_setpoint_meta, dict)
+            and "w" in override_setpoint_meta.get("permission", "")
+            and isinstance(override_time_meta, dict)
+            and {"r", "w"}.issubset(override_time_meta.get("permission", ""))
+        )
         # A zone that carries localMode is driven through it exclusively.  It
         # would otherwise also satisfy the pilot-wire test when it exposes no
         # setpoint, and the two paths disagree: most properties check
@@ -3140,13 +3174,14 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
             self._attr_supported_features &= ~ClimateEntityFeature.TARGET_TEMPERATURE
 
         if self._uses_local_mode:
-            # RE2020 area controllers retain their advertised heating/cooling
-            # modes; only the legacy heating-only zones reduce this list.
+            # Keep the advertised area modes intact. Standalone local-mode
+            # zones use the smaller set supported by their own endpoint.
             if not self._device.uses_area_local_mode:
                 self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
-            # Mixed profiles may additionally advertise real Eco/Comfort/Auto
-            # choices on thermicLevel; retain those while keeping localMode as
-            # the source for off and absence.
+                if self._uses_scheduled_local_mode:
+                    self._attr_hvac_modes.append(HVACMode.AUTO)
+            # Mixed profiles may additionally advertise Eco/Comfort on
+            # thermicLevel while localMode controls Off and Absence.
             self._attr_preset_modes = []
             if self._uses_local_mode_thermic_presets:
                 if "ECO" in thermic_level_values:
@@ -3209,15 +3244,20 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
                 | ClimateEntityFeature.TURN_OFF
                 | ClimateEntityFeature.FAN_MODE
             )
-        if not self._device.is_area_trv:
-            return features
-
-        return (features | ClimateEntityFeature.TARGET_TEMPERATURE) & ~(
-            ClimateEntityFeature.TURN_OFF
-            | ClimateEntityFeature.TURN_ON
-            | ClimateEntityFeature.PRESET_MODE
-            | ClimateEntityFeature.FAN_MODE
-        )
+        if self._device.is_area_trv:
+            return (features | ClimateEntityFeature.TARGET_TEMPERATURE) & ~(
+                ClimateEntityFeature.TURN_OFF
+                | ClimateEntityFeature.TURN_ON
+                | ClimateEntityFeature.PRESET_MODE
+                | ClimateEntityFeature.FAN_MODE
+            )
+        if (
+            self._uses_scheduled_local_mode
+            and not self._supports_scheduled_temperature_override
+            and self.hvac_mode == HVACMode.AUTO
+        ):
+            return features & ~ClimateEntityFeature.TARGET_TEMPERATURE
+        return features
 
     @property
     def hvac_modes(self) -> list[HVACMode]:
@@ -3527,11 +3567,17 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
 
         if self._uses_local_mode:
             local_mode = getattr(self._device, "localMode", None)
-            # localMode is the zone's on/off order. A separate thermicLevel
-            # frost-protection switch must not turn an enabled zone Off (#540).
-            if local_mode in self.OFF_LOCAL_MODES:
+            if local_mode in self.OFF_LOCAL_MODES and not (
+                self._uses_scheduled_local_mode and local_mode == "ANTI_FROST"
+            ):
                 return HVACMode.OFF
             if local_mode is not None:
+                if (
+                    self._uses_scheduled_local_mode
+                    and local_mode == "NORMAL"
+                    and getattr(self._device, "useMode", None) in {"SCHED", "OVERRIDE"}
+                ):
+                    return HVACMode.AUTO
                 authorization = getattr(self._device, "authorization", None)
                 if authorization == "STOP":
                     return HVACMode.OFF
@@ -3615,11 +3661,18 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
         if self._uses_local_mode:
             if self._resolve_hvac_mode() == HVACMode.OFF:
                 return HVACAction.OFF
-            # The app's frost switch is distinct from localMode. It can
-            # withdraw every setpoint while leaving the zone enabled. Without
-            # an active target, do not claim that the zone is delivering heat.
+            # Frost protection can leave the zone enabled while withholding a
+            # usable heating target. Keep the recent Tywell behavior intact.
             if getattr(self._device, "thermicLevel", None) == "ANTI_FROST":
                 return HVACAction.IDLE
+            if self._uses_scheduled_local_mode:
+                if getattr(self._device, "loadSheddingOn", False) is True:
+                    return HVACAction.IDLE
+                if (
+                    getattr(self._device, "openingDetected", False) is True
+                    and getattr(self._device, "antiFrostWhenOff", None) is False
+                ):
+                    return HVACAction.IDLE
 
         authorization = getattr(self._device, "authorization", None)
         thermic_level = getattr(self._device, "thermicLevel", None)
@@ -3702,17 +3755,32 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
         if self._device.general_control_lock == "off":
             return None
         if self._uses_local_mode:
-            if self._resolve_hvac_mode() == HVACMode.OFF:
+            local_mode = getattr(self._device, "localMode", None)
+            scheduled_anti_frost = (
+                self._uses_scheduled_local_mode and local_mode == "ANTI_FROST"
+            )
+            if self._resolve_hvac_mode() == HVACMode.OFF and not scheduled_anti_frost:
                 return None
             if (
-                getattr(self._device, "localMode", None) == "NORMAL"
+                local_mode == "NORMAL"
                 and getattr(self._device, "thermicLevel", None) in self.OFF_LOCAL_MODES
             ):
-                # An enabled zone can still be in frost protection, with no
-                # active heating target. In particular, the area's 30 C frost
-                # feedback is not a heating consigne. Absence keeps its own
-                # reported target; requested temperatures stay separate above.
+                # An enabled zone can still be in frost protection. Keep the
+                # area's frost feedback separate from the saved heating target.
                 return None
+            if self._uses_scheduled_local_mode:
+                local_mode_setpoint = self._device._active_local_mode_setpoint()
+                if local_mode_setpoint is not None:
+                    setpoint = getattr(self._device, local_mode_setpoint, None)
+                    if setpoint is not None:
+                        return float(setpoint)
+                if (
+                    local_mode == "NORMAL"
+                    and getattr(self._device, "useMode", None) == "SCHED"
+                ):
+                    scheduled = getattr(self._device, "heatSetpoint", None)
+                    if scheduled is not None:
+                        return float(scheduled)
         if not self._device.is_area_trv and getattr(self._device, "useMode", None) in {
             "MANUAL",
             "OVERRIDE",
@@ -3843,10 +3911,30 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
                     "hvac_mode", hvac_mode, self._device.set_thermic_level("COMFORT")
                 )
             return
+        if self._uses_scheduled_local_mode and hvac_mode in (
+            HVACMode.OFF,
+            HVACMode.HEAT,
+            HVACMode.AUTO,
+        ):
+
+            async def set_scheduled_zone_mode() -> None:
+                if hvac_mode == HVACMode.OFF:
+                    await self._device.set_local_mode("STOP")
+                    return
+
+                if getattr(self._device, "localMode", None) != "NORMAL":
+                    await self._device.set_local_mode("NORMAL")
+                use_mode = "SCHED" if hvac_mode == HVACMode.AUTO else "MANUAL"
+                if getattr(self._device, "useMode", None) != use_mode:
+                    await self._device.set_use_mode(use_mode)
+
+            await self._async_track_command(
+                "hvac_mode", hvac_mode, set_scheduled_zone_mode()
+            )
+            return
         if self._uses_local_mode and hvac_mode in (HVACMode.OFF, HVACMode.HEAT):
-            # Drive the same register the app does.  Writing comfortMode STOP
-            # instead would stop the zone through the season register, which is
-            # not the state the app's on/off button produces.
+            # Keep the established app-compatible behaviour for localMode
+            # zones that do not advertise the separate schedule/manual register.
             await self._async_track_command(
                 "hvac_mode",
                 hvac_mode,
@@ -4087,6 +4175,23 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
         temperature = kwargs.get(ATTR_TEMPERATURE)
+        if self._uses_scheduled_local_mode and self.hvac_mode == HVACMode.AUTO:
+            if (
+                self._supports_scheduled_temperature_override
+                and getattr(self._device, "useMode", None) == "SCHED"
+            ):
+                await self._async_track_command(
+                    "temperature",
+                    temperature,
+                    self._device.set_scheduled_override_temperature(str(temperature)),
+                )
+                return
+            if not self._supports_scheduled_temperature_override:
+                raise HomeAssistantError(
+                    "Switch to Heat mode before changing a temperature while "
+                    "following the schedule."
+                )
+
         self._device.validate_temperature(temperature)
         if self._device.is_area_trv:
             # Area thermostat commands use a JSON numeric value. The physical
