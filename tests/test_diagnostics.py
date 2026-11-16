@@ -16,6 +16,8 @@ import types
 from unittest import TestCase
 
 REDACTED = "**REDACTED**"
+_MISSING = object()
+_original_modules = {}
 
 
 def _async_redact_data(data, to_redact):
@@ -39,6 +41,7 @@ def _async_redact_data(data, to_redact):
 
 def _module(name: str, **attributes) -> types.ModuleType:
     """Install a minimal module so the diagnostics helper can import it."""
+    _original_modules.setdefault(name, sys.modules.get(name, _MISSING))
     module = types.ModuleType(name)
     for attribute, value in attributes.items():
         setattr(module, attribute, value)
@@ -84,8 +87,16 @@ _spec = importlib.util.spec_from_file_location(
 )
 assert _spec is not None and _spec.loader is not None
 diagnostics = importlib.util.module_from_spec(_spec)
+_original_modules.setdefault(_spec.name, sys.modules.get(_spec.name, _MISSING))
 sys.modules[_spec.name] = diagnostics
-_spec.loader.exec_module(diagnostics)
+try:
+    _spec.loader.exec_module(diagnostics)
+finally:
+    for name, original in _original_modules.items():
+        if original is _MISSING:
+            sys.modules.pop(name, None)
+        else:
+            sys.modules[name] = original
 
 
 class FakeDevice:
@@ -316,9 +327,7 @@ class DeviceDiagnosticsTests(TestCase):
         """Only the device matching the registry identifier is dumped."""
         hub = FakeHub([_boiler(), _tywatt()])
         entry = FakeEntry({})
-        device_entry = FakeDeviceEntry(
-            {("deltadore_tydom", "1791093691_1791093691")}
-        )
+        device_entry = FakeDeviceEntry({("deltadore_tydom", "1791093691_1791093691")})
         result = asyncio.run(
             diagnostics.async_get_device_diagnostics(_hass(hub), entry, device_entry)
         )
@@ -353,9 +362,7 @@ class DeviceDiagnosticsTests(TestCase):
         """A decimal endpoint identifier is kept to cross-reference devices."""
         hub = FakeHub([_boiler()])
         entry = FakeEntry({})
-        device_entry = FakeDeviceEntry(
-            {("deltadore_tydom", "1791093691_1791093691")}
-        )
+        device_entry = FakeDeviceEntry({("deltadore_tydom", "1791093691_1791093691")})
         result = asyncio.run(
             diagnostics.async_get_device_diagnostics(_hass(hub), entry, device_entry)
         )
@@ -420,7 +427,10 @@ class AnonymisationHardeningTests(TestCase):
 
     def test_keeps_empty_sensitive_value(self) -> None:
         """An empty sensitive value carries nothing and is left untouched."""
-        self.assertEqual(diagnostics._redact({"password": "", "uid": None}), {
-            "password": "",
-            "uid": None,
-        })
+        self.assertEqual(
+            diagnostics._redact({"password": "", "uid": None}),
+            {
+                "password": "",
+                "uid": None,
+            },
+        )

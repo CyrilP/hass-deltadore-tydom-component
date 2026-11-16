@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import ast
+import asyncio
+from contextlib import suppress
 from pathlib import Path
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 
 def _load_refresh_cdata():
@@ -33,7 +35,7 @@ def _load_refresh_cdata():
     )
     isolated_module = ast.Module(body=[isolated_class], type_ignores=[])
     ast.fix_missing_locations(isolated_module)
-    namespace = {"LOGGER": MagicMock()}
+    namespace = {"LOGGER": MagicMock(), "asyncio": asyncio, "suppress": suppress}
     exec(compile(isolated_module, source_path, "exec"), namespace)
     return namespace["RefreshCdataMixin"]
 
@@ -50,15 +52,22 @@ class TywattRefreshIntervalTests(IsolatedAsyncioTestCase):
         hub._shutting_down = False
         hub._refresh_interval = 1800
         hub._tydom_client = MagicMock()
-        hub._tydom_client.poll_devices_data_5m = AsyncMock()
+        hub._tydom_client.poll_device_urls_5m = ["https://tydom.test/cdata"]
+        poll_event = asyncio.Event()
+        hub._tydom_client._poll_device_urls_5m_event = poll_event
 
-        async def sleep_once(interval: int) -> None:
-            self.assertEqual(interval, 1800)
+        async def poll_once() -> None:
             hub._shutting_down = True
+            poll_event.set()
 
-        hub._interruptible_sleep = sleep_once
+        hub._tydom_client.poll_devices_data_5m = AsyncMock(side_effect=poll_once)
 
-        await hub.refresh_cdata()
+        async def wait_for_interval(awaitable, timeout: int) -> None:
+            self.assertEqual(timeout, 1800)
+            await awaitable
+
+        with patch.object(asyncio, "wait_for", new=wait_for_interval):
+            await hub.refresh_cdata()
 
         hub._tydom_client.poll_devices_data_5m.assert_awaited_once_with()
 
