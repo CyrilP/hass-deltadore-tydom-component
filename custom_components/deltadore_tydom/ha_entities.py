@@ -3804,6 +3804,32 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
             )
             return
 
+        if self._device.uses_individual_thermic_stop:
+            if hvac_mode == HVACMode.OFF:
+                await self._async_track_command(
+                    "hvac_mode", hvac_mode, self._device.set_hvac_mode("STOP")
+                )
+                return
+            if (
+                hvac_mode == HVACMode.HEAT
+                and getattr(self._device, "thermicLevel", None) == "STOP"
+            ):
+                # This Calybox profile restores an individually stopped zone
+                # by setting its target.  authorization/comfortMode represent
+                # the shared heating season, so never use them here.
+                target = self._last_confirmed_targets.get(HVACMode.HEAT)
+                if target is None:
+                    raise HomeAssistantError(
+                        translation_domain=DOMAIN,
+                        translation_key="resume_target_unknown",
+                    )
+                await self._async_track_command(
+                    "hvac_mode",
+                    hvac_mode,
+                    self.async_set_temperature(temperature=target),
+                )
+                return
+
         if getattr(self, "_is_filpilote", False):
             if self._uses_comfort_mode_pilot_wire:
                 if hvac_mode == HVACMode.OFF:

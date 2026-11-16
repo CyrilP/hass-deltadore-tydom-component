@@ -900,6 +900,44 @@ class TydomBoiler(TydomDevice):
             and value in command.get("enum_values", [])
         )
 
+    @property
+    def uses_individual_thermic_stop(self) -> bool:
+        """Return whether STOP is an endpoint-only thermic-level command.
+
+        Some Calybox 2020 WT dry-contact zones expose the installation season
+        through ``authorization`` and ``comfortMode``, while their individual
+        on/off command is the otherwise unusual ``thermicLevel = STOP``.
+        Match the complete advertised capability signature so other zone and
+        pilot-wire profiles retain their existing command paths.
+        """
+        metadata = self._metadata or {}
+
+        def has_register(
+            name: str, permission: str, values: set[str] | None = None
+        ) -> bool:
+            register = metadata.get(name)
+            if (
+                not isinstance(register, dict)
+                or register.get("permission") != permission
+            ):
+                return False
+            return values is None or set(register.get("enum_values") or []) == values
+
+        setpoint = metadata.get("setpoint")
+        return (
+            not self.is_area_controlled
+            and "localMode" not in metadata
+            and not hasattr(self, "localMode")
+            and has_register("authorization", "rw", {"STOP", "HEATING"})
+            and has_register("comfortMode", "w", {"STOP", "HEATING"})
+            and has_register("thermicLevel", "rw", {"STOP"})
+            and has_register("hvacMode", "rw", {"NORMAL", "STOP", "ANTI_FROST"})
+            and isinstance(setpoint, dict)
+            and setpoint.get("permission") == "rw"
+            and setpoint.get("min") is not None
+            and setpoint.get("max") is not None
+        )
+
     def _temperature_command_name(self) -> str:
         """Select the writable setpoint register for the current HVAC direction."""
         if self.uses_area_local_mode:
@@ -965,6 +1003,12 @@ class TydomBoiler(TydomDevice):
             # Fallback for controllers using area authorization.
             await self._tydom_client.put_area_data(
                 self.area_id, "authorization", area_mode
+            )
+            return
+
+        if mode == "STOP" and self.uses_individual_thermic_stop:
+            await self._tydom_client.put_devices_data(
+                self._id, self._endpoint, "thermicLevel", "STOP"
             )
             return
 
