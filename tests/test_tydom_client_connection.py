@@ -95,6 +95,24 @@ _module(
     TydomAlarmCommandError=_AlarmCommandError,
 )
 
+home_climate_name = "custom_components.deltadore_tydom.home_climate"
+home_climate_path = (
+    Path(__file__).parents[1]
+    / "custom_components"
+    / "deltadore_tydom"
+    / "home_climate.py"
+)
+home_climate_spec = importlib.util.spec_from_file_location(
+    home_climate_name, home_climate_path
+)
+assert home_climate_spec is not None and home_climate_spec.loader is not None
+home_climate_module = importlib.util.module_from_spec(home_climate_spec)
+_original_modules.setdefault(
+    home_climate_name, sys.modules.get(home_climate_name, _MISSING)
+)
+sys.modules[home_climate_name] = home_climate_module
+home_climate_spec.loader.exec_module(home_climate_module)
+
 module_name = "custom_components.deltadore_tydom.tydom.tydom_client"
 client_path = (
     Path(__file__).parents[1]
@@ -335,33 +353,9 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
             True,
         )
 
-    async def test_set_local_gateway_password_uses_gateway_endpoint(self) -> None:
-        """The local password update uses the generic gateway endpoint."""
-        client = self._client()
-        client.get_reply_to_request = AsyncMock(return_value=[])
-
-        await client.async_set_local_gateway_password("NewPassword1")
-
-        client.get_reply_to_request.assert_awaited_once_with(
-            "PUT",
-            "/configs/gateway/password",
-            body={"password": "NewPassword1"},
-        )
-        self.assertEqual(client._password, "NewPassword1")
-
-    async def test_set_local_gateway_password_keeps_previous_password_on_failure(
-        self,
-    ) -> None:
-        """A rejected update must not poison the next Digest authentication."""
-        client = self._client()
-        client.get_reply_to_request = AsyncMock(
-            side_effect=TydomClientApiClientCommunicationError("rejected")
-        )
-
-        with self.assertRaises(TydomClientApiClientCommunicationError):
-            await client.async_set_local_gateway_password("NewPassword1")
-
-        self.assertEqual(client._password, "password")
+    def test_unvalidated_local_gateway_password_change_is_not_exposed(self) -> None:
+        """Keep the refused, unverified password-write API unavailable."""
+        self.assertFalse(hasattr(TydomClient, "async_set_local_gateway_password"))
 
     async def test_delete_device_uses_parent_device_route(self) -> None:
         """Permanent removal deletes the complete product rather than one endpoint."""
@@ -391,7 +385,7 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
         config = {"endpoints": [], "groups": []}
         groups = {"groups": []}
         client.get_reply_to_request = AsyncMock(
-            side_effect=[[[config]], [[groups]], [], []]
+            side_effect=[[config], [groups], [], []]
         )
 
         self.assertEqual(await client.get_config_file_document(), config)
@@ -419,21 +413,6 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
         client.get_reply_to_request.assert_awaited_once_with(
             "DELETE", "/devices/device%2F1/endpoints/endpoint%202"
         )
-
-    async def test_set_local_gateway_password_rejects_cloud_mediation(self) -> None:
-        """The password-changing API must remain a direct local operation."""
-        client = TydomClient(
-            None,
-            "test",
-            "001122334455",
-            "password",
-            host="mediation.tydom.com",
-        )
-
-        with self.assertRaisesRegex(
-            client_module.TydomClientApiClientError, "direct local connection"
-        ):
-            await client.async_set_local_gateway_password("NewPassword1")
 
     async def test_legacy_alarm_zone_commands_are_still_split(self) -> None:
         """Legacy arm commands must continue to address each configured part."""
@@ -569,9 +548,7 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
 
         await client.post_device_discovery(payload)
 
-        client.send_request.assert_awaited_once_with(
-            "POST", "/devices", body=payload
-        )
+        client.send_request.assert_awaited_once_with("POST", "/devices", body=payload)
         self.assertEqual(client._device_discovery_endpoint, "/devices")
 
     async def test_product_discovery_remembers_the_compatibility_action(self) -> None:
@@ -597,9 +574,7 @@ class TestManagedConnection(IsolatedAsyncioTestCase):
             b"<html>optional endpoint unavailable</html>"
         )
         connection = _websocket()
-        connection.receive = AsyncMock(
-            return_value=MagicMock(type=2, data=response)
-        )
+        connection.receive = AsyncMock(return_value=MagicMock(type=2, data=response))
         client._connection = connection
         client._connection_ready = True
         client._message_handler.route_response = AsyncMock(return_value=None)

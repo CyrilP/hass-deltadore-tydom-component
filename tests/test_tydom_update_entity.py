@@ -49,6 +49,7 @@ def _load_haty_dom_class():
         "UpdateEntityFeature": SimpleNamespace(INSTALL="install"),
         "UpdateEntity": type("UpdateEntity", (), {}),
         "HAEntity": type("HAEntity", (), {}),
+        "EntityCategory": SimpleNamespace(CONFIG="config", DIAGNOSTIC="diagnostic"),
     }
     exec(compile(isolated_module, source_path, "exec"), namespace)
     return namespace["HATydom"]

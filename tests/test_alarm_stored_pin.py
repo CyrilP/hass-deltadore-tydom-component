@@ -256,8 +256,13 @@ class StoredAlarmPinRegistrationTests(IsolatedAsyncioTestCase):
             "async_get_current_platform": lambda: platform,
         }
         exec(compile(module, source_path, "exec"), namespace)
+        hub = SimpleNamespace(
+            entity_profile=SimpleNamespace(
+                wrap_adder=lambda _platform_name, callback: callback
+            )
+        )
         await namespace["async_setup_entry"](
-            SimpleNamespace(data={"deltadore_tydom": {"entry": SimpleNamespace()}}),
+            SimpleNamespace(data={"deltadore_tydom": {"entry": hub}}),
             SimpleNamespace(entry_id="entry"),
             lambda _: None,
         )

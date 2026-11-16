@@ -56,6 +56,7 @@ def _load_generic_sensor_class():
         "PERCENTAGE": "%",
         "SensorDeviceClass": SensorDeviceClass,
         "SensorEntity": SensorEntity,
+        "Tydom": type("Tydom", (), {}),
         "SensorEntityDescription": SensorEntityDescription,
         "ranged_value_to_percentage": lambda value_range, value: round(
             (value - value_range[0]) * 100 / (value_range[1] - value_range[0])
@@ -101,9 +102,7 @@ class CoverPositionSensorTests(TestCase):
         device = SimpleNamespace(
             device_id="tywell_control_1",
             battLevel=2,
-            _metadata={
-                "battLevel": {"min": 0, "max": 2, "step": 1, "unit": "NA"}
-            },
+            _metadata={"battLevel": {"min": 0, "max": 2, "step": 1, "unit": "NA"}},
         )
 
         sensor = GenericSensor(

@@ -820,6 +820,7 @@ class EntityRegistryNameTests(IsolatedAsyncioTestCase):
         """Moving technical entities keeps IDs, custom names and disabled choices."""
         with TemporaryDirectory() as config_dir:
             hass = HomeAssistant(config_dir)
+            hass.config_entries = SimpleNamespace(async_wait_initialized=AsyncMock())
             dr.async_setup(hass)
             await dr.async_load(hass)
             registry = er.async_get(hass)
@@ -860,6 +861,7 @@ class EntityRegistryNameTests(IsolatedAsyncioTestCase):
         """Reuse the existing registry ID after translating its original name."""
         with TemporaryDirectory() as config_dir:
             hass = HomeAssistant(config_dir)
+            hass.config_entries = SimpleNamespace(async_wait_initialized=AsyncMock())
             dr.async_setup(hass)
             await dr.async_load(hass)
             registry = er.async_get(hass)

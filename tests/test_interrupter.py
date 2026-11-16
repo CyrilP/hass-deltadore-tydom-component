@@ -82,6 +82,7 @@ class TestInterrupter(IsolatedAsyncioTestCase):
             "groups_metadata",
             "groups_data",
             "interrupter_endpoint_config",
+            "removed_configured_radio_endpoint_uids",
             "interrupter_info",
         ):
             getattr(handler_module, mapping_name).clear()
@@ -209,7 +210,9 @@ class TestInterrupter(IsolatedAsyncioTestCase):
             {device.interrupter_model for device in devices}, {"TYXIA 2600"}
         )
 
-    async def test_pending_switch_button_is_restored_from_configured_sibling(self) -> None:
+    async def test_pending_switch_button_is_restored_from_configured_sibling(
+        self,
+    ) -> None:
         """A re-added wall-switch channel must not remain TYDOM's Produit N."""
         device_id = 1759742040
         endpoint_ids = [1759742040, 1759742338]
@@ -275,14 +278,52 @@ class TestInterrupter(IsolatedAsyncioTestCase):
             ),
         )
 
+        configured_endpoints = []
+        configured_groups = []
+        group_records = []
         for device_id, endpoints, group_id, name in captures:
-            await self._configure_switch(
-                device_id=device_id,
-                endpoint_ids=endpoints,
-                endpoint_buttons=["A", "B"],
-                group_id=group_id,
-                group_name=name,
+            configured_endpoints.extend(
+                {
+                    "id_device": device_id,
+                    "id_endpoint": endpoint_id,
+                    "name": f"CG_DD_COMMON_BUTTON{button}",
+                    "first_usage": "interrupter",
+                    "last_usage": "interrupter",
+                    "widget_behavior": {
+                        "action": "TOGGLE",
+                        "tutorial_id": f"switch_tyxia2600_btn_{button.lower()}",
+                    },
+                }
+                for endpoint_id, button in zip(endpoints, ["A", "B"], strict=True)
             )
+            configured_groups.append(
+                {
+                    "id": group_id,
+                    "name": name,
+                    "usage": "interrupter",
+                    "type": "relatedendpoints",
+                    "widget_behavior": {"tutorial_id": "switch_tyxia2600"},
+                }
+            )
+            group_records.append(
+                {
+                    "id": group_id,
+                    "devices": [
+                        {
+                            "id": device_id,
+                            "endpoints": [
+                                {"id": endpoint_id} for endpoint_id in endpoints
+                            ],
+                        }
+                    ],
+                }
+            )
+
+        await self.handler.parse_config_data(
+            {"endpoints": configured_endpoints, "groups": configured_groups}, None
+        )
+        groups = await self.handler.parse_groups_file({"groups": group_records}, None)
+        self.assertEqual(groups, [])
 
         self.assertEqual(
             {info["name"] for info in handler_module.interrupter_info.values()},
