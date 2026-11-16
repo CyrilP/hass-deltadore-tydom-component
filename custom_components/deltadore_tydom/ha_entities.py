@@ -2123,6 +2123,8 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyIndexECSWatt": SensorDeviceClass.ENERGY,
         "energyIndexHeatGas": SensorDeviceClass.ENERGY,
         "energyIndex": SensorDeviceClass.ENERGY,
+        # The reported total gas index represents litres, not watt-hours.
+        "energyIndex_GAS_TOTAL": SensorDeviceClass.GAS,
         "energyIndex_WATER_TOTAL": SensorDeviceClass.WATER,
         "energyDistrib": SensorDeviceClass.ENERGY,
         "outTemperature": SensorDeviceClass.TEMPERATURE,
@@ -2211,6 +2213,7 @@ class HAEnergy(SensorEntity, HAEntity):
         "energyIndexECSWatt": UnitOfEnergy.WATT_HOUR,
         "energyIndexHeatGas": UnitOfEnergy.WATT_HOUR,
         "energyIndex": UnitOfEnergy.WATT_HOUR,
+        "energyIndex_GAS_TOTAL": "L",
         "energyIndex_WATER_TOTAL": "L",
         "energyDistrib": UnitOfEnergy.WATT_HOUR,
         "outTemperature": UnitOfTemperature.CELSIUS,
