@@ -750,6 +750,25 @@ class MessageHandler:
         if event := self._end_reply_events.pop(transaction_id, None):
             event.set()
 
+    def _fail_tracked_cdata_reply(
+        self,
+        transaction_id: str | None,
+        device_id: Any,
+        endpoint: dict[str, Any],
+    ) -> None:
+        """Resolve a tracked cdata read whose endpoint reported an error."""
+        if transaction_id in (None, "0"):
+            return
+        event = self._end_reply_events.get(transaction_id)
+        if event is None:
+            return
+        self._reply_errors[transaction_id] = (
+            f"endpoint {endpoint.get('id')} of device {device_id} "
+            f"returned error {endpoint.get('error')}"
+        )
+        self.remove_reply(transaction_id)
+        event.set()
+
     def _complete_empty_reply(self, transaction_id: str) -> None:
         """Complete a tracked request acknowledged without a response body."""
         event = self._end_reply_events.pop(transaction_id, None)
@@ -857,12 +876,18 @@ class MessageHandler:
                 # Most configuration endpoints respond with one JSON document,
                 # not with cdata.  Preserve that document for callers which
                 # deliberately wait for a fresh file before modifying it.
-                # cdata requests complete themselves in parse_devices_cdata.
+                # Streamed /devices/cdata messages of a tracked GET complete
+                # themselves in parse_devices_cdata (histo waits for EOR); a
+                # complete direct reply to that GET still completes here.
                 if (
                     transaction_id
                     and transaction_id in self._end_reply_events
-                    and transaction_id not in self._cdata_get_transactions
+                    and not (
+                        transaction_id in self._cdata_get_transactions
+                        and uri_origin == "/devices/cdata"
+                    )
                 ):
+                    self._cdata_get_transactions.discard(transaction_id)
                     event = self._end_reply_events.pop(transaction_id)
                     parsed: Any = parsed_message.body
                     with contextlib.suppress(json.decoder.JSONDecodeError):
@@ -2282,6 +2307,9 @@ class MessageHandler:
             for endpoint in i["endpoints"]:
                 if endpoint["error"] != 0:
                     cdata_poll_complete = True
+                    self._fail_tracked_cdata_reply(
+                        transaction_id, i.get("id"), endpoint
+                    )
                     continue
 
                 if endpoint["error"] == 0 and len(endpoint["cdata"]) > 0:
