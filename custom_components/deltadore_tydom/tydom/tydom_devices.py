@@ -749,7 +749,12 @@ class TydomBoiler(TydomDevice):
         elif authorization == "COOLING":
             candidates = ("coolSetpoint", "setpoint", "heatSetpoint")
         elif authorization == "HEATING":
-            candidates = ("heatSetpoint", "setpoint", "coolSetpoint")
+            candidates = (
+                "heatSetpoint",
+                "heatingSetpoint",
+                "setpoint",
+                "coolSetpoint",
+            )
         else:
             candidates = ("setpoint", "heatSetpoint", "coolSetpoint")
 
@@ -806,7 +811,7 @@ class TydomBoiler(TydomDevice):
                 ("minHeatSetpoint", "minSetpoint"),
                 ("maxHeatSetpoint", "maxSetpoint"),
             )
-            metadata_names = ("heatSetpoint", "setpoint")
+            metadata_names = ("heatSetpoint", "heatingSetpoint", "setpoint")
         else:
             live_names = (
                 ("minSetpoint", "minHeatSetpoint", "minCoolSetpoint"),
@@ -854,7 +859,7 @@ class TydomBoiler(TydomDevice):
         if authorization == "COOLING":
             metadata_names = ("coolSetpoint", "setpoint")
         elif authorization == "HEATING":
-            metadata_names = ("heatSetpoint", "setpoint")
+            metadata_names = ("heatSetpoint", "heatingSetpoint", "setpoint")
         else:
             metadata_names = ("setpoint", "heatSetpoint", "coolSetpoint")
 
@@ -958,6 +963,8 @@ class TydomBoiler(TydomDevice):
                 return "overrideSetpoint"
             if self._is_writable("heatSetpoint"):
                 return "heatSetpoint"
+            if self._is_writable("heatingSetpoint"):
+                return "heatingSetpoint"
         return "setpoint"
 
     async def set_hvac_mode(self, mode):

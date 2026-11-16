@@ -693,6 +693,76 @@ class RequestedClimateTargetTests(IsolatedAsyncioTestCase):
         self.addCleanup(entity._get_command_tracker().close)
         return entity, client
 
+    async def test_dual_zone_heating_setpoint_alias_uses_shared_endpoint(self):
+        """Write each zone's heating setpoint through its own device ID."""
+        client = MagicMock()
+        client.put_devices_data = AsyncMock()
+        metadata = {
+            "authorization": {
+                "type": "string",
+                "permission": "r",
+                "enum_values": ["HEATING"],
+            },
+            "setpoint": {
+                "type": "numeric",
+                "permission": "rw",
+                "min": 5,
+                "max": 19,
+            },
+            "heatingSetpoint": {
+                "type": "numeric",
+                "permission": "rw",
+                "min": 10,
+                "max": 27,
+            },
+        }
+        entities = []
+        devices = []
+        for device_id, name in (
+            ("1679495242", "Étage"),
+            ("1679495243", "Rez de Chaussée"),
+        ):
+            device = TydomBoiler(
+                client,
+                device_id,
+                device_id,
+                name,
+                "boiler",
+                "1679495242",
+                metadata,
+                {
+                    "authorization": "HEATING",
+                    "useMode": "SCHED",
+                    "setpoint": 17.0,
+                    "heatingSetpoint": 17.0,
+                },
+            )
+            entity = HaClimate(device, hass=MagicMock())
+            entity.async_write_ha_state = MagicMock()
+            entity._command_listening = True
+            self.addCleanup(entity._get_command_tracker().close)
+            entities.append(entity)
+            devices.append(device)
+
+        for entity in entities:
+            self.assertEqual(entity.reported_target_temperature, 17.0)
+            await entity.async_set_temperature(temperature=20)
+            self.assertEqual(entity.target_temperature, 20)
+            self.assertTrue(entity.extra_state_attributes["command_pending"])
+
+        self.assertEqual(
+            client.put_devices_data.await_args_list,
+            [
+                call("1679495242", "1679495242", "heatingSetpoint", "20"),
+                call("1679495243", "1679495242", "heatingSetpoint", "20"),
+            ],
+        )
+        for entity, device in zip(entities, devices, strict=True):
+            device.heatingSetpoint = 20.0
+            entity._handle_climate_update()
+            self.assertFalse(entity.extra_state_attributes["command_pending"])
+            self.assertEqual(entity.reported_target_temperature, 20.0)
+
     async def test_all_climate_profiles_display_request_without_self_confirmation(self):
         """Heat, cool, Naviclim, Tywell and TRV targets share one behaviour."""
         profiles = [
