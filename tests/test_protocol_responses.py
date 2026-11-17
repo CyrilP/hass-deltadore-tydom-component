@@ -1,6 +1,7 @@
 """Tests for Tydom protocol response handling."""
 
 import asyncio
+import json
 import importlib.util
 from pathlib import Path
 import sys
@@ -918,6 +919,211 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
 
         self.assertTrue(completion_event.is_set())
         self.assertNotIn("request-1", handler._cdata_poll_events)
+
+    async def test_tracked_alarm_cdata_get_ignores_empty_ack(self) -> None:
+        """CS8000 acks GET cdata with an empty 200 before the label data."""
+        handler = MessageHandler(MagicMock(), b"")
+        handler.get_type_from_id = MagicMock(return_value="alarm")
+        handler.get_name_from_id = MagicMock(return_value="Alarm")
+        reply_event = asyncio.Event()
+        transaction_id, _ = handler.prepare_request(
+            "GET",
+            "/devices/20/endpoints/10/cdata?name=label",
+            headers={"Transac-Id": "request-1"},
+            reply_event=reply_event,
+        )
+
+        await handler.route_response(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Uri-Origin: /devices/20/endpoints/10/cdata\r\n"
+            b"Content-Type: application/json\r\n"
+            b"Content-Length: 0\r\n"
+            b"Transac-Id: request-1\r\n\r\n"
+        )
+        self.assertFalse(reply_event.is_set())
+
+        envelope = {"id": 20, "endpoints": [{"id": 10, "error": 0, "cdata": []}]}
+        envelope["endpoints"][0]["cdata"] = [
+            {"name": "label", "values": {"products": [{"id": 0}], "zones": []}}
+        ]
+        await handler.parse_devices_cdata([envelope], transaction_id)
+        envelope["endpoints"][0]["cdata"] = [{"EOR": True}]
+        await handler.parse_devices_cdata([envelope], transaction_id)
+
+        self.assertTrue(reply_event.is_set())
+        self.assertEqual(handler.get_reply("request-1")["events"][0]["name"], "label")
+        self.assertNotIn("request-1", handler._cdata_get_transactions)
+
+    async def test_tracked_alarm_history_waits_for_eor(self) -> None:
+        """Streamed histo messages must not complete as one raw document."""
+        handler = MessageHandler(MagicMock(), b"")
+        handler.get_type_from_id = MagicMock(return_value="alarm")
+        handler.get_name_from_id = MagicMock(return_value="Alarm")
+        reply_event = asyncio.Event()
+        handler.prepare_request(
+            "GET",
+            "/devices/20/endpoints/10/cdata?name=histo&type=EVENTS",
+            headers={"Transac-Id": "request-3"},
+            reply_event=reply_event,
+        )
+
+        def push(cdata: dict) -> bytes:
+            body = json.dumps(
+                [{"id": 20, "endpoints": [{"id": 10, "error": 0, "cdata": [cdata]}]}]
+            ).encode()
+            return (
+                b"PUT /devices/cdata HTTP/1.1\r\n"
+                b"content-type: application/json\r\n"
+                b"Transac-Id: request-3\r\n"
+                b"Content-Length: " + str(len(body)).encode() + b"\r\n\r\n" + body
+            )
+
+        await handler.route_response(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Uri-Origin: /devices/20/endpoints/10/cdata\r\n"
+            b"Content-Type: application/json\r\n"
+            b"Content-Length: 0\r\n"
+            b"Transac-Id: request-3\r\n\r\n"
+        )
+        for index in (0, 1):
+            await handler.route_response(
+                push(
+                    {
+                        "name": "histo",
+                        "values": {
+                            "index": index,
+                            "event": {"name": "refusMiseEnMarche"},
+                        },
+                    }
+                )
+            )
+            self.assertFalse(reply_event.is_set())
+
+        await handler.route_response(push({"EOR": True}))
+
+        self.assertTrue(reply_event.is_set())
+        events = handler.get_reply("request-3")["events"]
+        self.assertEqual([e["values"]["index"] for e in events], [0, 1])
+        self.assertNotIn("request-3", handler._cdata_get_transactions)
+
+    async def test_tracked_alarm_cdata_get_accepts_direct_reply(self) -> None:
+        """A gateway may answer GET cdata with one complete JSON document."""
+        handler = MessageHandler(MagicMock(), b"")
+        reply_event = asyncio.Event()
+        handler.prepare_request(
+            "GET",
+            "/devices/20/endpoints/10/cdata?name=label",
+            headers={"Transac-Id": "request-4"},
+            reply_event=reply_event,
+        )
+        body = json.dumps(
+            {"name": "label", "values": {"products": [{"id": 0}], "zones": []}}
+        ).encode()
+
+        await handler.route_response(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Uri-Origin: /devices/20/endpoints/10/cdata\r\n"
+            b"Content-Type: application/json\r\n"
+            b"Content-Length: " + str(len(body)).encode() + b"\r\n"
+            b"Transac-Id: request-4\r\n\r\n" + body
+        )
+
+        self.assertTrue(reply_event.is_set())
+        self.assertNotIn("request-4", handler._cdata_get_transactions)
+        events = handler.get_reply("request-4")["events"]
+        self.assertEqual(events[0]["name"], "label")
+        self.assertEqual(events[0]["values"]["products"], [{"id": 0}])
+
+    async def test_tracked_alarm_cdata_endpoint_error_fails_request(self) -> None:
+        """An endpoint error resolves the tracked read with an error."""
+        handler = MessageHandler(MagicMock(), b"")
+        handler.get_type_from_id = MagicMock(return_value="alarm")
+        handler.get_name_from_id = MagicMock(return_value="Alarm")
+        reply_event = asyncio.Event()
+        transaction_id, _ = handler.prepare_request(
+            "GET",
+            "/devices/20/endpoints/10/cdata?name=label",
+            headers={"Transac-Id": "request-5"},
+            reply_event=reply_event,
+        )
+
+        await handler.parse_devices_cdata(
+            [{"id": 20, "endpoints": [{"id": 10, "error": 1, "cdata": []}]}],
+            transaction_id,
+        )
+
+        self.assertTrue(reply_event.is_set())
+        error = handler.get_reply_error("request-5")
+        self.assertIsNotNone(error)
+        self.assertIn("error 1", error)
+        self.assertIsNone(handler.get_reply("request-5"))
+        self.assertNotIn("request-5", handler._end_reply_events)
+        self.assertNotIn("request-5", handler._cdata_get_transactions)
+
+    async def test_tracked_alarm_cdata_empty_eor_completes_empty(self) -> None:
+        """EOR without data completes the read with no events after the grace."""
+        handler = MessageHandler(MagicMock(), b"")
+        handler.get_type_from_id = MagicMock(return_value="alarm")
+        handler.get_name_from_id = MagicMock(return_value="Alarm")
+        reply_event = asyncio.Event()
+        transaction_id, _ = handler.prepare_request(
+            "GET",
+            "/devices/20/endpoints/10/cdata?name=histo&type=EVENTS",
+            headers={"Transac-Id": "request-6"},
+            reply_event=reply_event,
+        )
+
+        await handler.parse_devices_cdata(
+            [
+                {
+                    "id": 20,
+                    "endpoints": [{"id": 10, "error": 0, "cdata": [{"EOR": True}]}],
+                }
+            ],
+            transaction_id,
+        )
+        await asyncio.wait_for(reply_event.wait(), timeout=1)
+
+        self.assertEqual(handler.get_reply("request-6")["events"], [])
+        self.assertNotIn("request-6", handler._cdata_get_transactions)
+
+    async def test_tracked_cdata_get_timeout_cleanup(self) -> None:
+        """Removing a timed-out GET cdata request forgets its tracking."""
+        handler = MessageHandler(MagicMock(), b"")
+        handler.prepare_request(
+            "GET",
+            "/devices/20/endpoints/10/cdata?name=label",
+            headers={"Transac-Id": "request-7"},
+            reply_event=asyncio.Event(),
+        )
+        self.assertIn("request-7", handler._cdata_get_transactions)
+
+        handler.remove_reply("request-7")
+
+        self.assertNotIn("request-7", handler._cdata_get_transactions)
+        self.assertNotIn("request-7", handler._end_reply_events)
+
+    async def test_tracked_cdata_put_still_completes_on_empty_ack(self) -> None:
+        """Only GET cdata requests wait past the empty acknowledgment."""
+        handler = MessageHandler(MagicMock(), b"")
+        reply_event = asyncio.Event()
+        handler.prepare_request(
+            "PUT",
+            "/devices/20/endpoints/10/cdata?name=zoneLabel",
+            body={"id": 1},
+            headers={"Transac-Id": "request-2"},
+            reply_event=reply_event,
+        )
+
+        await handler.route_response(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Uri-Origin: /devices/20/endpoints/10/cdata\r\n"
+            b"Content-Type: application/json\r\n"
+            b"Content-Length: 0\r\n"
+            b"Transac-Id: request-2\r\n\r\n"
+        )
+
+        self.assertTrue(reply_event.is_set())
 
     async def test_empty_devices_response_is_a_valid_inventory(self) -> None:
         """An empty TYDOM inventory must not be reported as an unknown message."""

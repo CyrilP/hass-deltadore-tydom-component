@@ -584,6 +584,9 @@ class MessageHandler:
         self._cdata_replies: list[Reply] = []
         self._end_reply_events: dict[str, asyncio.Event] = {}
         self._cdata_poll_events: dict[str, asyncio.Event] = {}
+        # Tracked GET .../cdata requests: TYXAL acknowledges them with an empty
+        # 200 before streaming the data and the EOR marker.
+        self._cdata_get_transactions: set[str] = set()
         self._reply_errors: dict[str, str] = {}
         self._alarm_command_waiters: dict[
             tuple[str, str, str], list[asyncio.Future[dict[str, Any]]]
@@ -639,6 +642,7 @@ class MessageHandler:
 
         """
         reply = None
+        self._cdata_get_transactions.discard(transaction_id)
 
         for r in self._cdata_replies:
             if r["transaction_id"] == transaction_id:
@@ -676,6 +680,7 @@ class MessageHandler:
 
         # Remove from end_reply_events
         self._end_reply_events.pop(transaction_id, None)
+        self._cdata_get_transactions.discard(transaction_id)
         LOGGER.debug("Removed pending reply for transaction_id: %s", transaction_id)
 
     def get_reply_error(self, transaction_id: str) -> str | None:
@@ -744,6 +749,25 @@ class MessageHandler:
         """Complete an EOR-only reply unless late TYXAL data completed it first."""
         if event := self._end_reply_events.pop(transaction_id, None):
             event.set()
+
+    def _fail_tracked_cdata_reply(
+        self,
+        transaction_id: str | None,
+        device_id: Any,
+        endpoint: dict[str, Any],
+    ) -> None:
+        """Resolve a tracked cdata read whose endpoint reported an error."""
+        if transaction_id in (None, "0"):
+            return
+        event = self._end_reply_events.get(transaction_id)
+        if event is None:
+            return
+        self._reply_errors[transaction_id] = (
+            f"endpoint {endpoint.get('id')} of device {device_id} "
+            f"returned error {endpoint.get('error')}"
+        )
+        self.remove_reply(transaction_id)
+        event.set()
 
     def _complete_empty_reply(self, transaction_id: str) -> None:
         """Complete a tracked request acknowledged without a response body."""
@@ -835,6 +859,9 @@ class MessageHandler:
                     transaction_id,
                     uri_origin,
                 )
+                if transaction_id in self._cdata_get_transactions:
+                    # The cdata payload and its EOR follow this acknowledgment.
+                    return None
                 if transaction_id:
                     self._complete_empty_reply(transaction_id)
                 return None
@@ -849,8 +876,18 @@ class MessageHandler:
                 # Most configuration endpoints respond with one JSON document,
                 # not with cdata.  Preserve that document for callers which
                 # deliberately wait for a fresh file before modifying it.
-                # cdata requests complete themselves in parse_devices_cdata.
-                if transaction_id and transaction_id in self._end_reply_events:
+                # Streamed /devices/cdata messages of a tracked GET complete
+                # themselves in parse_devices_cdata (histo waits for EOR); a
+                # complete direct reply to that GET still completes here.
+                if (
+                    transaction_id
+                    and transaction_id in self._end_reply_events
+                    and not (
+                        transaction_id in self._cdata_get_transactions
+                        and uri_origin == "/devices/cdata"
+                    )
+                ):
+                    self._cdata_get_transactions.discard(transaction_id)
                     event = self._end_reply_events.pop(transaction_id)
                     parsed: Any = parsed_message.body
                     with contextlib.suppress(json.decoder.JSONDecodeError):
@@ -929,6 +966,8 @@ class MessageHandler:
 
         if reply_event:
             self._end_reply_events[transaction_id] = reply_event
+            if method.upper() == "GET" and "/cdata" in url.split("?", 1)[0]:
+                self._cdata_get_transactions.add(transaction_id)
 
         return (transaction_id, request)
 
@@ -2268,6 +2307,9 @@ class MessageHandler:
             for endpoint in i["endpoints"]:
                 if endpoint["error"] != 0:
                     cdata_poll_complete = True
+                    self._fail_tracked_cdata_reply(
+                        transaction_id, i.get("id"), endpoint
+                    )
                     continue
 
                 if endpoint["error"] == 0 and len(endpoint["cdata"]) > 0:
