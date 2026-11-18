@@ -334,6 +334,28 @@ class TestDeviceModels(TestCase):
         )
 
 
+def _rothelec_hvac_metadata() -> dict:
+    """Reproduce the capabilities reported for the Rothelec radiators in #601."""
+    return {
+        "heatSetpoint": {"permission": "rw", "min": 1, "max": 50, "step": 0.5},
+        "setpoint": {"permission": "rw", "min": 1, "max": 50, "step": 0.5},
+        "overrideSetpoint": {"permission": "rw", "min": 1, "max": 50, "step": 0.5},
+        "localMode": {
+            "permission": "rw",
+            "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+        },
+        "useMode": {"permission": "rw", "enum_values": ["SCHED", "OVERRIDE", "MANUAL"]},
+        "thermicLevel": {"permission": "rw", "enum_values": ["STOP", "ANTI_FROST"]},
+        "overrideThermicLevel": {
+            "permission": "rw",
+            "enum_values": ["STOP", "ANTI_FROST"],
+        },
+        "overrideRemainingTime": {"permission": "rw", "min": 0, "max": 720},
+        "comfortMode": {"permission": "w", "enum_values": ["STOP", "HEATING"]},
+        "authorization": {"permission": "r", "enum_values": ["STOP", "HEATING"]},
+    }
+
+
 class TestDeviceModelApplication(IsolatedAsyncioTestCase):
     """Exercise model application when protocol devices are created."""
 
@@ -345,6 +367,154 @@ class TestDeviceModelApplication(IsolatedAsyncioTestCase):
         handler_module.device_tutorial_id.clear()
         handler_module.endpoint_config.clear()
         self.handler = MessageHandler(MagicMock(), b"")
+
+    async def test_reported_hvac_radiator_is_a_climate_device(self) -> None:
+        """Discover the reported usage and retain identity, metadata and null targets."""
+        uid = "20_10"
+        handler_module.device_name[uid] = "Radiator"
+        handler_module.device_type[uid] = "hvac"
+        handler_module.device_metadata[uid] = _rothelec_hvac_metadata()
+        state = {
+            "authorization": "STOP",
+            "heatSetpoint": None,
+            "setpoint": None,
+            "minHeatSetpoint": 10,
+            "maxHeatSetpoint": 30,
+            "thermicLevel": "STOP",
+            "temperature": 16.96,
+            "localMode": "ABSENCE",
+            "useMode": "SCHED",
+            "overrideRemainingTime": 0,
+        }
+        devices = await self.handler.parse_devices_data(
+            [
+                {
+                    "id": 10,
+                    "endpoints": [
+                        {
+                            "id": 20,
+                            "error": 0,
+                            "data": [
+                                {"name": k, "value": v, "validity": "upToDate"}
+                                for k, v in state.items()
+                            ],
+                        }
+                    ],
+                }
+            ],
+            None,
+        )
+        self.assertEqual(len(devices), 1)
+        device = devices[0]
+        self.assertIsInstance(device, devices_module.TydomBoiler)
+        self.assertEqual((device.device_id, device.device_type), (uid, "hvac"))
+        self.assertIsNone(device.heatSetpoint)
+        self.assertEqual(device.localMode, "ABSENCE")
+        self.assertEqual(device.temperature, 16.96)
+        self.assertEqual(device._metadata, _rothelec_hvac_metadata())
+
+    async def test_late_hvac_promotion_preserves_generic_sensor_updates(self) -> None:
+        """Existing entities keep their object, attributes and callbacks after promotion."""
+        uid = "20_10"
+        previous = await MessageHandler.get_device(
+            MagicMock(), "hvac", uid, "10", "Radiator", "20", {"temperature": 16.96}
+        )
+        self.assertIs(type(previous), devices_module.TydomDevice)
+        notified = MagicMock()
+        previous.register_callback(notified)
+        handler_module.device_metadata[uid] = _rothelec_hvac_metadata()
+        promoted = await MessageHandler.get_device(
+            previous._tydom_client,
+            "hvac",
+            uid,
+            "10",
+            "Radiator",
+            "20",
+            {"localMode": "NORMAL"},
+        )
+        self.assertIsInstance(promoted, devices_module.TydomBoiler)
+        await promoted.retain_hvac_sensor_state(previous)
+        self.assertEqual(promoted.temperature, 16.96)
+        self.assertEqual(previous.localMode, "NORMAL")
+        self.assertEqual(previous._metadata, _rothelec_hvac_metadata())
+        notified.reset_mock()
+        update = devices_module.TydomBoiler(
+            previous._tydom_client,
+            uid,
+            "10",
+            "Radiator",
+            "hvac",
+            "20",
+            promoted._metadata,
+            {"temperature": 18.5},
+        )
+        await promoted.update_device(update)
+        self.assertEqual(previous.temperature, 18.5)
+        notified.assert_called_once_with()
+
+    async def test_other_hvac_profiles_stay_generic(self) -> None:
+        """Unrelated, partial, read-only or malformed profiles are not promoted."""
+        full = _rothelec_hvac_metadata()
+        cases = [
+            None,
+            {},
+            {"temperature": {"permission": "r"}},
+            {**full, "setpoint": {"permission": "r"}},
+            {
+                **full,
+                "localMode": {
+                    "permission": "w",
+                    "enum_values": ["NORMAL", "STOP", "ANTI_FROST", "ABSENCE"],
+                },
+            },
+            {
+                **full,
+                "useMode": {"permission": "rw", "enum_values": ["SCHED", "MANUAL"]},
+            },
+            {**full, "comfortMode": None},
+            {**full, "thermicLevel": {"permission": "rw", "enum_values": None}},
+        ]
+        for metadata in cases:
+            with self.subTest(metadata=metadata):
+                handler_module.device_metadata["20_10"] = metadata
+                device = await MessageHandler.get_device(
+                    MagicMock(),
+                    "hvac",
+                    "20_10",
+                    "10",
+                    "Other",
+                    "20",
+                    {"temperature": 20},
+                )
+                self.assertIs(type(device), devices_module.TydomDevice)
+
+    async def test_existing_boiler_and_tywell_paths_are_unchanged(self) -> None:
+        """The new guard must not change existing thermal usage dispatch."""
+        uid = "20_10"
+        handler_module.device_metadata[uid] = _rothelec_hvac_metadata()
+        for usage in ("boiler", "sh_hvac", "electric", "aeraulic"):
+            with self.subTest(usage=usage):
+                device = await MessageHandler.get_device(
+                    MagicMock(),
+                    usage,
+                    uid,
+                    "10",
+                    "Existing thermostat",
+                    "20",
+                    {"temperature": 20},
+                )
+                self.assertIsInstance(device, devices_module.TydomBoiler)
+                self.assertEqual(device.device_type, usage)
+        passive = await MessageHandler.get_device(
+            MagicMock(),
+            "re2020ControlPassive",
+            uid,
+            "10",
+            "Tywell",
+            "20",
+            {"temperature": 20},
+        )
+        self.assertIs(type(passive), devices_module.TydomDevice)
 
     async def test_shutter_retains_gateway_metadata_for_favourite_commands(
         self,
