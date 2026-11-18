@@ -3596,7 +3596,10 @@ class Hub:
             if entity_id is None:
                 continue
             entry = registry.async_get(entity_id)
-            if entry is not None and entry.disabled_by is not None:
+            if (
+                entry is not None
+                and entry.disabled_by is er.RegistryEntryDisabler.INTEGRATION
+            ):
                 registry.async_update_entity(entity_id, disabled_by=None)
 
     async def _remove_product_association_and_reload(self, device) -> None:
