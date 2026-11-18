@@ -285,6 +285,10 @@ class TydomOpenIssuesNotReadyError(Exception):
     """Raised when the central has not yet recorded its open-issues history."""
 
 
+class TydomProductDefectsError(Exception):
+    """Raised when a product defect list cannot be read completely."""
+
+
 # Import TydomGroup at the end to avoid circular import
 
 
@@ -1976,21 +1980,49 @@ class TydomAlarm(TydomDevice):
         if defect_type not in self.PRODUCT_DEFECT_HISTORY_TYPES:
             raise ValueError(f"Unsupported alarm defect history type: {defect_type}")
         if self._endpoint is None:
-            LOGGER.error(
-                "Cannot get product defects: endpoint is None for device %s", self._id
+            raise TydomProductDefectsError(
+                f"Cannot get product defects: alarm device {self._id} has no endpoint"
             )
-            return []
-        kwargs: dict[str, Any] = {"nbElement": 50, "log_timeout": log_timeout}
-        if timeout is not None:
-            kwargs["timeout"] = timeout
-        messages = await self._tydom_client.get_historic_cdata(
-            self._id, self._endpoint, defect_type, **kwargs
-        )
-        LOGGER.debug("Raw %s messages: %s", defect_type, messages)
+        messages: list[dict[str, Any]] = []
+        total: int | None = None
+        received = 0
+        # The CS 8000 TYXAL+ accepts at most 50 products, so one page normally
+        # holds the whole list. nbElemTot is still honoured so that a longer
+        # list is read page by page instead of being silently truncated.
+        while True:
+            kwargs: dict[str, Any] = {"nbElement": 50, "log_timeout": log_timeout}
+            if received:
+                kwargs["indexStart"] = received
+            if timeout is not None:
+                kwargs["timeout"] = timeout
+            page = await self._tydom_client.get_historic_cdata(
+                self._id, self._endpoint, defect_type, **kwargs
+            )
+            LOGGER.debug("Raw %s messages: %s", defect_type, page)
+            if page is None:
+                raise TydomProductDefectsError(
+                    f"No reply from the alarm central to {defect_type}"
+                )
+            page_records = 0
+            for message in page:
+                if not isinstance(message, dict) or message.get("EOR", False):
+                    continue
+                messages.append(message)
+                values = message.get("values")
+                if not isinstance(values, dict):
+                    continue
+                page_records += 1
+                if isinstance(values.get("nbElemTot"), int):
+                    total = max(total or 0, values["nbElemTot"])
+            received += page_records
+            if total is None or received >= total:
+                break
+            if page_records == 0:
+                raise TydomProductDefectsError(
+                    f"Incomplete {defect_type} list: {received} of {total} records"
+                )
         records: list[dict[str, Any]] = []
-        for message in messages or []:
-            if not isinstance(message, dict) or message.get("EOR", False):
-                continue
+        for message in messages:
             values = message.get("values")
             if not isinstance(values, dict):
                 continue

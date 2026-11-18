@@ -845,7 +845,12 @@ contains `id`, `name`, `name_custom`, `name_standard`, `number`, `type_short`,
 `type_long` and `zone` when the central provides them. All other values are
 kept unchanged under `details`, for example `details.defects: ["pile"]`, because
 the record layout is not documented. An error returned by the central remains
-visible in `details.error`. An empty list means that no product is reported.
+visible in `details.error`. An empty list means that the central replied and
+reports no product. The action fails instead of returning an empty list when
+the alarm endpoint is unknown, when the central does not reply, or when the
+list cannot be read completely. Records are read 50 at a time, the maximum
+number of products a CS 8000 TYXAL+ central accepts; if the central announces
+more (`nbElemTot`), the following pages are requested.
 
 ## TYDOM programme snapshot — experimental, read-only
 

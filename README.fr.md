@@ -866,7 +866,13 @@ produit contient `id`, `name`, `name_custom`, `name_standard`, `number`,
 autres valeurs sont conservées telles quelles sous `details`, par exemple
 `details.defects: ["pile"]`, car le format de l'enregistrement n'est pas
 documenté. Une erreur renvoyée par la centrale reste visible dans
-`details.error`. Une liste vide signifie qu'aucun produit n'est signalé.
+`details.error`. Une liste vide signifie que la centrale a répondu et ne
+signale aucun produit. L'action échoue au lieu de renvoyer une liste vide
+lorsque l'accès à la centrale est introuvable, que la centrale ne répond pas ou
+que la liste ne peut pas être lue en entier. Les enregistrements sont lus par
+50, le nombre maximal de produits accepté par une centrale CS 8000 TYXAL+ ; si
+la centrale en annonce davantage (`nbElemTot`), les pages suivantes sont
+demandées.
 
 ## Lecture de la programmation TYDOM — expérimentale
 

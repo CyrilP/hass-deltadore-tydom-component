@@ -116,6 +116,7 @@ from .tydom.tydom_devices import (
     TydomInterrupter,
     TydomAlarmCommandError,
     TydomOpenIssuesNotReadyError,
+    TydomProductDefectsError,
     get_twc_scene_action,
     is_tywell_control_type,
 )
@@ -5102,7 +5103,10 @@ class HaAlarm(AlarmControlPanelEntity, HAEntity):
         self, defect_type: str = "CURRENT_DEFECTS"
     ) -> list:
         """Return per-product records of a CS8000 defect history view."""
-        return await self._device.get_product_defects(defect_type)
+        try:
+            return await self._device.get_product_defects(defect_type)
+        except TydomProductDefectsError as err:
+            raise HomeAssistantError(str(err)) from err
 
     async def async_get_alarm_products(self) -> dict[str, list[dict[str, Any]]]:
         """Return the products and zones configured on the alarm."""
