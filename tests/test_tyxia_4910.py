@@ -83,11 +83,14 @@ class Tyxia4910Tests(IsolatedAsyncioTestCase):
         handler_module.device_metadata.clear()
         handler_module.device_tutorial_id.clear()
         logger.reset_mock()
+        client = MagicMock()
+        client.id = f"tyxia-4910-test-{id(self)}"
+        self.handler = MessageHandler(client, b"")
 
     async def _configure(self, *, step: int = 100) -> str:
         """Install the sanitised configuration and metadata from issue 229."""
         uid = "20_10"
-        await MessageHandler.parse_config_data(
+        await self.handler.parse_config_data(
             {
                 "endpoints": [
                     {
@@ -103,7 +106,7 @@ class Tyxia4910Tests(IsolatedAsyncioTestCase):
             },
             "transaction",
         )
-        handler = MessageHandler(MagicMock(), b"")
+        handler = self.handler
         await handler.parse_devices_metadata(
             [
                 {
