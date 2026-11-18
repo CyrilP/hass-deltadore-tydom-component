@@ -947,6 +947,37 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
         with self.assertRaises(TydomProductDefectsError):
             await alarm.get_product_defects("CURRENT_DEFECTS")
 
+    async def test_product_defects_repeated_page_raise(self) -> None:
+        """A repeated page must not be counted twice nor hide a missing index."""
+        first_page = [
+            {"values": {"index": 0, "nbElemTot": 3, "product": {"id": 1}}},
+            {"values": {"index": 1, "nbElemTot": 3, "product": {"id": 2}}},
+            {"EOR": True},
+        ]
+        client = MagicMock()
+        client.get_historic_cdata = AsyncMock(side_effect=[first_page, first_page])
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+
+        with self.assertRaises(TydomProductDefectsError):
+            await alarm.get_product_defects("CURRENT_DEFECTS")
+        self.assertEqual(client.get_historic_cdata.await_count, 2)
+
+    async def test_product_defects_missing_index_raise(self) -> None:
+        """Reaching nbElemTot with a gap in the indexes is still incomplete."""
+        client = MagicMock()
+        client.get_historic_cdata = AsyncMock(
+            return_value=[
+                {"values": {"index": 0, "nbElemTot": 3, "product": {"id": 1}}},
+                {"values": {"index": 1, "nbElemTot": 3, "product": {"id": 2}}},
+                {"values": {"index": 3, "nbElemTot": 3, "product": {"id": 4}}},
+                {"EOR": True},
+            ]
+        )
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+
+        with self.assertRaises(TydomProductDefectsError):
+            await alarm.get_product_defects("CURRENT_DEFECTS")
+
     async def test_product_defects_reject_unknown_view(self) -> None:
         """Only the documented read-only defect views can be requested."""
         client = MagicMock()

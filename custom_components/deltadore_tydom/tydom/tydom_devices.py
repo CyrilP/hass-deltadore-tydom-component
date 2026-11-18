@@ -1986,6 +1986,8 @@ class TydomAlarm(TydomDevice):
         messages: list[dict[str, Any]] = []
         total: int | None = None
         received = 0
+        seen_indexes: set[int] = set()
+        unindexed = False
         # The CS 8000 TYXAL+ accepts at most 50 products, so one page normally
         # holds the whole list. nbElemTot is still honoured so that a longer
         # list is read page by page instead of being silently truncated.
@@ -2007,15 +2009,29 @@ class TydomAlarm(TydomDevice):
             for message in page:
                 if not isinstance(message, dict) or message.get("EOR", False):
                     continue
-                messages.append(message)
                 values = message.get("values")
-                if not isinstance(values, dict):
-                    continue
-                page_records += 1
-                if isinstance(values.get("nbElemTot"), int):
-                    total = max(total or 0, values["nbElemTot"])
+                if isinstance(values, dict):
+                    index = values.get("index")
+                    if isinstance(index, int):
+                        # A repeated page must not count as progress.
+                        if index in seen_indexes:
+                            continue
+                        seen_indexes.add(index)
+                    else:
+                        unindexed = True
+                    page_records += 1
+                    if isinstance(values.get("nbElemTot"), int):
+                        total = max(total or 0, values["nbElemTot"])
+                messages.append(message)
             received += page_records
-            if total is None or received >= total:
+            if total is None:
+                break
+            if received >= total:
+                if not unindexed and seen_indexes != set(range(total)):
+                    raise TydomProductDefectsError(
+                        f"Incomplete {defect_type} list: indexes "
+                        f"{sorted(set(range(total)) - seen_indexes)} missing"
+                    )
                 break
             if page_records == 0:
                 raise TydomProductDefectsError(
