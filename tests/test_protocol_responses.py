@@ -71,6 +71,7 @@ TydomLight = devices_module.TydomLight
 TydomEnergy = devices_module.TydomEnergy
 TydomAlarm = devices_module.TydomAlarm
 TydomOpenIssuesNotReadyError = devices_module.TydomOpenIssuesNotReadyError
+TydomProductDefectsError = devices_module.TydomProductDefectsError
 
 for name, original in _original_modules.items():
     if original is _MISSING:
@@ -806,6 +807,187 @@ class ProtocolResponseTests(IsolatedAsyncioTestCase):
             "20", "10", "OPEN_ISSUES", nbElement=50, log_timeout=False, timeout=10.0
         )
         callback.assert_called_once_with()
+
+    async def test_product_defects_keep_product_and_details(self) -> None:
+        """CURRENT_DEFECTS records keep product metadata and every other value."""
+        client = MagicMock()
+        client.get_historic_cdata = AsyncMock(
+            return_value=[
+                {
+                    "values": {
+                        "step": 0,
+                        "index": 0,
+                        "nbElemTot": 2,
+                        "product": {
+                            "id": 4,
+                            "nameCustom": "CLT0755C",
+                            "typeShort": "CLT",
+                            "typeLong": "CLT 8000",
+                            "privateRadioIdentifier": "hidden",
+                        },
+                        "defects": ["BATTERY"],
+                    }
+                },
+                {
+                    "values": {
+                        "product": {"id": 2, "nameStd": "ENTRY", "number": 1, "zone": 7},
+                        "defects": ["BATTERY"],
+                    }
+                },
+                {"EOR": True},
+            ]
+        )
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+
+        result = await alarm.get_product_defects("CURRENT_DEFECTS", timeout=10.0)
+
+        self.assertEqual(
+            result,
+            [
+                {
+                    "id": 4,
+                    "name": "CLT0755C",
+                    "name_custom": "CLT0755C",
+                    "type_short": "CLT",
+                    "type_long": "CLT 8000",
+                    "details": {"defects": ["BATTERY"]},
+                },
+                {
+                    "id": 2,
+                    "name": "ENTRY",
+                    "name_standard": "ENTRY",
+                    "number": 1,
+                    "zone": 7,
+                    "details": {"defects": ["BATTERY"]},
+                },
+            ],
+        )
+        client.get_historic_cdata.assert_awaited_once_with(
+            "20", "10", "CURRENT_DEFECTS", nbElement=50, log_timeout=True, timeout=10.0
+        )
+
+    async def test_product_defects_expose_central_error(self) -> None:
+        """An error reply stays visible instead of looking like an empty list."""
+        client = MagicMock()
+        client.get_historic_cdata = AsyncMock(
+            return_value=[{"values": {"error": "error detected"}}, {"EOR": True}]
+        )
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+
+        result = await alarm.get_product_defects("AUTOPROTECTION")
+
+        self.assertEqual(result, [{"details": {"error": "error detected"}}])
+
+    async def test_product_defects_empty_reply_is_an_empty_list(self) -> None:
+        """A reply holding only the end-of-records marker means no product."""
+        client = MagicMock()
+        client.get_historic_cdata = AsyncMock(return_value=[{"EOR": True}])
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+
+        self.assertEqual(await alarm.get_product_defects("INACTIVE_PRODUCTS"), [])
+
+    async def test_product_defects_without_endpoint_raise(self) -> None:
+        """A missing alarm endpoint must not look like an empty list."""
+        client = MagicMock()
+        client.get_historic_cdata = AsyncMock()
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", None, {}, {})
+
+        with self.assertRaises(TydomProductDefectsError):
+            await alarm.get_product_defects()
+        client.get_historic_cdata.assert_not_awaited()
+
+    async def test_product_defects_without_reply_raise(self) -> None:
+        """A missing central reply must not look like an empty list."""
+        client = MagicMock()
+        client.get_historic_cdata = AsyncMock(return_value=None)
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+
+        with self.assertRaises(TydomProductDefectsError):
+            await alarm.get_product_defects()
+
+    async def test_product_defects_read_every_page(self) -> None:
+        """Records beyond the first page are requested from where it stopped."""
+        client = MagicMock()
+        client.get_historic_cdata = AsyncMock(
+            side_effect=[
+                [
+                    {"values": {"index": 0, "nbElemTot": 3, "product": {"id": 1}}},
+                    {"values": {"index": 1, "nbElemTot": 3, "product": {"id": 2}}},
+                    {"EOR": True},
+                ],
+                [
+                    {"values": {"index": 2, "nbElemTot": 3, "product": {"id": 3}}},
+                    {"EOR": True},
+                ],
+            ]
+        )
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+
+        result = await alarm.get_product_defects("CURRENT_DEFECTS")
+
+        self.assertEqual(result, [{"id": 1}, {"id": 2}, {"id": 3}])
+        self.assertEqual(client.get_historic_cdata.await_count, 2)
+        self.assertEqual(
+            client.get_historic_cdata.await_args_list[1].kwargs["indexStart"], 2
+        )
+
+    async def test_product_defects_incomplete_list_raise(self) -> None:
+        """A page that brings nothing new must not return a truncated list."""
+        client = MagicMock()
+        client.get_historic_cdata = AsyncMock(
+            side_effect=[
+                [
+                    {"values": {"index": 0, "nbElemTot": 3, "product": {"id": 1}}},
+                    {"EOR": True},
+                ],
+                [{"EOR": True}],
+            ]
+        )
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+
+        with self.assertRaises(TydomProductDefectsError):
+            await alarm.get_product_defects("CURRENT_DEFECTS")
+
+    async def test_product_defects_repeated_page_raise(self) -> None:
+        """A repeated page must not be counted twice nor hide a missing index."""
+        first_page = [
+            {"values": {"index": 0, "nbElemTot": 3, "product": {"id": 1}}},
+            {"values": {"index": 1, "nbElemTot": 3, "product": {"id": 2}}},
+            {"EOR": True},
+        ]
+        client = MagicMock()
+        client.get_historic_cdata = AsyncMock(side_effect=[first_page, first_page])
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+
+        with self.assertRaises(TydomProductDefectsError):
+            await alarm.get_product_defects("CURRENT_DEFECTS")
+        self.assertEqual(client.get_historic_cdata.await_count, 2)
+
+    async def test_product_defects_missing_index_raise(self) -> None:
+        """Reaching nbElemTot with a gap in the indexes is still incomplete."""
+        client = MagicMock()
+        client.get_historic_cdata = AsyncMock(
+            return_value=[
+                {"values": {"index": 0, "nbElemTot": 3, "product": {"id": 1}}},
+                {"values": {"index": 1, "nbElemTot": 3, "product": {"id": 2}}},
+                {"values": {"index": 3, "nbElemTot": 3, "product": {"id": 4}}},
+                {"EOR": True},
+            ]
+        )
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+
+        with self.assertRaises(TydomProductDefectsError):
+            await alarm.get_product_defects("CURRENT_DEFECTS")
+
+    async def test_product_defects_reject_unknown_view(self) -> None:
+        """Only the documented read-only defect views can be requested."""
+        client = MagicMock()
+        client.get_historic_cdata = AsyncMock()
+        alarm = TydomAlarm(client, "10_20", "20", "Alarm", "alarm", "10", {}, {})
+
+        with self.assertRaises(ValueError):
+            await alarm.get_product_defects("ALL")
+        client.get_historic_cdata.assert_not_awaited()
 
     async def test_open_issues_does_not_replace_cache_with_central_error(self) -> None:
         """A temporary OPEN_ISSUES error must be retried by the alarm entity."""

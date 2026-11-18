@@ -285,6 +285,10 @@ class TydomOpenIssuesNotReadyError(Exception):
     """Raised when the central has not yet recorded its open-issues history."""
 
 
+class TydomProductDefectsError(Exception):
+    """Raised when a product defect list cannot be read completely."""
+
+
 # Import TydomGroup at the end to avoid circular import
 
 
@@ -2021,6 +2025,122 @@ class TydomAlarm(TydomDevice):
         self._open_issues = issues
         await self.publish_updates()
         return issues
+
+    PRODUCT_DEFECT_HISTORY_TYPES: ClassVar[tuple[str, ...]] = (
+        "CURRENT_DEFECTS",
+        "AUTOPROTECTION",
+        "INACTIVE_PRODUCTS",
+    )
+
+    async def get_product_defects(
+        self,
+        defect_type: str = "CURRENT_DEFECTS",
+        *,
+        timeout: float | None = None,
+        log_timeout: bool = True,
+    ) -> list[dict[str, Any]]:
+        """Return per-product records of a CS8000 defect history view.
+
+        The record layout of these views is not documented. Product metadata
+        is normalised like OPEN_ISSUES and every other value is kept under
+        ``details`` so the real layout stays visible.
+        """
+        if defect_type not in self.PRODUCT_DEFECT_HISTORY_TYPES:
+            raise ValueError(f"Unsupported alarm defect history type: {defect_type}")
+        if self._endpoint is None:
+            raise TydomProductDefectsError(
+                f"Cannot get product defects: alarm device {self._id} has no endpoint"
+            )
+        messages: list[dict[str, Any]] = []
+        total: int | None = None
+        received = 0
+        seen_indexes: set[int] = set()
+        unindexed = False
+        # The CS 8000 TYXAL+ accepts at most 50 products, so one page normally
+        # holds the whole list. nbElemTot is still honoured so that a longer
+        # list is read page by page instead of being silently truncated.
+        while True:
+            kwargs: dict[str, Any] = {"nbElement": 50, "log_timeout": log_timeout}
+            if received:
+                kwargs["indexStart"] = received
+            if timeout is not None:
+                kwargs["timeout"] = timeout
+            page = await self._tydom_client.get_historic_cdata(
+                self._id, self._endpoint, defect_type, **kwargs
+            )
+            LOGGER.debug("Raw %s messages: %s", defect_type, page)
+            if page is None:
+                raise TydomProductDefectsError(
+                    f"No reply from the alarm central to {defect_type}"
+                )
+            page_records = 0
+            for message in page:
+                if not isinstance(message, dict) or message.get("EOR", False):
+                    continue
+                values = message.get("values")
+                if isinstance(values, dict):
+                    index = values.get("index")
+                    if isinstance(index, int):
+                        # A repeated page must not count as progress.
+                        if index in seen_indexes:
+                            continue
+                        seen_indexes.add(index)
+                    else:
+                        unindexed = True
+                    page_records += 1
+                    if isinstance(values.get("nbElemTot"), int):
+                        total = max(total or 0, values["nbElemTot"])
+                messages.append(message)
+            received += page_records
+            if total is None:
+                break
+            if received >= total:
+                if not unindexed and seen_indexes != set(range(total)):
+                    raise TydomProductDefectsError(
+                        f"Incomplete {defect_type} list: indexes "
+                        f"{sorted(set(range(total)) - seen_indexes)} missing"
+                    )
+                break
+            if page_records == 0:
+                raise TydomProductDefectsError(
+                    f"Incomplete {defect_type} list: {received} of {total} records"
+                )
+        records: list[dict[str, Any]] = []
+        for message in messages:
+            values = message.get("values")
+            if not isinstance(values, dict):
+                continue
+            # Une éventuelle erreur de la centrale reste visible dans details :
+            # on ne sait pas encore si une liste vide est signalée par une erreur.
+            product = values.get("product")
+            record: dict[str, Any] = {}
+            if isinstance(product, dict):
+                record = {
+                    key: value
+                    for key, value in {
+                        "id": product.get("id"),
+                        "name": product.get("nameCustom") or product.get("nameStd"),
+                        "name_custom": product.get("nameCustom"),
+                        "name_standard": product.get("nameStd"),
+                        "number": product.get("number"),
+                        "type_short": product.get("typeShort"),
+                        "type_long": product.get("typeLong"),
+                        "zone": product.get("zone"),
+                    }.items()
+                    if value is not None
+                }
+            # Champs de pagination du flux histo : sans intérêt pour l'utilisateur.
+            details = {
+                key: value
+                for key, value in values.items()
+                if key not in ("product", "step", "index", "nbElemTot")
+            }
+            if not record and not details:
+                continue
+            if details:
+                record["details"] = details
+            records.append(record)
+        return records
 
     def _require_endpoint(self) -> str:
         """Return the alarm endpoint or fail before building a request."""

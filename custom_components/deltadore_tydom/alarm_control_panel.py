@@ -16,6 +16,7 @@ from .const import DOMAIN
 SERVICE_ACKNOWLEDGE_EVENTS = "acknowledge_events"
 SERVICE_GET_EVENTS = "get_events"
 SERVICE_GET_OPEN_ISSUES = "get_open_issues"
+SERVICE_GET_PRODUCT_DEFECTS = "get_product_defects"
 SERVICE_GET_ALARM_PRODUCTS = "get_alarm_products"
 SERVICE_GET_ALARM_PRODUCT_CONFIGURATION = "get_alarm_product_configuration"
 SERVICE_CONFIGURE_ALARM_PRODUCT = "configure_alarm_product"
@@ -80,6 +81,17 @@ async def async_setup_entry(
         SERVICE_GET_OPEN_ISSUES,
         {},
         "async_get_open_issues",
+        supports_response=SupportsResponse.ONLY,
+    )
+
+    platform.async_register_entity_service(
+        SERVICE_GET_PRODUCT_DEFECTS,
+        {
+            vol.Optional("defect_type", default="CURRENT_DEFECTS"): vol.In(
+                ("CURRENT_DEFECTS", "AUTOPROTECTION", "INACTIVE_PRODUCTS")
+            ),
+        },
+        "async_get_product_defects",
         supports_response=SupportsResponse.ONLY,
     )
 
