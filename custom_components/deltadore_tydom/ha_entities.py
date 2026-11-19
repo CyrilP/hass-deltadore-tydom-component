@@ -5662,6 +5662,14 @@ class HASensor(SensorEntity, HAEntity):
         self._attr_name = None  # primary entity inherits device name
         self._registered_sensors = []
 
+    def get_sensors(self):
+        """Classify Tywell battery readings even when they arrive after setup."""
+        for attribute in self._device.battery_level_attributes:
+            self.sensor_classes[attribute] = SensorDeviceClass.BATTERY
+            self.state_classes[attribute] = SensorStateClass.MEASUREMENT
+            self.units[attribute] = PERCENTAGE
+        return super().get_sensors()
+
     async def async_added_to_hass(self) -> None:
         """Refresh on every device push (see HACover for the MRO rationale)."""
         await super().async_added_to_hass()

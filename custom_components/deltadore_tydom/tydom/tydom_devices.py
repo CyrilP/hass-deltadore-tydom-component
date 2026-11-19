@@ -427,7 +427,7 @@ class TydomDevice:
         if self._type in {
             "re2020ControlPassive",
             "re2020ControlBoiler",
-        } and hasattr(self, "battLevel"):
+        } and (hasattr(self, "battLevel") or "battLevel" in (self._metadata or {})):
             return {"battLevel"}
         return set()
 
