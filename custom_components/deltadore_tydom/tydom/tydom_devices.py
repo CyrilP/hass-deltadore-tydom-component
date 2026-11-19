@@ -752,6 +752,7 @@ class TydomBoiler(TydomDevice):
             candidates = (
                 ("heatSetpoint", "setpoint", "coolSetpoint")
                 if self.uses_area_local_mode
+                or self._temperature_command_name() != "heatingSetpoint"
                 else (
                     "heatSetpoint",
                     "heatingSetpoint",
@@ -818,6 +819,7 @@ class TydomBoiler(TydomDevice):
             metadata_names = (
                 ("heatSetpoint", "setpoint")
                 if self.uses_area_local_mode
+                or self._temperature_command_name() != "heatingSetpoint"
                 else ("heatSetpoint", "heatingSetpoint", "setpoint")
             )
         else:
@@ -870,6 +872,7 @@ class TydomBoiler(TydomDevice):
             metadata_names = (
                 ("heatSetpoint", "setpoint")
                 if self.uses_area_local_mode
+                or self._temperature_command_name() != "heatingSetpoint"
                 else ("heatSetpoint", "heatingSetpoint", "setpoint")
             )
         else:
