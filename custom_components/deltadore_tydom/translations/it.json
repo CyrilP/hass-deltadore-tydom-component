@@ -6,9 +6,6 @@
             }
         },
         "update": {
-            "radio_firmware": {
-                "name": "Firmware {model}"
-            },
             "firmware": {
                 "name": "Firmware"
             }
@@ -3968,6 +3965,9 @@
         }
     },
     "exceptions": {
+        "gateway_command_failed": {
+            "message": "Il gateway non ha applicato il comando: {error}"
+        },
         "resume_target_unknown": {
             "message": "Questa zona è ancora in protezione antigelo e non è nota una temperatura impostata confermata. Scegliere una temperatura con l’azione climate.set_temperature per riattivarla. La modalità generale di riscaldamento/climatizzazione deve essere attiva."
         },

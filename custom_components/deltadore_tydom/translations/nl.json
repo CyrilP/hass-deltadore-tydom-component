@@ -6,9 +6,6 @@
             }
         },
         "update": {
-            "radio_firmware": {
-                "name": "Firmware {model}"
-            },
             "firmware": {
                 "name": "Firmware"
             }
@@ -3968,6 +3965,9 @@
         }
     },
     "exceptions": {
+        "gateway_command_failed": {
+            "message": "De gateway heeft de opdracht niet toegepast: {error}"
+        },
         "resume_target_unknown": {
             "message": "Deze zone staat nog op vorstbeveiliging en er is geen bevestigde doeltemperatuur bekend. Kies een temperatuur met de actie climate.set_temperature om de zone te hervatten. De algemene verwarmings-/koelmodus moet ingeschakeld zijn."
         },

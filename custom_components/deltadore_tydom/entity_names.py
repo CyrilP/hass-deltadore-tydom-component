@@ -588,7 +588,6 @@ ENTITY_NAMES: dict[str, str] = {
     "gateway_ip_status": "Local network",
     "gateway_internet_status": "Internet access",
     "reboot_gateway": "Restart gateway",
-    "radio_firmware": "Firmware {model}",
     "radio_firmware_update_available": "Radio product firmware update",
 }
 

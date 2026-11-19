@@ -6,13 +6,15 @@ The resources used here were identified in the official Tydom application:
 * ``/configs/gateway/reboot``: restart the gateway;
 * ``/configs/gateway/update/status`` and ``/configs/gateway/update/setup``:
   detailed gateway firmware status and manual/automatic update mode;
-* ``/devices/update/status`` and ``/devices/update``: firmware of the radio
-  products, deployed by the gateway;
+* ``/devices/update/status``: firmware status of the radio products (read
+  only: deploying radio firmware is left out until it is verified on
+  hardware);
 * ``/configs/gateway/network/status``: IP and internet connectivity.
 """
 
 from __future__ import annotations
 
+from collections.abc import Awaitable
 from typing import Any
 
 from homeassistant.components.binary_sensor import (
@@ -22,12 +24,8 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.components.button import ButtonDeviceClass, ButtonEntity
 from homeassistant.components.select import SelectEntity
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.components.update import (
-    UpdateDeviceClass,
-    UpdateEntity,
-    UpdateEntityFeature,
-)
 from homeassistant.const import EntityCategory
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo, Entity
 
 from .const import DOMAIN
@@ -37,9 +35,19 @@ from .tydom.tydom_devices import (
     GATEWAY_UPDATE_MODES,
     Tydom,
 )
+from .tydom.tydom_client import TydomGatewayCommandError
 
-# Firmware states reported in ``fwList[].status`` by the gateway.
-_FIRMWARE_BUSY_STATES = {"downloading"}
+
+async def async_confirmed(command: Awaitable[None]) -> None:
+    """Run a confirmed gateway command and report a failure to the user."""
+    try:
+        await command
+    except TydomGatewayCommandError as err:
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="gateway_command_failed",
+            translation_placeholders={"error": str(err)},
+        ) from err
 
 
 class GatewayEntity(Entity):
@@ -110,11 +118,11 @@ class GatewayLedSwitch(GatewayEntity, SwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Light the LED with the last colour used."""
-        await self._device.async_turn_led_on()
+        await async_confirmed(self._device.async_turn_led_on())
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Switch the LED off."""
-        await self._device.async_turn_led_off()
+        await async_confirmed(self._device.async_turn_led_off())
 
 
 class GatewayLedColorSelect(GatewayEntity, SelectEntity):
@@ -145,7 +153,7 @@ class GatewayLedColorSelect(GatewayEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         """Apply a colour; this also switches the LED on."""
-        await self._device.async_set_led_color(self._options[option])
+        await async_confirmed(self._device.async_set_led_color(self._options[option]))
 
 
 # ----------------------------------------------------------------------
@@ -221,7 +229,7 @@ class GatewayUpdateModeSelect(GatewayEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         """Apply the selected mode."""
-        await self._device.async_set_update_mode(self._options[option])
+        await async_confirmed(self._device.async_set_update_mode(self._options[option]))
 
 
 # ----------------------------------------------------------------------
@@ -264,76 +272,3 @@ class RadioFirmwareUpdateAvailableSensor(GatewayEntity, BinarySensorEntity):
             "free_firmware_slots": status.get("nbFwFreeSlots"),
             "firmware_count": len(self._device.device_firmwares),
         }
-
-
-class RadioFirmwareUpdate(GatewayEntity, UpdateEntity):
-    """Firmware of one radio product model, deployed by the gateway."""
-
-    _attr_entity_category = EntityCategory.CONFIG
-    _attr_device_class = UpdateDeviceClass.FIRMWARE
-    _attr_supported_features = UpdateEntityFeature.INSTALL
-
-    def __init__(self, device: Tydom, fw_id: str) -> None:
-        """Initialise the update entity of firmware ``fw_id``."""
-        self._fw_id = fw_id
-        firmware = device.device_firmwares.get(fw_id, {})
-        model = str(firmware.get("modelId") or fw_id)
-        self._attr_title = model
-        super().__init__(
-            device,
-            "radio_firmware",
-            f"radio_firmware_{fw_id}",
-            placeholders={"model": model},
-        )
-
-    @property
-    def _firmware(self) -> dict[str, Any] | None:
-        return self._device.device_firmwares.get(self._fw_id)
-
-    @property
-    def available(self) -> bool:
-        """Available while the gateway still lists this firmware."""
-        return self._firmware is not None
-
-    @property
-    def installed_version(self) -> str | None:
-        """Return the version currently running on the products."""
-        firmware = self._firmware or {}
-        version = firmware.get("running")
-        return str(version) if version not in (None, "") else None
-
-    @property
-    def latest_version(self) -> str | None:
-        """Return the version the gateway offers (installed one when up to date)."""
-        firmware = self._firmware or {}
-        version = firmware.get("wish")
-        if version in (None, ""):
-            return self.installed_version
-        return str(version)
-
-    @property
-    def in_progress(self) -> bool:
-        """Return whether the gateway is downloading this firmware."""
-        firmware = self._firmware or {}
-        return firmware.get("status") in _FIRMWARE_BUSY_STATES
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Expose the raw gateway status of this firmware."""
-        firmware = self._firmware or {}
-        return {
-            "firmware_id": self._fw_id,
-            "model_id": firmware.get("modelId"),
-            "status": firmware.get("status"),
-        }
-
-    async def async_install(
-        self, version: str | None, backup: bool, **kwargs: Any
-    ) -> None:
-        """Ask the gateway to deploy this firmware."""
-        await self._device.async_install_device_firmware(self._fw_id)
-
-
-def gateway_firmware_ids(device: Tydom) -> list[str]:
-    """Return the radio firmware currently listed by the gateway."""
-    return list(device.device_firmwares)

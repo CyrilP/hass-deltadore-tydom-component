@@ -48,9 +48,7 @@ from .gateway_entities import (
     GatewayLedSwitch,
     GatewayRebootButton,
     GatewayUpdateModeSelect,
-    RadioFirmwareUpdate,
     RadioFirmwareUpdateAvailableSensor,
-    gateway_firmware_ids,
 )
 from .ha_entities import (
     HATydom,
@@ -2968,12 +2966,6 @@ class Hub:
                 "radio_firmware_update_available",
                 self.add_binary_sensor_callback,
                 lambda: RadioFirmwareUpdateAvailableSensor(device),
-            )
-        for fw_id in gateway_firmware_ids(device):
-            self._add_gateway_control(
-                f"radio_firmware_{fw_id}",
-                self.add_update_callback,
-                lambda fw_id=fw_id: RadioFirmwareUpdate(device, fw_id),
             )
 
     async def _create_shutter_device(self, device: TydomShutter) -> None:

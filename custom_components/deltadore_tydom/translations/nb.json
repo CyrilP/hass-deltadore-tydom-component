@@ -384,9 +384,6 @@
         "lock": {},
         "weather": {},
         "update": {
-            "radio_firmware": {
-                "name": "Fastvare {model}"
-            },
             "firmware": {
                 "name": "Fastvare"
             }
@@ -790,6 +787,9 @@
         "moment": {}
     },
     "exceptions": {
+        "gateway_command_failed": {
+            "message": "Gatewayen tok ikke i bruk kommandoen: {error}"
+        },
         "resume_target_unknown": {
             "message": "Denne sonen er fortsatt i frostbeskyttelse, og ingen bekreftet måltemperatur er kjent. Velg en temperatur med handlingen climate.set_temperature for å starte den igjen. Den generelle varme-/kjølemodusen må være aktivert."
         },

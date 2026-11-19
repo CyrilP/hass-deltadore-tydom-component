@@ -6,9 +6,6 @@
             }
         },
         "update": {
-            "radio_firmware": {
-                "name": "Firmware {model}"
-            },
             "firmware": {
                 "name": "Firmware"
             }
@@ -3968,6 +3965,9 @@
         }
     },
     "exceptions": {
+        "gateway_command_failed": {
+            "message": "Das Gateway hat den Befehl nicht übernommen: {error}"
+        },
         "resume_target_unknown": {
             "message": "Diese Zone befindet sich noch im Frostschutz und es ist keine bestätigte Solltemperatur bekannt. Wählen Sie mit der Aktion climate.set_temperature eine Temperatur, um sie wieder zu starten. Der allgemeine Heiz-/Kühlmodus muss aktiviert sein."
         },

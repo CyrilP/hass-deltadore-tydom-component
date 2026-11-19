@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
+import itertools
 import math
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 
@@ -492,8 +493,59 @@ _IDLE_PROCESS_STATES = {None, "", "idle", "IDLE"}
 _GATEWAY_LED_ONLINE_KEYS = ("OK", "IpOk LteOk")
 
 
+_GATEWAY_REPORT_ORDER = itertools.count(1)
+"""Arrival order of gateway reports, shared by every ``Tydom`` fragment."""
+
+_UPDATE_AVAILABILITY_SOURCES = ("updateAvailable", "gateway_update_status")
+"""Attributes that report gateway update availability: ``/info`` and
+``/configs/gateway/update/status``."""
+
+
 class Tydom(TydomDevice):
     """Tydom Gateway."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the gateway and remember which update reports it carries."""
+        super().__init__(*args, **kwargs)
+        self._update_report_order: dict[str, int] = {
+            source: next(_GATEWAY_REPORT_ORDER)
+            for source in _UPDATE_AVAILABILITY_SOURCES
+            if source in self.__dict__
+        }
+
+    async def update_device(self, device) -> None:
+        """Merge a gateway fragment, keeping the arrival order of its reports."""
+        self._update_report_order.update(
+            getattr(device, "_update_report_order", None) or {}
+        )
+        await super().update_device(device)
+
+    @property
+    def update_available(self) -> Any:
+        """Return the update availability from the most recent report.
+
+        ``/info`` and ``/configs/gateway/update/status`` both carry
+        ``updateAvailable`` and are refreshed independently, so neither one
+        takes precedence: the value reported last wins, and a stale value
+        from one endpoint never hides a fresh one from the other.
+        """
+        reports = []
+        info_value = getattr(self, "updateAvailable", None)
+        if info_value is not None:
+            reports.append(
+                (self._update_report_order.get("updateAvailable", 0), info_value)
+            )
+        status_value = self.update_status.get("updateAvailable")
+        if status_value is not None:
+            reports.append(
+                (
+                    self._update_report_order.get("gateway_update_status", 0),
+                    status_value,
+                )
+            )
+        if not reports:
+            return None
+        return max(reports, key=lambda report: report[0])[1]
 
     async def async_trigger_firmware_update(self) -> None:
         """Trigger firmware update."""
@@ -670,15 +722,6 @@ class Tydom(TydomDevice):
             for entry in entries
             if isinstance(entry, dict) and entry.get("fwId") not in (None, "")
         }
-
-    async def async_install_device_firmware(self, fw_id: str) -> None:
-        """Ask the gateway to deploy one radio product firmware."""
-        firmware = self.device_firmwares.get(fw_id)
-        if firmware is None:
-            raise ValueError(f"Unknown radio firmware: {fw_id}")
-        await self._tydom_client.put_devices_update(
-            [{"fwId": firmware["fwId"], "modelId": firmware.get("modelId")}]
-        )
 
 
 class TydomShutter(TydomDevice):

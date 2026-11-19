@@ -1094,7 +1094,6 @@ class MessageHandler:
                 self.parse_gateway_resource, "gateway_devices_update_status"
             ),
             "/configs/gateway/reboot": partial(no_op, "msg_gateway_reboot"),
-            "/devices/update": partial(no_op, "msg_devices_update"),
             "/ping": ping_message,
             "/refresh/all": partial(no_op, "msg_refresh_all"),
             "/scenarios/file": self.parse_scenarios_file,

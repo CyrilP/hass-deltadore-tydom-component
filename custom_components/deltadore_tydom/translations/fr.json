@@ -216,6 +216,9 @@
         }
     },
     "exceptions": {
+        "gateway_command_failed": {
+            "message": "La passerelle n'a pas appliqué la commande : {error}"
+        },
         "resume_target_unknown": {
             "message": "Cette zone reste en hors-gel et aucune consigne confirmée n’est connue. Choisissez une température avec l’action climate.set_temperature pour la relancer. Le mode général de chauffage/climatisation doit être activé."
         },
@@ -1978,9 +1981,6 @@
         "lock": {},
         "weather": {},
         "update": {
-            "radio_firmware": {
-                "name": "Firmware {model}"
-            },
             "firmware": {
                 "name": "Firmware"
             }

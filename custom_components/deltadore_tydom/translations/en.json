@@ -215,6 +215,9 @@
         }
     },
     "exceptions": {
+        "gateway_command_failed": {
+            "message": "The gateway did not apply the command: {error}"
+        },
         "resume_target_unknown": {
             "message": "This zone is still in frost protection and no confirmed target temperature is known. Choose a temperature with the climate.set_temperature action to resume it. The general heating/air conditioning mode must be enabled."
         },
@@ -1977,9 +1980,6 @@
         "lock": {},
         "weather": {},
         "update": {
-            "radio_firmware": {
-                "name": "Firmware {model}"
-            },
             "firmware": {
                 "name": "Firmware"
             }

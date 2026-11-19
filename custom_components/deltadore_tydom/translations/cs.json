@@ -384,9 +384,6 @@
         "lock": {},
         "weather": {},
         "update": {
-            "radio_firmware": {
-                "name": "Firmware {model}"
-            },
             "firmware": {
                 "name": "Firmware"
             }
@@ -790,6 +787,9 @@
         "moment": {}
     },
     "exceptions": {
+        "gateway_command_failed": {
+            "message": "Brána příkaz nepoužila: {error}"
+        },
         "resume_target_unknown": {
             "message": "Tato zóna je stále v protimrazovém režimu a není známa potvrzená cílová teplota. Pro obnovení zvolte teplotu pomocí akce climate.set_temperature. Obecný režim vytápění/chlazení musí být zapnutý."
         },

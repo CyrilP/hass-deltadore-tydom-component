@@ -6,8 +6,8 @@ Payloads are those returned by a TYDOM HOME (firmware 03.24.29).
 from __future__ import annotations
 
 import ast
+import asyncio
 import importlib.util
-import json
 from pathlib import Path
 import sys
 import types
@@ -59,6 +59,22 @@ def _entity_base(name: str) -> type:
     return type(name, (), {})
 
 
+class _HomeAssistantError(Exception):
+    """Stand-in for homeassistant.exceptions.HomeAssistantError."""
+
+    def __init__(
+        self,
+        *args,
+        translation_domain=None,
+        translation_key=None,
+        translation_placeholders=None,
+    ) -> None:
+        super().__init__(*args)
+        self.translation_domain = translation_domain
+        self.translation_key = translation_key
+        self.translation_placeholders = translation_placeholders
+
+
 for package_name in (
     "custom_components",
     "custom_components.deltadore_tydom",
@@ -95,20 +111,20 @@ _module(
 _module("homeassistant.components.select", SelectEntity=_entity_base("SelectEntity"))
 _module("homeassistant.components.switch", SwitchEntity=_entity_base("SwitchEntity"))
 _module(
-    "homeassistant.components.update",
-    UpdateDeviceClass=SimpleNamespace(FIRMWARE="firmware"),
-    UpdateEntity=_entity_base("UpdateEntity"),
-    UpdateEntityFeature=SimpleNamespace(INSTALL=1),
-)
-_module(
     "homeassistant.const",
     EntityCategory=SimpleNamespace(CONFIG="config", DIAGNOSTIC="diagnostic"),
 )
+_module("homeassistant.exceptions", HomeAssistantError=_HomeAssistantError)
 _module("homeassistant.helpers.entity", DeviceInfo=dict, Entity=_Entity)
 
 devices_module = _load(
     "custom_components.deltadore_tydom.tydom.tydom_devices",
     COMPONENT / "tydom" / "tydom_devices.py",
+)
+TydomGatewayCommandError = type("TydomGatewayCommandError", (Exception,), {})
+_module(
+    "custom_components.deltadore_tydom.tydom.tydom_client",
+    TydomGatewayCommandError=TydomGatewayCommandError,
 )
 handler_module = _load(
     "custom_components.deltadore_tydom.tydom.MessageHandler",
@@ -166,7 +182,6 @@ def _gateway(**data) -> Tydom:
         put_gateway_led=AsyncMock(),
         reboot_gateway=AsyncMock(),
         put_gateway_update_setup=AsyncMock(),
-        put_devices_update=AsyncMock(),
         update_firmware=AsyncMock(),
         get_gateway_update_status=AsyncMock(),
     )
@@ -287,37 +302,87 @@ class GatewayFirmwareStatusTests(IsolatedAsyncioTestCase):
         gateway._tydom_client.get_gateway_update_status.assert_awaited_once()
 
 
-class RadioFirmwareTests(IsolatedAsyncioTestCase):
-    """Radio product firmware deployed by the gateway."""
-
-    FIRMWARE = {
-        "fwId": "fw-42",
-        "modelId": "TYXIA 5731",
-        "running": "01.00.00",
-        "wish": "01.02.00",
-        "status": "available",
-    }
+class RadioFirmwareStatusTests(TestCase):
+    """Radio product firmware status reported by the gateway (read only)."""
 
     def test_empty_list_from_a_real_gateway(self) -> None:
         """Empty list from a real gateway."""
         gateway = _gateway(gateway_devices_update_status=DEVICES_UPDATE)
         self.assertEqual({}, gateway.device_firmwares)
 
-    async def test_install_sends_the_official_payload(self) -> None:
-        """Install sends the official payload."""
-        gateway = _gateway(
-            gateway_devices_update_status=dict(DEVICES_UPDATE, fwList=[self.FIRMWARE])
-        )
-        await gateway.async_install_device_firmware("fw-42")
-        gateway._tydom_client.put_devices_update.assert_awaited_once_with(
-            [{"fwId": "fw-42", "modelId": "TYXIA 5731"}]
-        )
+    def test_install_is_not_offered(self) -> None:
+        """Radio firmware deployment waits for a hardware-verified flow."""
+        self.assertFalse(hasattr(Tydom, "async_install_device_firmware"))
+        self.assertFalse(hasattr(entities_module, "RadioFirmwareUpdate"))
 
-    async def test_unknown_firmware_is_refused(self) -> None:
-        """Unknown firmware is refused."""
-        gateway = _gateway(gateway_devices_update_status=DEVICES_UPDATE)
-        with self.assertRaises(ValueError):
-            await gateway.async_install_device_firmware("nope")
+
+def _gateway_fragment(**data) -> Tydom:
+    """Build a gateway fragment as MessageHandler does for one reply."""
+    return Tydom(None, "gw", "gw", "gw", "Tydom Gateway", None, None, data)
+
+
+class UpdateAvailabilityTests(IsolatedAsyncioTestCase):
+    """/info and update/status both report updateAvailable: the latest wins."""
+
+    async def _merge(self, stored: Tydom, *fragments: Tydom) -> Tydom:
+        stored.publish_updates = AsyncMock()
+        for fragment in fragments:
+            await stored.update_device(fragment)
+        return stored
+
+    async def test_fresh_info_is_not_hidden_by_a_stale_status(self) -> None:
+        """A fresh /info offer wins over an older update/status ``false``."""
+        gateway = await self._merge(
+            _gateway(mainVersionSW="03.24.29", updateAvailable=False),
+            _gateway_fragment(gateway_update_status=UPDATE_STATUS),
+            _gateway_fragment(updateAvailable=True),
+        )
+        self.assertTrue(gateway.update_available)
+
+    async def test_fresh_status_is_not_hidden_by_a_stale_info(self) -> None:
+        """A fresh update/status offer wins over an older /info ``false``."""
+        gateway = await self._merge(
+            _gateway(mainVersionSW="03.24.29", updateAvailable=False),
+            _gateway_fragment(
+                gateway_update_status=dict(UPDATE_STATUS, updateAvailable=True)
+            ),
+        )
+        self.assertTrue(gateway.update_available)
+
+    async def test_a_newer_false_clears_an_older_offer(self) -> None:
+        """Once installed, the source reporting last clears the offer."""
+        for first, second in (
+            (
+                _gateway_fragment(updateAvailable=True),
+                _gateway_fragment(gateway_update_status=UPDATE_STATUS),
+            ),
+            (
+                _gateway_fragment(
+                    gateway_update_status=dict(UPDATE_STATUS, updateAvailable=True)
+                ),
+                _gateway_fragment(updateAvailable=False),
+            ),
+        ):
+            with self.subTest(first=first.__dict__.keys()):
+                gateway = await self._merge(_gateway(), first, second)
+                self.assertFalse(gateway.update_available)
+
+    async def test_other_fragments_keep_the_order(self) -> None:
+        """An LED or network refresh does not refresh update availability."""
+        gateway = await self._merge(
+            _gateway(updateAvailable=False),
+            _gateway_fragment(
+                gateway_update_status=dict(UPDATE_STATUS, updateAvailable=True)
+            ),
+            _gateway_fragment(gateway_led=LED),
+        )
+        self.assertTrue(gateway.update_available)
+
+    def test_single_or_no_source(self) -> None:
+        """Gateways without update/status keep using /info."""
+        self.assertTrue(_gateway(updateAvailable=True).update_available)
+        self.assertFalse(_gateway(gateway_update_status=UPDATE_STATUS).update_available)
+        self.assertIsNone(_gateway().update_available)
 
 
 class MessageRoutingTests(IsolatedAsyncioTestCase):
@@ -413,25 +478,30 @@ class GatewayEntityTests(IsolatedAsyncioTestCase):
         await select.async_select_option("auto")
         gateway.async_set_update_mode.assert_awaited_once_with("AUTO")
 
-    async def test_radio_firmware_update_entity(self) -> None:
-        """Radio firmware update entity."""
-        firmware = dict(RadioFirmwareTests.FIRMWARE)
-        gateway = _gateway(
-            gateway_devices_update_status=dict(DEVICES_UPDATE, fwList=[firmware])
-        )
-        gateway.async_install_device_firmware = AsyncMock()
-        entity = entities_module.RadioFirmwareUpdate(gateway, "fw-42")
-        self.assertEqual(("radio_firmware", {"model": "TYXIA 5731"}), entity._test_name)
-        self.assertEqual("01.00.00", entity.installed_version)
-        self.assertEqual("01.02.00", entity.latest_version)
-        self.assertFalse(entity.in_progress)
-        await entity.async_install(None, False)
-        gateway.async_install_device_firmware.assert_awaited_once_with("fw-42")
-
-        firmware["status"] = "downloading"
-        self.assertTrue(entity.in_progress)
-        gateway.gateway_devices_update_status = DEVICES_UPDATE
-        self.assertFalse(entity.available)
+    async def test_unapplied_commands_raise_a_home_assistant_error(self) -> None:
+        """A command TYDOM rejects or does not apply is reported to the user."""
+        gateway = _gateway(gateway_led=LED, gateway_update_status=UPDATE_STATUS)
+        error = TydomGatewayCommandError("TYDOM did not apply PUT /x")
+        gateway.async_turn_led_on = AsyncMock(side_effect=error)
+        gateway.async_turn_led_off = AsyncMock(side_effect=error)
+        gateway.async_set_led_color = AsyncMock(side_effect=error)
+        gateway.async_set_update_mode = AsyncMock(side_effect=error)
+        switch = entities_module.GatewayLedSwitch(gateway)
+        colour = entities_module.GatewayLedColorSelect(gateway)
+        mode = entities_module.GatewayUpdateModeSelect(gateway)
+        for command in (
+            switch.async_turn_on,
+            switch.async_turn_off,
+            lambda: colour.async_select_option("green"),
+            lambda: mode.async_select_option("auto"),
+        ):
+            with self.assertRaises(_HomeAssistantError) as raised:
+                await command()
+            self.assertEqual("gateway_command_failed", raised.exception.translation_key)
+            self.assertEqual(
+                {"error": "TYDOM did not apply PUT /x"},
+                raised.exception.translation_placeholders,
+            )
 
     def test_radio_availability_sensor(self) -> None:
         """Radio availability sensor."""
@@ -482,9 +552,7 @@ def _load_hub_methods() -> type:
             "GatewayLedSwitch",
             "GatewayRebootButton",
             "GatewayUpdateModeSelect",
-            "RadioFirmwareUpdate",
             "RadioFirmwareUpdateAvailableSensor",
-            "gateway_firmware_ids",
         )
     }
     namespace["Tydom"] = Tydom
@@ -549,20 +617,6 @@ class HubGatewayControlTests(TestCase):
         )
         hub.add_update_callback.assert_not_called()
 
-    def test_new_radio_firmware_creates_one_update_entity(self) -> None:
-        """New radio firmware creates one update entity."""
-        hub = self._hub()
-        gateway = _gateway(gateway_devices_update_status=DEVICES_UPDATE)
-        hub._maybe_create_gateway_controls(gateway)
-        gateway.gateway_devices_update_status = dict(
-            DEVICES_UPDATE, fwList=[RadioFirmwareTests.FIRMWARE]
-        )
-        hub._maybe_create_gateway_controls(gateway)
-        hub._maybe_create_gateway_controls(gateway)
-        self.assertEqual(
-            ["RadioFirmwareUpdate"], self._created(hub.add_update_callback)
-        )
-
     def test_platform_not_ready_retries_later(self) -> None:
         """Platform not ready retries later."""
         hub = self._hub()
@@ -591,12 +645,13 @@ def _load_client_methods() -> type:
         "reboot_gateway",
         "put_gateway_update_setup",
         "get_gateway_update_status",
-        "put_devices_update",
         "get_devices_update_status",
         "get_gateway_maintenance_status",
         "get_gateway_network_status",
-        "_put_then_read_back",
+        "_gateway_request",
+        "_put_and_confirm",
         "_send_gateway_command",
+        "update_firmware",
     }
     methods = [
         node
@@ -605,6 +660,9 @@ def _load_client_methods() -> type:
     ]
     isolated = ast.Module(
         body=[
+            ast.ImportFrom(
+                module="__future__", names=[ast.alias(name="annotations")], level=0
+            ),
             ast.ClassDef(
                 name="Client",
                 bases=[],
@@ -612,16 +670,21 @@ def _load_client_methods() -> type:
                 body=methods,
                 decorator_list=[],
                 type_params=[],
-            )
+            ),
         ],
         type_ignores=[],
     )
     ast.fix_missing_locations(isolated)
     namespace = {
-        "asyncio": SimpleNamespace(sleep=AsyncMock()),
-        "json": json,
+        "asyncio": SimpleNamespace(sleep=AsyncMock(), Event=asyncio.Event),
+        "async_timeout": SimpleNamespace(timeout=asyncio.timeout),
+        "LOGGER": MagicMock(),
         "STRUCTURED_LOGGER": MagicMock(),
+        "TydomGatewayCommandError": TydomGatewayCommandError,
+        "_GATEWAY_COMMAND_ACK_TIMEOUT": 5.0,
+        "_GATEWAY_READ_BACK_TIMEOUT": 10.0,
         "_GATEWAY_READ_BACK_DELAY": 0,
+        "_GATEWAY_READ_BACK_ATTEMPTS": 3,
     }
     # The real path lets coverage credit the lines of tydom_client.py.
     exec(
@@ -631,30 +694,83 @@ def _load_client_methods() -> type:
     return namespace["Client"]
 
 
+LED_OFF = {"color": {"OK": "off", "local": "orange", "error": "red"}, "power": 100}
+
+
 class ClientRequestTests(IsolatedAsyncioTestCase):
     """Wire format of the new requests (as sent by the official app)."""
 
-    def _client(self):
+    def _client(self, *replies):
         client = _load_client_methods()()
         client._unsupported_optional_paths = set()
         client.send_message = AsyncMock()
-        client.send_request = AsyncMock()
-        client.get_reply_to_request = AsyncMock()
+        client.real_gateway_request = client._gateway_request
+        client._gateway_request = AsyncMock(side_effect=list(replies))
         client.real_send_gateway_command = client._send_gateway_command
         client._send_gateway_command = AsyncMock()
         return client
 
-    async def test_led_is_written_then_read_back(self) -> None:
-        """The LED PUT is not awaited for a reply; the state is read back."""
-        client = self._client()
-        await client.put_gateway_led(LED)
-        client._send_gateway_command.assert_awaited_once_with(
-            "PUT", "/configs/gateway/led", body=LED, headers=None
+    def _requests(self, client) -> list[tuple]:
+        return [call.args[:3] for call in client._gateway_request.await_args_list]
+
+    async def test_led_is_confirmed_by_a_read_back(self) -> None:
+        """The LED PUT succeeds once the gateway reports the new colour."""
+        client = self._client([], [LED_OFF])
+        await client.put_gateway_led(LED_OFF)
+        self.assertEqual(
+            [("PUT", "/configs/gateway/led", LED_OFF), ("GET", "/configs/gateway/led")],
+            self._requests(client),
         )
-        client.get_reply_to_request.assert_not_awaited()
-        client.send_message.assert_awaited_once_with(
-            method="GET", msg="/configs/gateway/led"
+        self.assertEqual(
+            5.0, client._gateway_request.await_args_list[0].kwargs["timeout"]
         )
+
+    async def test_missing_ack_and_late_state_are_retried(self) -> None:
+        """No acknowledgement is tolerated; the state may take a moment."""
+        client = self._client(None, None, ["not json", LED], [LED_OFF])
+        await client.put_gateway_led(LED_OFF)
+        self.assertEqual(4, client._gateway_request.await_count)
+
+    async def test_state_never_applied_is_an_error(self) -> None:
+        """The command fails when every read-back shows the old state."""
+        client = self._client([], [LED], [LED], [LED])
+        with self.assertRaises(TydomGatewayCommandError):
+            await client.put_gateway_led(LED_OFF)
+        self.assertEqual(4, client._gateway_request.await_count)
+
+    async def test_rejected_put_fails_without_read_back(self) -> None:
+        """An HTTP rejection of the PUT is reported at once."""
+        client = self._client(TydomGatewayCommandError("HTTP 400"))
+        with self.assertRaises(TydomGatewayCommandError):
+            await client.put_gateway_led(LED_OFF)
+        self.assertEqual(1, client._gateway_request.await_count)
+
+    async def test_update_mode_is_confirmed_on_the_setup_resource(self) -> None:
+        """The update mode is sent as {"mode": …} and read back from setup."""
+        client = self._client([], [{"mode": "MANUAL"}], [{"mode": "AUTO"}])
+        await client.put_gateway_update_setup("AUTO")
+        self.assertEqual(
+            [
+                ("PUT", "/configs/gateway/update/setup", {"mode": "AUTO"}),
+                ("GET", "/configs/gateway/update/setup"),
+                ("GET", "/configs/gateway/update/setup"),
+            ],
+            self._requests(client),
+        )
+
+    async def test_update_mode_not_applied_is_an_error(self) -> None:
+        """The mode change fails when the gateway keeps the old mode."""
+        client = self._client(None, *([[{"mode": "MANUAL"}]] * 3))
+        with self.assertRaises(TydomGatewayCommandError):
+            await client.put_gateway_update_setup("AUTO")
+
+    async def test_firmware_install_reports_a_rejection(self) -> None:
+        """Installing waits for TYDOM's answer and reports a refusal."""
+        client = self._client(None, TydomGatewayCommandError("HTTP 409"))
+        await client.update_firmware()
+        self.assertEqual([("PUT", "/configs/gateway/update")], self._requests(client))
+        with self.assertRaises(TydomGatewayCommandError):
+            await client.update_firmware()
 
     async def test_reboot_does_not_wait_for_a_reply(self) -> None:
         """Reboot does not wait for a reply."""
@@ -663,7 +779,7 @@ class ClientRequestTests(IsolatedAsyncioTestCase):
         client._send_gateway_command.assert_awaited_once_with(
             "PUT", "/configs/gateway/reboot"
         )
-        client.get_reply_to_request.assert_not_awaited()
+        client._gateway_request.assert_not_awaited()
 
     async def test_commands_carry_the_remote_mode_prefix(self) -> None:
         """Requests keep the mediation prefix, unlike prepare_request's output."""
@@ -679,31 +795,44 @@ class ClientRequestTests(IsolatedAsyncioTestCase):
         )
         client.send_bytes.assert_awaited_once_with(b"\x02PUT /x HTTP/1.1\r\n\r\n")
 
-    async def test_update_mode_body(self) -> None:
-        """The update mode is sent as {"mode": …} and read back."""
+    def _tracked_client(self, *, answer: bool, error: str | None = None):
         client = self._client()
-        await client.put_gateway_update_setup("AUTO")
-        client._send_gateway_command.assert_awaited_once_with(
-            "PUT", "/configs/gateway/update/setup", body={"mode": "AUTO"}, headers=None
-        )
-        client.send_message.assert_awaited_once_with(
-            method="GET", msg="/configs/gateway/update/status"
-        )
+        client._cmd_prefix = b"\x02"
+        client.send_bytes = AsyncMock()
 
-    async def test_devices_update_sends_a_json_array(self) -> None:
-        """Radio firmware deployment uses a JSON array, then reads back."""
-        client = self._client()
-        await client.put_devices_update([{"fwId": "fw-42", "modelId": "TYXIA 5731"}])
-        method, path = client._send_gateway_command.await_args.args
-        kwargs = client._send_gateway_command.await_args.kwargs
-        self.assertEqual(("PUT", "/devices/update"), (method, path))
-        self.assertEqual(
-            [{"fwId": "fw-42", "modelId": "TYXIA 5731"}], json.loads(kwargs["body"])
+        def prepare(method, path, body, headers, reply_event):
+            if answer:
+                reply_event.set()
+            return "7", b"REQ"
+
+        client._message_handler = SimpleNamespace(
+            prepare_request=MagicMock(side_effect=prepare),
+            get_reply_error=MagicMock(return_value=error),
+            get_reply=MagicMock(return_value={"events": [LED]}),
+            remove_reply=MagicMock(),
         )
-        self.assertIn("application/json", kwargs["headers"]["Content-Type"])
-        client.send_message.assert_awaited_once_with(
-            method="GET", msg="/devices/update/status"
+        return client
+
+    async def test_tracked_request_returns_the_reply(self) -> None:
+        """A tracked request is prefixed and returns the parsed reply."""
+        client = self._tracked_client(answer=True)
+        self.assertEqual([LED], await client.real_gateway_request("GET", "/led"))
+        client.send_bytes.assert_awaited_once_with(b"\x02REQ")
+
+    async def test_tracked_request_reports_a_rejection(self) -> None:
+        """An HTTP error reply raises a gateway command error."""
+        client = self._tracked_client(answer=True, error="HTTP 400: Bad Request")
+        with self.assertRaisesRegex(TydomGatewayCommandError, "HTTP 400"):
+            await client.real_gateway_request("PUT", "/led", {"a": 1})
+        client._message_handler.remove_reply.assert_called_once_with("7")
+
+    async def test_tracked_request_without_reply_returns_none(self) -> None:
+        """A missing reply is not an error by itself."""
+        client = self._tracked_client(answer=False)
+        self.assertIsNone(
+            await client.real_gateway_request("PUT", "/led", timeout=0.01)
         )
+        client._message_handler.remove_reply.assert_called_once_with("7")
 
     async def test_unsupported_paths_are_skipped(self) -> None:
         """Unsupported paths are skipped."""

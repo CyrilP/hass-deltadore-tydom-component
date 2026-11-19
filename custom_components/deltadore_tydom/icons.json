@@ -3937,9 +3937,6 @@
     "update": {
       "firmware": {
         "default": "mdi:package-up"
-      },
-      "radio_firmware": {
-        "default": "mdi:chip"
       }
     },
     "cover": {

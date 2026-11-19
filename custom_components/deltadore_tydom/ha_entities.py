@@ -1940,8 +1940,9 @@ class HATydom(UpdateEntity, HAEntity):
         if version is None:
             return None
 
-        update_status = getattr(self._device, "update_status", {}) or {}
-        available = update_status.get("updateAvailable")
+        # The gateway device picks the most recent of the /info and
+        # /configs/gateway/update/status reports.
+        available = getattr(self._device, "update_available", None)
         if available is None:
             available = getattr(self._device, "updateAvailable", None)
         if normalize_binary_state(available) is True:
@@ -1965,8 +1966,12 @@ class HATydom(UpdateEntity, HAEntity):
     async def async_install(
         self, version: str | None, backup: bool, **kwargs: Any
     ) -> None:
-        """Install an update."""
-        await self._device.async_trigger_firmware_update()
+        """Install an update, reporting a rejection by the gateway."""
+        # Imported here: gateway_entities depends on the client module, which
+        # this module does not load at import time.
+        from .gateway_entities import async_confirmed
+
+        await async_confirmed(self._device.async_trigger_firmware_update())
 
     def get_sensors(self):
         """Get available sensors for this entity, including protocol sensors.
