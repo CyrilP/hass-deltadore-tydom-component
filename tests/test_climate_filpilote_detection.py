@@ -1251,6 +1251,18 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
                 "max": 50.0,
                 "step": 0.5,
             },
+            # Present in Stephan's RF7110 diagnostic; this is also used by
+            # pilot-wire devices, so it cannot by itself identify the profile.
+            "overrideThermicLevel": {
+                "type": "string",
+                "permission": "rw",
+                "enum_values": ["STOP", "ANTI_FROST"],
+            },
+            "thermicLevel": {
+                "type": "string",
+                "permission": "rw",
+                "enum_values": ["STOP", "ANTI_FROST"],
+            },
             "overrideSetpoint": {
                 "type": "numeric",
                 "permission": "rw",
@@ -1407,6 +1419,20 @@ class LocalModeZoneTests(IsolatedAsyncioTestCase):
             entity._attr_preset_modes,
             [entities_module.PRESET_NONE, entities_module.PRESET_AWAY],
         )
+
+    def test_thermic_override_needs_complete_temperature_override(self) -> None:
+        """A partial pilot-wire profile must not be treated as RF7110 Auto."""
+        for missing in ("overrideSetpoint", "overrideRemainingTime", "OVERRIDE"):
+            with self.subTest(missing=missing):
+                original, _client = self._rf7110_zone()
+                metadata = original._device._metadata
+                if missing == "OVERRIDE":
+                    metadata["useMode"]["enum_values"].remove(missing)
+                else:
+                    metadata.pop(missing)
+                entity = HaClimate(original._device, hass=MagicMock())
+                self.assertFalse(entity._uses_scheduled_local_mode)
+                self.assertNotIn(HVACMode.AUTO, entity.hvac_modes)
 
     def test_scheduled_target_is_available_on_climate_and_sensor(self) -> None:
         """Expose the target on climate and retain its diagnostic sensor."""
