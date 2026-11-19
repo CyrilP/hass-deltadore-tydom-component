@@ -2926,9 +2926,12 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
         # setpoint and never carry the thermicLevel order register, so they
         # keep their previous behaviour intact.
         metadata = self._device._metadata
+        setpoint_attributes = ("setpoint", "heatSetpoint", "coolSetpoint")
+        if not self._device.uses_area_local_mode:
+            setpoint_attributes += ("heatingSetpoint",)
         has_setpoint_meta = metadata is not None and any(
             attr in metadata and ("min" in metadata[attr] or "max" in metadata[attr])
-            for attr in ("setpoint", "heatSetpoint", "coolSetpoint")
+            for attr in setpoint_attributes
         )
         # The metadata endpoint is not guaranteed to be available when HA builds
         # the entity.  TYWELL Control and Typass ATL zones nevertheless expose
@@ -2938,7 +2941,7 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
         # control entirely.
         has_live_setpoint = any(
             getattr(self._device, attribute, None) is not None
-            for attribute in ("setpoint", "heatSetpoint", "coolSetpoint")
+            for attribute in setpoint_attributes
         )
         has_live_setpoint_bounds = any(
             getattr(self._device, attribute, None) is not None
@@ -3798,6 +3801,15 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
             )
             if setpoint is not None:
                 return float(setpoint)
+
+        if (
+            not self._is_area_controlled
+            and getattr(self._device, "_temperature_command_name", lambda: None)()
+            == "heatingSetpoint"
+        ):
+            heating_setpoint = getattr(self._device, "heatingSetpoint", None)
+            if heating_setpoint is not None:
+                return float(heating_setpoint)
 
         if hasattr(self._device, "hvacMode"):
             hvac_mode = getattr(self._device, "hvacMode", None)

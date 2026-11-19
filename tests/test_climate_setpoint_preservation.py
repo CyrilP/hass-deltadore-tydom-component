@@ -136,6 +136,51 @@ class ClimateSetpointPreservationTests(IsolatedAsyncioTestCase):
         )
         self.assertEqual(device.setpoint, 22.5)
 
+    async def test_writable_heating_setpoint_alias_is_selected(self) -> None:
+        """Use heatingSetpoint bounds and write target when both registers exist."""
+        device, client = _boiler(
+            metadata={
+                "authorization": {"enum_values": ["HEATING"]},
+                "setpoint": {"min": 5, "max": 19},
+                "heatingSetpoint": {
+                    "type": "numeric",
+                    "permission": "rw",
+                    "min": 10,
+                    "max": 27,
+                },
+            },
+            data={
+                "authorization": "HEATING",
+                "setpoint": 17,
+                "heatingSetpoint": 17,
+            },
+        )
+
+        self.assertEqual(device.temperature_limits(), (10.0, 27.0))
+        await device.set_temperature(20)
+
+        client.put_devices_data.assert_awaited_once_with(
+            "20", "10", "heatingSetpoint", 20
+        )
+
+    async def test_read_only_heating_alias_does_not_change_setpoint_limits(
+        self,
+    ) -> None:
+        """Validate the writable setpoint rather than a read-only alias."""
+        device, client = _boiler(
+            metadata={
+                "authorization": {"enum_values": ["HEATING"]},
+                "setpoint": {"permission": "rw", "min": 5, "max": 30},
+                "heatingSetpoint": {"permission": "r", "min": 10, "max": 19},
+            },
+            data={"authorization": "HEATING", "setpoint": 17, "heatingSetpoint": 17},
+        )
+
+        self.assertEqual(device._temperature_command_name(), "setpoint")
+        self.assertEqual(device.temperature_limits(), (5.0, 30.0))
+        await device.set_temperature(25)
+        client.put_devices_data.assert_awaited_once_with("20", "10", "setpoint", 25)
+
     async def test_antifrost_does_not_clear_standard_setpoint(self) -> None:
         """Frost-protection mode must preserve the user's heating target."""
         device, client = _boiler(
@@ -157,7 +202,6 @@ class ClimateSetpointPreservationTests(IsolatedAsyncioTestCase):
             ],
         )
         self.assertEqual(device.setpoint, 20)
-
 
     async def test_area_thermostat_uses_writable_comfort_mode(self) -> None:
         """Use device-level comfortMode when the area thermostat exposes it."""
