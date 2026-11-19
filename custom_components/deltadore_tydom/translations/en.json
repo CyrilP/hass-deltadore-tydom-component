@@ -378,8 +378,15 @@
     },
     "entity": {
         "scene": {},
-        "switch": {},
+        "switch": {
+            "gateway_led": {
+                "name": "Status LED"
+            }
+        },
         "button": {
+            "reboot_gateway": {
+                "name": "Restart gateway"
+            },
             "acknowledge_events": {
                 "name": "Acknowledge events"
             },
@@ -1161,6 +1168,32 @@
             }
         },
         "select": {
+            "gateway_led_color": {
+                "name": "Status LED color",
+                "state": {
+                    "white": "White",
+                    "light_green": "Light green",
+                    "green": "Green",
+                    "light_blue": "Light blue",
+                    "cyan": "Cyan",
+                    "ocean": "Ocean blue",
+                    "purple": "Purple",
+                    "pink": "Pink",
+                    "custom_pink": "Custom pink",
+                    "coral": "Coral",
+                    "red": "Red",
+                    "orange": "Orange",
+                    "yellow": "Yellow",
+                    "custom_dd": "Delta Dore color"
+                }
+            },
+            "gateway_update_mode": {
+                "name": "Firmware update mode",
+                "state": {
+                    "manual": "Manual",
+                    "auto": "Automatic"
+                }
+            },
             "general_climate_mode": {
                 "name": "General climate mode",
                 "state": {
@@ -1944,6 +1977,9 @@
         "lock": {},
         "weather": {},
         "update": {
+            "radio_firmware": {
+                "name": "Firmware {model}"
+            },
             "firmware": {
                 "name": "Firmware"
             }
@@ -3582,6 +3618,15 @@
             }
         },
         "binary_sensor": {
+            "gateway_ip_status": {
+                "name": "Local network"
+            },
+            "gateway_internet_status": {
+                "name": "Internet access"
+            },
+            "radio_firmware_update_available": {
+                "name": "Radio product firmware update"
+            },
             "absence": {
                 "name": "Away mode"
             },
