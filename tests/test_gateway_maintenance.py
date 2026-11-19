@@ -594,6 +594,8 @@ def _load_client_methods() -> type:
         "get_devices_update_status",
         "get_gateway_maintenance_status",
         "get_gateway_network_status",
+        "_put_then_read_back",
+        "_send_gateway_command",
     }
     methods = [
         node
@@ -614,7 +616,12 @@ def _load_client_methods() -> type:
         type_ignores=[],
     )
     ast.fix_missing_locations(isolated)
-    namespace = {"json": json, "STRUCTURED_LOGGER": MagicMock()}
+    namespace = {
+        "asyncio": SimpleNamespace(sleep=AsyncMock()),
+        "json": json,
+        "STRUCTURED_LOGGER": MagicMock(),
+        "_GATEWAY_READ_BACK_DELAY": 0,
+    }
     exec(compile(isolated, "tydom_client.py", "exec"), namespace)
     return namespace["Client"]
 
@@ -628,15 +635,18 @@ class ClientRequestTests(IsolatedAsyncioTestCase):
         client.send_message = AsyncMock()
         client.send_request = AsyncMock()
         client.get_reply_to_request = AsyncMock()
+        client.real_send_gateway_command = client._send_gateway_command
+        client._send_gateway_command = AsyncMock()
         return client
 
     async def test_led_is_written_then_read_back(self) -> None:
-        """Led is written then read back."""
+        """The LED PUT is not awaited for a reply; the state is read back."""
         client = self._client()
         await client.put_gateway_led(LED)
-        client.get_reply_to_request.assert_awaited_once_with(
-            "PUT", "/configs/gateway/led", body=LED
+        client._send_gateway_command.assert_awaited_once_with(
+            "PUT", "/configs/gateway/led", body=LED, headers=None
         )
+        client.get_reply_to_request.assert_not_awaited()
         client.send_message.assert_awaited_once_with(
             method="GET", msg="/configs/gateway/led"
         )
@@ -645,28 +655,50 @@ class ClientRequestTests(IsolatedAsyncioTestCase):
         """Reboot does not wait for a reply."""
         client = self._client()
         await client.reboot_gateway()
-        client.send_request.assert_awaited_once_with("PUT", "/configs/gateway/reboot")
+        client._send_gateway_command.assert_awaited_once_with(
+            "PUT", "/configs/gateway/reboot"
+        )
         client.get_reply_to_request.assert_not_awaited()
 
+    async def test_commands_carry_the_remote_mode_prefix(self) -> None:
+        """Requests keep the mediation prefix, unlike prepare_request's output."""
+        client = self._client()
+        client._cmd_prefix = b"\x02"
+        client._message_handler = SimpleNamespace(
+            prepare_request=MagicMock(return_value=("1", b"PUT /x HTTP/1.1\r\n\r\n"))
+        )
+        client.send_bytes = AsyncMock()
+        await client.real_send_gateway_command("PUT", "/x", body={"a": 1})
+        client._message_handler.prepare_request.assert_called_once_with(
+            "PUT", "/x", {"a": 1}, None
+        )
+        client.send_bytes.assert_awaited_once_with(b"\x02PUT /x HTTP/1.1\r\n\r\n")
+
     async def test_update_mode_body(self) -> None:
-        """Update mode body."""
+        """The update mode is sent as {"mode": …} and read back."""
         client = self._client()
         await client.put_gateway_update_setup("AUTO")
-        client.get_reply_to_request.assert_awaited_once_with(
-            "PUT", "/configs/gateway/update/setup", body={"mode": "AUTO"}
+        client._send_gateway_command.assert_awaited_once_with(
+            "PUT", "/configs/gateway/update/setup", body={"mode": "AUTO"}, headers=None
+        )
+        client.send_message.assert_awaited_once_with(
+            method="GET", msg="/configs/gateway/update/status"
         )
 
     async def test_devices_update_sends_a_json_array(self) -> None:
-        """Devices update sends a json array."""
+        """Radio firmware deployment uses a JSON array, then reads back."""
         client = self._client()
         await client.put_devices_update([{"fwId": "fw-42", "modelId": "TYXIA 5731"}])
-        method, path = client.get_reply_to_request.await_args.args
-        kwargs = client.get_reply_to_request.await_args.kwargs
+        method, path = client._send_gateway_command.await_args.args
+        kwargs = client._send_gateway_command.await_args.kwargs
         self.assertEqual(("PUT", "/devices/update"), (method, path))
         self.assertEqual(
             [{"fwId": "fw-42", "modelId": "TYXIA 5731"}], json.loads(kwargs["body"])
         )
         self.assertIn("application/json", kwargs["headers"]["Content-Type"])
+        client.send_message.assert_awaited_once_with(
+            method="GET", msg="/devices/update/status"
+        )
 
     async def test_unsupported_paths_are_skipped(self) -> None:
         """Unsupported paths are skipped."""
