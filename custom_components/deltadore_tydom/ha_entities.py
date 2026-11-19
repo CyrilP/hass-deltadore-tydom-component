@@ -5626,11 +5626,13 @@ class HASensor(SensorEntity, HAEntity):
     _attr_should_poll = False
     _attr_has_entity_name = True
 
-    def __init__(self, device: TydomDevice, hass) -> None:
+    def __init__(self, device: TydomDevice, hass, *, set_primary: bool = True) -> None:
         """Initialize HASensor."""
         self.hass = hass
         self._device = device
-        self._device._ha_device = self
+        self._set_primary = set_primary
+        if self._set_primary:
+            self._device._ha_device = self
         battery_attributes = self._device.battery_level_attributes
         self.sensor_classes = dict.fromkeys(
             battery_attributes, SensorDeviceClass.BATTERY
@@ -5652,7 +5654,8 @@ class HASensor(SensorEntity, HAEntity):
         """Refresh on every device push (see HACover for the MRO rationale)."""
         await super().async_added_to_hass()
         self._device.register_callback(self.async_write_ha_state)
-        self._device._ha_device = self
+        if self._set_primary:
+            self._device._ha_device = self
 
     async def async_will_remove_from_hass(self) -> None:
         """Remove the push callback registered in async_added_to_hass."""

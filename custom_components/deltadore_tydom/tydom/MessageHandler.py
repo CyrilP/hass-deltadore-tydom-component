@@ -88,6 +88,46 @@ _ENERGY_INSTANT_DIVISORS = {
 """Divisors used by TYDOM for supported instantaneous measurements."""
 
 
+def _is_hvac_radiator_profile(metadata: Any) -> bool:
+    """Recognise the reported writable X3D radiator profile conservatively.
+
+    The generic ``hvac`` usage is also used by other products. Only promote
+    endpoints with the observed setpoint, mode and override capabilities from
+    /devices/meta. Command metadata from /devices/cmeta is a different protocol
+    and must not be treated as permission to write /devices/data.
+    """
+    if not isinstance(metadata, dict):
+        return False
+
+    def supports(name: str, permissions: str, values: set[str] | None = None) -> bool:
+        entry = metadata.get(name)
+        if not isinstance(entry, dict):
+            return False
+        permission = entry.get("permission")
+        if not isinstance(permission, str) or not set(permissions).issubset(permission):
+            return False
+        if values is None:
+            return True
+        advertised = entry.get("enum_values")
+        return (
+            isinstance(advertised, list)
+            and all(isinstance(value, str) for value in advertised)
+            and values.issubset(advertised)
+        )
+
+    return (
+        supports("heatSetpoint", "rw")
+        and supports("setpoint", "rw")
+        and supports("overrideSetpoint", "rw")
+        and supports("localMode", "rw", {"NORMAL", "STOP", "ANTI_FROST", "ABSENCE"})
+        and supports("useMode", "rw", {"SCHED", "OVERRIDE", "MANUAL"})
+        and supports("thermicLevel", "rw", {"STOP", "ANTI_FROST"})
+        and supports("overrideThermicLevel", "rw", {"STOP", "ANTI_FROST"})
+        and supports("comfortMode", "w", {"STOP", "HEATING"})
+        and supports("authorization", "r", {"STOP", "HEATING"})
+    )
+
+
 def _parse_energy_cdata_element(element: Any) -> dict[str, int | float]:
     """Extract sensor values from one successful energy cdata element."""
     if not isinstance(element, dict) or element.get("status", "OK") != "OK":
@@ -1311,6 +1351,17 @@ class MessageHandler:
                     interrupter_info.get(uid),
                 )
             case "boiler" | "sh_hvac" | "electric" | "aeraulic":
+                return TydomBoiler(
+                    tydom_client,
+                    uid,
+                    device_id,
+                    name,
+                    last_usage,
+                    endpoint,
+                    device_metadata.get(uid),
+                    data,
+                )
+            case "hvac" if _is_hvac_radiator_profile(device_metadata.get(uid)):
                 return TydomBoiler(
                     tydom_client,
                     uid,

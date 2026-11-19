@@ -693,6 +693,17 @@ class TydomRemoteControl(TydomDevice):
 class TydomBoiler(TydomDevice):
     """Represents a Boiler."""
 
+    async def retain_hvac_sensor_state(self, previous: TydomDevice) -> None:
+        """Share a late-promoted hvac endpoint's state with its existing sensors.
+
+        The previous generic entities hold a reference to the old object. Both
+        objects must see the same values and callback set after promotion so
+        those entities keep updating while the climate uses TydomBoiler methods.
+        """
+        await previous.update_device(self)
+        previous._metadata = self._metadata
+        self.__dict__ = previous.__dict__
+
     @property
     def is_area_controlled(self) -> bool:
         """Return whether thermostat commands should target its linked area."""

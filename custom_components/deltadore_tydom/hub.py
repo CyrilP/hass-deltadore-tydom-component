@@ -2794,6 +2794,18 @@ class Hub:
                                     stored_type=stored_device.device_type,
                                     promoted_type=device.device_type,
                                 )
+                                if (
+                                    isinstance(device, TydomBoiler)
+                                    and device.device_type == "hvac"
+                                    and isinstance(
+                                        self.ha_devices.get(device.device_id), HASensor
+                                    )
+                                ):
+                                    # A full state can precede /devices/meta. The
+                                    # already-created generic sensors still hold
+                                    # the previous object, so preserve its shared
+                                    # state and callbacks when climate appears.
+                                    await device.retain_hvac_sensor_state(stored_device)
                                 self.devices[device.device_id] = device
                                 await self.create_ha_device(device)
                                 continue
@@ -2949,13 +2961,37 @@ class Hub:
     async def _create_boiler_device(self, device: TydomBoiler) -> None:
         """Create boiler/climate device."""
         LOGGER.debug("Create boiler %s", device.device_id)
+        # HVAC radiators were previously generic sensors. Keep their old
+        # primary sensor's unique ID so dashboards and automations survive the
+        # addition of the climate entity. It must not replace climate as the
+        # protocol device's primary HA entity.
+        previous = self.ha_devices.get(device.device_id)
+        existing_legacy_sensor = (
+            previous
+            if device.device_type == "hvac" and isinstance(previous, HASensor)
+            else None
+        )
+        if existing_legacy_sensor is not None:
+            existing_legacy_sensor._set_primary = False
+        legacy_sensor = (
+            HASensor(device, self._hass, set_primary=False)
+            if device.device_type == "hvac" and existing_legacy_sensor is None
+            else None
+        )
         ha_device = HaClimate(device, self._hass)
+        if existing_legacy_sensor is not None:
+            ha_device._registered_sensors.extend(
+                existing_legacy_sensor._registered_sensors
+            )
         self.ha_devices[device.device_id] = ha_device
         if self.add_climate_callback is not None:
             self.add_climate_callback([ha_device])
         if device.is_area_trv and self.add_button_callback is not None:
             self.add_button_callback([HACancelBoostButton(device, self._hass)])
-        self._add_discovered_entities(ha_device.get_sensors())
+        self._add_discovered_entities(
+            ([legacy_sensor] if legacy_sensor is not None else [])
+            + ha_device.get_sensors()
+        )
 
     async def _create_window_device(self, device: TydomWindow) -> None:
         """Create window device (cover if motorized, else binary_sensor)."""
