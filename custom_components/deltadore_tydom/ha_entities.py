@@ -3101,7 +3101,18 @@ class HaClimate(RestoreEntity, ClimateEntity, HAEntity):
             and not self._device.uses_area_local_mode
             and isinstance(heat_setpoint_meta, dict)
             and {"r", "w"}.issubset(heat_setpoint_meta.get("permission", ""))
-            and "overrideThermicLevel" not in (metadata or {})
+            # RF7110 exposes overrideThermicLevel too. Only bypass the
+            # pilot-wire guard when the complete temperature override exists.
+            and (
+                "overrideThermicLevel" not in (metadata or {})
+                or (
+                    "OVERRIDE" in use_mode_values
+                    and isinstance(override_setpoint_meta, dict)
+                    and "w" in override_setpoint_meta.get("permission", "")
+                    and isinstance(override_time_meta, dict)
+                    and {"r", "w"}.issubset(override_time_meta.get("permission", ""))
+                )
+            )
             and {"STOP", "ABSENCE"}.issubset(self._local_mode_values)
             and {"r", "w"}.issubset(use_mode_permission)
             and {"SCHED", "MANUAL"}.issubset(use_mode_values)
