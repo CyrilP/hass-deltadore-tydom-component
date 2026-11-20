@@ -1,6 +1,14 @@
 {
     "entity": {
+        "switch": {
+            "gateway_led": {
+                "name": "LED de estado"
+            }
+        },
         "update": {
+            "radio_firmware": {
+                "name": "Firmware {model}"
+            },
             "firmware": {
                 "name": "Firmware"
             }
@@ -1639,6 +1647,15 @@
             }
         },
         "binary_sensor": {
+            "gateway_ip_status": {
+                "name": "Rede local"
+            },
+            "gateway_internet_status": {
+                "name": "Acesso à Internet"
+            },
+            "radio_firmware_update_available": {
+                "name": "Atualização dos produtos de rádio"
+            },
             "absence": {
                 "name": "Modo ausência"
             },
@@ -3083,6 +3100,12 @@
             }
         },
         "select": {
+            "gateway_led_color": {
+                "name": "Cor do LED de estado"
+            },
+            "gateway_update_mode": {
+                "name": "Modo de atualização do firmware"
+            },
             "general_climate_mode": {
                 "name": "Modo geral",
                 "state": {
@@ -3846,6 +3869,9 @@
             }
         },
         "button": {
+            "reboot_gateway": {
+                "name": "Reiniciar o gateway"
+            },
             "acknowledge_events": {
                 "name": "Confirmar eventos"
             },
