@@ -81,6 +81,12 @@ Some firmwares never send an EOR flag; they mark the end of the enumeration
 with a last element carrying index 255 and invalid event data instead.
 """
 
+
+def _is_histo_request(url: str) -> bool:
+    """Return whether a request targets the streamed cdata history endpoint."""
+    return "/cdata?" in url and "name=histo" in url
+
+
 _ENERGY_INSTANT_DIVISORS = {
     "ELEC_A": 100,
     "ELEC_W": 1,
@@ -636,6 +642,11 @@ class MessageHandler:
         # Tracked GET .../cdata requests: TYXAL acknowledges them with an empty
         # 200 before streaming the data and the EOR marker.
         self._cdata_get_transactions: set[str] = set()
+        # The mediation relay has been seen to omit or replace the transaction
+        # id on streamed cdata responses.  Keep the history requests separate
+        # so an untagged response can be correlated safely when only one is in
+        # flight.
+        self._histo_reply_transactions: set[str] = set()
         self._reply_errors: dict[str, str] = {}
         self._alarm_command_waiters: dict[
             tuple[str, str, str], list[asyncio.Future[dict[str, Any]]]
@@ -701,6 +712,7 @@ class MessageHandler:
         if reply is not None:
             if reply["done"]:
                 self._cdata_replies.remove(reply)
+                self._histo_reply_transactions.discard(transaction_id)
             else:
                 LOGGER.debug(
                     "Try to get partial reply to request %s: %s",
@@ -730,6 +742,7 @@ class MessageHandler:
         # Remove from end_reply_events
         self._end_reply_events.pop(transaction_id, None)
         self._cdata_get_transactions.discard(transaction_id)
+        self._histo_reply_transactions.discard(transaction_id)
         LOGGER.debug("Removed pending reply for transaction_id: %s", transaction_id)
 
     def get_reply_error(self, transaction_id: str) -> str | None:
@@ -818,6 +831,21 @@ class MessageHandler:
         self.remove_reply(transaction_id)
         event.set()
 
+    def _infer_histo_transaction(self, transaction_id: str | None) -> str | None:
+        """Correlate a streamed history response relayed without its id."""
+        if transaction_id not in (None, "0"):
+            return transaction_id
+        if len(self._histo_reply_transactions) != 1:
+            return transaction_id
+        inferred = next(iter(self._histo_reply_transactions))
+        if set(self._end_reply_events) != {inferred}:
+            return transaction_id
+        LOGGER.debug(
+            "Correlating untagged history response with transaction_id %s",
+            inferred,
+        )
+        return inferred
+
     def _complete_empty_reply(self, transaction_id: str) -> None:
         """Complete a tracked request acknowledged without a response body."""
         event = self._end_reply_events.pop(transaction_id, None)
@@ -858,6 +886,8 @@ class MessageHandler:
                 parsed_message = parse_request(stripped_msg)
                 uri_origin = parsed_message.path
             transaction_id = parsed_message.headers.get("Transac-Id")
+            if uri_origin == "/devices/cdata":
+                transaction_id = self._infer_histo_transaction(transaction_id)
 
             if status is not None and status >= 400:
                 if transaction_id:
@@ -1017,6 +1047,8 @@ class MessageHandler:
             self._end_reply_events[transaction_id] = reply_event
             if method.upper() == "GET" and "/cdata" in url.split("?", 1)[0]:
                 self._cdata_get_transactions.add(transaction_id)
+            if _is_histo_request(url):
+                self._histo_reply_transactions.add(transaction_id)
 
         return (transaction_id, request)
 
@@ -1086,7 +1118,8 @@ class MessageHandler:
         ) = None
 
         if data:
-            if content_type == "application/json":
+            media_type = (content_type or "").split(";", 1)[0].strip().lower()
+            if media_type == "application/json":
                 # Content-Type is not reliable; it is use with text/html for example
                 with contextlib.suppress(json.decoder.JSONDecodeError):
                     parsed = json.loads(data)
@@ -2388,8 +2421,12 @@ class MessageHandler:
                         transaction_id, i.get("id"), endpoint
                     )
                     continue
-
-                if endpoint["error"] == 0 and len(endpoint["cdata"]) > 0:
+                cdata = endpoint.get("cdata") or []
+                if not cdata:
+                    if transaction_id in self._histo_reply_transactions:
+                        self._complete_empty_reply(transaction_id)
+                    continue
+                if len(cdata) > 0:
                     try:
                         device_id = i["id"]
                         endpoint_id = endpoint["id"]
@@ -2399,7 +2436,7 @@ class MessageHandler:
 
                         data = {}
 
-                        for elem in endpoint["cdata"]:
+                        for elem in cdata:
                             if elem.get("EOR", False):
                                 cdata_poll_complete = True
 
