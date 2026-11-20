@@ -4528,20 +4528,29 @@ class HaDoor(CoverEntity, HAEntity):
 
     @property
     def is_closed(self) -> bool | None:
-        """Return if the door is closed."""
+        """Return if the door is closed, or None while its state is unknown.
+
+        The state is unknown when the gateway has not reported any of
+        ``podPosition``, ``openState`` or ``intrusionDetect`` yet, or when the
+        reported attribute is ``None``. Returning None lets Home Assistant
+        show the door as unknown instead of raising or guessing a state.
+        """
         if hasattr(self._device, "podPosition"):
-            return getattr(self._device, "podPosition", None) in ("CLOSE", "LOCK")
+            pod_position = getattr(self._device, "podPosition", None)
+            if pod_position is None:
+                return None
+            return pod_position in ("CLOSE", "LOCK")
         elif hasattr(self._device, "openState"):
             open_state = getattr(self._device, "openState", None)
+            if open_state is None:
+                return None
             return open_state == "LOCKED"
         elif hasattr(self._device, "intrusionDetect"):
-            intrusion_detect = getattr(self._device, "intrusionDetect", False)
+            intrusion_detect = getattr(self._device, "intrusionDetect", None)
+            if intrusion_detect is None:
+                return None
             return not bool(intrusion_detect)
-        else:
-            raise AttributeError(
-                "The required attributes 'podPosition', 'openState' or "
-                "'intrusionDetect' are not available in the device."
-            )
+        return None
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the door."""
@@ -4554,10 +4563,12 @@ class HaDoor(CoverEntity, HAEntity):
     @property
     def icon(self) -> str:
         """Return the icon for the door based on state."""
-        if self.is_closed:
+        is_closed = self.is_closed
+        if is_closed is None:
+            return "mdi:door"
+        if is_closed:
             return "mdi:door-closed"
-        else:
-            return "mdi:door-open"
+        return "mdi:door-open"
 
 
 def _level_command_cover_features(
