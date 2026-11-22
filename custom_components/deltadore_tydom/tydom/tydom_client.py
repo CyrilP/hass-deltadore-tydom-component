@@ -43,6 +43,9 @@ from ..home_climate import HomeClimateState, HVAC_OPTIONS
 from .MessageHandler import MessageHandler
 from .tydom_devices import TydomAlarmCommandError
 
+_GATEWAY_LED_PATH = "/configs/gateway/led"
+"""Status LED configuration resource."""
+
 _GATEWAY_COMMAND_ACK_TIMEOUT = 5.0
 """Seconds to wait for TYDOM to acknowledge a gateway configuration PUT."""
 
@@ -2294,7 +2297,7 @@ class TydomClient:
 
     async def get_gateway_led(self) -> None:
         """Read the status LED configuration."""
-        await self._get_optional("/configs/gateway/led")
+        await self._get_optional(_GATEWAY_LED_PATH)
 
     async def _gateway_request(
         self,
@@ -2391,7 +2394,7 @@ class TydomClient:
             )
 
         await self._put_and_confirm(
-            "/configs/gateway/led", document, "/configs/gateway/led", applied
+            _GATEWAY_LED_PATH, document, _GATEWAY_LED_PATH, applied
         )
 
     async def reboot_gateway(self) -> None:
