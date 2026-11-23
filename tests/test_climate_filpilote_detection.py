@@ -160,6 +160,8 @@ _module(
     LightEntity=_StubEntity,
     ColorMode=MagicMock(),
     ATTR_BRIGHTNESS="brightness",
+    ATTR_COLOR_TEMP_KELVIN="color_temp_kelvin",
+    ATTR_XY_COLOR="xy_color",
 )
 
 # --- homeassistant.components.update ---
@@ -184,6 +186,11 @@ _module(
     "homeassistant.util.percentage",
     percentage_to_ranged_value=MagicMock(),
     ranged_value_to_percentage=MagicMock(),
+)
+_module(
+    "homeassistant.util.color",
+    color_temperature_kelvin_to_mired=MagicMock(),
+    color_temperature_mired_to_kelvin=MagicMock(),
 )
 _module("homeassistant.util")
 
