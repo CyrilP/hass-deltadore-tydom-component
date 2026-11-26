@@ -1,5 +1,10 @@
 {
     "entity": {
+        "switch": {
+            "gateway_led": {
+                "name": "Status-LED"
+            }
+        },
         "update": {
             "firmware": {
                 "name": "Firmware"
@@ -1639,6 +1644,15 @@
             }
         },
         "binary_sensor": {
+            "gateway_ip_status": {
+                "name": "Lokales Netzwerk"
+            },
+            "gateway_internet_status": {
+                "name": "Internetzugang"
+            },
+            "radio_firmware_update_available": {
+                "name": "Firmware-Update der Funkprodukte"
+            },
             "absence": {
                 "name": "Abwesenheitsmodus"
             },
@@ -3083,6 +3097,12 @@
             }
         },
         "select": {
+            "gateway_led_color": {
+                "name": "Farbe der Status-LED"
+            },
+            "gateway_update_mode": {
+                "name": "Firmware-Aktualisierungsmodus"
+            },
             "general_climate_mode": {
                 "name": "Allgemeiner Klimamodus",
                 "state": {
@@ -3846,6 +3866,9 @@
             }
         },
         "button": {
+            "reboot_gateway": {
+                "name": "Gateway neu starten"
+            },
             "acknowledge_events": {
                 "name": "Ereignisse quittieren"
             },
@@ -3942,6 +3965,9 @@
         }
     },
     "exceptions": {
+        "gateway_command_failed": {
+            "message": "Das Gateway hat den Befehl nicht übernommen: {error}"
+        },
         "resume_target_unknown": {
             "message": "Diese Zone befindet sich noch im Frostschutz und es ist keine bestätigte Solltemperatur bekannt. Wählen Sie mit der Aktion climate.set_temperature eine Temperatur, um sie wieder zu starten. Der allgemeine Heiz-/Kühlmodus muss aktiviert sein."
         },

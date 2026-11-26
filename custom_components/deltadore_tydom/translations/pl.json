@@ -1,5 +1,10 @@
 {
     "entity": {
+        "switch": {
+            "gateway_led": {
+                "name": "Dioda stanu"
+            }
+        },
         "update": {
             "firmware": {
                 "name": "Firmware"
@@ -1639,6 +1644,15 @@
             }
         },
         "binary_sensor": {
+            "gateway_ip_status": {
+                "name": "Sieć lokalna"
+            },
+            "gateway_internet_status": {
+                "name": "Dostęp do internetu"
+            },
+            "radio_firmware_update_available": {
+                "name": "Aktualizacja produktów radiowych"
+            },
             "absence": {
                 "name": "Tryb nieobecności"
             },
@@ -3083,6 +3097,12 @@
             }
         },
         "select": {
+            "gateway_led_color": {
+                "name": "Kolor diody stanu"
+            },
+            "gateway_update_mode": {
+                "name": "Tryb aktualizacji oprogramowania"
+            },
             "general_climate_mode": {
                 "name": "Ogólny tryb klimatu",
                 "state": {
@@ -3846,6 +3866,9 @@
             }
         },
         "button": {
+            "reboot_gateway": {
+                "name": "Uruchom ponownie bramkę"
+            },
             "acknowledge_events": {
                 "name": "Potwierdź zdarzenia"
             },
@@ -3942,6 +3965,9 @@
         }
     },
     "exceptions": {
+        "gateway_command_failed": {
+            "message": "Bramka nie zastosowała polecenia: {error}"
+        },
         "resume_target_unknown": {
             "message": "Ta strefa nadal działa w trybie ochrony przed zamarzaniem i nie jest znana potwierdzona temperatura zadana. Wybierz temperaturę za pomocą akcji climate.set_temperature, aby ją uruchomić. Ogólny tryb ogrzewania/chłodzenia musi być włączony."
         },

@@ -270,8 +270,15 @@
     },
     "entity": {
         "scene": {},
-        "switch": {},
+        "switch": {
+            "gateway_led": {
+                "name": "Status-LED"
+            }
+        },
         "button": {
+            "reboot_gateway": {
+                "name": "Start gateway på nytt"
+            },
             "acknowledge_events": {
                 "name": "Acknowledge events"
             },
@@ -321,6 +328,12 @@
             }
         },
         "select": {
+            "gateway_led_color": {
+                "name": "Farge på status-LED"
+            },
+            "gateway_update_mode": {
+                "name": "Modus for fastvareoppdatering"
+            },
             "general_climate_mode": {
                 "name": "Generell klimamodus",
                 "state": {
@@ -679,6 +692,15 @@
             }
         },
         "binary_sensor": {
+            "gateway_ip_status": {
+                "name": "Lokalt nettverk"
+            },
+            "gateway_internet_status": {
+                "name": "Internettilgang"
+            },
+            "radio_firmware_update_available": {
+                "name": "Oppdatering av radioprodukter"
+            },
             "tempsensordefect": {
                 "name": "Temperature sensor defect"
             },
@@ -765,6 +787,9 @@
         "moment": {}
     },
     "exceptions": {
+        "gateway_command_failed": {
+            "message": "Gatewayen tok ikke i bruk kommandoen: {error}"
+        },
         "resume_target_unknown": {
             "message": "Denne sonen er fortsatt i frostbeskyttelse, og ingen bekreftet måltemperatur er kjent. Velg en temperatur med handlingen climate.set_temperature for å starte den igjen. Den generelle varme-/kjølemodusen må være aktivert."
         },

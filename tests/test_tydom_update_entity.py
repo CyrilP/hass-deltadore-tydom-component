@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
+import sys
+import types
 from types import SimpleNamespace
-from unittest import TestCase
+from unittest import IsolatedAsyncioTestCase, TestCase
+from unittest.mock import AsyncMock
 
 
 def _load_haty_dom_class():
@@ -51,6 +54,7 @@ def _load_haty_dom_class():
         "HAEntity": type("HAEntity", (), {}),
         "EntityCategory": SimpleNamespace(CONFIG="config", DIAGNOSTIC="diagnostic"),
     }
+    namespace["__package__"] = "custom_components.deltadore_tydom"
     exec(compile(isolated_module, source_path, "exec"), namespace)
     return namespace["HATydom"]
 
@@ -90,3 +94,94 @@ class TestTydomUpdateEntity(TestCase):
         entity = self._entity("pending")
 
         self.assertEqual(entity.installed_version, entity.latest_version)
+
+    def test_detailed_status_provides_the_target_version(self):
+        """A pending version from update/status replaces the generic value."""
+        device = SimpleNamespace(
+            device_id="gateway-id",
+            device_name="TYDOM",
+            mainVersionSW="03.24.29",
+            updateAvailable=False,
+            update_available=True,
+            target_firmware_version="03.25.01",
+            update_in_progress=True,
+        )
+        entity = HATydom(device, hass=None)
+
+        self.assertEqual("03.25.01", entity.latest_version)
+        self.assertTrue(entity.in_progress)
+
+    def test_detailed_status_without_version_keeps_latest(self):
+        """Availability without a known version still uses the generic value."""
+        device = SimpleNamespace(
+            device_id="gateway-id",
+            device_name="TYDOM",
+            mainVersionSW="03.24.29",
+            update_available=True,
+            target_firmware_version=None,
+        )
+        entity = HATydom(device, hass=None)
+
+        self.assertEqual("latest", entity.latest_version)
+        self.assertFalse(entity.in_progress)
+
+    def test_gateway_choice_overrides_the_info_flag(self):
+        """The gateway device's freshest report decides, not /info alone."""
+        device = SimpleNamespace(
+            device_id="gateway-id",
+            device_name="TYDOM",
+            mainVersionSW="03.24.29",
+            updateAvailable=True,
+            update_available=False,
+        )
+        entity = HATydom(device, hass=None)
+
+        self.assertEqual("03.24.29", entity.latest_version)
+
+
+class GatewayCommandError(Exception):
+    """Stand-in for the gateway command error."""
+
+
+async def _confirmed(command):
+    try:
+        await command
+    except GatewayCommandError as err:
+        raise RuntimeError("reported") from err
+
+
+class TestTydomUpdateInstall(IsolatedAsyncioTestCase):
+    """Installing the gateway firmware goes through the confirmed path."""
+
+    async def test_rejected_install_is_reported(self):
+        """A refusal from the gateway reaches the user."""
+        gateway_entities = types.ModuleType(
+            "custom_components.deltadore_tydom.gateway_entities"
+        )
+        gateway_entities.async_confirmed = _confirmed
+        packages = {
+            "custom_components": types.ModuleType("custom_components"),
+            "custom_components.deltadore_tydom": types.ModuleType(
+                "custom_components.deltadore_tydom"
+            ),
+            "custom_components.deltadore_tydom.gateway_entities": gateway_entities,
+        }
+        originals = {name: sys.modules.get(name) for name in packages}
+        sys.modules.update(packages)
+        try:
+            device = SimpleNamespace(
+                device_id="gateway-id",
+                device_name="TYDOM",
+                async_trigger_firmware_update=AsyncMock(),
+            )
+            entity = HATydom(device, hass=None)
+            await entity.async_install(None, False)
+            device.async_trigger_firmware_update.side_effect = GatewayCommandError()
+            with self.assertRaisesRegex(RuntimeError, "reported"):
+                await entity.async_install(None, False)
+        finally:
+            for name, module in originals.items():
+                if module is None:
+                    sys.modules.pop(name, None)
+                else:
+                    sys.modules[name] = module

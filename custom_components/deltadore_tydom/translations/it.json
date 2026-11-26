@@ -1,5 +1,10 @@
 {
     "entity": {
+        "switch": {
+            "gateway_led": {
+                "name": "LED di stato"
+            }
+        },
         "update": {
             "firmware": {
                 "name": "Firmware"
@@ -1639,6 +1644,15 @@
             }
         },
         "binary_sensor": {
+            "gateway_ip_status": {
+                "name": "Rete locale"
+            },
+            "gateway_internet_status": {
+                "name": "Accesso a Internet"
+            },
+            "radio_firmware_update_available": {
+                "name": "Aggiornamento dei prodotti radio"
+            },
             "absence": {
                 "name": "Modalità assenza"
             },
@@ -3083,6 +3097,12 @@
             }
         },
         "select": {
+            "gateway_led_color": {
+                "name": "Colore del LED di stato"
+            },
+            "gateway_update_mode": {
+                "name": "Modalità di aggiornamento firmware"
+            },
             "general_climate_mode": {
                 "name": "Modalità generale",
                 "state": {
@@ -3846,6 +3866,9 @@
             }
         },
         "button": {
+            "reboot_gateway": {
+                "name": "Riavvia il gateway"
+            },
             "acknowledge_events": {
                 "name": "Conferma eventi"
             },
@@ -3942,6 +3965,9 @@
         }
     },
     "exceptions": {
+        "gateway_command_failed": {
+            "message": "Il gateway non ha applicato il comando: {error}"
+        },
         "resume_target_unknown": {
             "message": "Questa zona è ancora in protezione antigelo e non è nota una temperatura impostata confermata. Scegliere una temperatura con l’azione climate.set_temperature per riattivarla. La modalità generale di riscaldamento/climatizzazione deve essere attiva."
         },

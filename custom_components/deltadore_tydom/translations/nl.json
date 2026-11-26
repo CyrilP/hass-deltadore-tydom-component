@@ -1,5 +1,10 @@
 {
     "entity": {
+        "switch": {
+            "gateway_led": {
+                "name": "Status-led"
+            }
+        },
         "update": {
             "firmware": {
                 "name": "Firmware"
@@ -1639,6 +1644,15 @@
             }
         },
         "binary_sensor": {
+            "gateway_ip_status": {
+                "name": "Lokaal netwerk"
+            },
+            "gateway_internet_status": {
+                "name": "Internettoegang"
+            },
+            "radio_firmware_update_available": {
+                "name": "Update van radioproducten"
+            },
             "absence": {
                 "name": "Afwezigheidsmodus"
             },
@@ -3083,6 +3097,12 @@
             }
         },
         "select": {
+            "gateway_led_color": {
+                "name": "Kleur status-led"
+            },
+            "gateway_update_mode": {
+                "name": "Firmware-updatemodus"
+            },
             "general_climate_mode": {
                 "name": "Algemene klimaatmodus",
                 "state": {
@@ -3846,6 +3866,9 @@
             }
         },
         "button": {
+            "reboot_gateway": {
+                "name": "Gateway herstarten"
+            },
             "acknowledge_events": {
                 "name": "Gebeurtenissen bevestigen"
             },
@@ -3942,6 +3965,9 @@
         }
     },
     "exceptions": {
+        "gateway_command_failed": {
+            "message": "De gateway heeft de opdracht niet toegepast: {error}"
+        },
         "resume_target_unknown": {
             "message": "Deze zone staat nog op vorstbeveiliging en er is geen bevestigde doeltemperatuur bekend. Kies een temperatuur met de actie climate.set_temperature om de zone te hervatten. De algemene verwarmings-/koelmodus moet ingeschakeld zijn."
         },
